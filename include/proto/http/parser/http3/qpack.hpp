@@ -50,7 +50,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -115,25 +113,30 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Namespace of QPACK - the compression of the fields of HTTP/3 (RFC 9204)
+			 *
 			 * @details QPACK solves the same task as HPACK, but in the conditions where the streams
 			 *          are delivered independently of each other and may come not in that order
 			 *          in which they have been sent. HPACK is inapplicable in such conditions: its dynamic
 			 *          table changes right inside a block of the headers, therefore the block is obliged
 			 *          to be parsed strictly in the order of the sending, otherwise the tables would diverge.
+			 *
 			 *          QPACK separates these two flows of the control:
 			 *          1. the table changes by the instructions in a separate unidirectional stream
 			 *             of the encoder delivered by the transport in the order (RFC 9204 §4.3);
 			 *          2. a section of the fields refers to the records by the absolute numbers and carries
 			 *             in the prefix the Required Insert Count - the number of the insertion up to which
 			 *             the table is obliged to be filled for the section to be parsed.
+			 *
 			 *          A section which has come earlier than the needed insertions is not an error: the stream
 			 *          is blocked until their arrival. The number of the simultaneously blocked streams
 			 *          is limited by the parameter SETTINGS_QPACK_BLOCKED_STREAMS, and an exceeding
 			 *          of this boundary by the encoder is already an error of the connection.
+			 *
 			 *          The integer encoding with a prefix and the table of Huffman are taken from HPACK
 			 *          without changes (RFC 9204 §4.1.1), therefore they are reused directly
 			 *          from hpack.hpp: a divergence of the implementations here would be a source
 			 *          of an incompatibility out of the blue.
+			 *
 			 * @note The indices of the static table of QPACK are numbered from a zero rather than from a unit,
 			 *       as in HPACK: a zero index here does not serve as a flag of an absence of a record
 			 *
@@ -186,6 +189,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of getting a record of the static table by an index 0..98 (RFC 9204 Appendix A)
+				 *
 				 * @param index index of the record (0-based); >= 99 is invalid
 				 * @return      pointer to the record or nullptr
 				 *
@@ -203,6 +207,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of a pair of a decoded field (non-owning)
+				 *
 				 * @details It coincides with the type of HPACK deliberately: a gateway translating a message
 				 *          between HTTP/2 and HTTP/3 passes a parsed list of the fields from one
 				 *          codec into the other without an intermediate conversion
@@ -229,15 +234,16 @@ namespace awh {
 				 *          Отличие от HPACK - в нумерации: запись получает сквозной абсолютный номер
 				 *          в момент вставки и сохраняет его до вытеснения. Номера живых записей
 				 *          всегда образуют непрерывный отрезок, поэтому позиция записи в очереди
-				 *          получается вычитанием, а сама очередь остаётся дешёвой
+				 *          получается вычитанием, а сама очередь остаётся дешёвой.
 				 *
 				 * \~english
 				 * @brief Class of the dynamic table of QPACK with an absolute indexing (RFC 9204 §3.2)
+				 *
 				 * @details The size of a record = len(name) + len(value) + 32 (RFC 9204 §3.2.1), as in HPACK.
 				 *          The difference from HPACK is in the numbering: a record gets a through absolute number
 				 *          at the moment of the insertion and preserves it until the eviction. The numbers of the living records
 				 *          always form a continuous segment, therefore the position of a record in the queue
-				 *          is obtained by a subtraction, while the queue itself remains cheap
+				 *          is obtained by a subtraction, while the queue itself remains cheap.
 				 *
 				 * \~
 				 */
@@ -248,30 +254,31 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Количество вытесненных записей, удерживаемых в начале списка
+						 * @brief Количество вытесненных записей, удерживаемых в начале списка
 						 *
 						 * @details Вытеснение отложено: декодер отдаёт наружу представления прямо
 						 *          в записи таблицы, не копируя их строки, и запись, вытесненная
 						 *          инструкцией потока кодера, обязана дожить до момента, когда
 						 *          выданные представления перестанут быть нужны. Удерживаемые
 						 *          записи из индексов уже сняты и по ним не находятся, а физически
-						 *          снимаются вызовом release() в начале следующего разбора
+						 *          снимаются вызовом release() в начале следующего разбора.
 						 *
 						 * \~english
-						 * Number of the evicted records held in the beginning of the list
+						 * @brief Number of the evicted records held in the beginning of the list
+						 *
 						 * @details The eviction is postponed: the decoder issues outside the representations right
 						 *          into the records of the table without copying their strings, and a record evicted
 						 *          by an instruction of the stream of the encoder is obliged to live to the moment when
 						 *          the issued representations cease to be needed. The held
 						 *          records are already removed from the indices and are not found by them, while physically
-						 *          they are removed by the call of release() at the beginning of the next parsing
+						 *          they are removed by the call of release() at the beginning of the next parsing.
 						 *
 						 * \~
 						 */
 						size_t _retained;
 						/**
 						 * \~russian
-						 * Признак того, что наружу выданы представления в записи таблицы
+						 * @brief Признак того, что наружу выданы представления в записи таблицы
 						 *
 						 * @details Удержание включается только на время жизни выданных
 						 *          представлений. Инструкции потока кодера представлений не
@@ -279,17 +286,18 @@ namespace awh {
 						 *          возврата из него, - поэтому вытеснение там снимает записи
 						 *          сразу. Без этого признака поток из одних вставок удерживал
 						 *          бы все вытесненные записи разом: на таблице в 4 КБ это
-						 *          восемь мегабайт, то есть та же decompression bomb
+						 *          восемь мегабайт, то есть та же decompression bomb.
 						 *
 						 * \~english
-						 * Flag of the representations into the records of the table having been issued outside
+						 * @brief Flag of the representations into the records of the table having been issued outside
+						 *
 						 * @details The holding is enabled only for the lifetime of the issued
 						 *          representations. The instructions of the stream of the encoder do not issue
 						 *          representations - the blocked sections are parsed already after
 						 *          a return from it, - therefore the eviction there removes the records
 						 *          at once. Without this flag a stream out of the insertions alone would hold
 						 *          all the evicted records at once: on a table of 4 KB this is
-						 *          eight megabytes, that is the same decompression bomb
+						 *          eight megabytes, that is the same decompression bomb.
 						 *
 						 * \~
 						 */
@@ -302,15 +310,16 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Общее количество когда-либо вставленных записей
+						 * @brief Общее количество когда-либо вставленных записей
 						 *
 						 * @details Абсолютный номер следующей вставки. Абсолютный номер самой
-						 *          старой живой записи равен (_inserts - _entries.size())
+						 *          старой живой записи равен (_inserts - _entries.size()).
 						 *
 						 * \~english
-						 * Total number of the ever inserted records
+						 * @brief Total number of the ever inserted records
+						 *
 						 * @details The absolute number of the next insertion. The absolute number of the very
-						 *          oldest living record is equal to (_inserts - _entries.size())
+						 *          oldest living record is equal to (_inserts - _entries.size()).
 						 *
 						 * \~
 						 */
@@ -320,28 +329,34 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Индекс записей по хешу пары название-значение (хеш -> абсолютный номер)
+						 * @brief Индекс записей по хешу пары название-значение (хеш -> абсолютный номер)
 						 *
 						 * @details Сопровождается только у кодера: декодер обращается к таблице
 						 *          по готовому номеру и поиском не пользуется. Ключом служит хеш
 						 *          пары, а не одного названия: полей с одним названием и разными
 						 *          значениями в таблице бывают десятки, и по хешу названия они
-						 *          все попадали бы в одно ведро, вырождая поиск в перебор
+						 *          все попадали бы в одно ведро, вырождая поиск в перебор.
 						 *
 						 * \~english
-						 * Index of the records by the hash of a pair a name-a value (a hash -> an absolute number)
+						 * @brief Index of the records by the hash of a pair a name-a value (a hash -> an absolute number)
+						 *
 						 * @details It is maintained only at the encoder: the decoder addresses the table
 						 *          by a ready number and does not make use of a search. The key is the hash
 						 *          of the pair rather than of the name alone: the fields with one name and different
 						 *          values happen in the table by dozens, and by the hash of the name they
-						 *          would all get into one bucket, degenerating the search into an enumeration
+						 *          would all get into one bucket, degenerating the search into an enumeration.
 						 *
 						 * \~
 						 */
 						unordered_multimap <size_t, uint64_t> _index;
 						/**
-						 * Индекс самой свежей записи с каждым названием (хеш названия -> абсолютный номер)
+						 * \~russian
+						 * @brief Индекс самой свежей записи с каждым названием (хеш названия -> абсолютный номер)
 						 *
+						 * \~english
+						 * @brief An index of the freshest record with each title (a hash of a title -> an absolute number)
+						 *
+						 * \~
 						 */
 						unordered_map <size_t, uint64_t> _names;
 					private:
@@ -354,15 +369,17 @@ namespace awh {
 						 *
 						 * @details Вытеснение идёт, пока в таблице не освободится место под
 						 *          запись указанного размера. Нулевой размер приводит таблицу
-						 *          в соответствие с текущей ёмкостью
+						 *          в соответствие с текущей ёмкостью.
 						 *
 						 * @param room требуемое свободное место в октетах
 						 *
 						 * \~english
 						 * @brief Method of the eviction of the records from the very oldest ones
+						 *
 						 * @details The eviction goes on until in the table a place is freed for
 						 *          a record of the indicated size. A zero size brings the table
-						 *          into a correspondence with the current capacity
+						 *          into a correspondence with the current capacity.
+						 *
 						 * @param room required free place in octets
 						 *
 						 * \~
@@ -377,6 +394,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the number of the living records of the table
+						 *
 						 * @return number of the living records
 						 *
 						 * \~
@@ -387,12 +405,13 @@ namespace awh {
 						 * @brief Метод снятия удерживаемых вытесненных записей
 						 *
 						 * @details Вызывается в начале разбора: с этого момента представления,
-						 *          выданные наружу прошлым разбором, недействительны
+						 *          выданные наружу прошлым разбором, недействительны.
 						 *
 						 * \~english
 						 * @brief Method of the removal of the held evicted records
+						 *
 						 * @details It is called at the beginning of a parsing: from this moment the representations
-						 *          issued outside by the past parsing are invalid
+						 *          issued outside by the past parsing are invalid.
 						 *
 						 * \~
 						 */
@@ -405,6 +424,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the flag of the representations issued outside
+						 *
 						 * @param holding flag of the representations issued outside
 						 *
 						 * \~
@@ -418,6 +438,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the number of the held evicted records
+						 *
 						 * @return number of the held records
 						 *
 						 * \~
@@ -431,6 +452,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the current total size of the table
+						 *
 						 * @return total size of the living records with the overhead
 						 *
 						 * \~
@@ -444,6 +466,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the current capacity of the table
+						 *
 						 * @return current capacity of the table
 						 *
 						 * \~
@@ -454,14 +477,16 @@ namespace awh {
 						 * @brief Метод получения общего количества вставок
 						 *
 						 * @details Одновременно является абсолютным номером следующей вставки
-						 *          и значением Insert Count таблицы (RFC 9204 §2.1.4)
+						 *          и значением Insert Count таблицы (RFC 9204 §2.1.4).
 						 *
 						 * @return общее количество вставленных записей
 						 *
 						 * \~english
 						 * @brief Method of getting the total number of the insertions
+						 *
 						 * @details It is simultaneously the absolute number of the next insertion
-						 *          and the value of the Insert Count of the table (RFC 9204 §2.1.4)
+						 *          and the value of the Insert Count of the table (RFC 9204 §2.1.4).
+						 *
 						 * @return total number of the inserted records
 						 *
 						 * \~
@@ -475,6 +500,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the absolute number of the very oldest living record
+						 *
 						 * @return number of the evicted records
 						 *
 						 * \~
@@ -493,9 +519,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of changing the capacity of the table (RFC 9204 §3.2.3)
+						 *
 						 * @note A decrease of the capacity evicts the records from the very oldest ones. An attempt
 						 *       to evict a record to which references still lead is rejected
 						 *       by the calling code before the call of this method
+						 *
 						 * @param capacity new capacity of the table
 						 *
 						 * \~
@@ -509,6 +537,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the control of the maintenance of the index of the records
+						 *
 						 * @param mode mode of the maintenance of the index
 						 *
 						 * \~
@@ -525,6 +554,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the calculation of the size of a record (RFC 9204 §3.2.1)
+						 *
 						 * @param name  name of the field
 						 * @param value value of the field
 						 * @return      size of the record with the overhead
@@ -538,22 +568,24 @@ namespace awh {
 						 *
 						 * @details Записи вытесняются с самой старой, поэтому вставка допустима,
 						 *          если освобождения места хватит до первой записи с номером
-						 *          не меньше границы удержания
+						 *          не меньше границы удержания.
 						 *
 						 * @param name  название поля
 						 * @param value значение поля
 						 * @param hold  наименьший абсолютный номер записи, которую нельзя вытеснять
-						 * @return       признак возможности вставки
+						 * @return      признак возможности вставки
 						 *
 						 * \~english
 						 * @brief Method of checking the possibility of an insertion of a record without an eviction of the occupied ones
+						 *
 						 * @details The records are evicted from the very oldest one, therefore an insertion is admissible,
 						 *          if the freeing of the place suffices up to the first record with a number
-						 *          not less than the boundary of the holding
+						 *          not less than the boundary of the holding.
+						 *
 						 * @param name  name of the field
 						 * @param value value of the field
 						 * @param hold  smallest absolute number of a record which cannot be evicted
-						 * @return       flag of the possibility of the insertion
+						 * @return      flag of the possibility of the insertion
 						 *
 						 * \~
 						 */
@@ -576,6 +608,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the insertion of a record into the table
+						 *
 						 * @note It evicts the very oldest records until the new one fits into the capacity.
 						 *       A record not fitting into the capacity entirely is not inserted at all
 						 *       and does not touch the table: here QPACK deliberately diverges from HPACK
@@ -583,6 +616,7 @@ namespace awh {
 						 *       (RFC 7541 §4.4). In QPACK the size is watched by the encoder, while an attempt is
 						 *       an error QPACK_ENCODER_STREAM_ERROR (RFC 9204 §3.2.2), and it is raised
 						 *       by the caller by the negative result
+						 *
 						 * @param name  name of the field
 						 * @param value value of the field
 						 * @return      flag of a successful insertion
@@ -595,12 +629,13 @@ namespace awh {
 						 * @brief Метод получения записи по абсолютному номеру
 						 *
 						 * @param absolute абсолютный номер записи
-						 * @return          указатель на запись либо nullptr, если запись вытеснена либо ещё не вставлена
+						 * @return         указатель на запись либо nullptr, если запись вытеснена либо ещё не вставлена
 						 *
 						 * \~english
 						 * @brief Method of getting a record by an absolute number
+						 *
 						 * @param absolute absolute number of the record
-						 * @return          pointer to the record or nullptr, if the record is evicted or not yet inserted
+						 * @return         pointer to the record or nullptr, if the record is evicted or not yet inserted
 						 *
 						 * \~
 						 */
@@ -610,19 +645,20 @@ namespace awh {
 						 * \~russian
 						 * @brief Метод поиска записи по названию и значению
 						 *
-						 * @param name      название искомого поля
-						 * @param value     значение искомого поля
-						 * @param absolute  абсолютный номер полного совпадения
-						 * @param nameOnly  абсолютный номер совпадения только по названию
-						 * @return          признак найденного полного совпадения
+						 * @param name     название искомого поля
+						 * @param value    значение искомого поля
+						 * @param absolute абсолютный номер полного совпадения
+						 * @param nameOnly абсолютный номер совпадения только по названию
+						 * @return         признак найденного полного совпадения
 						 *
 						 * \~english
 						 * @brief Method of the search of a record by the name and the value
-						 * @param name      name of the sought field
-						 * @param value     value of the sought field
-						 * @param absolute  absolute number of a full coincidence
-						 * @param nameOnly  absolute number of a coincidence by the name alone
-						 * @return          flag of a found full coincidence
+						 *
+						 * @param name     name of the sought field
+						 * @param value    value of the sought field
+						 * @param absolute absolute number of a full coincidence
+						 * @param nameOnly absolute number of a coincidence by the name alone
+						 * @return         flag of a found full coincidence
 						 *
 						 * \~
 						 */
@@ -637,6 +673,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the search of a record by the name alone
+						 *
 						 * @param name     name of the sought field
 						 * @param absolute absolute number of the coincidence
 						 * @return         flag of a found coincidence
@@ -654,6 +691,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the clearing of the table
+						 *
 						 * @note It also resets the counter of the insertions: it is applied at a reset of the connection
 						 *       rather than at a change of the capacity
 						 *
@@ -669,6 +707,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param capacity initial capacity of the table
 						 *
 						 * \~
@@ -677,7 +716,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -709,6 +747,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the search of a record of the static table
+					 *
 					 * @param name     name of the sought field
 					 * @param value    value of the sought field
 					 * @param index    index of a full coincidence
@@ -732,18 +771,20 @@ namespace awh {
 				 *
 				 *          Инструкции для обратного потока декодера копятся во внутреннем буфере
 				 *          и забираются методами pending()/consumePending(): собственного канала
-				 *          записи у кодека нет - его предоставляет парсер сессии
+				 *          записи у кодека нет - его предоставляет парсер сессии.
 				 *
 				 * \~english
 				 * @brief Class of the decoder of QPACK
+				 *
 				 * @details It holds a copy of the dynamic table of the encoder of the peer and restores it
 				 *          by the instructions of the stream of the encoder. The sections of the fields are parsed independently
 				 *          of each other and in any order; a section requiring not yet arrived
 				 *          insertions is rejected by the flag BLOCKED and is subject to a repeated parsing
 				 *          after the processing of the next portion of the instructions of the encoder.
+				 *
 				 *          The instructions for the reverse stream of the decoder accumulate in an internal buffer
 				 *          and are taken by the methods pending()/consumePending(): the codec has no channel
-				 *          of the writing of its own - it is provided by the parser of the session
+				 *          of the writing of its own - it is provided by the parser of the session.
 				 *
 				 * \~
 				 */
@@ -760,10 +801,11 @@ namespace awh {
 						 *          динамической отложено до начала следующего разбора, а арена
 						 *          отводится на секцию сразу по оценке сверху и за время разбора
 						 *          не перевыделяется - поэтому все три представления переживают
-						 *          разбор секции целиком
+						 *          разбор секции целиком.
 						 *
 						 * \~english
 						 * @brief Structure of a slice of a decoded field
+						 *
 						 * @details The strings are not copied: a representation leads right there whence
 						 *          it has come, - into the static table, into a record of the dynamic one or
 						 *          into the arena of the decoded literals. The records of the static table
@@ -771,17 +813,27 @@ namespace awh {
 						 *          of the dynamic one is postponed to the beginning of the next parsing, while the arena
 						 *          is allotted for a section at once by an estimation from above and for the time of the parsing
 						 *          is not reallocated - therefore all the three representations survive
-						 *          the parsing of the section entirely
+						 *          the parsing of the section entirely.
 						 *
 						 * \~
 						 */
-						typedef struct Slice {
+						typedef struct __AWH_SHARED_EXPORT__ Slice {
+							// Признак чувствительного значения
+							bool sensitive;
 							// Название поля
 							string_view name;
 							// Значение поля
 							string_view value;
-							// Признак чувствительного значения
-							bool sensitive;
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Slice() noexcept;
 						} slice_t;
 					private:
 						// Динамическая таблица кодера пира
@@ -789,21 +841,22 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Арена декодированных строк текущей секции
+						 * @brief Арена декодированных строк текущей секции
 						 *
 						 * @details Размер буфера равен его ёмкости, а занятая часть отслеживается
 						 *          отдельным счётчиком: дописывание методами строки обходится
 						 *          вызовом через границу динамической библиотеки на каждое поле,
 						 *          тогда как поля секции короткие и вызов стоит дороже самого
-						 *          копирования. Ёмкость переиспользуется между секциями
+						 *          копирования. Ёмкость переиспользуется между секциями.
 						 *
 						 * \~english
-						 * Arena of the decoded strings of the current section
+						 * @brief Arena of the decoded strings of the current section
+						 *
 						 * @details The size of the buffer is equal to its capacity, while the occupied part is tracked
 						 *          by a separate counter: an appending by the methods of a string costs
 						 *          a call across the boundary of a dynamic library per field,
 						 *          whereas the fields of a section are short and a call costs more than the copying
-						 *          itself. The capacity is reused between the sections
+						 *          itself. The capacity is reused between the sections.
 						 *
 						 * \~
 						 */
@@ -814,19 +867,20 @@ namespace awh {
 						string _scratch;
 						/**
 						 * \~russian
-						 * Буфер декодирования названия поля (ёмкость переиспользуется)
+						 * @brief Буфер декодирования названия поля (ёмкость переиспользуется)
 						 *
 						 * @details Отдельный от буфера значения намеренно: инструкция вставки
 						 *          со ссылкой на название берёт его из динамической таблицы,
 						 *          а сама вставка способна вытеснить ту самую запись. Название
-						 *          обязано пережить вставку, поэтому копируется сюда
+						 *          обязано пережить вставку, поэтому копируется сюда.
 						 *
 						 * \~english
-						 * Buffer of the decoding of the name of a field (the capacity is reused)
+						 * @brief Buffer of the decoding of the name of a field (the capacity is reused)
+						 *
 						 * @details It is separate from the buffer of the value deliberately: an instruction of an insertion
 						 *          with a reference to a name takes it from the dynamic table,
 						 *          while the insertion itself is capable of evicting that very record. The name
-						 *          is obliged to survive the insertion, therefore it is copied here
+						 *          is obliged to survive the insertion, therefore it is copied here.
 						 *
 						 * \~
 						 */
@@ -846,23 +900,24 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Количество вставок, о котором уже извещён кодер пира
+						 * @brief Количество вставок, о котором уже извещён кодер пира
 						 *
 						 * @details Кодер ведёт это число под названием Known Received Count и
 						 *          опирается на него, решая, какие записи можно вытеснять.
 						 *          Извещение идёт двумя путями - подтверждением секции и
 						 *          приращением счётчика вставок, - и оба обязаны быть учтены
 						 *          здесь согласованно: иначе приращение наложилось бы на уже
-						 *          подтверждённое секцией и увело счётчик кодера за число вставок
+						 *          подтверждённое секцией и увело счётчик кодера за число вставок.
 						 *
 						 * \~english
-						 * Number of the insertions about which the encoder of the peer is already notified
+						 * @brief Number of the insertions about which the encoder of the peer is already notified
+						 *
 						 * @details The encoder conducts this number under the name Known Received Count and
 						 *          leans on it, deciding which records may be evicted.
 						 *          The notification goes by two ways - by a confirmation of a section and
 						 *          by an increment of the counter of the insertions, - and both are obliged to be accounted
 						 *          here concordantly: otherwise the increment would superimpose on the already
-						 *          confirmed by the section and would lead the counter of the encoder beyond the number of the insertions
+						 *          confirmed by the section and would lead the counter of the encoder beyond the number of the insertions.
 						 *
 						 * \~
 						 */
@@ -887,6 +942,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the decoding of a string encoded by a literal or by a Huffman one
+						 *
 						 * @param data       input buffer
 						 * @param size       octets available
 						 * @param prefixBits size of the prefix of the length in bits
@@ -904,7 +960,7 @@ namespace awh {
 						 * @details Отличается от разбора в отдельный буфер только назначением, но
 						 *          именно оно и стоит дорого: декодированное поле всё равно ложится
 						 *          в арену, и разбор в промежуточный буфер означал бы лишнее
-						 *          копирование каждой строки секции
+						 *          копирование каждой строки секции.
 						 *
 						 * @param data       входной буфер
 						 * @param size       доступно байт
@@ -914,10 +970,12 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the decoding of a string of a representation right into the arena
+						 *
 						 * @details It differs from a parsing into a separate buffer only by the destination, but
 						 *          exactly it costs dearly: a decoded field lies down into the arena
 						 *          all the same, and a parsing into an intermediate buffer would mean a superfluous
-						 *          copying of every string of the section
+						 *          copying of every string of the section.
+						 *
 						 * @param data       input buffer
 						 * @param size       octets available
 						 * @param prefixBits size of the prefix of the length in bits
@@ -937,6 +995,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the resolution of an absolute number of a record into a pair of the fields
+						 *
 						 * @param absolute absolute number of the record of the dynamic table
 						 * @param entry    found record
 						 * @return         flag of a successful resolution
@@ -953,6 +1012,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the allocation of a place in the arena of the decoded strings
+						 *
 						 * @param size required number of the octets
 						 * @return     pointer to the allocated place
 						 *
@@ -968,6 +1028,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the appending of a string into the arena of the decoded strings
+						 *
 						 * @param value string being appended
 						 * @return      displacement of the appended string in the arena
 						 *
@@ -988,6 +1049,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the account of a decoded field already lying in the arena
+						 *
 						 * @param nameOffset  displacement of the name of the field in the arena
 						 * @param nameLength  length of the name of the field
 						 * @param valueOffset displacement of the value of the field in the arena
@@ -1008,6 +1070,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the dynamic table of the encoder of the peer
+						 *
 						 * @return dynamic table of the encoder of the peer
 						 *
 						 * \~
@@ -1024,8 +1087,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the upper boundary of the capacity of the table
+						 *
 						 * @note It is obliged to be equal to the SETTINGS_QPACK_MAX_TABLE_CAPACITY announced by us.
 						 *       An exceeding by the encoder of the peer is treated as a QPACK_ENCODER_STREAM_ERROR
+						 *
 						 * @param capacity upper boundary of the capacity of the table
 						 *
 						 * \~
@@ -1042,8 +1107,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the number of the streams which are allowed to wait for a replenishment of the table
+						 *
 						 * @note It is obliged to be equal to the SETTINGS_QPACK_BLOCKED_STREAMS announced by us.
 						 *       An exceeding by the encoder of the peer is treated as a QPACK_DECOMPRESSION_FAILED
+						 *
 						 * @param count number of the streams
 						 *
 						 * \~
@@ -1057,6 +1124,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the number of the streams waiting for a replenishment of the table
+						 *
 						 * @return number of the blocked streams
 						 *
 						 * \~
@@ -1069,7 +1137,7 @@ namespace awh {
 						 *
 						 * @details Инструкции обрабатываются по одной, пока во входном буфере есть
 						 *          целая инструкция. Неполный остаток буфера не является ошибкой:
-						 *          вызывающий обязан сохранить его и подать снова вместе с продолжением
+						 *          вызывающий обязан сохранить его и подать снова вместе с продолжением.
 						 *
 						 * @param data     входной буфер потока кодера
 						 * @param consumed количество разобранных октетов
@@ -1078,9 +1146,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the processing of the instructions of the stream of the encoder (RFC 9204 §4.3)
+						 *
 						 * @details The instructions are processed one by one while in the input buffer there is
 						 *          a whole instruction. An incomplete remainder of the buffer is not an error:
-						 *          the caller is obliged to preserve it and to supply it again together with the continuation
+						 *          the caller is obliged to preserve it and to supply it again together with the continuation.
+						 *
 						 * @param data     input buffer of the stream of the encoder
 						 * @param consumed number of the parsed octets
 						 * @param error    error code of the protocol
@@ -1095,7 +1165,7 @@ namespace awh {
 						 *
 						 * @details Названия и значения декодируются во внутреннюю арену декодера,
 						 *          а в output попадают ссылки на неё: аллокаций в установившемся
-						 *          режиме нет. Прежнее содержимое output замещается
+						 *          режиме нет. Прежнее содержимое output замещается.
 						 *
 						 * @note Полученные представления действительны до следующего вызова
 						 *       decode() на этом же декодере - копируйте то, что нужно дольше
@@ -1109,11 +1179,14 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the decoding of a section of the fields entirely
+						 *
 						 * @details The names and the values are decoded into the internal arena of the decoder,
 						 *          while into output the references to it get: there are no allocations in the settled
-						 *          mode. The previous content of output is replaced
+						 *          mode. The previous content of output is replaced.
+						 *
 						 * @note The obtained representations are valid until the next call of
 						 *       decode() on this same decoder - copy that which is needed longer
+						 *
 						 * @param sid         identifier of the stream to which the section belongs
 						 * @param section     section of the fields entirely (the payload of a HEADERS frame)
 						 * @param output      decoded fields (the references into the arena of the decoder)
@@ -1131,16 +1204,18 @@ namespace awh {
 						 * @details Секция сверх лимита разбирается целиком - иначе динамическая
 						 *          таблица рассинхронизировалась бы с кодером пира, - но поля
 						 *          наружу не отдаются. Вызывающий вправе отвергнуть один поток,
-						 *          оставив соединение живым
+						 *          оставив соединение живым.
 						 *
 						 * @return признак превышения лимита последней декодированной секцией
 						 *
 						 * \~english
 						 * @brief Method of checking the exceeding of the limit of the list of the fields by the last section
+						 *
 						 * @details A section above the limit is parsed entirely - otherwise the dynamic
 						 *          table would become desynchronized with the encoder of the peer, - but the fields
 						 *          are not issued outside. The caller is entitled to reject one stream,
-						 *          leaving the connection alive
+						 *          leaving the connection alive.
+						 *
 						 * @return flag of the exceeding of the limit by the last decoded section
 						 *
 						 * \~
@@ -1151,14 +1226,16 @@ namespace awh {
 						 * @brief Метод отмены потока (RFC 9204 §4.4.2)
 						 *
 						 * @details Извещает кодер пира, что секции этого потока разобраны не будут
-						 *          и ссылки на записи таблицы можно считать снятыми
+						 *          и ссылки на записи таблицы можно считать снятыми.
 						 *
 						 * @param sid идентификатор отменяемого потока
 						 *
 						 * \~english
 						 * @brief Method of the cancellation of a stream (RFC 9204 §4.4.2)
+						 *
 						 * @details It notifies the encoder of the peer that the sections of this stream will not be parsed
-						 *          and the references to the records of the table may be considered removed
+						 *          and the references to the records of the table may be considered removed.
+						 *
 						 * @param sid identifier of the stream being cancelled
 						 *
 						 * \~
@@ -1173,6 +1250,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the accumulated instructions of the stream of the decoder
+						 *
 						 * @return representation of the accumulated instructions
 						 *
 						 * \~
@@ -1186,6 +1264,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of marking the instructions of the stream of the decoder as sent
+						 *
 						 * @param size number of the sent octets
 						 *
 						 * \~
@@ -1212,6 +1291,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param maxCapacity upper boundary of the capacity of the dynamic table
 						 * @param maxBlocked  number of the streams which are allowed to wait for a replenishment of the table
 						 *
@@ -1221,7 +1301,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -1244,19 +1323,21 @@ namespace awh {
 				 *          Ссылка на запись, которую декодер пира ещё не получил, блокирует поток
 				 *          до её прихода. Это законно и полезно - иначе кодер не мог бы ссылаться
 				 *          на только что вставленное, - но число одновременно заблокированных
-				 *          потоков ограничено анонсом пира, и кодер обязан его соблюдать
+				 *          потоков ограничено анонсом пира, и кодер обязан его соблюдать.
 				 *
 				 * \~english
 				 * @brief Class of the encoder of QPACK
+				 *
 				 * @details It holds its own dynamic table and watches which part of it
 				 *          is knowingly known to the decoder of the peer. To evict a record to which
 				 *          an unconfirmed section still refers is impossible: the decoder of the peer would parse
 				 *          such a reference incorrectly, therefore the eviction is limited from below by the very oldest
 				 *          record held by the references.
+				 *
 				 *          A reference to a record which the decoder of the peer has not yet obtained blocks the stream
 				 *          until its arrival. This is lawful and useful - otherwise the encoder could not refer
 				 *          to the just inserted, - but the number of the simultaneously blocked
-				 *          streams is limited by the announcement of the peer, and the encoder is obliged to observe it
+				 *          streams is limited by the announcement of the peer, and the encoder is obliged to observe it.
 				 *
 				 * \~
 				 */
@@ -1287,7 +1368,7 @@ namespace awh {
 							uint64_t required;
 							/**
 							 * \~russian
-							 * Наименьший абсолютный номер записи, на которую ссылается секция
+							 * @brief Наименьший абсолютный номер записи, на которую ссылается секция
 							 *
 							 * @details Поимённого учёта ссылок не ведётся. Вытеснение ограничено
 							 *          снизу самой старой удерживаемой записью, а она равна
@@ -1295,17 +1376,18 @@ namespace awh {
 							 *          номера ссылок не нужны. Хранить их значило бы заводить
 							 *          список на каждую секцию и счётчик на каждую запись,
 							 *          то есть обращаться к аллокатору и на то, и на другое,
-							 *          ради ответа, который умещается в одно число
+							 *          ради ответа, который умещается в одно число.
 							 *
 							 * \~english
-							 * Smallest absolute number of a record to which the section refers
+							 * @brief Smallest absolute number of a record to which the section refers
+							 *
 							 * @details A name-by-name account of the references is not conducted. The eviction is limited
 							 *          from below by the very oldest held record, and it is equal
 							 *          to the smallest of the per-section minimums - for nothing else
 							 *          the numbers of the references are needed. To store them would mean to start
 							 *          a list per section and a counter per record,
 							 *          that is to address the allocator both for the one and for the other,
-							 *          for the sake of an answer which fits into a single number
+							 *          for the sake of an answer which fits into a single number.
 							 *
 							 * \~
 							 */
@@ -1320,14 +1402,15 @@ namespace awh {
 						 * @details Секции потока подтверждаются в порядке отправки, поэтому
 						 *          связный список с обоими концами наружу - ровно та структура,
 						 *          которая нужна: подтверждение снимает голову, кодирование
-						 *          дописывает хвост, а откат снимает хвост
+						 *          дописывает хвост, а откат снимает хвост.
 						 *
 						 * \~english
 						 * @brief Structure of the unconfirmed sections of a single stream
+						 *
 						 * @details The sections of a stream are confirmed in the order of the sending, therefore
 						 *          a linked list with both ends outside is exactly that structure
 						 *          which is needed: a confirmation removes the head, an encoding
-						 *          appends the tail, while a rollback removes the tail
+						 *          appends the tail, while a rollback removes the tail.
 						 *
 						 * \~
 						 */
@@ -1349,19 +1432,20 @@ namespace awh {
 						string _scratch;
 						/**
 						 * \~russian
-						 * Представления кодируемых полей (ёмкость переиспользуется)
+						 * @brief Представления кодируемых полей (ёмкость переиспользуется)
 						 *
 						 * @details Кодирование владеющего списка полей и списка представлений
 						 *          отличается только источником строк, поэтому владеющий список
 						 *          приводится к представлениям, а сам алгоритм существует
-						 *          в единственном экземпляре
+						 *          в единственном экземпляре.
 						 *
 						 * \~english
-						 * Representations of the fields being encoded (the capacity is reused)
+						 * @brief Representations of the fields being encoded (the capacity is reused)
+						 *
 						 * @details The encoding of an owning list of the fields and of a list of the representations
 						 *          differs only by the source of the strings, therefore an owning list
 						 *          is brought to the representations, while the algorithm itself exists
-						 *          in a single copy
+						 *          in a single copy.
 						 *
 						 * \~
 						 */
@@ -1369,26 +1453,28 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Пул записей учёта отправленных секций (место переиспользуется)
+						 * @brief Пул записей учёта отправленных секций (место переиспользуется)
 						 *
 						 * @details Секции заводятся и снимаются с учёта на каждый запрос, поэтому
 						 *          владеющий контейнер на поток обходился бы обращением
 						 *          к аллокатору на отправку и ещё одним на подтверждение.
 						 *          Записи пула вместо этого связаны позициями и переиспользуются
 						 *          через список свободных: в установившемся режиме учёт секций
-						 *          не стоит ни одного обращения к аллокатору
+						 *          не стоит ни одного обращения к аллокатору.
 						 *
 						 * @note Пул растёт до пика числа одновременно неподтверждённых секций
 						 *       и сам не сокращается: место освобождает clear()
 						 *
 						 * \~english
-						 * Pool of the records of the account of the sent sections (the place is reused)
+						 * @brief Pool of the records of the account of the sent sections (the place is reused)
+						 *
 						 * @details The sections are started and removed from the account per request, therefore
 						 *          an owning container per stream would cost an address
 						 *          to the allocator per sending and one more per confirmation.
 						 *          The records of the pool are instead linked by the positions and are reused
 						 *          through a list of the free ones: in the settled mode the account of the sections
-						 *          costs not a single address to the allocator
+						 *          costs not a single address to the allocator.
+						 *
 						 * @note The pool grows up to the peak of the number of the simultaneously unconfirmed sections
 						 *       and does not shrink by itself: the place is freed by clear()
 						 *
@@ -1405,17 +1491,18 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Количество вставок, заведомо полученных декодером пира
+						 * @brief Количество вставок, заведомо полученных декодером пира
 						 *
 						 * @details Известно из подтверждений секций и приращений счётчика вставок,
 						 *          приходящих потоком декодера (RFC 9204 §2.1.4). Ссылка на запись
-						 *          с номером не меньше этого числа заблокирует поток до её прихода
+						 *          с номером не меньше этого числа заблокирует поток до её прихода.
 						 *
 						 * \~english
-						 * Number of the insertions knowingly obtained by the decoder of the peer
+						 * @brief Number of the insertions knowingly obtained by the decoder of the peer
+						 *
 						 * @details It is known from the confirmations of the sections and from the increments of the counter of the insertions
 						 *          coming by the stream of the decoder (RFC 9204 §2.1.4). A reference to a record
-						 *          with a number not less than this number will block the stream until its arrival
+						 *          with a number not less than this number will block the stream until its arrival.
 						 *
 						 * \~
 						 */
@@ -1429,19 +1516,20 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Кольцо хешей пар название-значение недавно встреченных полей
+						 * @brief Кольцо хешей пар название-значение недавно встреченных полей
 						 *
 						 * @details Место в динамической таблице стоит отдавать полям, которые
 						 *          повторяются. Поле с разовым значением иначе вытесняет как раз
 						 *          повторяющиеся, и таблица входит в постоянное вытеснение сама
-						 *          себя. Пустое кольцо означает, что адаптивная индексация выключена
+						 *          себя. Пустое кольцо означает, что адаптивная индексация выключена.
 						 *
 						 * \~english
-						 * Ring of the hashes of the pairs a name-a value of the recently met fields
+						 * @brief Ring of the hashes of the pairs a name-a value of the recently met fields
+						 *
 						 * @details The place in the dynamic table is worth giving away to the fields which
 						 *          repeat. A field with a one-time value otherwise evicts exactly
 						 *          the repeating ones, and the table enters a permanent eviction of
-						 *          itself. An empty ring means that the adaptive indexing is disabled
+						 *          itself. An empty ring means that the adaptive indexing is disabled.
 						 *
 						 * \~
 						 */
@@ -1462,6 +1550,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the occupation of a record of the account of a section in the pool
+						 *
 						 * @return position of the occupied record in the pool
 						 *
 						 * \~
@@ -1475,6 +1564,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the return of a record of the account of a section into the pool
+						 *
 						 * @param position position of the record being returned in the pool
 						 *
 						 * \~
@@ -1486,14 +1576,16 @@ namespace awh {
 						 * @brief Метод получения наименьшего абсолютного номера удерживаемой записи
 						 *
 						 * @details Вытеснять записи ниже этой границы безопасно: на них не ссылается
-						 *          ни одна неподтверждённая секция
+						 *          ни одна неподтверждённая секция.
 						 *
 						 * @return наименьший абсолютный номер удерживаемой ссылками записи
 						 *
 						 * \~english
 						 * @brief Method of getting the smallest absolute number of a held record
+						 *
 						 * @details To evict the records below this boundary is safe: not a single unconfirmed section
-						 *          refers to them
+						 *          refers to them.
+						 *
 						 * @return smallest absolute number of a record held by the references
 						 *
 						 * \~
@@ -1507,6 +1599,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the counting of the streams blocked by the references to the not obtained records
+						 *
 						 * @return number of the blocked streams
 						 *
 						 * \~
@@ -1525,8 +1618,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the taking of the decision about the indexing of a field
+						 *
 						 * @note The method changes the state of the ring of the history, therefore it is called
 						 *       exactly once per encoded field
+						 *
 						 * @param name  name of the field
 						 * @param value value of the field
 						 * @return      flag of the necessity to enter the field into the table
@@ -1546,6 +1641,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the writing of a string by a literal or by a Huffman one
+						 *
 						 * @param output      output buffer
 						 * @param input       string being written
 						 * @param prefixBits  size of the prefix of the length in bits
@@ -1567,6 +1663,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the writing of an instruction of a replenishment of the dynamic table
+						 *
 						 * @param name       name of the field
 						 * @param value      value of the field
 						 * @param nameStatic index of the name in the static table or STATIC_TABLE_SIZE
@@ -1587,6 +1684,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a section of the fields out of the representations
+						 *
 						 * @param sid        identifier of the stream to which the section belongs
 						 * @param fields     fields being encoded
 						 * @param output     output buffer of the section of the fields
@@ -1604,6 +1702,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting one's own dynamic table
+						 *
 						 * @return one's own dynamic table
 						 *
 						 * \~
@@ -1621,9 +1720,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the upper boundary of the capacity of the table announced by the peer
+						 *
 						 * @note It is called at the receipt of a SETTINGS_QPACK_MAX_TABLE_CAPACITY of the peer.
 						 *       Into the stream of the encoder an instruction of a change of the capacity is put, so that the decoder
 						 *       of the peer would allot a table of the same size
+						 *
 						 * @param capacity upper boundary of the capacity of the table
 						 *
 						 * \~
@@ -1637,6 +1738,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the number of the streams which the peer has allowed to wait for a replenishment of the table
+						 *
 						 * @param count number of the streams
 						 *
 						 * \~
@@ -1648,15 +1750,17 @@ namespace awh {
 						 *
 						 * @details Считается по правилу RFC 9114 §4.2.2 (сумма длин названий и значений
 						 *          плюс 32 октета на поле) и сбрасывается в начале каждой секции.
-						 *          Нужен для сверки с анонсированным пиром SETTINGS_MAX_FIELD_SECTION_SIZE
+						 *          Нужен для сверки с анонсированным пиром SETTINGS_MAX_FIELD_SECTION_SIZE.
 						 *
 						 * @return размер списка полей последней секции до сжатия
 						 *
 						 * \~english
 						 * @brief Method of getting the size of the encoded list of the fields before the compression
+						 *
 						 * @details It is counted by the rule of RFC 9114 §4.2.2 (the sum of the lengths of the names and of the values
 						 *          plus 32 octets per field) and is reset at the beginning of every section.
-						 *          It is needed for a comparison with the SETTINGS_MAX_FIELD_SECTION_SIZE announced by the peer
+						 *          It is needed for a comparison with the SETTINGS_MAX_FIELD_SECTION_SIZE announced by the peer.
+						 *
 						 * @return size of the list of the fields of the last section before the compression
 						 *
 						 * \~
@@ -1670,16 +1774,18 @@ namespace awh {
 						 * @details Включено по умолчанию: authorization/proxy-authorization/cookie/set-cookie
 						 *          кодируются с запретом индексации и не попадают в динамическую таблицу.
 						 *          Выключение улучшает сжатие cookie-тяжёлого трафика ценой снятия
-						 *          защиты от атак класса CRIME
+						 *          защиты от атак класса CRIME.
 						 *
 						 * @param mode режим автоматического определения
 						 *
 						 * \~english
 						 * @brief Method of the control of the automatic determination of the sensitive fields
+						 *
 						 * @details It is enabled by default: authorization/proxy-authorization/cookie/set-cookie
 						 *          are encoded with a prohibition of the indexing and do not get into the dynamic table.
 						 *          A disabling improves the compression of the cookie-heavy traffic at the price of the removal
-						 *          of the protection from the attacks of the class CRIME
+						 *          of the protection from the attacks of the class CRIME.
+						 *
 						 * @param mode mode of the automatic determination
 						 *
 						 * \~
@@ -1690,14 +1796,16 @@ namespace awh {
 						 * @brief Метод управления адаптивной индексацией полей
 						 *
 						 * @details Включено по умолчанию: в динамическую таблицу заносятся только
-						 *          поля, уже встречавшиеся в пределах кольца истории
+						 *          поля, уже встречавшиеся в пределах кольца истории.
 						 *
 						 * @param mode режим адаптивной индексации
 						 *
 						 * \~english
 						 * @brief Method of the control of the adaptive indexing of the fields
+						 *
 						 * @details It is enabled by default: into the dynamic table only the
-						 *          fields already met within the limits of the ring of the history are entered
+						 *          fields already met within the limits of the ring of the history are entered.
+						 *
 						 * @param mode mode of the adaptive indexing
 						 *
 						 * \~
@@ -1715,6 +1823,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the processing of the instructions of the stream of the decoder (RFC 9204 §4.4)
+						 *
 						 * @param data     input buffer of the stream of the decoder
 						 * @param consumed number of the parsed octets
 						 * @param error    error code of the protocol
@@ -1730,7 +1839,7 @@ namespace awh {
 						 * @details Инструкции пополнения таблицы дописываются в буфер потока кодера
 						 *          и обязаны быть отправлены пиру; порядок между ними и секцией
 						 *          значения не имеет - за согласованность отвечает Required Insert
-						 *          Count в префиксе секции
+						 *          Count в префиксе секции.
 						 *
 						 * @param sid        идентификатор потока, которому принадлежит секция
 						 * @param fields     поля (псевдо-заголовки должны идти первыми)
@@ -1739,10 +1848,12 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a section of the fields
+						 *
 						 * @details The instructions of a replenishment of the table are appended into the buffer of the stream of the encoder
 						 *          and are obliged to be sent to the peer; the order between them and the section
 						 *          has no meaning - for the concordance the Required Insert
-						 *          Count in the prefix of the section answers
+						 *          Count in the prefix of the section answers.
+						 *
 						 * @param sid        identifier of the stream to which the section belongs
 						 * @param fields     fields (the pseudo headers are obliged to go first)
 						 * @param output     output buffer of the section of the fields
@@ -1756,7 +1867,7 @@ namespace awh {
 						 * @brief Метод кодирования секции полей из декодированного списка (перекодирование)
 						 *
 						 * @details Позволяет переслать разобранную секцию без промежуточных копий строк
-						 *          (сценарий шлюза). Признак чувствительности сохраняется
+						 *          (сценарий шлюза). Признак чувствительности сохраняется.
 						 *
 						 * @param sid        идентификатор потока, которому принадлежит секция
 						 * @param fields     декодированные поля
@@ -1765,8 +1876,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a section of the fields out of a decoded list (a re-encoding)
+						 *
 						 * @details It allows to forward a parsed section without the intermediate copies of the strings
-						 *          (a scenario of a gateway). The flag of the sensitivity is preserved
+						 *          (a scenario of a gateway). The flag of the sensitivity is preserved.
+						 *
 						 * @param sid        identifier of the stream to which the section belongs
 						 * @param fields     decoded fields
 						 * @param output     output buffer of the section of the fields
@@ -1780,14 +1893,16 @@ namespace awh {
 						 * @brief Метод снятия ссылок отменённого потока
 						 *
 						 * @details Вызывается, когда поток сброшен и подтверждения его секций
-						 *          уже не придут: удерживаемые ими записи освобождаются
+						 *          уже не придут: удерживаемые ими записи освобождаются.
 						 *
 						 * @param sid идентификатор отменяемого потока
 						 *
 						 * \~english
 						 * @brief Method of the removal of the references of a cancelled stream
+						 *
 						 * @details It is called when a stream is reset and the confirmations of its sections
-						 *          will not come any more: the records held by them are freed
+						 *          will not come any more: the records held by them are freed.
+						 *
 						 * @param sid identifier of the stream being cancelled
 						 *
 						 * \~
@@ -1800,16 +1915,18 @@ namespace awh {
 						 * @details Вызывается, когда закодированная секция так и не была отправлена:
 						 *          её ссылки снимаются, а прежние секции потока остаются на учёте.
 						 *          Отменять весь поток здесь нельзя - подтверждения уже отправленных
-						 *          секций придут и не найдут записи, а это ошибка соединения
+						 *          секций придут и не найдут записи, а это ошибка соединения.
 						 *
 						 * @param sid идентификатор потока
 						 *
 						 * \~english
 						 * @brief Method of the rollback of the last encoded section of a stream
+						 *
 						 * @details It is called when an encoded section has never been sent:
 						 *          its references are removed, while the previous sections of the stream remain on the account.
 						 *          To cancel the whole stream here is impossible - the confirmations of the already sent
-						 *          sections will come and will not find the records, and this is an error of the connection
+						 *          sections will come and will not find the records, and this is an error of the connection.
+						 *
 						 * @param sid identifier of the stream
 						 *
 						 * \~
@@ -1824,6 +1941,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the accumulated instructions of the stream of the encoder
+						 *
 						 * @return representation of the accumulated instructions
 						 *
 						 * \~
@@ -1837,6 +1955,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of marking the instructions of the stream of the encoder as sent
+						 *
 						 * @param size number of the sent octets
 						 *
 						 * \~
@@ -1863,6 +1982,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param maxCapacity upper boundary of the capacity of the dynamic table
 						 * @param maxBlocked  number of the streams which are allowed to wait for a replenishment of the table
 						 *
@@ -1872,7 +1992,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor

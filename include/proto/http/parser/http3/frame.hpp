@@ -49,7 +49,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -64,7 +63,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -104,13 +102,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Namespace of the layer of the frames of HTTP/3 (RFC 9114 §7): the parsing and the assembly of the frames
+			 *
 			 * @details The parsing is zero-copy: the payload is issued as a string_view with a pointer
 			 *          into the input buffer. The assembly appends the octets into a string (the output buffer of the stream).
 			 *          The layer stores no state of the connection - these are pure functions over the octets.
+			 *
 			 *          The arrangement of a frame is utterly simple: the type and the length of the payload, both as integers
 			 *          of a variable length of QUIC (RFC 9000 §16). There are neither flags nor an identifier of the stream
 			 *          in a frame: the stream is given by the transport, while the role of the flags END_STREAM and END_HEADERS
 			 *          is performed by the flag FIN of a stream of QUIC and by the boundary of the frame itself.
+			 *
 			 * @note The protocol gives no upper boundary of the length of a frame - there is no parameter similar to
 			 *       SETTINGS_MAX_FRAME_SIZE in HTTP/3. Therefore the payload of a DATA frame is obliged
 			 *       to be parsed by parts as it arrives rather than to be collected in a buffer entirely:
@@ -128,14 +129,15 @@ namespace awh {
 				 * @details Обычный кадр несёт единицы параметров, и перебор набора
 				 *          дешевле хеш-множества вместе с его аллокацией. Кадр
 				 *          предельного размера вмещает тысячи различных
-				 *          идентификаторов, и перебор становится квадратичным
+				 *          идентификаторов, и перебор становится квадратичным.
 				 *
 				 * \~english
 				 * @brief Threshold of the transition to a set at the search of the repetitions of SETTINGS
+				 *
 				 * @details An ordinary frame carries units of the parameters, and an enumeration of the collection
 				 *          is cheaper than a hash set together with its allocation. A frame
 				 *          of the limiting size holds thousands of different
-				 *          identifiers, and the enumeration becomes quadratic
+				 *          identifiers, and the enumeration becomes quadratic.
 				 *
 				 * \~
 				 */
@@ -149,6 +151,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of a parameter of SETTINGS (an identifier + a value)
+				 *
 				 * @note Both fields are integers of a variable length, therefore they are 64-bit ones: in HTTP/2
 				 *       an identifier occupied 16 bits, while a value 32
 				 *
@@ -162,7 +165,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -189,7 +191,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -214,7 +215,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -243,7 +243,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -259,14 +258,15 @@ namespace awh {
 				 * @details Функции разбора нагрузки принимают её целиком: длина управляющих
 				 *          кадров ограничена лимитами парсера сессии, поэтому их накопление
 				 *          в буфере безопасно. Нагрузка кадра DATA через этот слой не проходит -
-				 *          она отдаётся потребителю по частям парсером сессии
+				 *          она отдаётся потребителю по частям парсером сессии.
 				 *
 				 * \~english
 				 * @brief Namespace of the functions of the parsing of the frames of HTTP/3 (RFC 9114 §7)
+				 *
 				 * @details The functions of the parsing of a payload accept it entirely: the length of the control
 				 *          frames is limited by the limits of the parser of the session, therefore their accumulation
 				 *          in a buffer is safe. The payload of a DATA frame does not pass through this layer -
-				 *          it is issued to the consumer by parts by the parser of the session
+				 *          it is issued to the consumer by parts by the parser of the session.
 				 *
 				 * \~
 				 */
@@ -276,7 +276,7 @@ namespace awh {
 					 * @brief Функция разбора заголовка кадра
 					 *
 					 * @details Заголовок кадра занимает от двух до шестнадцати октетов: тип и длина
-					 *          кодируются целыми переменной длины независимо друг от друга
+					 *          кодируются целыми переменной длины независимо друг от друга.
 					 *
 					 * @param data   входной буфер
 					 * @param size   доступно байт
@@ -285,8 +285,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the header of a frame
+					 *
 					 * @details The header of a frame occupies from two to sixteen octets: the type and the length
-					 *          are encoded by the integers of a variable length independently of each other
+					 *          are encoded by the integers of a variable length independently of each other.
+					 *
 					 * @param data   input buffer
 					 * @param size   octets available
 					 * @param output parsed header of the frame
@@ -300,7 +302,7 @@ namespace awh {
 					 * @brief Функция разбора нагрузки кадра из единственного целого переменной длины
 					 *
 					 * @details Общая форма нагрузки кадров CANCEL_PUSH, MAX_PUSH_ID и GOAWAY.
-					 *          Лишние октеты после числа - ошибка H3_FRAME_ERROR (RFC 9114 §7.1)
+					 *          Лишние октеты после числа - ошибка H3_FRAME_ERROR (RFC 9114 §7.1).
 					 *
 					 * @param payload полезная нагрузка кадра
 					 * @param size    размер полезной нагрузки
@@ -310,8 +312,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of a frame out of a single integer of a variable length
+					 *
 					 * @details The common form of the payload of the frames CANCEL_PUSH, MAX_PUSH_ID and GOAWAY.
-					 *          Superfluous octets after the number are an error H3_FRAME_ERROR (RFC 9114 §7.1)
+					 *          Superfluous octets after the number are an error H3_FRAME_ERROR (RFC 9114 §7.1).
+					 *
 					 * @param payload payload of the frame
 					 * @param size    size of the payload
 					 * @param value   parsed number
@@ -330,7 +334,7 @@ namespace awh {
 					 *          (RFC 9114 §7.1): требования к нагрузке любого кадра и требования
 					 *          именно к SETTINGS нарушаются по-разному и разводятся по кодам.
 					 *          Зарезервированные идентификаторы отдаются наружу как есть: решение
-					 *          об их пропуске принимает парсер сессии
+					 *          об их пропуске принимает парсер сессии.
 					 *
 					 * @param payload полезная нагрузка кадра
 					 * @param size    размер полезной нагрузки
@@ -340,12 +344,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of a SETTINGS frame (RFC 9114 §7.2.4)
+					 *
 					 * @details A repeatedly met identifier is an error H3_SETTINGS_ERROR
 					 *          (RFC 9114 §7.2.4.1), while a break of the payload in the middle of a pair is H3_FRAME_ERROR
 					 *          (RFC 9114 §7.1): the requirements to the payload of any frame and the requirements
 					 *          to SETTINGS in particular are violated differently and are separated by the codes.
 					 *          The reserved identifiers are issued outside as they are: the decision
-					 *          about their skipping is taken by the parser of the session
+					 *          about their skipping is taken by the parser of the session.
+					 *
 					 * @param payload payload of the frame
 					 * @param size    size of the payload
 					 * @param output  parsed collection of the parameters
@@ -367,6 +373,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of a PUSH_PROMISE frame (RFC 9114 §7.2.5)
+					 *
 					 * @param payload payload of the frame
 					 * @param size    size of the payload
 					 * @param output  parsed payload
@@ -389,6 +396,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of a PRIORITY_UPDATE frame (RFC 9218 §7.2)
+					 *
 					 * @param type    type of the frame distinguishing a stream of a request and a stream of a push
 					 * @param payload payload of the frame
 					 * @param size    size of the payload
@@ -421,6 +429,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing the header of a frame
+					 *
 					 * @param output output buffer
 					 * @param type   type of the frame
 					 * @param length length of the payload
@@ -433,15 +442,17 @@ namespace awh {
 					 * @brief Функция записи типа однонаправленного потока (RFC 9114 §6.2)
 					 *
 					 * @details Тип потока отправляется единственным целым переменной длины
-					 *          в самое начало потока, до любых кадров
+					 *          в самое начало потока, до любых кадров.
 					 *
 					 * @param output выходной буфер
 					 * @param type   тип однонаправленного потока
 					 *
 					 * \~english
 					 * @brief Function of writing the type of a unidirectional stream (RFC 9114 §6.2)
+					 *
 					 * @details The type of the stream is sent as a single integer of a variable length
-					 *          into the very beginning of the stream, before any frames
+					 *          into the very beginning of the stream, before any frames.
+					 *
 					 * @param output output buffer
 					 * @param type   type of the unidirectional stream
 					 *
@@ -457,6 +468,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a DATA frame (RFC 9114 §7.2.1)
+					 *
 					 * @param output output buffer
 					 * @param data   data of the body
 					 *
@@ -475,8 +487,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a HEADERS frame (RFC 9114 §7.2.2)
+					 *
 					 * @note There is no cutting into several frames similar to CONTINUATION in HTTP/2 here:
 					 *       the length of a frame is not limited, therefore the section of the fields is transmitted entirely
+					 *
 					 * @param output output buffer
 					 * @param block  section of the fields encoded by QPACK
 					 *
@@ -492,6 +506,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a GOAWAY frame (RFC 9114 §7.2.6)
+					 *
 					 * @param output output buffer
 					 * @param id     identifier of a stream of a request (from the server) or of a push (from the client)
 					 *
@@ -507,6 +522,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a CANCEL_PUSH frame (RFC 9114 §7.2.3)
+					 *
 					 * @param output output buffer
 					 * @param pushId identifier of the push being cancelled
 					 *
@@ -522,6 +538,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a MAX_PUSH_ID frame (RFC 9114 §7.2.7)
+					 *
 					 * @param output output buffer
 					 * @param pushId largest admissible identifier of a push
 					 *
@@ -538,6 +555,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a SETTINGS frame (RFC 9114 §7.2.4)
+					 *
 					 * @param output output buffer
 					 * @param items  collection of the parameters
 					 * @param count  number of the parameters
@@ -555,6 +573,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a PUSH_PROMISE frame (RFC 9114 §7.2.5)
+					 *
 					 * @param output output buffer
 					 * @param pushId identifier of the promised push
 					 * @param block  section of the fields of the request encoded by QPACK
@@ -573,6 +592,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a PRIORITY_UPDATE frame (RFC 9218 §7.2)
+					 *
 					 * @param output output buffer
 					 * @param push   flag of the assignment of the priority to a stream of a push rather than to a stream of a request
 					 * @param id     identifier of the stream of the request or identifier of the push
@@ -587,7 +607,7 @@ namespace awh {
 					 *
 					 * @details Кадр с типом вида (0x1F * N + 0x21) и произвольной нагрузкой обязан
 					 *          игнорироваться получателем. Отправка такого кадра - единственный
-					 *          способ убедиться, что пир не считает набор типов кадров закрытым
+					 *          способ убедиться, что пир не считает набор типов кадров закрытым.
 					 *
 					 * @param output выходной буфер
 					 * @param seed   порядковый номер N в последовательности зарезервированных типов
@@ -595,9 +615,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of writing a reserved frame (RFC 9114 §7.2.8)
+					 *
 					 * @details A frame with a type of the form (0x1F * N + 0x21) and an arbitrary payload is obliged
 					 *          to be ignored by the receiver. The sending of such a frame is the only
-					 *          way to make sure that the peer does not consider the collection of the types of the frames closed
+					 *          way to make sure that the peer does not consider the collection of the types of the frames closed.
+					 *
 					 * @param output output buffer
 					 * @param seed   ordinal number N in the sequence of the reserved types
 					 * @param data   arbitrary payload of the frame

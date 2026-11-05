@@ -51,7 +51,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -66,7 +65,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -99,6 +97,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Namespace of HPACK - the compression of the headers of HTTP/2 (RFC 7541)
+			 *
 			 * @details HPACK is a separate self-sufficient codec. It consists of:
 			 *          1. an integer encoding with a prefix of a variable length (RFC 7541 §5.1);
 			 *          2. a string encoding - a literal or a Huffman one (RFC 7541 §5.2);
@@ -147,6 +146,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of getting a record of the static table by an index 1..61 (RFC 7541 Appendix A)
+				 *
 				 * @param index index of the record (1-based); a 0 or > 61 is invalid
 				 * @return      pointer to the record or nullptr
 				 *
@@ -165,6 +165,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of a pair of a decoded header (non-owning)
+				 *
 				 * @details The name and the value point into the internal arena of the decoder and
 				 *          are valid until the next call of decode() on the same decoder
 				 *          (and also until its reset/destruction). If a header is needed longer -
@@ -179,16 +180,23 @@ namespace awh {
 						// Значение заголовка
 						string_view value;
 						/**
-						 * Значение получено представлением Literal Never Indexed (RFC 7541 §6.2.3):
-						 * при перекодировании заголовок обязан остаться never indexed и не попасть
-						 * в динамическую таблицу (RFC 7541 §7.1.3)
+						 * \~russian
+						 * @brief Значение получено представлением Literal Never Indexed (RFC 7541 §6.2.3):
+						 *        при перекодировании заголовок обязан остаться never indexed и не попасть
+						 *        в динамическую таблицу (RFC 7541 §7.1.3)
+						 *
+						 * \~english
+						 * @brief A value is obtained by a presentation Literal Never Indexed (RFC 7541 §6.2.3):
+						 *        on a recoding a header is obliged to stay never indexed and not to get
+						 *        into the dynamic table (RFC 7541 §7.1.3)
+						 *
+						 * \~
 						 */
 						bool sensitive;
 					public:
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
@@ -207,6 +215,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class of a pair of a header
+				 *
 				 * @details The name and the value are owning copies: it is used on the side
 				 *          of the encoding, where the data belongs to the calling code.
 				 *
@@ -219,16 +228,23 @@ namespace awh {
 						// Значение заголовка
 						string value;
 						/**
-						 * Чувствительное значение (RFC 7541 §7.1.3): кодировать как Literal Never Indexed
-						 * и не заносить в динамическую таблицу (защита от CRIME-подобных атак).
-						 * Кодер дополнительно автоматически считает чувствительными authorization/cookie.
+						 * \~russian
+						 * @brief Чувствительное значение (RFC 7541 §7.1.3): кодировать как Literal Never Indexed
+						 *        и не заносить в динамическую таблицу (защита от CRIME-подобных атак).
+						 *        Кодер дополнительно автоматически считает чувствительными authorization/cookie.
+						 *
+						 * \~english
+						 * @brief A sensitive value (RFC 7541 §7.1.3): to encode as Literal Never Indexed
+						 *        and not to register in the dynamic table (a protection against CRIME-like attacks).
+						 *        A coder additionally counts as sensitive authorization/cookie automatically.
+						 *
+						 * \~
 						 */
 						bool sensitive;
 					public:
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
@@ -245,6 +261,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param name  name of the header
 						 * @param value value of the header
 						 *
@@ -261,6 +278,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param name      name of the header
 						 * @param value     value of the header
 						 * @param sensitive flag of a sensitive value
@@ -278,7 +296,7 @@ namespace awh {
 				 *          восемь октетов, а вызов memcmp через таблицу связывания стоит дороже
 				 *          самого сравнения. Сравнение ведётся перекрывающимися машинными
 				 *          словами: чтения не выходят за пределы строки, поэтому границы
-				 *          буфера не нарушаются даже на длине в один октет
+				 *          буфера не нарушаются даже на длине в один октет.
 				 *
 				 * @note Функция общая для HPACK и QPACK: поиск по таблицам устроен у них
 				 *       одинаково, и сравнение строк там - самая горячая операция кодирования
@@ -289,13 +307,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of the comparison of the names and of the values of the headers
+				 *
 				 * @details The names and the values of the headers of HTTP are short: the median of a name is
 				 *          eight octets, while a call of memcmp through the table of the linking costs more
 				 *          than the comparison itself. The comparison is conducted by the overlapping machine
 				 *          words: the readings do not go beyond the limits of the string, therefore the boundaries
-				 *          of the buffer are not violated even at a length of one octet
+				 *          of the buffer are not violated even at a length of one octet.
+				 *
 				 * @note The function is common for HPACK and QPACK: the search by the tables is arranged at them
 				 *       identically, and the comparison of the strings there is the hottest operation of the encoding
+				 *
 				 * @param first  first string being compared
 				 * @param second second string being compared
 				 * @return       flag of the coincidence of the strings
@@ -402,7 +423,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the calculation of the length of a string in octets after the Huffman encoding
+					 *
 					 * @note It is used for the choice of the way of the encoding (a literal/a Huffman one)
+					 *
 					 * @param input string for the calculation
 					 * @return      length of the string after the encoding
 					 *
@@ -418,6 +441,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the encoding of a string by a Huffman one (RFC 7541 Appendix B)
+					 *
 					 * @param input  string being encoded
 					 * @param output output buffer of the encoded string
 					 *
@@ -437,7 +461,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the decoding of a Huffman string (RFC 7541 Appendix B)
+					 *
 					 * @note The content of the output buffer is replaced rather than supplemented
+					 *
 					 * @param data   input buffer
 					 * @param size   octets available
 					 * @param output output buffer of the decoded string
@@ -459,9 +485,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the calculation of the place required for a decoded string
+					 *
 					 * @details An estimation from above: there are no codes shorter than five bits in the table of RFC 7541 Appendix B,
 					 *          which means there are no more characters than the bits divided by five. Above
 					 *          the estimation two octets of a reserve are taken for the step of the table decoding
+					 *
 					 * @param size length of the encoded string in octets
 					 * @return     required number of the octets of the output buffer
 					 *
@@ -482,8 +510,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the decoding of a Huffman string into a ready buffer (RFC 7541 Appendix B)
+					 *
 					 * @note The output buffer is obliged to hold space(size) octets: a check of the boundary
 					 *       on every character would cost more than the decoding itself
+					 *
 					 * @param data   input buffer
 					 * @param size   octets available
 					 * @param output output buffer of the decoded string
@@ -517,7 +547,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the encoding of an integer with a prefix of a variable length (RFC 7541 §5.1)
+					 *
 					 * @note The higher (8 - prefixBits) bits of the first octet are taken from prefixValue
+					 *
 					 * @param output      output buffer
 					 * @param value       value being encoded
 					 * @param prefixBits  size of the prefix in bits (1..8)
@@ -539,6 +571,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of the decoding of an integer with a prefix of a variable length (RFC 7541 §5.1)
+					 *
 					 * @param data       input buffer
 					 * @param size       octets available
 					 * @param prefixBits size of the prefix in bits (1..8)
@@ -555,11 +588,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Класс динамической таблицы HPACK с вытеснением по размеру FIFO (RFC 7541 §2.3.2)
 				 *
-				 * @details Размер записи = len(name) + len(value) + 32 (RFC 7541 §4.1)
+				 * @details Размер записи = len(name) + len(value) + 32 (RFC 7541 §4.1).
 				 *
 				 * \~english
 				 * @brief Class of the dynamic table of HPACK with an eviction by the size FIFO (RFC 7541 §2.3.2)
-				 * @details The size of a record = len(name) + len(value) + 32 (RFC 7541 §4.1)
+				 *
+				 * @details The size of a record = len(name) + len(value) + 32 (RFC 7541 §4.1).
 				 *
 				 * \~
 				 */
@@ -575,17 +609,18 @@ namespace awh {
 						 *          в строки таблицы вместо их копирования: запись, вытесненная
 						 *          соседним заголовком того же блока, обязана дожить до конца
 						 *          разбора. Список именно deque: вставка в начало и удаление
-						 *          с конца не делают недействительными ссылки на прочие записи
+						 *          с конца не делают недействительными ссылки на прочие записи.
 						 *
 						 * \~english
 						 * List of the records of the table ([0] - the freshest record)
+						 *
 						 * @details The living records occupy the beginning of the list, the evicted ones remain
 						 *          lying behind them until the call of release(). The postponed eviction
 						 *          allows the decoder to issue outside the representations right
 						 *          into the strings of the table instead of their copying: a record evicted
 						 *          by a neighbouring header of the same block is obliged to live to the end
 						 *          of the parsing. The list is exactly a deque: an insertion into the beginning and a removal
-						 *          from the end do not invalidate the references to the other records
+						 *          from the end do not invalidate the references to the other records.
 						 *
 						 * \~
 						 */
@@ -600,26 +635,27 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Общее количество когда-либо добавленных записей
+						 * @brief Общее количество когда-либо добавленных записей
 						 *
 						 * @details Добавление записи сдвигает индексы всех остальных, поэтому
 						 *          в индексе хранится не позиция, а сквозной номер добавления.
 						 *          Живые записи всегда занимают непрерывный отрезок номеров,
-						 *          и позиция получается вычитанием: index = _inserts - seq + 1
+						 *          и позиция получается вычитанием: index = _inserts - seq + 1.
 						 *
 						 * \~english
-						 * Total number of the ever added records
+						 * @brief Total number of the ever added records
+						 *
 						 * @details An addition of a record shifts the indices of all the rest, therefore
 						 *          in the index not a position is stored but a through number of the addition.
 						 *          The living records always occupy a continuous segment of the numbers,
-						 *          and the position is obtained by a subtraction: index = _inserts - seq + 1
+						 *          and the position is obtained by a subtraction: index = _inserts - seq + 1.
 						 *
 						 * \~
 						 */
 						uint64_t _inserts;
 						/**
 						 * \~russian
-						 * Индекс записей по хешу пары название-значение (хеш -> номер добавления)
+						 * @brief Индекс записей по хешу пары название-значение (хеш -> номер добавления)
 						 *
 						 * @details Без индекса поиск заголовка в таблице линейный, а выполняется он
 						 *          для каждого заголовка каждого блока: на таблице по умолчанию это
@@ -630,10 +666,11 @@ namespace awh {
 						 *          поиск обратно в перебор. Ключом служит именно хеш, а не
 						 *          представление в строку записи: таблица копируется целиком при
 						 *          сбросе соединения, и представления указывали бы в строки
-						 *          копии-источника. Совпадение хешей проверяется сравнением строк
+						 *          копии-источника. Совпадение хешей проверяется сравнением строк.
 						 *
 						 * \~english
-						 * Index of the records by the hash of a pair a name-a value (a hash -> a number of the addition)
+						 * @brief Index of the records by the hash of a pair a name-a value (a hash -> a number of the addition)
+						 *
 						 * @details Without the index the search of a header in the table is a linear one, and it is performed
 						 *          for every header of every block: on the table by default this is
 						 *          two thirds of the cost of the encoding. The key is the hash of the pair rather than
@@ -643,26 +680,27 @@ namespace awh {
 						 *          the search back into an enumeration. The key is exactly the hash rather than
 						 *          a representation into the string of the record: the table is copied entirely at
 						 *          a reset of the connection, and the representations would point into the strings
-						 *          of the copy-source. A coincidence of the hashes is checked by a comparison of the strings
+						 *          of the copy-source. A coincidence of the hashes is checked by a comparison of the strings.
 						 *
 						 * \~
 						 */
 						unordered_multimap <size_t, uint64_t> _index;
 						/**
 						 * \~russian
-						 * Индекс самой свежей записи с каждым названием (хеш названия -> номер добавления)
+						 * @brief Индекс самой свежей записи с каждым названием (хеш названия -> номер добавления)
 						 *
 						 * @details Нужен для ссылки только по названию, когда полного совпадения нет.
 						 *          Хранится ровно одна запись на название - самая свежая: перебирать
 						 *          нечего, а вытеснение идёт с самой старой, поэтому запись индекса
-						 *          удаляется, когда уходит последняя запись с этим названием
+						 *          удаляется, когда уходит последняя запись с этим названием.
 						 *
 						 * \~english
-						 * Index of the freshest record with every name (a hash of the name -> a number of the addition)
+						 * @brief Index of the freshest record with every name (a hash of the name -> a number of the addition)
+						 *
 						 * @details It is needed for a reference by the name alone, when there is no full coincidence.
 						 *          Exactly one record per name is stored - the freshest one: there is nothing
 						 *          to enumerate, while the eviction goes from the oldest one, therefore a record of the index
-						 *          is removed when the last record with this name goes away
+						 *          is removed when the last record with this name goes away.
 						 *
 						 * \~
 						 */
@@ -670,17 +708,18 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Признак сопровождения индекса записей
+						 * @brief Признак сопровождения индекса записей
 						 *
 						 * @details Индекс нужен только кодеру: декодер обращается к таблице
 						 *          по готовому номеру и поиском по названию не пользуется,
-						 *          а сопровождение индекса стоит выделения памяти на запись
+						 *          а сопровождение индекса стоит выделения памяти на запись.
 						 *
 						 * \~english
-						 * Flag of the maintenance of the index of the records
+						 * @brief Flag of the maintenance of the index of the records
+						 *
 						 * @details The index is needed only by the encoder: the decoder addresses the table
 						 *          by a ready number and does not make use of a search by the name,
-						 *          while the maintenance of the index costs an allocation of the memory per record
+						 *          while the maintenance of the index costs an allocation of the memory per record.
 						 *
 						 * \~
 						 */
@@ -705,6 +744,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the number of the records of the table
+						 *
 						 * @return number of the records of the table
 						 *
 						 * \~
@@ -718,17 +758,19 @@ namespace awh {
 						 *          представление в её строки могло быть выдано наружу соседним
 						 *          заголовком того же блока. Наружу счётчик выведен ради проверки
 						 *          того, что удержание ограничено: блок, превысивший лимит списка,
-						 *          обязан оставить его нулевым
+						 *          обязан оставить его нулевым.
 						 *
 						 * @return количество вытесненных, но ещё удерживаемых записей
 						 *
 						 * \~english
 						 * @brief Method of getting the number of the held evicted records
+						 *
 						 * @details An evicted record remains in place until the call of release():
 						 *          a representation into its strings could have been issued outside by a neighbouring
 						 *          header of the same block. Outside the counter is brought for the sake of a checking
 						 *          that the holding is limited: a block which has exceeded the limit of the list
-						 *          is obliged to leave it zero
+						 *          is obliged to leave it zero.
+						 *
 						 * @return number of the evicted but still held records
 						 *
 						 * \~
@@ -742,6 +784,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the current total size of the table
+						 *
 						 * @return current total size of the table
 						 *
 						 * \~
@@ -755,6 +798,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the limit of the size of the table
+						 *
 						 * @return limit of the size of the table
 						 *
 						 * \~
@@ -771,7 +815,9 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of changing the largest size of the table (a Dynamic Table Size Update)
+						 *
 						 * @note The superfluous records are evicted at once
+						 *
 						 * @param maxSize new largest size of the table
 						 *
 						 * \~
@@ -786,6 +832,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the access to a record by an index (1-based inside the dynamic part)
+						 *
 						 * @param index index of the record
 						 * @return      pointer to the record or nullptr
 						 *
@@ -806,8 +853,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the search of a record by the name and the value of a header
+						 *
 						 * @note The indices are 1-based inside the dynamic part: to them the size
 						 *       of the static table is added for the getting of a united index
+						 *
 						 * @param name      name of the sought header
 						 * @param value     value of the sought header
 						 * @param nameIndex index of a coincidence by the name of the header alone
@@ -823,7 +872,7 @@ namespace awh {
 						 * @details Хеш названия нужен и индексу статической таблицы, и индексу
 						 *          динамической. Вычислять его дважды на каждый кодируемый
 						 *          заголовок незачем, поэтому вызывающая сторона считает его
-						 *          один раз и передаёт готовым
+						 *          один раз и передаёт готовым.
 						 *
 						 * @param hashName  хеш названия искомого заголовка
 						 * @param name      название искомого заголовка
@@ -834,10 +883,12 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the search of a record by the name and the value of a header with a ready hash of the name
+						 *
 						 * @details The hash of the name is needed both by the index of the static table and by the index
 						 *          of the dynamic one. There is no point in calculating it twice per encoded
 						 *          header, therefore the calling side counts it
-						 *          once and passes it ready
+						 *          once and passes it ready.
+						 *
 						 * @param hashName  hash of the name of the sought header
 						 * @param name      name of the sought header
 						 * @param value     value of the sought header
@@ -854,7 +905,7 @@ namespace awh {
 						 *
 						 * @details Нужен там, где значение заведомо не индексируется -
 						 *          для чувствительных заголовков. Полный поиск для них
-						 *          отработал бы впустую, а стоит он хеширования значения
+						 *          отработал бы впустую, а стоит он хеширования значения.
 						 *
 						 * @param hashName хеш названия искомого заголовка
 						 * @param name     название искомого заголовка
@@ -862,9 +913,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the search of a record by the name of a header alone
+						 *
 						 * @details It is needed there where the value is knowingly not indexed -
 						 *          for the sensitive headers. A full search for them
-						 *          would work in vain, while it costs a hashing of the value
+						 *          would work in vain, while it costs a hashing of the value.
+						 *
 						 * @param hashName hash of the name of the sought header
 						 * @param name     name of the sought header
 						 * @return         index of a coincidence by the name or 0
@@ -881,6 +934,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of adding a record into the beginning of the table (with an eviction of the old ones at a lack of the place)
+						 *
 						 * @param name  name of the header
 						 * @param value value of the header
 						 *
@@ -896,6 +950,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the release of the evicted records
+						 *
 						 * @note It is called at the beginning of an operation: the representations into the strings of the evicted
 						 *       records issued by the previous operation are invalid after it
 						 *
@@ -912,6 +967,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param maxSize  largest size of the table
 						 * @param indexing to maintain the index of the records for the search by the name
 						 *
@@ -921,7 +977,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -935,11 +990,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Класс декодера HPACK
 				 *
-				 * @details Хранит динамическую таблицу пира
+				 * @details Хранит динамическую таблицу пира.
 				 *
 				 * \~english
 				 * @brief Class of the decoder of HPACK
-				 * @details Stores the dynamic table of the peer
+				 *
+				 * @details Stores the dynamic table of the peer.
 				 *
 				 * \~
 				 */
@@ -953,25 +1009,36 @@ namespace awh {
 						 *          статической и динамической таблиц - копировать записи таблиц
 						 *          незачем. Арена под блок отводится один раз по оценке сверху,
 						 *          поэтому за время разбора не перевыделяется, а вытеснение
-						 *          записей динамической таблицы отложено до конца разбора
+						 *          записей динамической таблицы отложено до конца разбора.
 						 *
 						 * \~english
 						 * @brief Structure of a slice of a decoded header
+						 *
 						 * @details The representations lead either into the arena or right into the strings
 						 *          of the static and of the dynamic tables - there is no point in copying the records of the tables.
 						 *          The arena for a block is allotted once by an estimation from above,
 						 *          therefore for the time of the parsing it is not reallocated, while the eviction
-						 *          of the records of the dynamic table is postponed to the end of the parsing
+						 *          of the records of the dynamic table is postponed to the end of the parsing.
 						 *
 						 * \~
 						 */
-						typedef struct Slice {
+						typedef struct __AWH_SHARED_EXPORT__ Slice {
+							// Признак чувствительного значения (Literal Never Indexed)
+							bool sensitive;
 							// Название заголовка
 							string_view name;
 							// Значение заголовка
 							string_view value;
-							// Признак чувствительного значения (Literal Never Indexed)
-							bool sensitive;
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Slice() noexcept;
 						} slice_t;
 					private:
 						// Динамическая таблица пира
@@ -979,21 +1046,22 @@ namespace awh {
 					private:
 						/**
 						 * \~russian
-						 * Арена декодированных строк текущего блока
+						 * @brief Арена декодированных строк текущего блока
 						 *
 						 * @details Размер буфера равен его ёмкости, а занятая часть отслеживается
 						 *          отдельным счётчиком: дописывание методами строки обходится
 						 *          вызовом через границу динамической библиотеки на каждый
 						 *          заголовок, тогда как заголовки короткие и вызов стоит дороже
-						 *          самого копирования. Ёмкость переиспользуется между блоками
+						 *          самого копирования. Ёмкость переиспользуется между блоками.
 						 *
 						 * \~english
-						 * Arena of the decoded strings of the current block
+						 * @brief Arena of the decoded strings of the current block
+						 *
 						 * @details The size of the buffer is equal to its capacity, while the occupied part is tracked
 						 *          by a separate counter: an appending by the methods of a string costs
 						 *          a call across the boundary of a dynamic library per
 						 *          header, whereas the headers are short and a call costs more
-						 *          than the copying itself. The capacity is reused between the blocks
+						 *          than the copying itself. The capacity is reused between the blocks.
 						 *
 						 * \~
 						 */
@@ -1017,6 +1085,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the dynamic table of the peer
+						 *
 						 * @return dynamic table of the peer
 						 *
 						 * \~
@@ -1033,8 +1102,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of setting the upper boundary for a Dynamic Table Size Update (RFC 7541 §6.3)
+						 *
 						 * @note It is obliged to be equal to the SETTINGS_HEADER_TABLE_SIZE announced by us.
 						 *       An exceeding by the peer is treated as a COMPRESSION_ERROR.
+						 *
 						 * @param size upper boundary of the size of the table
 						 *
 						 * \~
@@ -1060,11 +1131,14 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the decoding of a single block of the headers entirely
+						 *
 						 * @details The names and the values are decoded into the internal arena of the decoder,
 						 *          while into output the references to it get: there are no allocations in the settled
 						 *          mode. The previous content of output is replaced.
+						 *
 						 * @note The obtained representations are valid until the next call of
 						 *       decode() on this same decoder - copy that which is needed longer
+						 *
 						 * @param block       block of the headers (already assembled from HEADERS + CONTINUATION)
 						 * @param output      decoded headers (the references into the arena of the decoder)
 						 * @param maxListSize limit of the total size of the list (a protection from a decompression bomb); 0 - without a limit
@@ -1081,16 +1155,18 @@ namespace awh {
 						 * @details Блок сверх лимита декодируется целиком - иначе динамическая таблица
 						 *          рассинхронизируется с кодером пира и соединение придётся рвать, -
 						 *          но заголовки наружу не отдаются. Вызывающий вправе отвергнуть
-						 *          один поток, оставив соединение живым
+						 *          один поток, оставив соединение живым.
 						 *
 						 * @return признак превышения лимита последним декодированным блоком
 						 *
 						 * \~english
 						 * @brief Method of checking the exceeding of the limit of the list of the headers by the last block
+						 *
 						 * @details A block above the limit is decoded entirely - otherwise the dynamic table
 						 *          would become desynchronized with the encoder of the peer and the connection would have to be broken, -
 						 *          but the headers are not issued outside. The caller is entitled to reject
-						 *          one stream, leaving the connection alive
+						 *          one stream, leaving the connection alive.
+						 *
 						 * @return flag of the exceeding of the limit by the last decoded block
 						 *
 						 * \~
@@ -1105,6 +1181,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param maxTableSize largest size of the dynamic table
 						 *
 						 * \~
@@ -1113,7 +1190,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor
@@ -1137,6 +1213,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class of the encoder of HPACK
+				 *
 				 * @details Stores its own dynamic table. The indexing: a full coincidence
 				 *          (a name+a value) in the static/dynamic table is encoded as
 				 *          an Indexed Header Field (RFC 7541 §6.1); at a coincidence by the name alone -
@@ -1173,10 +1250,11 @@ namespace awh {
 						 *          что уже встречалось в пределах кольца.
 						 *          Последняя ячейка отведена под ограничитель перебора и в
 						 *          ёмкость кольца не входит. Пустое кольцо означает, что
-						 *          адаптивная индексация выключена
+						 *          адаптивная индексация выключена.
 						 *
 						 * \~english
 						 * Ring of the hashes of the pairs a name-a value of the recently met headers
+						 *
 						 * @details The dynamic table is not big, and the place in it is worth giving away
 						 *          to the headers which repeat. A header with a one-time value
 						 *          (:path, etag, date) evicts from the table exactly the repeating
@@ -1186,7 +1264,7 @@ namespace awh {
 						 *          which has already been met within the limits of the ring.
 						 *          The last cell is allotted for the limiter of the enumeration and does not enter
 						 *          into the capacity of the ring. An empty ring means that
-						 *          the adaptive indexing is disabled
+						 *          the adaptive indexing is disabled.
 						 *
 						 * \~
 						 */
@@ -1215,8 +1293,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the search of a header in the static + the dynamic tables
+						 *
 						 * @details Returns the index of a full coincidence (a name+a value) or, if there is none,
 						 *          fills in the index of a coincidence by the name alone. A 0 - there is no coincidence.
+						 *
 						 * @param name      name of the sought header
 						 * @param value     value of the sought header
 						 * @param nameIndex index of a coincidence by the name alone
@@ -1232,17 +1312,19 @@ namespace awh {
 						 * @details Для чувствительного заголовка значение в таблицы не попадает
 						 *          и полное совпадение искать незачем: нужен только индекс
 						 *          названия. Полный поиск обошёлся бы хешированием значения,
-						 *          а у cookie и authorization значения самые длинные в блоке
+						 *          а у cookie и authorization значения самые длинные в блоке.
 						 *
 						 * @param name название искомого заголовка
 						 * @return     объединённый индекс совпадения по названию либо 0
 						 *
 						 * \~english
 						 * @brief Method of the search of a header by the name alone
+						 *
 						 * @details For a sensitive header the value does not get into the tables
 						 *          and there is no point in searching for a full coincidence: only the index
 						 *          of the name is needed. A full search would cost a hashing of the value,
-						 *          while at a cookie and an authorization the values are the longest in the block
+						 *          while at a cookie and an authorization the values are the longest in the block.
+						 *
 						 * @param name name of the sought header
 						 * @return     united index of a coincidence by the name or 0
 						 *
@@ -1257,7 +1339,7 @@ namespace awh {
 						 *          встречался в пределах кольца истории. Пока кольцо не заполнено,
 						 *          индексируется всё: на старте соединения истории ещё нет.
 						 *          Метод изменяет состояние кольца, поэтому вызывается ровно
-						 *          один раз на кодируемый заголовок
+						 *          один раз на кодируемый заголовок.
 						 *
 						 * @note Решение обязано совпасть с выбранным представлением: декодер пира
 						 *       добавляет запись в таблицу именно по нему, и расхождение
@@ -1269,14 +1351,17 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the taking of the decision about the indexing of a header
+						 *
 						 * @details A header is entered into the dynamic table only if it has already
 						 *          been met within the limits of the ring of the history. Until the ring is filled,
 						 *          everything is indexed: at the start of a connection there is no history yet.
 						 *          The method changes the state of the ring, therefore it is called exactly
-						 *          once per encoded header
+						 *          once per encoded header.
+						 *
 						 * @note The decision is obliged to coincide with the chosen representation: the decoder of the peer
 						 *       adds a record into the table exactly by it, and a divergence
 						 *       would desynchronize the tables
+						 *
 						 * @param name  name of the header
 						 * @param value value of the header
 						 * @return      flag of the necessity to enter the header into the table
@@ -1297,9 +1382,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the beginning of the encoding of a block of the headers
+						 *
 						 * @details Appends the postponed Dynamic Table Size Update (RFC 7541 §4.2)
 						 *          which is obliged to go at the very beginning of the block. It is called once
 						 *          before the field-by-field encoding of the block.
+						 *
 						 * @param output output buffer of the block of the headers
 						 *
 						 * \~
@@ -1311,15 +1398,17 @@ namespace awh {
 						 *
 						 * @details Считается по правилу RFC 9113 §6.5.2 (сумма длин имён и значений плюс
 						 *          32 байта на заголовок) и сбрасывается методом begin() в начале блока.
-						 *          Нужен для сверки с анонсированным пиром SETTINGS_MAX_HEADER_LIST_SIZE
+						 *          Нужен для сверки с анонсированным пиром SETTINGS_MAX_HEADER_LIST_SIZE.
 						 *
 						 * @return размер списка заголовков текущего блока до сжатия
 						 *
 						 * \~english
 						 * @brief Method of getting the size of the encoded list of the headers before the compression
+						 *
 						 * @details It is counted by the rule of RFC 9113 §6.5.2 (the sum of the lengths of the names and of the values plus
 						 *          32 octets per header) and is reset by the method begin() at the beginning of a block.
-						 *          It is needed for a comparison with the SETTINGS_MAX_HEADER_LIST_SIZE announced by the peer
+						 *          It is needed for a comparison with the SETTINGS_MAX_HEADER_LIST_SIZE announced by the peer.
+						 *
 						 * @return size of the list of the headers of the current block before the compression
 						 *
 						 * \~
@@ -1334,6 +1423,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting one's own dynamic table
+						 *
 						 * @return one's own dynamic table
 						 *
 						 * \~
@@ -1352,10 +1442,12 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of changing the largest size of one's own dynamic table (RFC 7541 §4.2)
+						 *
 						 * @note It is called at the receipt of a SETTINGS_HEADER_TABLE_SIZE of the peer: our encoder is obliged
 						 *       not to exceed the table which the decoder of the peer is ready to hold. It is applied at once
 						 *       (with an eviction), while into the beginning of the next block a Dynamic Table Size Update is put,
 						 *       so that the decoder of the peer would remain synchronous.
+						 *
 						 * @param size new largest size of the table
 						 *
 						 * \~
@@ -1375,11 +1467,13 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the control of the automatic determination of the sensitive headers
+						 *
 						 * @details It is enabled by default: authorization/proxy-authorization/cookie/set-cookie
 						 *          are encoded as a Literal Never Indexed and do not get into the dynamic table
 						 *          (a protection from the CRIME-like attacks). A disabling noticeably improves the compression
 						 *          of the cookie-heavy traffic but removes this protection; an explicit flag sensitive
 						 *          at a separate header continues to be in force in any mode.
+						 *
 						 * @param mode mode of the automatic determination
 						 *
 						 * \~
@@ -1396,7 +1490,7 @@ namespace awh {
 						 *          и заставляют передавать их литералами заново.
 						 *          Выключение возвращает индексацию всего подряд: осмысленно,
 						 *          когда набор заголовков заведомо мал и повторяется целиком,
-						 *          либо когда динамическая таблица заведомо велика
+						 *          либо когда динамическая таблица заведомо велика.
 						 *
 						 * @note Режим влияет только на выбор представления при кодировании
 						 *       и совместимости не затрагивает: декодер пира следует
@@ -1406,6 +1500,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the control of the adaptive indexing of the headers
+						 *
 						 * @details It is enabled by default: into the dynamic table only the
 						 *          headers already met within the limits of the ring of the history are entered. This
 						 *          saves the place in the table from the headers with a one-time value
@@ -1413,10 +1508,12 @@ namespace awh {
 						 *          and force to transmit them by the literals anew.
 						 *          A disabling returns the indexing of everything in a row: it is meaningful
 						 *          when the collection of the headers is knowingly small and repeats entirely,
-						 *          or when the dynamic table is knowingly big
+						 *          or when the dynamic table is knowingly big.
+						 *
 						 * @note The mode influences only the choice of the representation at the encoding
 						 *       and does not affect the compatibility: the decoder of the peer follows
 						 *       the representation, whatever it would be
+						 *
 						 * @param mode mode of the adaptive indexing
 						 *
 						 * \~
@@ -1433,6 +1530,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a list of the headers
+						 *
 						 * @param fields     headers (the pseudo headers :method/:path/... are obliged to go first)
 						 * @param output     output buffer of the block of the headers
 						 * @param useHuffman to apply the Huffman encoding to the strings
@@ -1454,9 +1552,11 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a list of the decoded headers (a re-encoding)
+						 *
 						 * @details It allows to forward a parsed block without the intermediate copies of the strings
 						 *          (a proxy scenario). The flag sensitive is preserved: a header
 						 *          which has come as a Literal Never Indexed goes away as the same one (RFC 7541 §7.1.3).
+						 *
 						 * @param fields     decoded headers
 						 * @param output     output buffer of the block of the headers
 						 * @param useHuffman to apply the Huffman encoding to the strings
@@ -1479,8 +1579,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the encoding of a single header (zero-copy, without an ownership of the strings)
+						 *
 						 * @note The pseudo headers :method/:path/... are obliged to be encoded first,
 						 *       the names of the headers - strictly in the lower case (RFC 9113 §8.2.1).
+						 *
 						 * @param name       name of the header
 						 * @param value      value of the header
 						 * @param output     output buffer of the block of the headers
@@ -1499,6 +1601,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param maxTableSize largest size of the dynamic table
 						 *
 						 * \~
@@ -1507,7 +1610,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Деструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Destructor

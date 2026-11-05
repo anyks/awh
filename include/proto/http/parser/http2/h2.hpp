@@ -51,7 +51,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -66,7 +65,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -84,6 +82,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the internal layers of the HTTP/2 protocol (RFC 9113) and of HPACK (RFC 7541)
+		 *
 		 * @details Contains the base types and the constants of the protocol, common for the framing layer (frame.hpp),
 		 *          the HPACK codec (hpack.hpp) and the parser of the session (http.hpp). There is no logic here —
 		 *          only the enumerations, the constants of the protocol and the POD structures.
@@ -100,6 +99,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Namespace of the flags of the frames (RFC 9113 §6)
+			 *
 			 * @details One and the same bit means different things for the different types of the frames,
 			 *          therefore this is a collection of the constants rather than an enum class.
 			 *
@@ -196,6 +196,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Flag of the permission of a server push (SETTINGS_ENABLE_PUSH)
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -209,6 +210,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest number of the simultaneous streams in a connection
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -222,6 +224,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest size of the list of the headers
+				 *
 				 * @note 0 - without a limit in SETTINGS, maxHeadersTotal is in force
 				 *
 				 * \~
@@ -382,7 +385,6 @@ namespace awh {
 				CLIENT = 0x00, // Нечётные stream id инициируем мы
 				SERVER = 0x01  // Чётные stream id (push) инициируем мы
 			};
-
 			/**
 			 * \~russian
 			 * @brief Результат пошаговой обработки/разбора
@@ -397,7 +399,6 @@ namespace awh {
 				INCOMPLETE = 0x01, // Данных недостаточно - нужен ещё ввод
 				ERROR      = 0x02  // Ошибка протокола - см. сопутствующий error_t
 			};
-
 			/**
 			 * \~russian
 			 * @brief Состояния потока (RFC 9113 §5.1)
@@ -416,7 +417,6 @@ namespace awh {
 				HALF_CLOSED_REMOTE = 0x05, // Пир отправил END_STREAM
 				CLOSED             = 0x06  // Поток завершён
 			};
-
 			/**
 			 * \~russian
 			 * @brief Тип фрейма (RFC 9113 §6) — значение поля Type (8 бит)
@@ -441,7 +441,6 @@ namespace awh {
 				ORIGIN          = 0x0c, // Набор origin, обслуживаемых соединением (RFC 8336 §2)
 				PRIORITY_UPDATE = 0x10  // Обновление расширенного приоритета потока (RFC 9218 §7.1)
 			};
-
 			/**
 			 * \~russian
 			 * @brief Идентификаторы параметров SETTINGS (RFC 9113 §6.5.2)
@@ -461,7 +460,6 @@ namespace awh {
 				ENABLE_CONNECT_PROTOCOL = 0x08, // Разрешён ли расширенный CONNECT (0/1, по умолчанию 0) - RFC 8441 §3
 				NO_RFC7540_PRIORITIES   = 0x09  // Отказ от приоритетов RFC 7540 (0/1, по умолчанию 0) - RFC 9218 §2.1
 			};
-
 			/**
 			 * \~russian
 			 * @brief Коды ошибок HTTP/2 (RFC 9113 §7) — используются в RST_STREAM и GOAWAY
@@ -497,13 +495,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of getting the human-readable name of a type of a frame
+			 *
 			 * @param type type of the frame
 			 * @return     name of the type of the frame
 			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Функция получения человекочитаемого названия кода ошибки
@@ -513,6 +511,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of getting the human-readable name of an error code
+			 *
 			 * @param code error code of the protocol
 			 * @return     name of the error code
 			 *

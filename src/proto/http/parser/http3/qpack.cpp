@@ -21,14 +21,14 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include <proto/http/parser/http3/qpack.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <algorithm>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <proto/http/parser/http3/qpack.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -49,7 +49,7 @@ namespace {
 	 *          и изменению не подлежит: он и есть кодировка
 	 *
 	 */
-	static const h3::qpack::static_entry_t STATIC_TABLE[h3::qpack::STATIC_TABLE_SIZE] = {
+	static constexpr h3::qpack::static_entry_t STATIC_TABLE[h3::qpack::STATIC_TABLE_SIZE] = {
 		{":authority", ""},                                                                    //  1
 		{":path", "/"},                                                                        //  2
 		{"age", "0"},                                                                          //  3
@@ -161,7 +161,6 @@ namespace {
 		// Количество записей в группе
 		uint32_t count;
 	} static_range_t;
-
 	/**
 	 * @brief Структура индекса статической таблицы по названию поля
 	 *
@@ -187,7 +186,7 @@ namespace {
 	 * @return индекс статической таблицы по названию поля
 	 *
 	 */
-	const static_index_t & staticNames() noexcept {
+	static __AWH_INLINE__ const static_index_t & staticNames() noexcept {
 		/**
 		 * Индекс объявлен статическим внутри функции намеренно: статический объект
 		 * в области видимости файла строился бы до входа в main, а порядок такого
@@ -246,7 +245,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isSensitiveName(string_view name) noexcept {
+	static __AWH_INLINE__ bool isSensitiveName(string_view name) noexcept {
 		// Чувствительными считаются поля авторизации и cookie
 		return (
 			(name == "cookie") || (name == "set-cookie") ||
@@ -261,11 +260,11 @@ namespace {
 	 * @return      хеш пары
 	 *
 	 */
-	size_t pairHash(const size_t name, string_view value) noexcept {
+	static __AWH_INLINE__ size_t pairHash(const size_t name, string_view value) noexcept {
 		// Выводим хеш пары название-значение
 		return ((name * 31) ^ std::hash <string_view> {}(value));
 	}
-}
+};
 
 /**
  * @brief Функция получения записи статической таблицы по индексу 0..98 (RFC 9204 Appendix A)
@@ -732,7 +731,15 @@ void awh::http::h3::qpack::DynamicTable::clear() noexcept {
  *
  */
 awh::http::h3::qpack::DynamicTable::DynamicTable(const uint64_t capacity) noexcept :
- _retained(0), _holding(false), _size(0), _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
+ _retained(0), _holding(false), _size(0),
+ _capacity(capacity), _inserts(0), _dropped(0), _indexing(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h3::qpack::Decoder::Slice::Slice() noexcept :
+ sensitive(false), name{""}, value{""} {}
 
 /**
  * @brief Метод декодирования строки, закодированной литералом либо Huffman

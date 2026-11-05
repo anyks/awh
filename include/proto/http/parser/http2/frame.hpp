@@ -48,7 +48,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -63,7 +62,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -92,6 +90,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Namespace of the framing layer of HTTP/2 (RFC 9113 §4-6): the parsing and the assembly of the frames
+			 *
 			 * @details The parsing is zero-copy: the payload is issued as a string_view with a pointer
 			 *          into the input buffer. The assembly appends the octets into a string (the output buffer of the connection).
 			 *          The layer stores no state of the connection - these are pure functions over the octets. The logic
@@ -118,7 +117,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -143,7 +141,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -172,7 +169,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -199,7 +195,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -229,7 +224,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -266,7 +260,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -293,7 +286,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -324,6 +316,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the 9-octet header of a frame
+					 *
 					 * @param data   input buffer
 					 * @param size   octets available
 					 * @param output parsed header of the frame
@@ -346,7 +339,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of DATA
+					 *
 					 * @note The parameter payload is obliged to point to exactly h.length octets of the payload
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  parsed payload
@@ -368,6 +363,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of PING (requires exactly 8 octets of the opaque data)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param opaque  extracted opaque data
@@ -389,6 +385,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of RST_STREAM (requires exactly 4 octets)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param code    error code with which the stream is reset
@@ -410,6 +407,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of GOAWAY (a minimum of 8 octets)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  parsed payload
@@ -431,6 +429,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of HEADERS (with the account of the padding and of the priority)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  parsed payload
@@ -452,6 +451,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of PRIORITY (requires exactly 5 octets)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  parsed payload
@@ -475,7 +475,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of WINDOW_UPDATE (requires exactly 4 octets)
+					 *
 					 * @note A zero increment is a PROTOCOL_ERROR (at the level of a stream - RST_STREAM)
+					 *
 					 * @param header    header of the frame
 					 * @param payload   payload of the frame
 					 * @param increment extracted increment of the window
@@ -497,6 +499,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of PUSH_PROMISE (with the account of the padding)
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  parsed payload
@@ -520,7 +523,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of SETTINGS (the length is a multiple of 6)
+					 *
 					 * @note For an ACK frame the payload is obliged to be empty. The parameters are appended into output
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param output  list of the parsed parameters
@@ -543,6 +548,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of CONTINUATION (a fragment of a block of the headers)
+					 *
 					 * @param header     header of the frame
 					 * @param payload    payload of the frame
 					 * @param block      fragment of the block of the headers (zero-copy into the input buffer)
@@ -569,8 +575,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of PRIORITY_UPDATE (RFC 9218 §7.1)
+					 *
 					 * @note The frame relates to the connection (stream id == 0), while the stream being prioritized
 					 *       is indicated in the first 4 octets of the payload
+					 *
 					 * @param header   header of the frame
 					 * @param payload  payload of the frame
 					 * @param streamId identifier of the stream being prioritized
@@ -597,9 +605,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of ALTSVC (RFC 7838 §4)
+					 *
 					 * @note The errors of this frame break neither the stream nor the connection: the RFC prescribes
 					 *       to ignore an incorrect ALTSVC. A negative result means
 					 *       exactly «the frame is subject to being ignored» rather than an error of the protocol
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param origin  origin of the service being announced (zero-copy into the input buffer)
@@ -623,8 +633,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of parsing the payload of ORIGIN (RFC 8336 §2)
+					 *
 					 * @note The errors of this frame likewise do not break the connection: the RFC prescribes
 					 *       to ignore an incorrect ORIGIN entirely
+					 *
 					 * @param header  header of the frame
 					 * @param payload payload of the frame
 					 * @param origins collection of the origins (zero-copy into the input buffer)
@@ -655,6 +667,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a PING frame (the header + the payload are appended into output)
+					 *
 					 * @param output output buffer of the connection
 					 * @param opaque arbitrary opaque data (8 octets)
 					 * @param ack    flag of the confirmation of the receipt of a PING of the peer
@@ -672,6 +685,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a RST_STREAM frame (the header + the payload are appended into output)
+					 *
 					 * @param output   output buffer of the connection
 					 * @param streamId identifier of the stream
 					 * @param error    error code with which the stream is reset
@@ -689,6 +703,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a WINDOW_UPDATE frame (the header + the payload are appended into output)
+					 *
 					 * @param output    output buffer of the connection
 					 * @param streamId  identifier of the stream (0 - the window of the whole connection)
 					 * @param increment increment of the window of the flow control
@@ -707,6 +722,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a DATA frame (the header + the payload are appended into output)
+					 *
 					 * @param output    output buffer of the connection
 					 * @param streamId  identifier of the stream
 					 * @param data      data of the body
@@ -726,6 +742,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a SETTINGS frame (the header + the payload are appended into output)
+					 *
 					 * @param output output buffer of the connection
 					 * @param items  list of the parameters (for an ACK it is ignored)
 					 * @param count  number of the parameters
@@ -745,6 +762,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a GOAWAY frame (the header + the payload are appended into output)
+					 *
 					 * @param output       output buffer of the connection
 					 * @param lastStreamId largest identifier of a processed stream
 					 * @param error        error code of the completion of the connection
@@ -764,6 +782,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a CONTINUATION frame (the header + the payload are appended into output)
+					 *
 					 * @param output     output buffer of the connection
 					 * @param streamId   identifier of the stream
 					 * @param block      fragment of the block of the headers of HPACK
@@ -784,6 +803,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a HEADERS frame (the header + the payload are appended into output)
+					 *
 					 * @param output     output buffer of the connection
 					 * @param streamId   identifier of the stream
 					 * @param block      fragment of the block of the headers of HPACK
@@ -805,6 +825,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a PRIORITY frame (the header + the payload are appended into output)
+					 *
 					 * @param output    output buffer of the connection
 					 * @param streamId  identifier of the stream
 					 * @param exclusive flag of an exclusive dependence of the stream
@@ -824,6 +845,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a PRIORITY_UPDATE frame (RFC 9218 §7.1)
+					 *
 					 * @param output   output buffer of the connection
 					 * @param streamId identifier of the stream being prioritized
 					 * @param value    value of the field of the priority (a structured dictionary, for example "u=2, i")
@@ -846,9 +868,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling an ALTSVC frame (RFC 7838 §4)
+					 *
 					 * @note A frame for a connection (streamId == 0) is obliged to carry a non-empty origin,
 					 *       a frame for a stream - an empty one: in the second case the origin is taken
 					 *       from the stream itself
+					 *
 					 * @param output   output buffer of the connection
 					 * @param streamId identifier of the stream, or 0 for the connection
 					 * @param origin   origin of the service being announced
@@ -869,8 +893,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling an ORIGIN frame (RFC 8336 §2)
+					 *
 					 * @note The frame relates to the connection as a whole and is sent only
 					 *       in the stream 0
+					 *
 					 * @param output  output buffer of the connection
 					 * @param origins collection of the origins served by the connection
 					 *
@@ -892,8 +918,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a block of HPACK into HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10)
+					 *
 					 * @note END_STREAM, if it is given, is put only onto the first HEADERS -
 					 *       even if the block continues in a CONTINUATION
+					 *
 					 * @param output          output buffer of the connection
 					 * @param streamId        identifier of the stream
 					 * @param block           block of the headers of HPACK entirely
@@ -915,6 +943,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a PUSH_PROMISE frame (the header + the payload are appended into output)
+					 *
 					 * @param output           output buffer of the connection
 					 * @param streamId         identifier of the associated stream of the client
 					 * @param promisedStreamId identifier of the promised stream
@@ -939,8 +968,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Function of assembling a block of HPACK of a promised request into PUSH_PROMISE + CONTINUATION
+					 *
 					 * @note The first frame reserves 4 octets for the Promised Stream ID;
 					 *       the remainder of the block goes away into a CONTINUATION at the necessity
+					 *
 					 * @param output           output buffer of the connection
 					 * @param streamId         identifier of the associated stream of the client
 					 * @param promisedStreamId identifier of the promised stream

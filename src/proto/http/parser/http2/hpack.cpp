@@ -52,7 +52,7 @@ namespace {
 	 * @note Индекс 0 не используется - заглушка для 1-based индексации
 	 *
 	 */
-	const hpack::static_entry_t STATIC[hpack::STATIC_TABLE_SIZE + 1] = {
+	static constexpr hpack::static_entry_t STATIC[hpack::STATIC_TABLE_SIZE + 1] = {
 		{ "", "" }, // 0 - заглушка (индексация 1-based)
 		{ ":authority", "" },                    //  1
 		{ ":method", "GET" },                    //  2
@@ -129,7 +129,7 @@ namespace {
 	 * @return      хеш пары название-значение
 	 *
 	 */
-	size_t pairHash(const size_t name, string_view value) noexcept {
+	static __AWH_INLINE__ size_t pairHash(const size_t name, string_view value) noexcept {
 		// Выводим хеш пары название-значение
 		return ((name * 31) ^ std::hash <string_view> {}(value));
 	}
@@ -154,6 +154,7 @@ namespace {
 		// Количество записей подряд с этим названием
 		uint32_t count;
 	};
+
 	/**
 	 * @brief Функция получения (один раз) индекса статической таблицы
 	 *
@@ -169,7 +170,7 @@ namespace {
 	 * @return индекс статической таблицы по хешу названия заголовка
 	 *
 	 */
-	const unordered_map <size_t, static_range_t> & staticNames() noexcept {
+	static __AWH_INLINE__ const unordered_map <size_t, static_range_t> & staticNames() noexcept {
 		// Строим индекс лениво при первом обращении
 		static const unordered_map <size_t, static_range_t> index = [](){
 			// Результат работы функции
@@ -199,6 +200,7 @@ namespace {
 		// Выводим индекс статической таблицы
 		return index;
 	}
+
 	/**
 	 * @brief Структура записи таблицы Huffman-кодов (RFC 7541 Appendix B)
 	 *
@@ -220,7 +222,7 @@ namespace {
 	 * @brief Таблица Huffman-кодов для всех 256 значений байта (RFC 7541 Appendix B)
 	 *
 	 */
-	const huff_sym_t HUFF[256] = {
+	static constexpr huff_sym_t HUFF[256] = {
 		{13,0xffc00000u},{23,0xffffb000u},{28,0xfffffe20u},{28,0xfffffe30u},
 		{28,0xfffffe40u},{28,0xfffffe50u},{28,0xfffffe60u},{28,0xfffffe70u},
 		{28,0xfffffe80u},{24,0xffffea00u},{30,0xfffffff0u},{28,0xfffffe90u},
@@ -343,13 +345,14 @@ namespace {
 		// Признак того, что путь от корня до узла состоит только из единичных бит
 		vector <bool> ones;
 	};
+
 	/**
 	 * @brief Функция построения (один раз) дерева декодирования из таблицы кодов
 	 *
 	 * @return дерево декодирования Huffman
 	 *
 	 */
-	const vector <huff_node_t> & huffTree() noexcept {
+	static __AWH_INLINE__ const vector <huff_node_t> & huffTree() noexcept {
 		// Строим дерево декодирования лениво при первом обращении
 		static const vector <huff_node_t> tree = [](){
 			// Результат работы функции
@@ -410,7 +413,7 @@ namespace {
 	 * @return табличный декодер Huffman
 	 *
 	 */
-	const huff_table_t & huffTable() noexcept {
+	static __AWH_INLINE__ const huff_table_t & huffTable() noexcept {
 		// Строим таблицу декодирования лениво при первом обращении
 		static const huff_table_t table = [](){
 			// Результат работы функции
@@ -522,7 +525,7 @@ namespace {
 	 * @details Размер арены равен её ёмкости, а занятая часть отслеживается отдельным
 	 *          счётчиком: дописывание методами строки обходится вызовом через границу
 	 *          динамической библиотеки на каждый заголовок, тогда как заголовки
-	 *          короткие и вызов стоит дороже самого копирования
+	 *          короткие и вызов стоит дороже самого копирования.
 	 *
 	 * @param arena  арена декодированных строк
 	 * @param filled занятая часть арены
@@ -530,7 +533,7 @@ namespace {
 	 * @return       указатель на выделенное место
 	 *
 	 */
-	inline char * reserveArena(string & arena, size_t & filled, const size_t size) noexcept {
+	static __AWH_INLINE__ char * reserveArena(string & arena, size_t & filled, const size_t size) noexcept {
 		// Требуемый размер арены
 		const size_t required = (filled + size);
 		// Если места в арене не хватает
@@ -554,6 +557,10 @@ namespace {
 	 *          всё равно ложится в арену, и разбор в отдельный буфер означал бы лишнее
 	 *          копирование каждой строки блока
 	 *
+	 * @note Обозначение кода ошибки записано полным именем намеренно: библиотека
+	 *       языка C в исполнении GNU объявляет свой `error_t` в общем пространстве
+	 *       имён, и краткое имя здесь становится двусмысленным
+	 *
 	 * @param data   входной буфер
 	 * @param size   доступно байт
 	 * @param pos    текущая позиция разбора (сдвигается)
@@ -565,12 +572,7 @@ namespace {
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 *
 	 */
-	/**
-	 * @note Обозначение кода ошибки записано полным именем намеренно: библиотека
-	 *       языка C в исполнении GNU объявляет свой `error_t` в общем пространстве
-	 *       имён, и краткое имя здесь становится двусмысленным
-	 */
-	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, awh::http::h2::error_t & error) noexcept {
+	static __AWH_INLINE__ status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, awh::http::h2::error_t & error) noexcept {
 		// Запоминаем смещение начала строки в арене
 		const size_t offset = filled;
 		// Сбрасываем представление декодированной строки
@@ -651,21 +653,13 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isSensitiveName(string_view name) noexcept {
+	static __AWH_INLINE__ bool isSensitiveName(string_view name) noexcept {
 		// Чувствительными считаются заголовки авторизации и cookie
 		return (
 			(name == "cookie") || (name == "set-cookie") ||
 			(name == "authorization") || (name == "proxy-authorization")
 		);
 	}
-	/**
-	 * @brief Функция кодирования HPACK-строки (литерал или Huffman)
-	 *
-	 * @param output     выходной буфер
-	 * @param str          кодируемая строка
-	 * @param useHuffman применять Huffman-кодирование, если оно короче литерала
-	 *
-	 */
 	/**
 	 * @brief Функция кодирования строки Huffman'ом с известной длиной результата
 	 *
@@ -678,7 +672,7 @@ namespace {
 	 * @param length длина строки после кодирования, полученная из huffman::length()
 	 *
 	 */
-	void huffmanEncode(string_view input, string & output, const size_t length) noexcept {
+	static __AWH_INLINE__ void huffmanEncode(string_view input, string & output, const size_t length) noexcept {
 		// Число накопленных бит
 		int32_t count = 0;
 		// Битовый аккумулятор
@@ -728,7 +722,15 @@ namespace {
 		// Усекаем буфер до фактически записанной длины
 		output.resize(static_cast <size_t> (cursor - &output[0]));
 	}
-	void encodeStringLiteral(string & output, string_view str, const bool useHuffman) noexcept {
+	/**
+	 * @brief Функция кодирования HPACK-строки (литерал или Huffman)
+	 *
+	 * @param output     выходной буфер
+	 * @param str          кодируемая строка
+	 * @param useHuffman применять Huffman-кодирование, если оно короче литерала
+	 *
+	 */
+	static __AWH_INLINE__ void encodeStringLiteral(string & output, string_view str, const bool useHuffman) noexcept {
 		/**
 		 * Вычисляем длину строки после Huffman-кодирования, только если оно разрешено:
 		 * это полный проход по строке, и при выключенном сжатии он был бы напрасным
@@ -1425,6 +1427,13 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
  */
 awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize, const bool indexing) noexcept :
  _live(0), _size(0), _maxSize(maxSize), _inserts(0), _indexing(indexing) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::hpack::Decoder::Slice::Slice() noexcept :
+ sensitive(false), name{""}, value{""} {}
 
 /**
  * @brief Метод получения динамической таблицы пира

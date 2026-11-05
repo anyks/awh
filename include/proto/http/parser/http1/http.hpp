@@ -50,7 +50,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
-	 *
 	 *
 	 * \~english
 	 * @brief HTTP protocol namespace
@@ -87,10 +85,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the parser of HTTP/1.0 and HTTP/1.1
+		 *
 		 * @details An incremental (streaming) parser on the base of an octet finite automaton:
 		 *          the data may be supplied by any pieces, a break is admissible at any octet.
 		 *          The parser accumulates nothing - all the data is issued through the callback
 		 *          functions, the starting line is put into the provider of the headers of the message.
+		 *
 		 * @note The contract of the versions: only HTTP/1.0 and HTTP/1.1 are accepted,
 		 *       any other version is rejected with the error INVALID_VERSION.
 		 *
@@ -107,6 +107,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Identifier of the single logical stream of HTTP/1.x
+				 *
 				 * @note HTTP/1.x is not multiplexed - the identifier exists only
 				 *       for the universality of the signatures of the callback functions with HTTP/2
 				 *
@@ -121,6 +122,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest length of the line of the header of a chunk (size + chunk-ext)
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -134,6 +136,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest length of a request-line/status-line
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -147,6 +150,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Threshold of the signal about the readiness to accept the data of the body (low-water)
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -160,6 +164,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Capacity of the output buffer of the sending (high-water)
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -173,6 +178,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Granularity of a portion of the pull source of the data of the body
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -187,6 +193,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest volume of the body pumped out of the pull source in a single pumping
+				 *
 				 * @note It limits the time of the holding of the control at the sending of the big bodies -
 				 *       the remainder is loaded by the calls of resumeSource()
 				 *
@@ -201,6 +208,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Largest size of a single chunk
+				 *
 				 * @note The values by default are selected conservatively
 				 *
 				 * \~
@@ -214,6 +222,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Requirement of a strict ending of the lines by a CRLF (a prohibition of a single LF)
+				 *
 				 * @note By default it is disabled for the sake of the compatibility with the real traffic
 				 *
 				 * \~
@@ -227,6 +236,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Prohibition of the superfluous spaces inside the starting line
+				 *
 				 * @note By default it is disabled for the sake of the compatibility with the real traffic
 				 *
 				 * \~
@@ -240,6 +250,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Requirement of an obligatory header Host at the requests of HTTP/1.1
+				 *
 				 * @note By default it is disabled - the parser does not impose an applied validation
 				 *
 				 * \~
@@ -291,7 +302,7 @@ namespace awh {
 				 *          парсер остаётся толерантным к реальному трафику, но фронтовым
 				 *          (server-facing) и проксирующим сценариям их следует включать:
 				 *          расхождение в трактовке одиночного LF и лишних пробелов между
-				 *          двумя звеньями цепочки - классический вектор request smuggling
+				 *          двумя звеньями цепочки - классический вектор request smuggling.
 				 *
 				 * @note Переключатели строгости описывают терпимость к неправильному
 				 *       входу и от протокола работы не зависят. Роль узла задаётся
@@ -314,6 +325,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the limitations of the safety of the parser of HTTP/1.x
+				 *
 				 * @details It extends the common core of the limits of the base parser by the limits
 				 *          specific to HTTP/1.x: the starting line and the framing
 				 *          of the body in the encoding chunked, and also by the switches of the strictness
@@ -321,7 +333,8 @@ namespace awh {
 				 *          the parser remains tolerant to the real traffic, but for the front
 				 *          (server-facing) and the proxying scenarios they should be enabled:
 				 *          a divergence in the treatment of a single LF and of the superfluous spaces between
-				 *          two links of a chain is a classical vector of a request smuggling
+				 *          two links of a chain is a classical vector of a request smuggling.
+				 *
 				 * @note The switches of the strictness describe the tolerance to an incorrect
 				 *       input and do not depend on the protocol of the work. The role of a node is set
 				 *       separately - by the method proto: the mode PROXY1 toughens not the parsing
@@ -331,6 +344,7 @@ namespace awh {
 				 *       passing a message onward is obliged to reject that about which
 				 *       it is impossible to agree, while for a final receiver it suffices
 				 *       to close the connection
+				 *
 				 * @note The octets discarded at the parsing enter into the limits on a par with
 				 *       the preserved ones: the leading OWS of the value of a header are accounted in
 				 *       maxHeadersTotal, the superfluous spaces of the starting line - in
@@ -352,6 +366,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Requirement of a strict ending of the lines by a CRLF (a prohibition of a single LF)
+					 *
 					 * @note At the same time it prohibits the empty lines before the starting line of a request
 					 *       which the tolerant mode skips by RFC 9112 §2.2
 					 *
@@ -378,19 +393,21 @@ namespace awh {
 					 *          пробелам и отсутствию Host безопасна только когда обе
 					 *          стороны соединения трактуют их одинаково, а на границе
 					 *          сети это не гарантируется - расхождение с соседним звеном
-					 *          цепочки и есть механизм request smuggling
+					 *          цепочки и есть механизм request smuggling.
 					 *
 					 * @return строгий набор ограничений
 					 *
 					 * \~english
 					 * @brief Method of getting the strict collection of the limitations
+					 *
 					 * @details A ready preset for the nodes accepting the traffic from the outside
 					 *          (a server, a proxy, a balancer): it enables all the switches
 					 *          of the strictness of the parsing. The tolerance to a single LF, to the superfluous
 					 *          spaces and to the absence of a Host is safe only when both
 					 *          sides of the connection treat them identically, while at the boundary
 					 *          of a network this is not guaranteed - a divergence with the neighbouring link
-					 *          of the chain is exactly the mechanism of a request smuggling
+					 *          of the chain is exactly the mechanism of a request smuggling.
+					 *
 					 * @return strict collection of the limitations
 					 *
 					 * \~
@@ -399,7 +416,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -419,6 +435,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Class of a parsed message
+				 *
 				 * @details If the Content-Length is not set, then the value bodySize == -1.
 				 *          If the Content-Length is set, then the value of the field bodySize >= 0.
 				 *          If a Transfer-Encoding: chunked is indicated, then the value of the field bodySize == -1.
@@ -440,46 +457,82 @@ namespace awh {
 							// Тело передаётся chunked
 							bool chunked;
 							/**
-							 * Запрошено переключение протокола
+							 * \~russian
+							 * @brief Запрошено переключение протокола
 							 *
-							 * У запроса - заголовок Upgrade вместе с токеном upgrade в Connection,
-							 * у ответа - код [101 Switching Protocols] либо успешный ответ на CONNECT.
-							 * В запросе HTTP/1.0 заголовок Upgrade игнорируется (RFC 9110 §7.8):
-							 * отправитель этой версии смену протокола на соединении, где о ней не
-							 * договаривались, не поймёт
+							 * @details У запроса - заголовок Upgrade вместе с токеном upgrade в Connection,
+							 *          у ответа - код [101 Switching Protocols] либо успешный ответ на CONNECT.
+							 *          В запросе HTTP/1.0 заголовок Upgrade игнорируется (RFC 9110 §7.8):
+							 *          отправитель этой версии смену протокола на соединении, где о ней не
+							 *          договаривались, не поймёт.
 							 *
+							 * \~english
+							 * @brief Requesting a protocol switch
+							 *
+							 * @details For a request - an Upgrade header together with an upgrade token in Connection,
+							 *          for an answer - a code [101 Switching Protocols] or a successful answer to CONNECT.
+							 *          In an HTTP/1.0 request an Upgrade header is ignored (RFC 9110 §7.8):
+							 *          a sender of this version will not understand a change of the protocol on a connection
+							 *          where it was not agreed.
+							 *
+							 * \~
 							 */
 							bool upgrade;
 							// Сообщение полностью разобрано
 							bool complete;
 							/**
-							 * Соединение переиспользуемое
+							 * \~russian
+							 * @brief Соединение переиспользуемое
 							 *
-							 * Признак говорит только о том, что соединение не помечено к закрытию
-							 * заголовком Connection и версией протокола. Он не учитывает смену
-							 * протокола: после ответа 101 и после успешного 2xx на CONNECT
-							 * соединение остаётся открытым, но HTTP-сообщений по нему больше нет,
-							 * и признак сохраняет значение true. Решение о переиспользовании
-							 * принимается по обоим признакам - сначала upgrade, затем keepAlive.
-							 * Сводить их в один нельзя: false закрыл бы туннель, который вызывающая
-							 * сторона обязана передать другому протоколу, а true оставил бы
-							 * соединение под конвейер HTTP, которого в нём уже нет
+							 * @details Признак говорит только о том, что соединение не помечено к закрытию
+							 *          заголовком Connection и версией протокола. Он не учитывает смену
+							 *          протокола: после ответа 101 и после успешного 2xx на CONNECT
+							 *          соединение остаётся открытым, но HTTP-сообщений по нему больше нет,
+							 *          и признак сохраняет значение true. Решение о переиспользовании
+							 *          принимается по обоим признакам - сначала upgrade, затем keepAlive.
+							 *          Сводить их в один нельзя: false закрыл бы туннель, который вызывающая
+							 *          сторона обязана передать другому протоколу, а true оставил бы
+							 *          соединение под конвейер HTTP, которого в нём уже нет.
+							 *
+							 * \~english
+							 * @brief The connection is reusable
+							 *
+							 * @details A sign speaks only about that the connection is not marked for closing by
+							 *          a Connection header and a version of the protocol. It does not take into account a change
+							 *          of the protocol: after an answer 101 and after a successful 2xx to CONNECT
+							 *          the connection stays open, but there are no more HTTP messages over it,
+							 *          and the sign keeps the value true. A decision on the reuse
+							 *          is taken by both signs - first upgrade, then keepAlive.
+							 *          They can not be reduced into one: false would close a tunnel, which the calling
+							 *          side is obliged to pass to another protocol, and true would leave
+							 *          a connection under an HTTP pipeline, which is already not in it.
+							 *
+							 * \~
 							 */
 							bool keepAlive;
 							/**
-							 * Клиент прислал заголовок [Expect: 100-continue] и ожидает промежуточный
+							 * \~russian
+							 * @brief Клиент прислал заголовок [Expect: 100-continue] и ожидает промежуточный
 							 * ответ до отправки тела
 							 *
-							 * В запросе HTTP/1.0 ожидание игнорируется (RFC 9110 §10.1.1): промежуточный
-							 * ответ отправитель этой версии прочитает как окончательный и уйдёт в
-							 * рассинхронизацию
+							 * @details В запросе HTTP/1.0 ожидание игнорируется (RFC 9110 §10.1.1): промежуточный
+							 *          ответ отправитель этой версии прочитает как окончательный и уйдёт в
+							 *          рассинхронизацию.
 							 *
+							 * \~english
+							 * @brief A client sent an [Expect: 100-continue] header and waits for an interim
+							 *        answer before sending a body
+							 *
+							 * @details In an HTTP/1.0 request an expectation is ignored (RFC 9110 §10.1.1): an interim
+							 *          answer a sender of this version will read as a final one and will go into
+							 *          a desynchronization.
+							 *
+							 * \~
 							 */
 							bool expectContinue;
 							/**
 							 * \~russian
 							 * @brief Конструктор
-							 *
 							 *
 							 * \~english
 							 * @brief Constructor
@@ -509,6 +562,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the moving assignment of the parameters of a message
+						 *
 						 * @param message object of the message for the moving
 						 * @return        current message
 						 *
@@ -524,6 +578,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of the assignment of the parameters of a message
+						 *
 						 * @param message object of the message for the copying
 						 * @return        current message
 						 *
@@ -545,10 +600,12 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of a comparison
+						 *
 						 * @note The operator is declared constant: a parsed message is issued
 						 *       by the method message by a constant reference, and a non-constant operator
 						 *       of the comparison would turn out to be inapplicable exactly to that value for the sake of
 						 *       which it exists
+						 *
 						 * @param message object of the message for the comparison
 						 * @return        result of the comparison
 						 *
@@ -564,6 +621,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Operator of a comparison
+						 *
 						 * @param message object of the message for the comparison
 						 * @return        result of the comparison
 						 *
@@ -579,6 +637,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor of the moving
+						 *
 						 * @param message object of the message for the moving
 						 *
 						 * \~
@@ -592,6 +651,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor of the copying
+						 *
 						 * @param message object of the message for the copying
 						 *
 						 * \~
@@ -601,7 +661,6 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
@@ -624,10 +683,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function about the readiness to accept the data of the body
+				 *
 				 * @details It is called when the output buffer has descended below the low-water
 				 *          (after a partial acceptance in sendData it is possible to send onward).
 				 *          The identifier of the stream for HTTP/1.x is always equal to STREAM_ID -
 				 *          the signature is universal with HTTP/2.
+				 *
 				 * @param sid identifier of the stream (always STREAM_ID)
 				 *
 				 * \~
@@ -647,10 +708,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function of the writing of the outgoing octets into the network
+				 *
 				 * @details If it is set - the parser itself issues the outgoing octets to the network layer
 				 *          at once as they are formed. If it is not set - the outgoing octets
 				 *          accumulate in an internal buffer (the pull model: pending() +
 				 *          consumePending()).
+				 *
 				 * @param buffer buffer of the outgoing data
 				 * @param size   size of the outgoing data
 				 *
@@ -679,6 +742,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function for the processing of the phase of the parsing of an HTTP message
+				 *
 				 * @details The sequence of the events at the parsing of a single message:
 				 *          1. (BEGIN, NONE)    - the beginning of the parsing of a new message
 				 *          2. (END, HEADERS)   - all the headers are parsed and interpreted
@@ -689,6 +753,7 @@ namespace awh {
 				 *          7. (END, NONE)      - the message is fully parsed
 				 *          The identifier of the stream for HTTP/1.x is always equal to STREAM_ID -
 				 *          the signature is universal with HTTP/2.
+				 *
 				 * @param sid   identifier of the stream (always STREAM_ID)
 				 * @param phase phase of the parsing of the HTTP message
 				 * @param part  part of the message (the headers, the trailers, the body), NONE - the message as a whole
@@ -719,6 +784,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function for the processing of the boundaries of the chunks (Transfer-Encoding: chunked)
+				 *
 				 * @details It is needed by the consumers to whom the framing of the body «a chunk-into-a-chunk» matters:
 				 *          by the transparent proxies (a retranslation with the preservation of the source framing)
 				 *          and by the protocols with the semantics of the extensions of the chunks (for example, the signatures of the chunks
@@ -729,6 +795,7 @@ namespace awh {
 				 *          For the last chunk (size == 0) only BEGIN is called - further the
 				 *          events of the trailers follow. If the callback function is not set,
 				 *          the extensions of the chunks are not accumulated (a zero overhead).
+				 *
 				 * @param phase     phase of the parsing of the chunk (BEGIN - the header is parsed, END - the chunk is read to the end)
 				 * @param size      size of the data of the chunk
 				 * @param extension raw extensions of the chunk (the content after the ';' without a CRLF), are valid ONLY for the time of the call
@@ -754,11 +821,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function for the processing of the provider of the headers of a message
+				 *
 				 * @details It is called at the completion of the block of the headers, when the headers are parsed
 				 *          and interpreted (the way of the framing of the body is chosen) - the same moment
 				 *          as the END_HEADERS at HTTP/2. For the trailers the provider is transmitted as a nullptr.
 				 *          The identifier of the stream for HTTP/1.x is always equal to STREAM_ID -
 				 *          the signature is universal with HTTP/2.
+				 *
 				 * @param sid       identifier of the stream (always STREAM_ID)
 				 * @param provider  object of the provider of the headers of the message (a nullptr for the trailers)
 				 * @param endStream flag of the completion of the message (there will be no body)
@@ -787,6 +856,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function for the processing of a fragment of the body of a message
+				 *
 				 * @details The buffer points into the input data (zero-copy) and is valid ONLY for the time
 				 *          of the call. The fragments are issued as the data arrives from the network and do not coincide
 				 *          with the boundaries of the chunks. The flag endStream is set on the fragment concluding
@@ -794,6 +864,7 @@ namespace awh {
 				 *          of the connection» the end of the body at the moment of a fragment is unknown - the completion is signalled
 				 *          by the provider of the trailers or by the phase (END, NONE). The identifier of the stream for HTTP/1.x
 				 *          is always equal to STREAM_ID - the signature is universal with HTTP/2.
+				 *
 				 * @param sid       identifier of the stream (always STREAM_ID)
 				 * @param buffer    buffer of the data of the body of the message
 				 * @param size      size of the data of the body of the message
@@ -822,12 +893,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the pull source of the data of the body of a message (for the big bodies without a superfluous copy)
+				 *
 				 * @details An alternative to sendData: the parser itself requests the data from the source
 				 *          exactly then when there is a place in the output buffer. The source fills
 				 *          the buffer (not more than cap octets), sets eof = true at the reaching of the end
 				 *          of the body and returns the number of the written octets, or -1 at an error.
 				 *          The identifier of the stream for HTTP/1.x is always equal to STREAM_ID -
 				 *          the signature is universal with HTTP/2.
+				 *
 				 * @param sid    identifier of the stream (always STREAM_ID)
 				 * @param buffer buffer for the filling
 				 * @param cap    capacity of the buffer
@@ -854,10 +927,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the callback function for the processing of the headers or of the trailers of a message
+				 *
 				 * @note The headers and the trailers of a message are processed identically, therefore
 				 *       one and the same type of the callback function is used. The name and the value of a header
 				 *       are valid ONLY for the time of the call. The identifier of the stream for HTTP/1.x
 				 *       is always equal to STREAM_ID - the signature is universal with HTTP/2.
+				 *
 				 * @param sid   identifier of the stream (always STREAM_ID)
 				 * @param name  name of the header
 				 * @param value value of the header (without the external OWS)
@@ -887,7 +962,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -920,7 +994,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -949,7 +1022,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -994,7 +1066,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1033,21 +1104,22 @@ namespace awh {
 					bool sourceEof;
 					/**
 					 * \~russian
-					 * Признак того, что pull-источник данных исполняется прямо сейчас
+					 * @brief Признак того, что pull-источник данных исполняется прямо сейчас
 					 *
 					 * @details Пока источник исполняется, объект функции принадлежит своему
 					 *          же вызову: его уничтожение освободило бы память под ногами
 					 *          исполняющегося кода. Признак закрывает все пути к такому
 					 *          уничтожению - назначение нового источника, подготовку
-					 *          отправителя и полную очистку объекта
+					 *          отправителя и полную очистку объекта.
 					 *
 					 * \~english
-					 * Flag of the pull source of the data being executed right now
+					 * @brief Flag of the pull source of the data being executed right now
+					 *
 					 * @details While the source is being executed, the object of the function belongs to its
 					 *          own call: its destruction would free the memory under the feet of the
 					 *          executing code. The flag closes all the ways to such a
 					 *          destruction - the assignment of a new source, the preparation
-					 *          of the sender and the full clearing of the object
+					 *          of the sender and the full clearing of the object.
 					 *
 					 * \~
 					 */
@@ -1075,14 +1147,15 @@ namespace awh {
 					 * @details Существует, чтобы отдаваемая область не могла быть перемещена
 					 *          реентрантной дозаписью из функции обратного вызова записи.
 					 *          Между передачами буферы обмениваются местами - выделенная
-					 *          память переиспользуется и не освобождается
+					 *          память переиспользуется и не освобождается.
 					 *
 					 * \~english
 					 * @brief Buffer of the octets issued to the network layer at the current moment
+					 *
 					 * @details It exists so that the issued area could not be moved
 					 *          by a reentrant appending from the callback function of the writing.
 					 *          Between the transmissions the buffers exchange places - the allotted
-					 *          memory is reused and is not freed
+					 *          memory is reused and is not freed.
 					 *
 					 * \~
 					 */
@@ -1092,7 +1165,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1185,7 +1257,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1205,15 +1276,16 @@ namespace awh {
 				 *          обратного вызова, и заставляет parse() немедленно вернуть
 				 *          управление. Без него цикл разбора продолжил бы читать
 				 *          оставшиеся байты уже обнулённым конечным автоматом и принял
-				 *          бы середину текущего сообщения за начало следующего
+				 *          бы середину текущего сообщения за начало следующего.
 				 *
 				 * \~english
 				 * @brief Flag of a reset of the parser during an active parsing
+				 *
 				 * @details It is raised by the methods reset() and clear() called from a callback
 				 *          function and forces parse() to return the control immediately.
 				 *          Without it the cycle of the parsing would continue to read
 				 *          the remaining octets already by a zeroed finite automaton and would take
-				 *          the middle of the current message for the beginning of the next one
+				 *          the middle of the current message for the beginning of the next one.
 				 *
 				 * \~
 				 */
@@ -1267,7 +1339,7 @@ namespace awh {
 				 *
 				 * @details Имя и значение передаются представлениями: посимвольный разбор
 				 *          подаёт их из своих накопителей, быстрый путь - прямо из входного
-				 *          буфера. Хвостовые OWS значения отсекаются методом самостоятельно
+				 *          буфера. Хвостовые OWS значения отсекаются методом самостоятельно.
 				 *
 				 * @param name  название заголовка
 				 * @param value значение заголовка
@@ -1275,9 +1347,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the completion of the parsing of the current header/trailer
+				 *
 				 * @details The name and the value are transmitted by the representations: the character-by-character parsing
 				 *          supplies them from its accumulators, the fast path - right from the input
-				 *          buffer. The trailing OWS of the value are cut off by the method itself
+				 *          buffer. The trailing OWS of the value are cut off by the method itself.
+				 *
 				 * @param name  name of the header
 				 * @param value value of the header
 				 * @return      result of the processing (false - the parsing is interrupted)
@@ -1296,7 +1370,7 @@ namespace awh {
 				 *          безусловно корректную строку: любое отклонение (неполная
 				 *          строка, недопустимый символ, превышение лимита, obs-fold)
 				 *          возвращает управление посимвольному разбору, который и
-				 *          зафиксирует ошибку в положенном месте
+				 *          зафиксирует ошибку в положенном месте.
 				 *
 				 * @param data указатель на входные данные
 				 * @param size размер входных данных
@@ -1304,6 +1378,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a whole line of a header out of the input buffer
+				 *
 				 * @details The fast path of the parsing of a block of the headers: when a line of a header
 				 *          is entirely present in the input buffer, its name and value
 				 *          are issued by the representations right into the input data - without
@@ -1311,7 +1386,8 @@ namespace awh {
 				 *          an unconditionally correct line: any deviation (an incomplete
 				 *          line, an inadmissible character, an exceeding of a limit, an obs-fold)
 				 *          returns the control to the character-by-character parsing which
-				 *          will fix the error in the due place
+				 *          will fix the error in the due place.
+				 *
 				 * @param data pointer to the input data
 				 * @param size size of the input data
 				 * @return     number of the consumed octets or 0, if the fast path is inapplicable
@@ -1332,7 +1408,7 @@ namespace awh {
 				 *          одиночный LF, иное написание версии, лишние пробелы,
 				 *          недопустимый символ, превышение лимита) возвращает
 				 *          управление посимвольному разбору, который и зафиксирует
-				 *          ошибку в положенном месте
+				 *          ошибку в положенном месте.
 				 *
 				 * @param data указатель на входные данные
 				 * @param size размер входных данных
@@ -1340,6 +1416,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the parsing of a whole starting line of an answer out of the input buffer
+				 *
 				 * @details The fast path of the parsing of the starting line of an answer: when the line
 				 *          is entirely present in the input buffer, the literal of the version
 				 *          is compared by a single comparison, while the status code and the explanation
@@ -1349,7 +1426,8 @@ namespace awh {
 				 *          a single LF, another spelling of the version, superfluous spaces,
 				 *          an inadmissible character, an exceeding of a limit) returns
 				 *          the control to the character-by-character parsing which will fix
-				 *          the error in the due place
+				 *          the error in the due place.
+				 *
 				 * @param data pointer to the input data
 				 * @param size size of the input data
 				 * @return     number of the consumed octets or 0, if the fast path is inapplicable
@@ -1365,6 +1443,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the completion of the parsing of the starting line (a request-line/status-line)
+				 *
 				 * @return result of the processing (false - the parsing is interrupted)
 				 *
 				 * \~
@@ -1399,6 +1478,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the absence of a body at an answer of a server (by the status code and the method of the request)
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -1413,6 +1493,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the fixation of an error of the parsing (the error code, the resulting status and a record into the log)
+				 *
 				 * @param error error code of the parsing
 				 *
 				 * \~
@@ -1428,6 +1509,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the transmission of the outgoing octets to the network layer through the callback function of the writing
+				 *
 				 * @details If the function of the writing is not set - the octets remain in the internal
 				 *          buffer until the selection through pending()/consumePending().
 				 *
@@ -1442,6 +1524,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the logical volume of the not yet sent outgoing octets
+				 *
 				 * @return volume of the not sent outgoing octets
 				 *
 				 * \~
@@ -1459,8 +1542,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the loading of the output buffer from the pull source of the data (if it is given)
+				 *
 				 * @details The source writes directly into the output buffer (without an intermediate copy),
 				 *          the framing of the body is applied to every obtained portion.
+				 *
 				 * @return number of the octets of the body obtained from the source
 				 *
 				 * \~
@@ -1478,6 +1563,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the pumping of the pull source of the data into the network
+				 *
 				 * @details In the push mode (the callback function of the writing is set) it pumps
 				 *          the source up to the end of the body or up to a temporary absence of the data.
 				 *          In the pull mode it fills the output buffer up to the high-water once -
@@ -1516,6 +1602,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the framing and of the writing of a portion of the body into the output buffer
+				 *
 				 * @param buffer buffer of the data of the body
 				 * @param size   size of the data of the body
 				 *
@@ -1533,6 +1620,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the call of the callback function of the processing of the phase of the parsing
+				 *
 				 * @param phase phase of the parsing of the HTTP message
 				 * @param part  part of the message
 				 * @return      result of the processing (false - the parsing is interrupted with the error ABORTED)
@@ -1550,6 +1638,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the call of the callback function of the processing of the boundaries of the chunks
+				 *
 				 * @param phase phase of the parsing of the chunk
 				 * @param size  size of the data of the chunk
 				 * @return      result of the processing (false - the parsing is interrupted with the error ABORTED)
@@ -1567,6 +1656,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the call of the callback function of the processing of the provider of the headers of a message
+				 *
 				 * @param provider  object of the provider of the headers of the message (a nullptr for the trailers)
 				 * @param endStream flag of the completion of the message (there will be no body)
 				 * @return          result of the processing (false - the parsing is interrupted with the error ABORTED)
@@ -1584,6 +1674,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the interpretation of the header Connection
+				 *
 				 * @param begin beginning of the value of the header
 				 * @param end   end of the value of the header
 				 *
@@ -1597,7 +1688,7 @@ namespace awh {
 				 * @details Проверяется отсутствие пробельных символов внутри значения.
 				 *          Полная грамматика uri-host не разбирается намеренно: она
 				 *          допускает и IP-литералы, и интернационализированные имена,
-				 *          и отвергать по ней означало бы ломать законный трафик
+				 *          и отвергать по ней означало бы ломать законный трафик.
 				 *
 				 * @note Исход возвращается наружу, как и у Content-Length: негодное
 				 *       значение прерывает обработку поля до вызова функции обратного
@@ -1611,15 +1702,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the interpretation of the header Host
+				 *
 				 * @details The absence of the space characters inside the value is checked.
 				 *          The full grammar of a uri-host is not parsed deliberately: it
 				 *          admits both the IP literals and the internationalized names,
-				 *          and to reject by it would mean to break the lawful traffic
+				 *          and to reject by it would mean to break the lawful traffic.
+				 *
 				 * @note The outcome is returned outside, as at the Content-Length: an unsuitable
 				 *       value interrupts the processing of the field before the call of the callback
 				 *       function of the headers. Otherwise the calling side would get
 				 *       a knowingly broken header and would learn about its unsuitability only by
 				 *       the result of the parsing - a proxy would have managed to pass it onward
+				 *
 				 * @param begin beginning of the value of the header
 				 * @param end   end of the value of the header
 				 * @return      result of the interpretation
@@ -1640,7 +1734,7 @@ namespace awh {
 				 *          Сверяются имя узла без учёта регистра и порт с подстановкой
 				 *          стандартного для схемы: "anyks.com" и "anyks.com:80" при схеме
 				 *          http обозначают один узел. Полная грамматика URI не разбирается -
-				 *          она принадлежит слою URI, а не сборщику сообщений
+				 *          она принадлежит слою URI, а не сборщику сообщений.
 				 *
 				 * @param begin начало значения заголовка Host
 				 * @param end   конец значения заголовка Host
@@ -1648,6 +1742,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the comparison of the addressee of the header Host with the addressee of the target of the request
+				 *
 				 * @details A target in the absolute-form carries the addressee itself, and then in a request there
 				 *          turn out to be two of them. A receiver is prescribed to take the addressee from the target and
 				 *          to ignore the header (RFC 9112 §3.2.2), while a client - to send
@@ -1657,7 +1752,8 @@ namespace awh {
 				 *          The name of the node is compared without the account of the case and the port with a substitution
 				 *          of the standard one for the scheme: "anyks.com" and "anyks.com:80" at the scheme
 				 *          http designate one node. The full grammar of a URI is not parsed -
-				 *          it belongs to the layer of the URI rather than to the assembler of the messages
+				 *          it belongs to the layer of the URI rather than to the assembler of the messages.
+				 *
 				 * @param begin beginning of the value of the header Host
 				 * @param end   end of the value of the header Host
 				 * @return      result of the comparison
@@ -1678,13 +1774,14 @@ namespace awh {
 				 *          сообщение на два, а молчаливое удаление поля меняет смысл того,
 				 *          что вызывающая сторона просила отправить - и о заголовке
 				 *          авторизации, и о заголовке кадрирования она узнала бы только
-				 *          по последствиям
+				 *          по последствиям.
 				 *
 				 * @param headers контейнер заголовков исходящего сообщения
 				 * @return        результат проверки
 				 *
 				 * \~english
 				 * @brief Method of checking the suitability of the fields of an outgoing message for the sending
+				 *
 				 * @details The names of the fields are obliged to be tokens, the values - to consist only
 				 *          of HTAB / SP / VCHAR / obs-text (RFC 9110 §5.1, §5.5). The checking
 				 *          is performed by the same tables by which the fields are parsed at the
@@ -1693,7 +1790,8 @@ namespace awh {
 				 *          into two, while a silent removal of a field changes the sense of that
 				 *          which the calling side has asked to send - both about a header
 				 *          of the authorization and about a header of the framing it would learn only
-				 *          by the consequences
+				 *          by the consequences.
+				 *
 				 * @param headers container of the headers of the outgoing message
 				 * @return        result of the checking
 				 *
@@ -1709,19 +1807,21 @@ namespace awh {
 				 *          проверяется наличие заголовка Host у запроса HTTP/1.1
 				 *          (RFC 9110 §7.2). Непригодная стартовая строка отвергает сообщение:
 				 *          заменить её нечем, а отправленное сообщение получатель обязан
-				 *          отвергнуть либо прочитает как два разных
+				 *          отвергнуть либо прочитает как два разных.
 				 *
 				 * @param headers контейнер заголовков исходящего сообщения
 				 * @return        результат проверки
 				 *
 				 * \~english
 				 * @brief Method of checking the suitability of the starting line of an outgoing message for the sending
+				 *
 				 * @details At a request the method and the target are checked (RFC 9112 §3), at an answer - the status
 				 *          code and the explanation to it (RFC 9112 §4). Additionally
 				 *          the presence of the header Host at a request of HTTP/1.1 is checked
 				 *          (RFC 9110 §7.2). An unsuitable starting line rejects the message:
 				 *          there is nothing to replace it with, while a sent message the receiver is obliged
-				 *          to reject or will read as two different ones
+				 *          to reject or will read as two different ones.
+				 *
 				 * @param headers container of the headers of the outgoing message
 				 * @return        result of the checking
 				 *
@@ -1734,16 +1834,18 @@ namespace awh {
 				 *
 				 * @details Значение разбирается как список: клиент вправе прислать
 				 *          "100-continue" в любом регистре и в сопровождении других
-				 *          ожиданий, а также с параметрами после ";"
+				 *          ожиданий, а также с параметрами после ";".
 				 *
 				 * @param begin начало значения заголовка
 				 * @param end   конец значения заголовка
 				 *
 				 * \~english
 				 * @brief Method of the interpretation of the header Expect
+				 *
 				 * @details The value is parsed as a list: a client is entitled to send
 				 *          a "100-continue" in any case and in an accompaniment of other
-				 *          expectations, and also with the parameters after a ";"
+				 *          expectations, and also with the parameters after a ";".
+				 *
 				 * @param begin beginning of the value of the header
 				 * @param end   end of the value of the header
 				 *
@@ -1760,6 +1862,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the interpretation of the header Content-Length
+				 *
 				 * @param begin beginning of the value of the header
 				 * @param end   end of the value of the header
 				 * @return      result of the interpretation
@@ -1776,6 +1879,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the interpretation of the header Transfer-Encoding (accumulatively over several headers)
+				 *
 				 * @param begin beginning of the value of the header
 				 * @param end   end of the value of the header
 				 *
@@ -1813,12 +1917,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Rule of the belonging of a field to the functions of the life cycle
+				 *
 				 * @details Every field of the object belongs to exactly one of the three categories, and
 				 *          the category determines which functions are obliged to touch it. The rule
 				 *          is written here because its violation is visible in not a single
 				 *          separately taken method: a field is added into the object, while to enter it into
 				 *          the needed function is forgotten, and the object works with the settings which
 				 *          have not been given to it, or loses the data by the same ones:
+				 *
 				 *          - the setting of the connection (the limits, the protocol of the work, the thresholds of the output
 				 *            buffer, the volume of the pumping of the source, the callback functions):
 				 *            is carried over by clone(), is returned to the default by clear(), reset()
@@ -1832,6 +1938,7 @@ namespace awh {
 				 *            the accumulators, the statistics, the provider, the method of the expected answer):
 				 *            is reset by reset(), and therefore by clear() as well - it calls reset()
 				 *            first of all.
+				 *
 				 *          To check the carrying over of a setting is due by the behaviour rather than by a
 				 *          getter: a coincidence of the values does not mean that the setting is applied.
 				 *
@@ -1849,6 +1956,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of a full clearing of all the data of the parser
+				 *
 				 * @details Besides the reset of the state of the parsing it returns the limits of the safety and
 				 *          the protocol of the work to the values by default, fully resets
 				 *          the state of the sending together with the thresholds of the output buffer and removes
@@ -1870,6 +1978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reset of the parser for the parsing of the next message in the same connection
+				 *
 				 * @details A cheap reset between the messages (keep-alive/pipelining): it preserves the limits
 				 *          of the safety and the set callback functions, the provider of the headers
 				 *          is not recreated but cleared (the allotted memory is reused).
@@ -1905,6 +2014,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the method of the request to which the expected answer corresponds
+				 *
 				 * @details It is used ONLY for the direction RESPONSE: the parser of an answer cannot itself
 				 *          learn to which request the answer has come, while the method of the request influences the framing
 				 *          of the body (an answer to a HEAD contains a Content-Length but has no body; a successful 2xx
@@ -1914,12 +2024,14 @@ namespace awh {
 				 *          It is reset to NONE at reset() - set it anew before every answer
 				 *          in a keep-alive/pipeline. By a cloning it is carried over on a par with the protocol
 				 *          of the work and the limits.
+				 *
 				 * @note The preparation of the sender for the next message (resetSender) does NOT reset
 				 *       the method: it does not touch the state of the parsing, while the method belongs to
 				 *       both paths at once. In a pipeline of the answers this means that a once set
 				 *       HEAD or CONNECT will continue to be in force on the following answers as well -
 				 *       set the method anew before every one of them, otherwise an ordinary answer
 				 *       will turn out to be assembled without a body or as a tunnel.
+				 *
 				 * @param method method of the request of the client
 				 *
 				 * \~
@@ -1934,6 +2046,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the protocol with which the parser works
+				 *
 				 * @return protocol of the work of the parser
 				 *
 				 * \~
@@ -1971,6 +2084,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the protocol with which the parser works
+				 *
 				 * @details The parser speaks only HTTP/1.0 and HTTP/1.1, therefore
 				 *          only the values of this family are admissible: HTTP1 - a direct
 				 *          connection with a node, PROXY1 - a connection with a proxy server,
@@ -1980,6 +2094,7 @@ namespace awh {
 				 *          a silent acceptance of such an indication would create at the calling
 				 *          side a false notion of what is happening.
 				 *          By default HTTP1 is set.
+				 *
 				 * @note The modes PROXY1 and WEBSOCKET1 toughen the framing: a node
 				 *       passing a message onward along the chain, and a connection which
 				 *       is to have a switching of the protocol, are obliged to reject that the boundary
@@ -1993,6 +2108,7 @@ namespace awh {
 				 *       after the empty line of the answer 101 the stream of a new protocol begins,
 				 *       and an announced body makes the point of the switching a subject of a guess.
 				 *       The details are in the description of limits_t
+				 *
 				 * @param proto protocol of the work of the parser
 				 *
 				 * \~
@@ -2012,10 +2128,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of cloning the object of the parser
+				 *
 				 * @details The clone gets the same direction of the traffic, protocol of the work, limits
 				 *          of the safety, method of the expected answer, callback functions and
 				 *          thresholds of the output buffer, but a clean state of the parsing
 				 *          («a factory with the same settings»).
+				 *
 				 * @return copy of the object of the parser
 				 *
 				 * \~
@@ -2040,6 +2158,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of notifying the parser about the completion of the stream of the data (the closing of the connection)
+				 *
 				 * @details It is required for the messages the body of which is framed by the closing of the connection:
 				 *          the answers of HTTP/1.0 and the answers without a Content-Length and without a Transfer-Encoding: chunked.
 				 *          Such messages have no marker of the end of the body in the protocol - the end is determined
@@ -2108,6 +2227,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the data
+				 *
 				 * @details It consumes as many octets as it has been able to and returns their number.
 				 *          The resulting status is necessary to control by the method status():
 				 *          - PARTIAL:  the data is accepted, the message is not completed - more octets are needed;
@@ -2134,12 +2254,14 @@ namespace awh {
 				 *          belonged to the class 5xx, - that is to accept the message and to frame
 				 *          the body by the usual rules. The substitution of the class remains at the calling
 				 *          side: the parser does not know what an answer with such a code is for it.
+				 *
 				 * @note The method is not a reentrant one: to call it repeatedly on the same object
 				 *       from a callback function is inadmissible - a nested parsing would move
 				 *       the same finite automaton, and the external call would continue by a state
 				 *       which it does not expect. To supply the following data, wait for the return
 				 *       from parse(). The methods of the side of the sending from the callback functions
 				 *       are allowed: the output buffer withstands a reentrant appending
+				 *
 				 * @note The reset of the parser by the methods reset() and clear() from a callback function
 				 *       is allowed and immediately interrupts the parsing: the method returns the number of the octets
 				 *       consumed before the reset, with the status PARTIAL and without an error code.
@@ -2148,6 +2270,7 @@ namespace awh {
 				 *       the calling side is obliged either to discard the tail or to close
 				 *       the connection. To interrupt the parsing without a reset of the state, return
 				 *       false from the callback function - this gives the error ABORTED
+				 *
 				 * @param buffer buffer of the data for the parsing
 				 * @param size   size of the data for the parsing
 				 * @return       number of the processed octets of the data
@@ -2164,6 +2287,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error code of the parsing
+				 *
 				 * @return error code
 				 *
 				 * \~
@@ -2177,6 +2301,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the human-readable name of the current error of the parsing
+				 *
 				 * @return name of the current error of the parsing
 				 *
 				 * \~
@@ -2191,6 +2316,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the human-readable name of an error code
+				 *
 				 * @param error error code of the parsing
 				 * @return      name of the error code
 				 *
@@ -2206,6 +2332,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limits of the safety
+				 *
 				 * @return limits of the safety
 				 *
 				 * \~
@@ -2219,6 +2346,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the limits of the safety
+				 *
 				 * @param limits limits of the safety
 				 *
 				 * \~
@@ -2233,6 +2361,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the parsed message
+				 *
 				 * @return parsed message
 				 *
 				 * \~
@@ -2262,10 +2391,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reset of the state of the sending for the next message in the same connection
+				 *
 				 * @details It prepares the sender for the next message (keep-alive): it resets
 				 *          the framing, the source of the data and the flags, but does NOT touch the not sent
 				 *          remainder of the output buffer. The state of the parsing is not affected -
 				 *          for it reset() is used.
+				 *
 				 * @note An uncompleted outgoing message cancels the preparation: the reset would remove
 				 *       the flag of the completeness, and the next sendHeaders would pass by the check
 				 *       of an uncompleted message - its block of the headers would lie down right into a foreign
@@ -2274,6 +2405,7 @@ namespace awh {
 				 *       of the previous one the receiver has nothing to determine with, and the connection is subject to
 				 *       a closing. A full reset of the object for a repeated use
 				 *       is performed by the method clear.
+				 *
 				 * @note A call from the pull source of the data is cancelled: the preparation would destroy
 				 *       the object of the function whence the call has come.
 				 *
@@ -2329,10 +2461,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assignment of the pull source of the data of the body of a message
+				 *
 				 * @details The source may be assigned both before the call of sendHeaders and after it -
 				 *          in both cases it relates to the current (not yet sent to the end)
 				 *          outgoing message. If the previous message is already completed,
 				 *          the method itself prepares the sender for the next message.
+				 *
 				 * @note The trailers are incompatible with a pull source: the source completes the body itself
 				 *       at the reaching of the end of the data, and there is nothing to append to a completed message
 				 *       any more. A block of the trailers is discarded with a record into the log both after
@@ -2341,12 +2475,14 @@ namespace awh {
 				 *       remainder, and the receiver would take a truncated message for a full one.
 				 *       If the trailers are needed - issue the body by the method sendData without closing
 				 *       the message by the flag endStream, and complete it by a block of the trailers.
+				 *
 				 * @note From its own call the source cannot be destroyed: the assignment of a new
 				 *       source, the preparation of the sender by the method resetSender and the full clearing
 				 *       of the object by the method clear are cancelled with a record into the log while the source
 				 *       is being executed - otherwise the object of the function would be destroyed under the feet of the
 				 *       executing code. For a source which has nothing more to issue,
 				 *       it suffices to declare the end of the body.
+				 *
 				 * @note The source and the method sendData are the mutually exclusive ways of the supply of one
 				 *       and the same body. While the source is not exhausted, the portions transmitted into
 				 *       sendData are discarded with a record into the log: they would stand as foreign
@@ -2356,6 +2492,7 @@ namespace awh {
 				 *       the end of the data, sendData accepts the body again - by this the
 				 *       remainder is sent, if the source has completed earlier than the announced
 				 *       Content-Length.
+				 *
 				 * @note At the framing by a fixed size the source completes the body only
 				 *       at the exhaustion of the announced Content-Length. The flag of the end of the data
 				 *       set earlier does not complete the message: onto the wire a truncated
@@ -2364,6 +2501,7 @@ namespace awh {
 				 *       is removed with a record into the log, while the message remains uncompleted - the remainder
 				 *       of the announced volume may be sent by the method sendData or the connection may be closed.
 				 *       The same policy is in force on the path sendData as well.
+				 *
 				 * @param source pull source of the data of the body
 				 *
 				 * \~
@@ -2382,12 +2520,13 @@ namespace awh {
 				 *          Учёт способности продвинуться обязателен - иначе источник,
 				 *          назначенный до отправки заголовков, либо источник сообщения, тело
 				 *          которого кадрировать нечем, удерживали бы признак истинным навсегда
-				 *          и цикл дозагрузки крутился бы вхолостую
+				 *          и цикл дозагрузки крутился бы вхолостую.
 				 *
 				 * @return признак незавершённой отправки тела
 				 *
 				 * \~english
 				 * @brief Method of getting the flag of an uncompleted sending of the body from the pull source
+				 *
 				 * @details It is true while the source of the data is assigned, its body is not exhausted and
 				 *          the next pumping is capable of advancing: the headers are sent,
 				 *          the message is not completed and there is something to frame its body with. Exactly this
@@ -2396,7 +2535,8 @@ namespace awh {
 				 *          The account of the capability of advancing is obligatory - otherwise a source
 				 *          assigned before the sending of the headers, or a source of a message the body
 				 *          of which there is nothing to frame with, would hold the flag true forever
-				 *          and the cycle of the loading would spin idly
+				 *          and the cycle of the loading would spin idly.
+				 *
 				 * @return flag of an uncompleted sending of the body
 				 *
 				 * \~
@@ -2417,12 +2557,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the continuation of the sending of the body from the pull source of the data
+				 *
 				 * @details In a single pumping out of the source not more than the limit is pumped,
 				 *          given by the method pumpLimit - a body of an arbitrary size does not
 				 *          hold the control inside a single call. The network layer is obliged
 				 *          to call the method at the readiness of the socket for the writing while it returns
 				 *          a truth. In the pull model the loading is performed automatically at the
 				 *          selection consumePending, and to call the method is not required.
+				 *
 				 * @return flag of the body of the source not being exhausted yet
 				 *
 				 * \~
@@ -2436,6 +2578,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the configuration of the volume of a single pumping of the pull source of the data
+				 *
 				 * @param size largest volume of the body pumped out in a single pumping
 				 *
 				 * \~
@@ -2453,13 +2596,14 @@ namespace awh {
 				 *          последней порции - размер шестнадцатеричного заголовка чанка и два
 				 *          CRLF, не более десятка байт независимо от размера тела. Превышение
 				 *          не накапливается: следующая порция отмеряется от фактического
-				 *          заполнения и при исчерпанном пороге равна нулю
+				 *          заполнения и при исчерпанном пороге равна нулю.
 				 *
 				 * @param high ёмкость выходного буфера отправки (high-water)
 				 * @param low  порог сигнала writable (low-water)
 				 *
 				 * \~english
 				 * @brief Method of the configuration of the thresholds of the output buffer of the sending
+				 *
 				 * @details The upper threshold controls the back pressure and is not a rigid
 				 *          capacity of the buffer: up to the threshold the octets of the body are measured out, while the marking
 				 *          of the framing chunked is appended over the measured out. Therefore a
@@ -2467,7 +2611,8 @@ namespace awh {
 				 *          of the last portion - the size of the hexadecimal header of a chunk and two
 				 *          CRLFs, not more than a dozen octets independently of the size of the body. The exceeding
 				 *          does not accumulate: the next portion is measured out from the actual
-				 *          filling and at an exhausted threshold is equal to a zero
+				 *          filling and at an exhausted threshold is equal to a zero.
+				 *
 				 * @param high capacity of the output buffer of the sending (high-water)
 				 * @param low  threshold of the signal writable (low-water)
 				 *
@@ -2556,6 +2701,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the sending of a block of the headers (a request/an answer/the trailers) of an outgoing message
+				 *
 				 * @details The way of the framing of the body is chosen by the headers of the container:
 				 *          - a Content-Length is set - a body of a fixed size (IDENTITY);
 				 *            an announced zero size completes the message independently of
@@ -2627,6 +2773,7 @@ namespace awh {
 				 *            after the empty line (§6.3 p.2): the announcements of the framing are removed
 				 *            from the wire (§6.2), while the octets transmitted further go away as they are,
 				 *            without a framing.
+				 *
 				 * @param headers   container of the headers (the provider of the container sets the starting line)
 				 * @param endStream flag of the completion of the message (there will be no body)
 				 *
@@ -2654,6 +2801,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the transmission of a part of the body of a message for the sending (the push model, a bounded buffer)
+				 *
 				 * @details It copies into the output buffer as many octets as fit up to the high-water,
 				 *          and returns this number (0..size). If less than size has been returned - the buffer
 				 *          is filled: suspend the issue and wait for the callback function
@@ -2663,6 +2811,7 @@ namespace awh {
 				 *          endStream set ahead of the time is ignored with a record
 				 *          into the log - otherwise on the wire a truncated body would turn out to be, while the receiver
 				 *          would hang in the waiting for the lacking octets.
+				 *
 				 * @param buffer    buffer of the data of the body
 				 * @param size      size of the data of the body
 				 * @param endStream flag of the completion of the message
@@ -2685,10 +2834,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the not yet sent outgoing octets (the pull model)
+				 *
 				 * @details The view is valid until the next call of any method of the parser.
 				 *          After the writing into the socket free the sent part by the method
 				 *          consumePending(). At a set callback function
 				 *          of the writing the buffer is emptied automatically.
+				 *
 				 * @return not yet sent outgoing octets (a zero-copy view into the internal buffer)
 				 *
 				 * \~
@@ -2702,6 +2853,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the release of the sent octets from the outgoing buffer (amortized O(1))
+				 *
 				 * @param size number of the sent octets
 				 *
 				 * \~
@@ -2716,6 +2868,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the processing of a fragment of the body of a message
+				 *
 				 * @param callback callback function for the processing of a fragment of the body of a message
 				 *
 				 * \~
@@ -2729,6 +2882,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the processing of the phase of the parsing of an HTTP message
+				 *
 				 * @param callback callback function for the processing of the phase of the parsing of an HTTP message
 				 *
 				 * \~
@@ -2742,6 +2896,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the processing of the boundaries of the chunks
+				 *
 				 * @param callback callback function for the processing of the boundaries of the chunks
 				 *
 				 * \~
@@ -2755,6 +2910,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function of the writing of the outgoing octets into the network
+				 *
 				 * @param callback callback function of the writing of the outgoing octets into the network
 				 *
 				 * \~
@@ -2768,6 +2924,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the processing of the headers or of the trailers of a message
+				 *
 				 * @param callback callback function for the processing of the headers or of the trailers of a message
 				 *
 				 * \~
@@ -2781,6 +2938,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the processing of the provider of the headers of a message
+				 *
 				 * @param callback callback function for the processing of the provider of the headers of a message
 				 *
 				 * \~
@@ -2794,6 +2952,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function about the readiness to accept the data of the body
+				 *
 				 * @param callback callback function about the readiness to accept the data of the body
 				 *
 				 * \~
@@ -2817,6 +2976,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @note The object of the logging is obligatory: the parsing writes into it the reason
 				 *       of every refusal, and an empty pointer here means a dereferencing
 				 *       of a zero on the very first unsuitable message. A check before the writing
@@ -2825,6 +2985,7 @@ namespace awh {
 				 *       the parser has none at all: to pass an empty pointer is possible only explicitly.
 				 *       By this the parser differs from the container of the headers which is built
 				 *       even without the objects and therefore checks them itself
+				 *
 				 * @param direct direction of the traffic (a request/an answer)
 				 *
 				 * \~
@@ -2834,7 +2995,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
