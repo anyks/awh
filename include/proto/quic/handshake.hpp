@@ -55,7 +55,13 @@
 #include "../../sys/macro/suppress.hpp"
 
 /**
- * Предварительные объявления типов BoringSSL (реализация в handshake.cpp)
+ * \~russian
+ * @brief Предварительные объявления типов BoringSSL (реализация в handshake.cpp)
+ *
+ * \~english
+ * @brief Preliminary declarations of the BoringSSL types (the implementation is in handshake.cpp)
+ *
+ * \~
  */
 struct ssl_st;
 struct ssl_ctx_st;
@@ -63,7 +69,6 @@ struct ssl_ctx_st;
 /**
  * \~russian
  * @brief основное пространство имён
- *
  *
  * \~english
  * @brief main namespace
@@ -80,7 +85,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
 	 *
-	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
 	 *
@@ -88,7 +92,13 @@ namespace awh {
 	 */
 	namespace quic {
 		/**
-		 * Предварительное объявление класса доступа обратных вызовов BoringSSL
+		 * \~russian
+		 * @brief Предварительное объявление класса доступа обратных вызовов BoringSSL
+		 *
+		 * \~english
+		 * @brief Preliminary declaration of the class of the access to the callbacks of BoringSSL
+		 *
+		 * \~
 		 */
 		class HandshakeHook;
 
@@ -107,6 +117,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the QUIC cryptographic handshake (RFC 9001 §4)
+		 *
 		 * @details A machine of the TLS 1.3 handshake on top of the QUIC API of BoringSSL (SSL_QUIC_METHOD).
 		 *          Works without input-output (sans-IO): accepts the data of the CRYPTO frames
 		 *          through crypto(), accumulates the outgoing CRYPTO data by the encryption
@@ -171,7 +182,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -191,10 +201,19 @@ namespace awh {
 				bool _hasAlert;
 			private:
 				/**
-				 * Контекст TLS, настроенный вызывающим кодом. Настройка шифров, групп,
-				 * алгоритмов подписи, доверенных центров, списков отзыва и расширений
-				 * выполняется на нём целиком, поэтому собственных настроек криптографии
-				 * хендшейк не имеет. Владение контекстом остаётся за вызывающим кодом
+				 * \~russian
+				 * @brief Контекст TLS, настроенный вызывающим кодом. Настройка шифров, групп,
+				 *        алгоритмов подписи, доверенных центров, списков отзыва и расширений
+				 *        выполняется на нём целиком, поэтому собственных настроек криптографии
+				 *        хендшейк не имеет. Владение контекстом остаётся за вызывающим кодом
+				 *
+				 * \~english
+				 * @brief TLS context, tuned by the calling code. A tuning of the ciphers, the groups,
+				 *        the signature algorithms, the trusted centres, the revocation lists and the extensions
+				 *        is performed on it entirely, therefore the handshake has no own
+				 *        settings of the cryptography. An ownership of a context stays with the calling code
+				 *
+				 * \~
 				 */
 				ssl_ctx_st * _ctx;
 				// Объект TLS-соединения
@@ -203,10 +222,19 @@ namespace awh {
 				// Сериализованные локальные транспортные параметры
 				string _params;
 				/**
-				 * Контекст ранних данных: лимиты, под которые удалённый узел отправляет
-				 * ранние данные. Билет возобновления действителен только при совпадении
-				 * контекста, поэтому уникальные для соединения значения в него
-				 * не входят (RFC 9001 §4.6.1)
+				 * \~russian
+				 * @brief Контекст ранних данных: лимиты, под которые удалённый узел отправляет
+				 *        ранние данные. Билет возобновления действителен только при совпадении
+				 *        контекста, поэтому уникальные для соединения значения в него
+				 *        не входят (RFC 9001 §4.6.1)
+				 *
+				 * \~english
+				 * @brief Context of the early data: the limits under which the remote node sends
+				 *        the early data. A ticket of the resumption is valid only at a match of the
+				 *        context, therefore the values unique for a connection do not
+				 *        enter into it (RFC 9001 §4.6.1)
+				 *
+				 * \~
 				 */
 				string _early;
 				// Сериализованная сессия возобновления хендшейка (RFC 9001 §4.6)
@@ -222,7 +250,13 @@ namespace awh {
 				level_data_t _levels[LEVELS];
 			private:
 				/**
-				 * Дружественный класс доступа обратных вызовов BoringSSL QUIC API
+				 * \~russian
+				 * @brief Дружественный класс доступа обратных вызовов BoringSSL QUIC API
+				 *
+				 * \~english
+				 * @brief Friendly class of the access to the callbacks of the BoringSSL QUIC API
+				 *
+				 * \~
 				 */
 				friend class HandshakeHook;
 			private:
@@ -234,6 +268,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of advancing the TLS handshake
+				 *
 				 * @return result of the advancement (OK — the handshake continues or has been completed)
 				 *
 				 * \~
@@ -253,10 +288,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the negotiated ALPN protocol
+				 *
 				 * @note The negotiation of the ALPN is obligatory for QUIC (RFC 9001 §8.1).
 				 *       The list of the supported protocols is given on the TLS context,
 				 *       here the result of the negotiation with the identifier of the
 				 *       protocol from that list is issued
+				 *
 				 * @return negotiated ALPN protocol (an empty name — the negotiation has not been performed)
 				 *
 				 * \~
@@ -276,10 +313,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the resumable session of the handshake (RFC 9001 §4.6)
+				 *
 				 * @note The session becomes available after the reception of the resumption ticket,
 				 *       which the server sends already after the completion of the handshake.
 				 *       Having preserved it, the calling code resumes the connection with the same
 				 *       server and sends the early data without waiting for the handshake
+				 *
 				 * @return serialized session (empty — the session is unavailable)
 				 *
 				 * \~
@@ -298,9 +337,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the resumable session of the handshake (RFC 9001 §4.6)
+				 *
 				 * @note It is set before the beginning of the handshake and only on the client.
 				 *       The session is obliged to relate to the same server: the ticket is bound
 				 *       to its parameters, and a substitution will lead to a refusal of the resumption
+				 *
 				 * @param session serialized session
 				 * @return        result of the setting
 				 *
@@ -318,8 +359,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the acceptance of the early data by the remote node
+				 *
 				 * @note A refusal means that the sent early data has been lost and
 				 *       is subject to a repeated sending at the level of the application (RFC 9001 §4.6.2)
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -337,9 +380,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking a refusal of the early data by the remote node (RFC 9001 §4.6.2)
+				 *
 				 * @note A refusal is not a refusal of the handshake: it only means that
 				 *       the sent early data has been lost and is subject to a repeated
 				 *       sending after the completion of the handshake
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -358,8 +403,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local transport parameters (RFC 9000 §7.4)
+				 *
 				 * @note Called before the beginning of the handshake. The parameters are serialized
 				 *       and transmitted in the quic_transport_parameters extension
+				 *
 				 * @param params local transport parameters
 				 * @return       result of the setting (false — an error of the serialization)
 				 *
@@ -379,8 +426,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the transport parameters of the remote node (RFC 9000 §7.4)
+				 *
 				 * @note The parameters are available after the processing of the ClientHello by the server
 				 *       or of the EncryptedExtensions by the client
+				 *
 				 * @param params transport parameters of the remote node
 				 * @param error  transport error code
 				 * @return       result of the extraction (OK/INCOMPLETE/ERROR)
@@ -401,8 +450,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the derivation of the keys of the Initial level (RFC 9001 §5.2)
+				 *
 				 * @note The directions of the reading/writing are assigned according to the role of the endpoint:
 				 *       the client writes with the client keys and reads with the server ones, the server — the other way round
+				 *
 				 * @param dcid connection identifier of the recipient of the first Initial packet of the client
 				 * @return     result of the derivation (false — an error of the cryptographic library)
 				 *
@@ -423,10 +474,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of beginning the handshake
+				 *
 				 * @note All the settings (the ALPN, the SNI, the parameters, the certificate) must be
 				 *       set before the call. The client forms the ClientHello — the outgoing
 				 *       CRYPTO data will appear at the INITIAL level. The server only
 				 *       initializes the TLS stack and waits for the data through crypto()
+				 *
 				 * @return result of the beginning of the handshake (OK/ERROR)
 				 *
 				 * \~
@@ -447,9 +500,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the incoming data of the CRYPTO frames
+				 *
 				 * @note The data must be passed in the order of the offsets of the CRYPTO stream of the level
 				 *       (the assembly by the offsets is performed by the calling code). After the completion of the
 				 *       handshake it processes the post-handshake messages (NewSessionTicket)
+				 *
 				 * @param level encryption level of the packet with the CRYPTO frame
 				 * @param data  data of the CRYPTO frame
 				 * @param size  size of the data of the CRYPTO frame
@@ -468,6 +523,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of the outgoing CRYPTO data of a level
+				 *
 				 * @param level encryption level
 				 * @return      result of the check (true — there is data to be sent)
 				 *
@@ -486,8 +542,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the outgoing CRYPTO data of a level
+				 *
 				 * @note The data is passed to the calling code and is removed from the queue of the level.
 				 *       The calling code packs it into the CRYPTO frames, tracking the offsets
+				 *
 				 * @param level encryption level
 				 * @return      outgoing CRYPTO data of the level
 				 *
@@ -504,6 +562,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the keys of the protection of the outgoing packets of a level
+				 *
 				 * @param level encryption level
 				 * @return      keys of the protection of the packets or nullptr if the keys have not been derived yet
 				 *
@@ -519,6 +578,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the keys of the removal of the protection of the incoming packets of a level
+				 *
 				 * @param level encryption level
 				 * @return      keys of the protection of the packets or nullptr if the keys have not been derived yet
 				 *
@@ -539,8 +599,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of replacing the keys of an encryption level (RFC 9001 §6)
+				 *
 				 * @note Used by the layer of the connection at a key update:
 				 *       the keys of the APPLICATION level are replaced by the keys of the next phase
+				 *
 				 * @param level encryption level
 				 * @param read  keys of the removal of the protection of the incoming packets of the level
 				 * @param write keys of the protection of the outgoing packets of the level
@@ -560,8 +622,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of discarding the keys of an encryption level (RFC 9001 §4.9)
+				 *
 				 * @note The Initial keys are discarded after the setting of the Handshake keys,
 				 *       the Handshake keys — after the confirmation of the handshake
+				 *
 				 * @param level encryption level
 				 *
 				 * \~
@@ -576,6 +640,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the state of the handshake
+				 *
 				 * @return state of the handshake
 				 *
 				 * \~
@@ -592,8 +657,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the transport error code (RFC 9001 §4.8)
+				 *
 				 * @note At a fatal TLS alert it returns CRYPTO_ERROR + the code of the alert,
 				 *       at the other errors of the handshake — INTERNAL_ERROR
+				 *
 				 * @return transport error code (NO_ERROR — there is no error)
 				 *
 				 * \~
@@ -601,8 +668,15 @@ namespace awh {
 				error_t error() const noexcept;
 			public:
 				/**
-				 * Запрещаем копирование и перемещение (объект владеет TLS-соединением,
-				 * на которое BoringSSL хранит обратный указатель)
+				 * \~russian
+				 * @brief Запрещаем копирование и перемещение (объект владеет TLS-соединением,
+				 *        на которое BoringSSL хранит обратный указатель)
+				 *
+				 * \~english
+				 * @brief Forbid the copying and the moving (the object owns a TLS connection,
+				 *        onto which BoringSSL keeps a back pointer)
+				 *
+				 * \~
 				 */
 				Handshake(const Handshake &) = delete;
 				Handshake(Handshake &&) = delete;
@@ -623,10 +697,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @note The TLS context is obligatory: the whole configuration of the cryptography is performed
 				 *       on it by the means of the transport security module, therefore
 				 *       the handshake has no settings of its own. The context is obliged to
 				 *       outlive the object of the handshake
+				 *
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the security context
 				 *
@@ -636,7 +712,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

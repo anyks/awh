@@ -44,7 +44,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -59,7 +58,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
-	 *
 	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
@@ -78,6 +76,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the codec of the variable-length integers (RFC 9000 §16)
+		 *
 		 * @details The two high bits of the first octet encode the length of the number:
 		 *          00 — 1 octet (6 bits), 01 — 2 octets (14 bits),
 		 *          10 — 4 octets (30 bits), 11 — 8 octets (62 bits).
@@ -95,6 +94,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of determining the size of an encoded number in octets
+			 *
 			 * @param value number being encoded
 			 * @return      size in octets (1/2/4/8) or 0 if the number exceeds 2^62-1
 			 *
@@ -110,6 +110,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of determining the size of an encoded number by the first octet
+			 *
 			 * @param first first octet of the encoded number
 			 * @return      size of the number in octets (1/2/4/8)
 			 *
@@ -127,6 +128,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of reading a variable-length integer
+			 *
 			 * @param data  input buffer
 			 * @param size  bytes available
 			 * @param value read number
@@ -145,6 +147,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of writing a variable-length integer (the minimal encoding)
+			 *
 			 * @param output output buffer
 			 * @param value  number being written (no more than 2^62-1)
 			 * @return       number of the written octets or 0 if the number exceeds 2^62-1

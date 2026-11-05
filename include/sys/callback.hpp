@@ -62,7 +62,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -115,7 +114,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
@@ -131,6 +129,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the base function
+			 *
 			 * @tparam A signature of the function
 			 *
 			 * \~
@@ -164,6 +163,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param fn callback function to set
 				 *
 				 * \~
@@ -240,6 +240,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Header pointer extraction operator
+					 *
 					 * @return header pointer
 					 *
 					 * \~
@@ -256,6 +257,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Header dereference operator
+					 *
 					 * @return header value
 					 *
 					 * \~
@@ -273,6 +275,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Forward shift operator
+					 *
 					 * @return value of the current iterator
 					 *
 					 * \~
@@ -293,13 +296,13 @@ namespace awh {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+								log::print("%s", log::flag_t::CRITICAL, error.what());
 							#endif
 						}
 						// Возвращаем результат
@@ -313,6 +316,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Postfix forward shift operator
+					 *
 					 * @return value of the iterator before the shift
 					 *
 					 * \~
@@ -335,6 +339,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Iterator equality comparison operator
+					 *
 					 * @param other iterator to compare with
 					 * @return      result of the comparison
 					 *
@@ -353,6 +358,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Iterator inequality comparison operator
+					 *
 					 * @param other iterator to compare with
 					 * @return      result of the comparison
 					 *
@@ -371,6 +377,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param it  iterator to set
 					 *
 					 * \~
@@ -391,12 +398,13 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция обратного вызова при получении события установки или удаления функции
 			 *
-			 * @param флаг типа события
+			 * @param флаг          типа события
 			 * @param идентификатор функции
-			 * @param функция обратного вызова в чистом виде
+			 * @param функция       обратного вызова в чистом виде
 			 *
 			 * \~english
 			 * @brief Callback function on the receipt of an event of setting or removing a function
+			 *
 			 * @param the flag of the kind of the event
 			 * @param the identifier of the function
 			 * @param the callback function in its pure kind
@@ -413,6 +421,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of safely capturing two lock objects at once
+			 *
 			 * @tparam Fn type of the functionality performed under the captured locks
 			 *
 			 * \~
@@ -431,8 +440,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of safely capturing two lock objects at once
+			 *
 			 * @details The locks are captured in a deterministic order (by the address of the object),
 			 *          which rules out a deadlock on counter operations over two containers.
+			 *
 			 * @param first  first lock object
 			 * @param second second lock object
 			 * @param fn     functionality performed under the captured locks
@@ -474,6 +485,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of generating the identifier of a function
+			 *
 			 * @param name name of the function to generate the identifier from
 			 * @return     the generated identifier of the function
 			 *
@@ -504,13 +516,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем результат
@@ -525,6 +537,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the container for emptiness
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -544,6 +557,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the thread safety of the work
+			 *
 			 * @param mode flag of the thread safety mode
 			 *
 			 * \~
@@ -561,6 +575,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the dump of the callback functions
+			 *
 			 * @return we yield the built dump block of the container
 			 *
 			 * \~
@@ -577,6 +592,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the dump of the callback functions
+			 *
 			 * @param callbacks dump of the data of the callback functions
 			 *
 			 * \~
@@ -601,13 +617,13 @@ namespace awh {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+							log::print("%s", log::flag_t::CRITICAL, error.what());
 						#endif
 					}
 				}
@@ -640,13 +656,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -660,6 +676,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the presence of a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @return   result of the check
 			 *
@@ -679,9 +696,9 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 *
-			 *
 			 * \~english
 			 * @brief Method of checking the presence of a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     result of the check
 			 *
@@ -698,9 +715,9 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 *
-			 *
 			 * \~english
 			 * @brief Method of checking the presence of a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     result of the check
 			 *
@@ -717,9 +734,9 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 *
-			 *
 			 * \~english
 			 * @brief Method of checking the presence of a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     result of the check
 			 *
@@ -735,9 +752,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of checking the presence of a callback function
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -752,6 +769,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the presence of a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @return   result of the check
 			 *
@@ -774,6 +792,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of removing a callback function
+			 *
 			 * @param id identifier of the callback function
 			 *
 			 * \~
@@ -812,13 +831,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -829,9 +848,9 @@ namespace awh {
 			 *
 			 * @param name функция обратного вызова для удаления
 			 *
-			 *
 			 * \~english
 			 * @brief Method of removing a callback function
+			 *
 			 * @param name callback function to remove
 			 *
 			 * \~
@@ -846,9 +865,9 @@ namespace awh {
 			 *
 			 * @param name функция обратного вызова для удаления
 			 *
-			 *
 			 * \~english
 			 * @brief Method of removing a callback function
+			 *
 			 * @param name callback function to remove
 			 *
 			 * \~
@@ -863,9 +882,9 @@ namespace awh {
 			 *
 			 * @param name функция обратного вызова для удаления
 			 *
-			 *
 			 * \~english
 			 * @brief Method of removing a callback function
+			 *
 			 * @param name callback function to remove
 			 *
 			 * \~
@@ -882,9 +901,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of removing a callback function
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -898,6 +917,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of removing a callback function
+			 *
 			 * @param id identifier of the callback function
 			 *
 			 * \~
@@ -916,9 +936,9 @@ namespace awh {
 			 * @param id1 идентификатор первой функции
 			 * @param id2 идентификатор второй функции
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param id1 identifier of the first function
 			 * @param id2 identifier of the second function
 			 *
@@ -954,13 +974,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -972,9 +992,9 @@ namespace awh {
 			 * @param id2     идентификатор второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param id1     identifier of the first function
 			 * @param id2     identifier of the second function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1012,13 +1032,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -1031,6 +1051,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param storage storage of the functions the function should be obtained from
 			 *
 			 * \~
@@ -1058,13 +1079,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -1075,9 +1096,9 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1 name of the first function
 			 * @param name2 name of the second function
 			 *
@@ -1094,9 +1115,9 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1 name of the first function
 			 * @param name2 name of the second function
 			 *
@@ -1113,9 +1134,9 @@ namespace awh {
 			 * @param name1 название первой функции
 			 * @param name2 название второй функции
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1 name of the first function
 			 * @param name2 name of the second function
 			 *
@@ -1133,9 +1154,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of swapping the functions
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -1148,9 +1169,9 @@ namespace awh {
 			 * @param id1 идентификатор первой функции
 			 * @param id2 идентификатор второй функции
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param id1 identifier of the first function
 			 * @param id2 identifier of the second function
 			 *
@@ -1170,9 +1191,9 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1   name of the first function
 			 * @param name2   name of the second function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1191,9 +1212,9 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1   name of the first function
 			 * @param name2   name of the second function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1212,9 +1233,9 @@ namespace awh {
 			 * @param name2   название второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param name1   name of the first function
 			 * @param name2   name of the second function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1233,9 +1254,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of swapping the functions
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -1249,9 +1270,9 @@ namespace awh {
 			 * @param id2     идентификатор второй функции
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 *
-			 *
 			 * \~english
 			 * @brief Method of swapping the functions
+			 *
 			 * @param id1     identifier of the first function
 			 * @param id2     identifier of the second function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1275,6 +1296,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param id      identifier of the copied function
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        identifier of the added callback function
@@ -1332,13 +1354,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выводим результат установки функции обратного вызова
@@ -1353,9 +1375,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param id1     identifier of the copied function
 			 * @param id2     new identifier of the obtained function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1419,13 +1441,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выводим результат установки функции обратного вызова
@@ -1439,9 +1461,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a callback function in its pure form
+			 *
 			 * @param id       identifier of the function being set
 			 * @param callback callback function being set
 			 * @return         identifier of the added callback function
@@ -1491,13 +1513,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выходим из функции
@@ -1512,9 +1534,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name    name of the first function
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        identifier of the added callback function
@@ -1533,9 +1555,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name    name of the first function
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        identifier of the added callback function
@@ -1554,9 +1576,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name    name of the first function
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        identifier of the added callback function
@@ -1573,9 +1595,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of setting a function from one storage into the current one
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -1591,6 +1613,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param id      identifier of the copied function
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        identifier of the added callback function
@@ -1614,9 +1637,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name1   name of the copied function
 			 * @param name2   new name of the obtained function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1637,9 +1660,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name1   name of the copied function
 			 * @param name2   new name of the obtained function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1660,9 +1683,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param name1   name of the copied function
 			 * @param name2   new name of the obtained function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1680,9 +1703,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of setting a function from one storage into the current one
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -1697,9 +1720,9 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 * @return        идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a function from one storage into the current one
+			 *
 			 * @param id1     identifier of the copied function
 			 * @param id2     new identifier of the obtained function
 			 * @param storage storage of the functions the function should be obtained from
@@ -1723,9 +1746,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a callback function in its pure form
+			 *
 			 * @param name     name of the function being set
 			 * @param callback callback function being set
 			 * @return         identifier of the added callback function
@@ -1744,9 +1767,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a callback function in its pure form
+			 *
 			 * @param name     name of the function being set
 			 * @param callback callback function being set
 			 * @return         identifier of the added callback function
@@ -1765,9 +1788,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a callback function in its pure form
+			 *
 			 * @param name     name of the function being set
 			 * @param callback callback function being set
 			 * @return         identifier of the added callback function
@@ -1784,9 +1807,9 @@ namespace awh {
 			 *
 			 * @tparam T тип идентификатора функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of setting a callback function in its pure form
+			 *
 			 * @tparam T type of the identifier of the function
 			 *
 			 * \~
@@ -1800,9 +1823,9 @@ namespace awh {
 			 * @param callback устанавливаемая функция обратного вызова
 			 * @return         идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting a callback function in its pure form
+			 *
 			 * @param id       identifier of the function being set
 			 * @param callback callback function being set
 			 * @return         identifier of the added callback function
@@ -1826,6 +1849,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of obtaining a callback function
+			 *
 			 * @tparam T type of the signature of the function
 			 *
 			 * \~
@@ -1840,6 +1864,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of obtaining a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @return   the callback function if it exists
 			 *
@@ -1878,13 +1903,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем пустое значение
@@ -1897,9 +1922,9 @@ namespace awh {
 			 *
 			 * @tparam T тип сигнатуры функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of getting a callback function
+			 *
 			 * @tparam T type of the signature of the function
 			 *
 			 * \~
@@ -1912,9 +1937,9 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of getting a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     the requested callback function
 			 *
@@ -1930,9 +1955,9 @@ namespace awh {
 			 *
 			 * @tparam T тип сигнатуры функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of getting a callback function
+			 *
 			 * @tparam T type of the signature of the function
 			 *
 			 * \~
@@ -1945,9 +1970,9 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of getting a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     the requested callback function
 			 *
@@ -1963,9 +1988,9 @@ namespace awh {
 			 *
 			 * @tparam T тип сигнатуры функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of getting a callback function
+			 *
 			 * @tparam T type of the signature of the function
 			 *
 			 * \~
@@ -1978,9 +2003,9 @@ namespace awh {
 			 * @param name название функкции обратного вызова
 			 * @return     запрашиваемая функция обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of getting a callback function
+			 *
 			 * @param name name of the callback function
 			 * @return     the requested callback function
 			 *
@@ -1996,9 +2021,9 @@ namespace awh {
 			 *
 			 * @tparam T тип сигнатуры функции
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of getting a callback function
+			 *
 			 * @tparam T type of the signature of the function
 			 *
 			 * \~
@@ -2009,13 +2034,13 @@ namespace awh {
 			 * @brief Метод извлечения функции обратного вызова
 			 *
 			 * @param id идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 *
+			 * @return   запрашиваемая функция обратного вызова
 			 *
 			 * \~english
 			 * @brief Method of getting a callback function
+			 *
 			 * @param id identifier of the callback function
-			 * @return    the requested callback function
+			 * @return   the requested callback function
 			 *
 			 * \~
 			 */
@@ -2032,6 +2057,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of getting a callback function
+			 *
 			 * @tparam A type of the identifier of the function
 			 * @tparam B type of the signature of the function
 			 *
@@ -2043,13 +2069,13 @@ namespace awh {
 			 * @brief Метод извлечения функции обратного вызова
 			 *
 			 * @param id идентификатор функции обратного вызова
-			 * @return    запрашиваемая функция обратного вызова
-			 *
+			 * @return   запрашиваемая функция обратного вызова
 			 *
 			 * \~english
 			 * @brief Method of getting a callback function
+			 *
 			 * @param id identifier of the callback function
-			 * @return    the requested callback function
+			 * @return   the requested callback function
 			 *
 			 * \~
 			 */
@@ -2068,9 +2094,9 @@ namespace awh {
 			 *
 			 * @tparam T тип функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam T type of the callback function
 			 *
 			 * \~
@@ -2084,9 +2110,9 @@ namespace awh {
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @param fn callback function to add
 			 * @return   identifier of the added callback function
@@ -2134,13 +2160,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, "Memory allocation error");
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, "Memory allocation error");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, "Memory allocation error");
+						log::print("%s", log::flag_t::CRITICAL, "Memory allocation error");
 					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
@@ -2153,13 +2179,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выходим из функции
@@ -2174,9 +2200,9 @@ namespace awh {
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Func      callback function to set
 			 * @tparam Args      arguments of the callback function
@@ -2193,9 +2219,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name     name of the callback function
 			 * @param callback callback function to attach
 			 * @param args     arguments of the callback function
@@ -2221,9 +2247,9 @@ namespace awh {
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Func      callback function to set
 			 * @tparam Args      arguments of the callback function
@@ -2240,9 +2266,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name     name of the callback function
 			 * @param callback callback function to attach
 			 * @param args     arguments of the callback function
@@ -2262,9 +2288,9 @@ namespace awh {
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Func      callback function to set
 			 * @tparam Args      arguments of the callback function
@@ -2281,9 +2307,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name     name of the callback function
 			 * @param callback callback function to attach
 			 * @param args     arguments of the callback function
@@ -2309,9 +2335,9 @@ namespace awh {
 			 * @tparam Func      функция обратного вызова для установки
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Func      callback function to set
 			 * @tparam Args      arguments of the callback function
@@ -2328,9 +2354,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param id       identifier of the callback function
 			 * @param callback callback function to attach
 			 * @param args     arguments of the callback function
@@ -2359,6 +2385,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam A         type of the identifier of the callback function
 			 * @tparam Signature signature of the callback function
 			 * @tparam Func      callback function to set
@@ -2376,9 +2403,9 @@ namespace awh {
 			 * @param args     аргументы фукнции обратного вызова
 			 * @return         идентификатор подключённо функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param id       identifier of the callback function
 			 * @param callback callback function to attach
 			 * @param args     arguments of the callback function
@@ -2400,9 +2427,9 @@ namespace awh {
 			 *
 			 * @tparam T тип функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam T type of the callback function
 			 *
 			 * \~
@@ -2416,9 +2443,9 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param fn   callback function to add
 			 * @return     identifier of the added callback function
@@ -2435,9 +2462,9 @@ namespace awh {
 			 *
 			 * @tparam T тип функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam T type of the callback function
 			 *
 			 * \~
@@ -2451,9 +2478,9 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param fn   callback function to add
 			 * @return     identifier of the added callback function
@@ -2470,9 +2497,9 @@ namespace awh {
 			 *
 			 * @tparam T тип функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam T type of the callback function
 			 *
 			 * \~
@@ -2486,9 +2513,9 @@ namespace awh {
 			 * @param fn   функция обратного вызова для добавления
 			 * @return     идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param fn   callback function to add
 			 * @return     identifier of the added callback function
@@ -2505,9 +2532,9 @@ namespace awh {
 			 *
 			 * @tparam T тип функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam T type of the callback function
 			 *
 			 * \~
@@ -2521,9 +2548,9 @@ namespace awh {
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @param fn callback function to add
 			 * @return   identifier of the added callback function
@@ -2543,6 +2570,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of attaching a callback function
+			 *
 			 * @tparam A type of the identifier of the callback function
 			 * @tparam B type of the callback function
 			 *
@@ -2557,9 +2585,9 @@ namespace awh {
 			 * @param fn функция обратного вызова для добавления
 			 * @return   идентификатор добавленной функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of attaching a callback function
+			 *
 			 * @param id identifier of the callback function
 			 * @param fn callback function to add
 			 * @return   identifier of the added callback function
@@ -2582,6 +2610,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback of the events for receiving the events of the module
+			 *
 			 * @param callback callback function to set
 			 *
 			 * \~
@@ -2600,9 +2629,9 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
 			 *
@@ -2617,9 +2646,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param id   identifier of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -2643,8 +2672,15 @@ namespace awh {
 				 */
 				try {
 					/**
-					 * Удерживаем владение функцией обратного вызова, чтобы она не была удалена
-					 * во время её выполнения вне блокировки (в том числе при само-удалении из callback'а)
+					 * \~russian
+					 * @brief Удерживаем владение функцией обратного вызова, чтобы она не была удалена
+					 *        во время её выполнения вне блокировки (в том числе при само-удалении из callback'а)
+					 *
+					 * \~english
+					 * @brief We hold an ownership by a callback function so that it is not removed
+					 *        during its execution outside of a blocking (including a self-removal from a callback)
+					 *
+					 * \~
 					 */
 					fn_t holder;
 					// Извлечённая функция обратного вызова запрашиваемой сигнатуры
@@ -2682,10 +2718,12 @@ namespace awh {
 							this->_callback(event_t::RUN, id, i->second);
 					}
 					/**
-					 * Выполняем функцию обратного вызова уже вне блокировки: holder удерживает её владение,
-					 * поэтому пользовательский код выполняется без удержания мьютекса (исключаем внешние дедлоки)
+					 * @brief Если результат функции обратного вызова не возвращается
+					 *
+					 * @details Выполняем функцию обратного вызова уже вне блокировки: holder удерживает её владение,
+					 *          поэтому пользовательский код выполняется без удержания мьютекса (исключаем внешние дедлоки).
+					 *
 					 */
-					// Если результат функции обратного вызова не возвращается
 					if constexpr (std::is_void_v <Result>)
 						// Выполняем функцию обратного вызова
 						callback->fn(std::forward <Args> (args)...);
@@ -2700,13 +2738,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 					// Если результат функции обратного вызова не возвращается
 					if constexpr (std::is_void_v <Result>)
@@ -2732,9 +2770,17 @@ namespace awh {
 				 */
 				try {
 					/**
-					 * Снимаем копию списка функций обратного вызова. Снимок удерживает владение функциями
-					 * (shared_ptr), поэтому их можно безопасно выполнять уже вне блокировки, а изменение
-					 * контейнера из callback'а (добавление/удаление) не инвалидирует обход
+					 * \~russian
+					 * @brief Снимаем копию списка функций обратного вызова. Снимок удерживает владение функциями
+					 *        (shared_ptr), поэтому их можно безопасно выполнять уже вне блокировки, а изменение
+					 *        контейнера из callback'а (добавление/удаление) не инвалидирует обход
+					 *
+					 * \~english
+					 * @brief Take off a copy of a list of the callback functions. A snapshot holds an ownership by the functions
+					 *        (shared_ptr), therefore they can be safely executed already outside of a blocking, and a change
+					 *        of a container from a callback (an adding/a removing) does not invalidate a walk
+					 *
+					 * \~
 					 */
 					vector <std::pair <id_t, fn_t>> snapshot;
 					// Локальная копия системной функции обратного вызова (читаем её под блокировкой)
@@ -2773,13 +2819,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -2791,9 +2837,9 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
 			 *
@@ -2808,9 +2854,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -2839,9 +2885,9 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
 			 *
@@ -2856,9 +2902,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -2876,9 +2922,9 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
 			 *
@@ -2893,9 +2939,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param name name of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -2924,9 +2970,9 @@ namespace awh {
 			 * @tparam Signature сигнатура функции обратного вызова
 			 * @tparam Args      аргументы функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
 			 *
@@ -2944,6 +2990,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param id   identifier of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -2964,6 +3011,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of performing a callback function
+			 *
 			 * @tparam A         type of the identifier of the function
 			 * @tparam Signature signature of the callback function
 			 * @tparam Args      arguments of the callback function
@@ -2979,9 +3027,9 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 *
-			 *
 			 * \~english
 			 * @brief Method of performing a callback function
+			 *
 			 * @param id   identifier of the callback function
 			 * @param args arguments of the callback function
 			 * @return     result of performing the callback function
@@ -3014,6 +3062,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the end iterator
+			 *
 			 * @return end iterator
 			 *
 			 * \~
@@ -3030,6 +3079,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the begin iterator
+			 *
 			 * @return begin iterator
 			 *
 			 * \~
@@ -3048,6 +3098,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Move operator of the container of the callback functions
+			 *
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        the current value of the object
 			 *
@@ -3076,13 +3127,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем значение текущего объекта
@@ -3097,6 +3148,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Copy operator of the container of the callback functions
+			 *
 			 * @param storage storage of the functions the function should be obtained from
 			 * @return        the current value of the object
 			 *
@@ -3125,13 +3177,13 @@ namespace awh {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем значение текущего объекта

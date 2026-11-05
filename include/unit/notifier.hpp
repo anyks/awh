@@ -40,7 +40,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -50,7 +49,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -86,6 +84,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing notifier message write events
+				 *
 				 * @param eid  event identifier
 				 * @param size message size
 				 *
@@ -102,6 +101,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing notifier message read events
+				 *
 				 * @param eid  event identifier
 				 * @param data message data
 				 * @param size message size
@@ -119,6 +119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the notifier state
+				 *
 				 * @param eid    event identifier
 				 * @param status event status
 				 *
@@ -136,6 +137,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing notifier event exceptions
+				 *
 				 * @param eid     event identifier
 				 * @param error   error type
 				 * @param message error message
@@ -154,6 +156,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing available queue size events of the notifier event
+				 *
 				 * @param eid    event identifier
 				 * @param status event status
 				 * @param size   available queue size in bytes
@@ -170,6 +173,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a notifier event
+				 *
 				 * @return notifier event identifier
 				 *
 				 * \~
@@ -184,6 +188,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a notifier event
+				 *
 				 * @param eid notifier event identifier
 				 *
 				 * \~
@@ -199,6 +204,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -216,6 +222,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of triggering a notifier event
+				 *
 				 * @param eid    notifier event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data buffer
@@ -229,22 +236,21 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
 				 *
 				 * \~
 				 */
-				Notifier(const Notifier &) = delete;
+				explicit Notifier(const Notifier &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -255,7 +261,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -265,7 +270,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

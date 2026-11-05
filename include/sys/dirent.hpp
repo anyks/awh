@@ -1,8 +1,14 @@
 /**
- * @file: dirent.hpp
+ * @file dirent.hpp
  * @date: 2026-09-12
  *
+ * \~russian
  * @brief Обход каталогов приёмами POSIX для MS Windows
+ *
+ * \~english
+ * @brief Traversal of the directories by the means of POSIX for MS Windows
+ *
+ * \~
  *
  * @author Forman <info@anyks.com>
  * @copyright Copyright © 2026
@@ -21,7 +27,7 @@
  * @details Заголовка `dirent.h` у оснастки MSVC нет вовсе: он принадлежит наречиям POSIX,
  *          а MinGW несёт его своей частью. Библиотека же обходит каталоги именно этими
  *          приёмами - их около полусотни обращений в двух файлах, - и переписывать их на
- *          средства системы значило бы завести второе устройство обхода ради одной оснастки
+ *          средства системы значило бы завести второе устройство обхода ради одной оснастки.
  *
  * @note Под MinGW устройство тоже своё, а не из `dirent.h` системы: `_wopendir` у MinGW
  *       собирает полный адрес в буфер длиной MAX_PATH и каталог длиннее 260 знаков не
@@ -41,16 +47,27 @@
  *
  * \~english
  * @brief Directory traversal by the POSIX means
+ *
  * @details MSVC has no `dirent.h` header at all: it belongs to the POSIX dialects, while MinGW
  *          carries it as a part of itself. The library traverses directories precisely by those
  *          means - about fifty calls in two files - and rewriting them onto the system facilities
- *          would mean introducing a second traversal design for the sake of one toolchain
+ *          would mean introducing a second traversal design for the sake of one toolchain.
  *
  * @note Under MinGW the design is also its own, not the one from the system `dirent.h`: the MinGW
  *       `_wopendir` assembles the full address into a MAX_PATH buffer and does not open a directory
  *       longer than 260 characters at all - neither with the "\\?\" prefix nor without it. The own
  *       opening passes the address to FindFirstFileW as is, and a long prefixed address goes through.
  *       Proven by FSFixture.LongAddressTest on the Windows stand on 28.09.2026
+ *
+ *
+ * @note The means are started by both rows - a narrow and a wide one: a narrow one keeps the paths in UTF-8, as
+ *      the rest of the library requires, and a wide one gives out the names as the system
+ *      itself keeps them. A narrow row relies on a wide one, and not on the means of a code page:
+ *      otherwise the names with the signs beyond a page of a process would come distorted
+ *
+ * @warning A cell of a name belongs to THIS EXACT directory, and not to a thread of an execution:
+ *         reading two directories in a mix, a calling side is obliged to get two different names.
+ *         A cell common to a thread would give a name of a second at a place of a first
  *
  * \~
  */
@@ -77,6 +94,11 @@
 	 */
 	#include <dirent.h>
 #endif
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "macro/global.hpp"
 
 /**
  * \~russian
@@ -122,19 +144,39 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * dir пространство имён обхода каталогов
+	 * \~russian
+	 * @brief dir пространство имён обхода каталогов
+	 *
+	 * \~english
+	 * @brief dir namespace of a traversal of the directories
+	 *
+	 * \~
 	 */
 	namespace dir {
 		/**
-		 * Если сборка выполняется под MS Windows
+		 * \~russian
+		 * @brief Если сборка выполняется под MS Windows
 		 *
 		 * @details Заголовка `dirent.h` у оснастки MSVC нет вовсе, а у MinGW обход ограничен
-		 *          длиной MAX_PATH. Оттого устройство обхода заводится здесь для обеих
+		 *          длиной MAX_PATH. Оттого устройство обхода заводится здесь для обеих.
+		 *
+		 * \~english
+		 * @brief If a build is performed under MS Windows
+		 *
+		 * @details A header `dirent.h` at the tooling of MSVC is none at all, and at MinGW a traversal is limited
+		 *         by a length of MAX_PATH. Therefore a device of a traversal is started here for both.
+		 *
+		 * \~
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			/**
+			 * \~russian
 			 * @brief Запись широкого каталога
 			 *
+			 * \~english
+			 * @brief Record of a wide directory
+			 *
+			 * \~
 			 */
 			struct _wdirent {
 				// Длина названия записи в знаках
@@ -142,12 +184,20 @@ namespace awh {
 				// Название записи каталога
 				wchar_t d_name[MAX_PATH];
 			};
-
 			/**
+			 * \~russian
 			 * @brief Структура описателя широкого каталога
 			 *
 			 * @note Признак первой записи обязателен: система отдаёт первую запись уже самим
 			 *       открытием поиска, и без признака она пропускалась бы
+			 *
+			 * \~english
+			 * @brief Structure of a descriptor of a wide directory
+			 *
+			 * @note A sign of the first record is required: the system gives out the first record already by
+			 *       an opening of a search itself, and without a sign it would be skipped
+			 *
+			 * \~
 			 */
 			struct _WDIR {
 				// Признак того, что первая запись ещё не выдана
@@ -159,10 +209,14 @@ namespace awh {
 				// Запись, отдаваемая вызывающему
 				struct _wdirent entry;
 			};
-
 			/**
+			 * \~russian
 			 * @brief Структура записи узкого каталога
 			 *
+			 * \~english
+			 * @brief Structure of a record of a narrow directory
+			 *
+			 * \~
 			 */
 			struct dirent {
 				// Длина названия записи в октетах
@@ -170,10 +224,14 @@ namespace awh {
 				// Название записи каталога в UTF-8 (четыре октета на знак в худшем случае)
 				char d_name[MAX_PATH * 4];
 			};
-
 			/**
+			 * \~russian
 			 * @brief Структура описателя узкого каталога
 			 *
+			 * \~english
+			 * @brief Structure of a descriptor of a narrow directory
+			 *
+			 * \~
 			 */
 			struct DIR {
 				// Описатель широкого каталога, на какой опирается узкий
@@ -183,13 +241,21 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Функция открытия широкого каталога
 			 *
 			 * @param path путь к каталогу
 			 * @return     описатель открытого каталога либо пустое значение
 			 *
+			 * \~english
+			 * @brief Function of the opening of a wide directory
+			 *
+			 * @param path path to a directory
+			 * @return     descriptor of the opened directory or an empty value
+			 *
+			 * \~
 			 */
-			inline struct _WDIR * _wopendir(const wchar_t * path) noexcept {
+			static __AWH_INLINE__ struct _WDIR * _wopendir(const wchar_t * path) noexcept {
 				// Если путь не передан
 				if((path == nullptr) || (path[0] == L'\0')){
 					// Сообщаем о неверном доводе
@@ -232,13 +298,21 @@ namespace awh {
 				return result;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция чтения записи широкого каталога
 			 *
 			 * @param dir описатель открытого каталога
 			 * @return    запись каталога либо пустое значение по исчерпании
 			 *
+			 * \~english
+			 * @brief Function of the reading of a record of a wide directory
+			 *
+			 * @param dir descriptor of the opened directory
+			 * @return    a record of a directory or an empty value on the exhaustion
+			 *
+			 * \~
 			 */
-			inline struct _wdirent * _wreaddir(struct _WDIR * dir) noexcept {
+			static __AWH_INLINE__ struct _wdirent * _wreaddir(struct _WDIR * dir) noexcept {
 				// Если описатель каталога не передан
 				if(dir == nullptr)
 					// Выходим из функции
@@ -264,12 +338,19 @@ namespace awh {
 				return &dir->entry;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция перемотки широкого каталога к началу
 			 *
 			 * @param dir описатель открытого каталога
 			 *
+			 * \~english
+			 * @brief Function of the rewinding of a wide directory to the beginning
+			 *
+			 * @param dir descriptor of the opened directory
+			 *
+			 * \~
 			 */
-			inline void _wrewinddir(struct _WDIR * dir) noexcept {
+			static __AWH_INLINE__ void _wrewinddir(struct _WDIR * dir) noexcept {
 				// Если описатель каталога не передан
 				if(dir == nullptr)
 					// Выходим из функции
@@ -297,13 +378,21 @@ namespace awh {
 				dir->first = true;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция закрытия широкого каталога
 			 *
 			 * @param dir описатель открытого каталога
 			 * @return    ноль при успехе
 			 *
+			 * \~english
+			 * @brief Function of the closing of a wide directory
+			 *
+			 * @param dir descriptor of the opened directory
+			 * @return    zero on a success
+			 *
+			 * \~
 			 */
-			inline int32_t _wclosedir(struct _WDIR * dir) noexcept {
+			static __AWH_INLINE__ int32_t _wclosedir(struct _WDIR * dir) noexcept {
 				// Если описатель каталога не передан
 				if(dir == nullptr)
 					// Выходим из функции
@@ -318,13 +407,21 @@ namespace awh {
 				return 0;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция открытия каталога
 			 *
 			 * @param path путь к каталогу в UTF-8
 			 * @return     описатель открытого каталога либо пустое значение
 			 *
+			 * \~english
+			 * @brief Function of the opening of a directory
+			 *
+			 * @param path path to a directory in UTF-8
+			 * @return     descriptor of the opened directory or an empty value
+			 *
+			 * \~
 			 */
-			inline DIR * opendir(const char * path) noexcept {
+			static __AWH_INLINE__ DIR * opendir(const char * path) noexcept {
 				// Если путь не передан
 				if((path == nullptr) || (path[0] == '\0')){
 					// Сообщаем о неверном доводе
@@ -363,13 +460,21 @@ namespace awh {
 				return result;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция чтения записи каталога
 			 *
 			 * @param dir описатель открытого каталога
 			 * @return    запись каталога либо пустое значение по исчерпании
 			 *
+			 * \~english
+			 * @brief Function of the reading of a record of a directory
+			 *
+			 * @param dir descriptor of the opened directory
+			 * @return    a record of a directory or an empty value on the exhaustion
+			 *
+			 * \~
 			 */
-			inline struct dirent * readdir(DIR * dir) noexcept {
+			static __AWH_INLINE__ struct dirent * readdir(DIR * dir) noexcept {
 				// Если описатель каталога не передан
 				if((dir == nullptr) || (dir->wide == nullptr))
 					// Выходим из функции
@@ -392,25 +497,40 @@ namespace awh {
 				return &dir->entry;
 			}
 			/**
+			 * \~russian
 			 * @brief Функция перемотки каталога к началу
 			 *
 			 * @param dir описатель открытого каталога
 			 *
+			 * \~english
+			 * @brief Function of the rewinding of a directory to the beginning
+			 *
+			 * @param dir descriptor of the opened directory
+			 *
+			 * \~
 			 */
-			inline void rewinddir(DIR * dir) noexcept {
+			static __AWH_INLINE__ void rewinddir(DIR * dir) noexcept {
 				// Если описатель каталога передан
 				if((dir != nullptr) && (dir->wide != nullptr))
 					// Выполняем перемотку широкого каталога
 					_wrewinddir(dir->wide);
 			}
 			/**
+			 * \~russian
 			 * @brief Функция закрытия каталога
 			 *
 			 * @param dir описатель открытого каталога
 			 * @return    ноль при успехе
 			 *
+			 * \~english
+			 * @brief Function of the closing of a directory
+			 *
+			 * @param dir descriptor of the opened directory
+			 * @return    zero on a success
+			 *
+			 * \~
 			 */
-			inline int32_t closedir(DIR * dir) noexcept {
+			static __AWH_INLINE__ int32_t closedir(DIR * dir) noexcept {
 				// Если описатель каталога не передан
 				if(dir == nullptr)
 					// Выходим из функции
@@ -429,7 +549,13 @@ namespace awh {
 		 */
 		#else
 			/**
-			 * Вносим имена узкого ряда из заголовка системы
+			 * \~russian
+			 * @brief Вносим имена узкого ряда из заголовка системы
+			 *
+			 * \~english
+			 * @brief Enter the names of a narrow row from a system header
+			 *
+			 * \~
 			 */
 			using ::DIR;
 			using ::dirent;
@@ -438,13 +564,14 @@ namespace awh {
 			using ::closedir;
 			using ::rewinddir;
 			/**
+			 * \~russian
 			 * Если сборка выполняется у систем Sun
 			 *
 			 * @details Заголовок системы объявляет `rewinddir` честной функцией, а следом
 			 *          перекрывает её ФУНКЦИОНАЛЬНЫМ МАКРОСОМ `rewinddir(dirp)` в
 			 *          `seekdir(dirp, 0L)` - у Solaris 11.4 строкою 94, у OpenIndiana
 			 *          строкою 136, под условием `__EXTENSIONS__ || !_POSIX_C_SOURCE ||
-			 *          _XOPEN_SOURCE`, то есть ровно в том укладе, каким собираемся мы
+			 *          _XOPEN_SOURCE`, то есть ровно в том укладе, каким собираемся мы.
 			 *
 			 * @warning Внесение `rewinddir` выше макросом НЕ трогается - за именем там нет
 			 *          скобки, - а вот ЗОВ `awh::dir::rewinddir(handle)` препроцессор
@@ -457,11 +584,34 @@ namespace awh {
 			 *
 			 * @note `telldir` объявлен в том же блоке заголовка системы и макросом не
 			 *       перекрыт - внесения не требует, покуда не понадобится зовом
+			 *
+			 * \~english
+			 * If a build is performed at the Sun systems
+			 *
+			 * @details A header of the system declares `rewinddir` as an honest function, and following
+			 *         overlaps it by a FUNCTIONAL MACRO `rewinddir(dirp)` into
+			 *         `seekdir(dirp, 0L)` - at Solaris 11.4 by a line 94, at OpenIndiana
+			 *         by a line 136, under a condition `__EXTENSIONS__ || !_POSIX_C_SOURCE ||
+			 *         _XOPEN_SOURCE`, that is exactly in that layout by which we are being built.
+			 *
+			 * @warning An entering of `rewinddir` above by a macro is NOT touched - behind a name there is no
+			 *         bracket, - but a CALL `awh::dir::rewinddir(handle)` a preprocessor
+			 *         rewrites into `awh::dir::seekdir(handle, 0L)`, and a build ends
+			 *         by a refusal `'seekdir' is not a member of 'awh::dir'`. Therefore an entering of
+			 *         `seekdir` is made also: a name, into which a macro unfolds, is obliged to be in
+			 *         a namespace. A meaning is kept exactly - a `rewinddir` at the Sun systems
+			 *         and is `seekdir(dirp, 0L)`. It is proved by a probe on the Solaris 11.4 stand
+			 *         2026-09-13: without an entering a refusal is word for word, with an entering it builds
+			 *
+			 * @note `telldir` is declared in that same block of a header of the system and by a macro is not
+			 *      overlapped - an entering is not required, while a call is not needed
+			 *
+			 * \~
 			 */
 			#if defined(__sun) || defined(__sun__) || defined(sun)
 				// Вносим имя, в какое системный макрос разворачивает перемотку каталога
 				using ::seekdir;
 			#endif
 		#endif
-	}
-}
+	};
+};

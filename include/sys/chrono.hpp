@@ -400,6 +400,7 @@
  * @brief Header file of the date and time module —
  *        the Chrono class for parsing and formatting dates in various formats, converting time units,
  *        working with time zones, daylight saving time transitions and high resolution timestamps
+ *
  * @details The module grew out of the task of parsing system log records and is therefore
  *          built around two of its peculiarities. The first one — the obsolete RFC 3164
  *          standard does not write the year into the timestamp, and therefore a record without
@@ -411,6 +412,7 @@
  *          common format and the strftime variables of the POSIX standard.
  *          The timestamp of the module is the number of milliseconds elapsed since the 1st of January
  *          1970. The supported range of the dates is from the year 1970 to the year 9999.
+ *
  * @note The module does not address the time zone database of the operating system. The known
  *       designations of the zones are parsed by an immutable table inside the module itself,
  *       and the addTimeZone method starts a separate registry of one's own designations, initially
@@ -422,7 +424,9 @@
  *       determined by the date, and the standard offset is taken the present one - its library carries
  *       no history of the changes of the rules of a zone. On the Sun systems the decomposition of an
  *       instant itself sets timezone and altzone by that instant, and the history of a zone is kept there
+ *
  * @section chrono_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an inconsistency, but it is chosen deliberately and
  *          is not subject to correction. The section is started so that reading the code would not
  *          begin every time with the very same conclusions.
@@ -751,7 +755,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -852,7 +855,9 @@ namespace awh {
 	 *       методы состояния не меняют и между собой согласуются, а смешение их с
 	 *       изменяющими на одном объекте согласует тот, кто объектом пользуется.
 	 *       Методы, работающие с переданным штампом времени, полей не читают вовсе
+	 *
 	 * @see parse
+	 *
 	 * @see format
 	 *
 	 * @code{.cpp}
@@ -879,6 +884,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Structure of the Chrono module
+	 *
 	 * @details The class unites four independent tasks: the parsing of a record of a date by
 	 *          a pattern of a format (parse), the building of a record by the same pattern
 	 *          (format), the calendar arithmetic over a timestamp (begin, end,
@@ -942,11 +948,14 @@ namespace awh {
 	 *          on a par with \%U and \%W.
 	 *          <b>Ready formats of the standards:</b>
 	 *          <b>The simplest application:</b>
+	 *
 	 * @note The module does not perform any synchronization of the access to the fields of the object. The constant
 	 *       methods do not change the state and agree with each other, and the mixing of them with
 	 *       the changing ones on one object is synchronized by the one who uses the object.
 	 *       The methods working with a passed timestamp do not read the fields at all
+	 *
 	 * @see parse
+	 *
 	 * @see format
 	 *
 	 * @code{.cpp}
@@ -971,6 +980,7 @@ namespace awh {
 	 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);  // 7
 	 * @endcode
 	 *
+	 * \~
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Chrono {
 		private:
@@ -1013,6 +1023,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Format of the parsing of a date
+			 *
 			 * @details The set of the variables covers both standards of the system log.
 			 *          The obsolete RFC 3164 corresponds to the format "\%b \%e \%H:\%M:\%S":
 			 *          the standard sets a record exactly fifteen characters long, and
@@ -1025,6 +1036,7 @@ namespace awh {
 			 *          is read as a decimal fraction, and not as a number of milliseconds: the records .5,
 			 *          .50 and .500 mean one and the same half of a second, and the digits beyond
 			 *          the third are discarded by the limit of the resolution of the timestamp.
+			 *
 			 * @details The designation of a time zone is written by four variables, and
 			 *          each one follows its own standard. The \%z variable gives the basic
 			 *          record ±hhmm — it is required by the variable of the same name of the POSIX
@@ -1091,8 +1103,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief The 12-hour format of the time
+			 *
 			 * @details The half of the day the moment of time belongs to. The noon belongs
 			 *          to PM, the midnight — to AM: the hours from 0 to 11 give AM, from 12 to 23 — PM.
+			 *
 			 * @see h12
 			 *
 			 * \~
@@ -1112,8 +1126,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Parameters of the offset
+			 *
 			 * @details The direction of the offset of a date by the offset method: INCREMENT moves the date
 			 *          forward, DECREMENT — backward.
+			 *
 			 * @see offset
 			 *
 			 * \~
@@ -1133,8 +1149,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Parameters of the actual state of a date
+			 *
 			 * @details The direction of the count of the actual method: LEFT counts from the date to the end
 			 *          of the interval, PASSED — from the beginning of the interval to the date.
+			 *
 			 * @see actual
 			 *
 			 * \~
@@ -1153,17 +1171,23 @@ namespace awh {
 			 *          принимает все допустимые стандартом разновидности записи, а не одну.
 			 *
 			 * @see format
+			 *
 			 * @see parse
+			 *
 			 * @see validate
 			 *
 			 * \~english
 			 * @brief Record of a date set by a standard
+			 *
 			 * @details Ready records of the current standards. Building and parsing them with
 			 *          a format string is possible by hand as well, but the designation of a standard saves
 			 *          from rewriting the pattern and from mistakes in its details, and the parsing
 			 *          accepts all the varieties of the record allowed by the standard, and not one.
+			 *
 			 * @see format
+			 *
 			 * @see parse
+			 *
 			 * @see validate
 			 *
 			 * \~
@@ -1191,10 +1215,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Rule of the expansion of a two-digit year
+			 *
 			 * @details Which century a year written with two digits should be attributed to. There is no single
 			 *          rule on this account: RFC 9110 sets a sliding window from the current
 			 *          year, POSIX for strptime — an immovable boundary between the years 68 and 69.
 			 *          Both are in force and both are needed, and therefore the choice is left to the caller.
+			 *
 			 * @see century
 			 *
 			 * \~
@@ -1229,12 +1255,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Type of the stored date
+			 *
 			 * @details Where the methods without an argument of a date take the moment of time from. GLOBAL means
 			 *          the system clock: every call addresses it anew. LOCAL means
 			 *          the internal date object of the class — it is filled by the set and timestamp methods and
 			 *          by the parsing with the same storage, and clear returns it to the current moment.
 			 *          The LOCAL storage is needed when a date is assembled piece by piece or when
 			 *          several calls in a row are obliged to belong to one moment.
+			 *
 			 * @note All the addresses to the LOCAL storage read the fields of the object, and a part of them changes
 			 *       them: the synchronization of the access when working from several threads lies
 			 *       on the one who uses the object
@@ -1248,6 +1276,7 @@ namespace awh {
 			 * chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::GLOBAL);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			enum class storage_t : uint8_t {
 				NONE   = 0x00, // Хранение даты не установлено
@@ -1267,21 +1296,30 @@ namespace awh {
 			 *       месяца: 31 января со смещением на месяц вперёд даёт 28 либо 29 февраля
 			 *
 			 * @see begin
+			 *
 			 * @see end
+			 *
 			 * @see offset
+			 *
 			 * @see timestamp
 			 *
 			 * \~english
 			 * @brief Type of the timestamp
+			 *
 			 * @details The unit of the measurement of time. Serves both as the dimension of the timestamp for the
 			 *          timestamp methods, and as the length of the calendar interval for the begin, end,
 			 *          actual and offset methods. The week is counted from Monday.
+			 *
 			 * @note The MONTH unit is the only one of a non-constant length, and therefore
 			 *       an offset by months limits the day of the month by the last day of the final
 			 *       month: the 31st of January with an offset by a month forward gives the 28th or the 29th of February
+			 *
 			 * @see begin
+			 *
 			 * @see end
+			 *
 			 * @see offset
+			 *
 			 * @see timestamp
 			 *
 			 * \~
@@ -1310,6 +1348,7 @@ namespace awh {
 			 *          Составляющие DAY и MONTH извлекаются и числом, и названием - смотря
 			 *          какой тип задан шаблонным доводом:
 			 * @see get
+			 *
 			 * @see set
 			 *
 			 * @code{.cpp}
@@ -1321,12 +1360,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Type of the elements of a date
+			 *
 			 * @details A separate part of a date for the get and set methods. Unlike
 			 *          type_t, setting the length of an interval of time, unit_t sets a field
 			 *          of the calendar decomposition of a date.
 			 *          The DAY and MONTH parts are extracted both as a number and as a name — depending on
 			 *          which type is set by the template argument:
+			 *
 			 * @see get
+			 *
 			 * @see set
 			 *
 			 * @code{.cpp}
@@ -1336,6 +1378,7 @@ namespace awh {
 			 * chrono.get <std::string> (date, awh::chrono_t::unit_t::DAY);    // Sunday
 			 * @endcode
 			 *
+			 * \~
 			 */
 			enum class unit_t : uint8_t {
 				NONE         = 0x00, // Элемент даты не установлен
@@ -1373,10 +1416,12 @@ namespace awh {
 			 *       позволяет перегрузка getTimeZone с двумя доводами
 			 *
 			 * @see getTimeZone
+			 *
 			 * @see matchTimeZone
 			 *
 			 * \~english
 			 * @brief Time zone
+			 *
 			 * @details Enumeration of the designations of the time zones accepted in the records of dates.
 			 *          A designation is converted into an offset by the getTimeZone method, the reverse
 			 *          conversion of a designation into an element of the enumeration is done by matchTimeZone.
@@ -1385,11 +1430,14 @@ namespace awh {
 			 *          AMTAM is the Amazon time, AMTAR — the Armenian one, ISTID — the Indian one,
 			 *          ISTIS — the Israeli one, CSTNA — the North American central one, CSTKT —
 			 *          the Chinese one.
+			 *
 			 * @note The enumeration sets only the offset of a zone, but not the rules of the transition to
 			 *       the daylight saving time: the standard and the daylight saving time of every zone are two different
 			 *       elements of it (EST and EDT, MSK and MSD). Choosing the needed one by the current date
 			 *       is made possible by the getTimeZone overload with two arguments
+			 *
 			 * @see getTimeZone
+			 *
 			 * @see matchTimeZone
 			 *
 			 * \~
@@ -1606,6 +1654,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Structure of the parameters of the date and the time
+			 *
 			 * @details The structure contains all the parameters needed for storing a date and a time,
 			 *          including the signs of the daylight saving time and of the leap year, the status of the 12-hour format of the time,
 			 *          the identifier of the time zone, as well as the various parts of the date and the time, such as the day of the week,
@@ -1690,6 +1739,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of clearing all the local data
+			 *
 			 * @details Returns the internal date object (the storage_t::LOCAL storage) to the
 			 *          current moment of the system clock. The registry of the time zones is not
 			 *          touched — it is cleared by the separate clearTimeZones method.
@@ -1698,6 +1748,7 @@ namespace awh {
 			 *          the parsing of a record by the parse method or by a call to setTimeZone. The time
 			 *          zone of the environment at that goes nowhere — the building of a record
 			 *          by a timestamp is performed in it exactly.
+			 *
 			 * @see clearTimeZones
 			 *
 			 * \~
@@ -1712,6 +1763,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the safety of the work of the threads
+			 *
 			 * @param mode flag of the thread safety mode
 			 *
 			 * \~
@@ -1731,9 +1783,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the tolerance of the rollback of the year
+			 *
 			 * @details Yields the value of the tolerance in force at the parsing of the records that do not
 			 *          contain a year
+			 *
 			 * @return tolerance of the rollback of the year in seconds, zero if the rollback is switched off
+			 *
 			 * @see yearRollback
 			 *
 			 * \~
@@ -1765,7 +1820,9 @@ namespace awh {
 			 *       на двадцать шесть суток вместо прошлогоднего февраля
 			 * @note Нулевой допуск отключает откат целиком, а не задаёт нулевую
 			 *       величину: запись без года всегда относится к текущему году
+			 *
 			 * @param seconds допуск отката года в секундах, ноль отключает откат
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -1779,6 +1836,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the tolerance of the rollback of the year
+			 *
 			 * @details Sets how far forward a record that does not contain a year may stand
 			 *          before the parsing attributes it to the previous year.
 			 *          The obsolete standard of the system log RFC 3164 does not write
@@ -1793,13 +1851,16 @@ namespace awh {
 			 *          leading the receiver by less than this value leads it
 			 *          legally. A smaller tolerance sends a year back every record of a host
 			 *          standing to the east of the receiver.
+			 *
 			 * @note A noticeably greater tolerance is harmful: it starts dating with the future
 			 *       the records whose place is in the previous year. The record «5th of February»,
 			 *       read on the 10th of January, at a tolerance of three months will turn out to be in the future
 			 *       by twenty six days instead of the February of the previous year
 			 * @note A zero tolerance switches off the rollback entirely, and does not set a zero
 			 *       value: a record without a year always belongs to the current year
+			 *
 			 * @param seconds tolerance of the rollback of the year in seconds, zero switches off the rollback
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -1811,6 +1872,7 @@ namespace awh {
 			 * chrono.yearRollback(0);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void yearRollback(const uint32_t seconds) noexcept;
 		public:
@@ -1827,9 +1889,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the window of a two-digit year
+			 *
 			 * @details Yields the value of the window in force at the parsing of the records the year in
 			 *          which is written with two digits
+			 *
 			 * @return window of a two-digit year in years, zero if the rule is switched off
+			 *
 			 * @see yearWindow
 			 *
 			 * \~
@@ -1862,8 +1927,11 @@ namespace awh {
 			 * @note Запись двузначным годом неоднозначна по устройству: обратное чтение
 			 *       записи, сформированной переменной \%y, даёт исходный год не всегда, а
 			 *       только когда он лежит внутри окна
+			 *
 			 * @param years окно двузначного года в годах, ноль отключает правило
+			 *
 			 * @see parse
+			 *
 			 * @see yearRollback
 			 *
 			 * @code{.cpp}
@@ -1873,6 +1941,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the window of a two-digit year
+			 *
 			 * @details Sets how far forward a record the year in which is written with two
 			 *          digits may stand before the parsing attributes it to the previous
 			 *          century. This rule is set by RFC 9110 (§5.6.7) for the obsolete
@@ -1886,6 +1955,7 @@ namespace awh {
 			 *          the digits from 69 to 99 belong to the twentieth century,
 			 *          from 00 to 68 — to the twenty first one. That rule is set by the separate century
 			 *          method, and the value of the window is not used with it.
+			 *
 			 * @note A zero window switches off the rule entirely: a two-digit year always
 			 *       belongs to the twenty first century, as it was done before the appearance
 			 *       of the rule
@@ -1894,8 +1964,11 @@ namespace awh {
 			 * @note A record with a two-digit year is ambiguous by construction: the reverse reading of
 			 *       a record built by the \%y variable gives the original year not always, but
 			 *       only when it lies inside the window
+			 *
 			 * @param years window of a two-digit year in years, zero switches off the rule
+			 *
 			 * @see parse
+			 *
 			 * @see yearRollback
 			 *
 			 * @code{.cpp}
@@ -1903,6 +1976,7 @@ namespace awh {
 			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 2070
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void yearWindow(const uint8_t years) noexcept;
 		public:
@@ -1916,7 +1990,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the rule of the expansion of a two-digit year
+			 *
 			 * @return rule in force at the parsing of the records with a two-digit year
+			 *
 			 * @see century
 			 *
 			 * \~
@@ -1949,8 +2025,11 @@ namespace awh {
 			 *       какой его величине
 			 * @note Правило затрагивает переменные формата \%y и \%D. Полное обозначение
 			 *       года переменной \%Y им не задевается
+			 *
 			 * @param mode правило раскрытия двузначного года
+			 *
 			 * @see yearWindow
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -1965,6 +2044,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the rule of the expansion of a two-digit year
+			 *
 			 * @details Sets which century a year written with two digits should be attributed to.
 			 *          The standards give no single rule on this account, and both the ones in force
 			 *          are available here.
@@ -1978,6 +2058,7 @@ namespace awh {
 			 *          of the POSIX standard expands the \%y variable: the digits from 69 to 99
 			 *          belong to the twentieth century, from 00 to 68 — to the twenty first one.
 			 *          The value of the window with this rule is not used.
+			 *
 			 * @note The POSIX rule attributes the digits «69» to the year 1969, not representable by the
 			 *       calendar of the module: the parsing brings such a record to the beginning of the epoch, and the check
 			 *       of the record rejects it. The other digits of the twentieth century — from 70 to 99 — are
@@ -1985,8 +2066,11 @@ namespace awh {
 			 *       any of its widths
 			 * @note The rule touches the \%y and \%D format variables. The full designation
 			 *       of the year by the \%Y variable is not affected by it
+			 *
 			 * @param mode rule of the expansion of a two-digit year
+			 *
 			 * @see yearWindow
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -1999,6 +2083,7 @@ namespace awh {
 			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 1970
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void century(const century_t mode) noexcept;
 		public:
@@ -2012,7 +2097,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the sign of the acceptance of the leap second
+			 *
 			 * @return sign of the acceptance of the leap second
+			 *
 			 * @see leapSecond
 			 *
 			 * \~
@@ -2030,7 +2117,9 @@ namespace awh {
 			 * @note Признак затрагивает лишь проверку пригодности записи. Разбор принимает
 			 *       секунду координации всегда и переносит её на первую секунду следующей
 			 *       минуты, как это делают strptime и timegm
+			 *
 			 * @param mode признак приёма секунды координации
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -2041,14 +2130,18 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the sign of the acceptance of the leap second
+			 *
 			 * @details Sets whether a record where the second equals sixty should be considered fit.
 			 *          That second is the leap second, and it is allowed by RFC 3339 together with
 			 *          ISO 8601, and a part of the parsers rejects it on a par with an error of the record.
 			 *          By default it is accepted, exactly as the standards require.
+			 *
 			 * @note The sign touches only the check of the fitness of a record. The parsing accepts
 			 *       the leap second always and moves it to the first second of the next
 			 *       minute, as strptime and timegm do
+			 *
 			 * @param mode sign of the acceptance of the leap second
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -2057,6 +2150,7 @@ namespace awh {
 			 * chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // false
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void leapSecond(const bool mode) noexcept;
 		public:
@@ -2071,7 +2165,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of counting the number of the decimal digits of a number
+			 *
 			 * @details A zero value counts as one digit
+			 *
 			 * @param value number the counting of the digits is performed for
 			 * @return      number of the decimal digits
 			 *
@@ -2086,16 +2182,18 @@ namespace awh {
 			 * @details Длина месяца зависит и от самого месяца, и от високосности года,
 			 *          поэтому число приводится к ней всякий раз, когда меняется месяц
 			 *          либо год: иначе в объекте оседает несуществующее число вида
-			 *          31 февраля, и сборка штампа времени переносит дату на март
+			 *          31 февраля, и сборка штампа времени переносит дату на март.
 			 *
 			 * @param dt объект даты и времени для приведения
 			 *
 			 * \~english
 			 * @brief Method of bringing the day of the month to its real length
+			 *
 			 * @details The length of a month depends both on the month itself and on the leapness of the year,
 			 *          and therefore the day is brought to it every time the month or the year
 			 *          changes: otherwise a non-existent day of the form
-			 *          31st of February settles in the object, and the assembly of the timestamp moves the date to March
+			 *          31st of February settles in the object, and the assembly of the timestamp moves the date to March.
+			 *
 			 * @param dt object of the date and the time to bring
 			 *
 			 * \~
@@ -2107,16 +2205,18 @@ namespace awh {
 			 *
 			 * @details Поля объекта лежат в его временной зоне, а штамп времени - в нулевой,
 			 *          поэтому перенос идёт через неё: разложение в нулевой зоне и обратная
-			 *          перекладка в зону объекта. Обозначение зоны при переносе сохраняется
+			 *          перекладка в зону объекта. Обозначение зоны при переносе сохраняется.
 			 *
 			 * @param dt   объект даты и времени для переноса
 			 * @param date штамп времени в миллисекундах, на который переносится объект
 			 *
 			 * \~english
 			 * @brief Method of moving a date object to the specified moment of time
+			 *
 			 * @details The fields of the object lie in its time zone, and the timestamp — in the zero one,
 			 *          and therefore the move goes through it: a decomposition in the zero zone and a reverse
-			 *          shift into the zone of the object. The designation of the zone is preserved on the move
+			 *          shift into the zone of the object. The designation of the zone is preserved on the move.
+			 *
 			 * @param dt   object of the date and the time to move
 			 * @param date timestamp in milliseconds the object is moved to
 			 *
@@ -2131,17 +2231,19 @@ namespace awh {
 			 *          номер недели, день недели и признак летнего времени из них выводятся.
 			 *          Установка любого из задающих полей выводные оставляла прежними, и два
 			 *          открытых способа прочитать один объект расходились: format их
-			 *          вычислял заново, get читал поля как есть
+			 *          вычислял заново, get читал поля как есть.
 			 *
 			 * @param dt объект даты и времени для согласования
 			 *
 			 * \~english
 			 * @brief Method of agreeing the fields of a date object with each other
+			 *
 			 * @details The year, the month and the day of the month set the date entirely, and the number of the day in the year,
 			 *          the number of the week, the day of the week and the sign of the daylight saving time are derived from them.
 			 *          Setting any of the defining fields left the derived ones the previous ones, and the two
 			 *          public ways of reading one object diverged: format computed them
-			 *          anew, get read the fields as they were
+			 *          anew, get read the fields as they were.
+			 *
 			 * @param dt object of the date and the time to agree
 			 *
 			 * \~
@@ -2154,16 +2256,18 @@ namespace awh {
 			 * @details Смещение сводных зон Северной Америки зависит от момента времени, и
 			 *          потому пересчитывается всякий раз, когда меняется описываемая объектом
 			 *          дата. Местные поля записи при этом остаются прежними: они и задают
-			 *          местное время, а смещение из него выводится
+			 *          местное время, а смещение из него выводится.
 			 *
 			 * @param dt объект даты и времени для разрешения
 			 *
 			 * \~english
 			 * @brief Method of resolving the offset of a composite time zone by the record itself
+			 *
 			 * @details The offset of the composite zones of North America depends on the moment of time, and
 			 *          is therefore recomputed every time the date described by the object
 			 *          changes. The local fields of the record at that remain the previous ones: it is they that set
-			 *          the local time, and the offset is derived from it
+			 *          the local time, and the offset is derived from it.
+			 *
 			 * @param dt object of the date and the time to resolve
 			 *
 			 * \~
@@ -2178,18 +2282,20 @@ namespace awh {
 			 *          когда дата объекта меняется. Установка часа, минут либо секунд
 			 *          разложения штампа не вызывает вовсе, и признаки оставались от прежней
 			 *          даты: час, выставленный пополудни поверх утреннего, метку времени
-			 *          суток не менял, отчего переменная формата \%r печатала "03:00:00 AM"
+			 *          суток не менял, отчего переменная формата \%r печатала "03:00:00 AM".
 			 *
 			 * @param dt объект даты и времени для согласования
 			 *
 			 * \~english
 			 * @brief Method of agreeing the derived signs of a date object
+			 *
 			 * @details The mark of the time of the day and the sign of the daylight saving time are not defining fields,
 			 *          but are derived from them, and are therefore recomputed every time
 			 *          the date of the object changes. Setting the hour, the minutes or the seconds
 			 *          does not cause a decomposition of the timestamp at all, and the signs remained from the previous
 			 *          date: an hour set in the afternoon over a morning one did not change the mark of the time
-			 *          of the day, and therefore the \%r format variable printed "03:00:00 AM"
+			 *          of the day, and therefore the \%r format variable printed "03:00:00 AM".
+			 *
 			 * @param dt object of the date and the time to agree
 			 *
 			 * \~
@@ -2203,18 +2309,20 @@ namespace awh {
 			 *          внутри часа перехода местное время либо повторяется, либо не существует
 			 *          вовсе, и от текущего смещения ответ там зависел, отчего одна и та же
 			 *          запись разрешалась по-разному в зависимости от того, что лежало в
-			 *          объекте до вызова
+			 *          объекте до вызова.
 			 *
 			 * @param dt объект даты и времени
 			 * @return   штамп времени в миллисекундах
 			 *
 			 * \~english
 			 * @brief Method of getting the reference moment of time for the resolution of a composite zone
+			 *
 			 * @details The support is the standard time of the zone, and not the current offset of the object:
 			 *          inside the hour of the transition the local time either repeats itself or does not exist
 			 *          at all, and the answer there depended on the current offset, and therefore one and the same
 			 *          record was resolved differently depending on what lay in the
-			 *          object before the call
+			 *          object before the call.
+			 *
 			 * @param dt object of the date and the time
 			 * @return   timestamp in milliseconds
 			 *
@@ -2232,7 +2340,7 @@ namespace awh {
 			 *          смещением +0200 и уезжала на час, а октябрь 2003 года в зоне
 			 *          Europe/Moscow получал нынешнее +0300 вместо тогдашнего +0400.
 			 *          Собственных правил переходов модуль при этом не заводит - их знает
-			 *          система, и её достаточно спросить про саму дату
+			 *          система, и её достаточно спросить про саму дату.
 			 *
 			 * @note У MS Windows летнее время определяется по дате, а стандартное смещение
 			 *       берётся нынешнее: истории смены правил зоны её библиотека не несёт. У
@@ -2244,6 +2352,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the offset of the environment time zone at the given instant
+			 *
 			 * @details The offset of the environment zone is asked of the system for the very instant
 			 *          being written, and not for the current one: formerly it was taken for
 			 *          "now" and applied to every date, and therefore a January record formed
@@ -2251,11 +2360,13 @@ namespace awh {
 			 *          offset +0200 and drifted by an hour, and October 2003 in the
 			 *          Europe/Moscow zone received today's +0300 instead of the then +0400.
 			 *          The module at that does not start transition rules of its own - the
-			 *          system knows them, and it suffices to ask it about the date itself
+			 *          system knows them, and it suffices to ask it about the date itself.
+			 *
 			 * @note On MS Windows the daylight saving time is determined by the date, and the standard offset
 			 *       is taken the present one: its library carries no history of the changes of the rules of a
 			 *       zone. On the Sun systems the decomposition of an instant itself sets timezone and altzone by
 			 *       that instant, and the history of a zone is kept - verified on Solaris 11.4 and OpenIndiana
+			 *
 			 * @param stamp instant in seconds since the beginning of the epoch
 			 * @return      offset of the environment time zone in seconds
 			 *
@@ -2272,20 +2383,22 @@ namespace awh {
 			 *          местное время. В складке перехода местное время повторяется, и
 			 *          берётся первый из двух мигов - летнее смещение; в провале перехода
 			 *          его нет вовсе, и берётся смещение, действовавшее до перехода, так
-			 *          что запись переносится вперёд на величину перевода часов
+			 *          что запись переносится вперёд на величину перевода часов.
 			 *
 			 * @param dt объект даты и времени с местными полями записи
 			 * @return   смещение временной зоны окружения в секундах
 			 *
 			 * \~english
 			 * @brief Method of getting the offset of the environment time zone by the local time
+			 *
 			 * @details A record without a zone carries local time, and the offset depends on the instant
 			 *          that is only yet derived from this time. The offset taken is
 			 *          the one at which the instant derived by it gives the same local time
 			 *          in the environment zone. In the fold of a transition the local time repeats itself, and
 			 *          the first of the two instants is taken - the summer offset; in the gap of a transition
 			 *          it does not exist at all, and the offset in effect before the transition is taken, so
-			 *          that the record is carried forward by the size of the clock change
+			 *          that the record is carried forward by the size of the clock change.
+			 *
 			 * @param dt object of the date and the time with the local fields of the record
 			 * @return   offset of the environment time zone in seconds
 			 *
@@ -2301,7 +2414,7 @@ namespace awh {
 			 *          раскладывался в нулевой зоне, и признак снимался с всемирных полей -
 			 *          для восточного времени США это давало ошибку в пять часов, отчего
 			 *          9 марта 2025 года зона отдавала летнее время уже с 23:00 предыдущих
-			 *          суток по местному счёту
+			 *          суток по местному счёту.
 			 *
 			 * @param date   штамп времени в миллисекундах
 			 * @param offset смещение стандартного времени зоны в секундах
@@ -2309,12 +2422,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining the daylight saving time by the local time of the zone
+			 *
 			 * @details The rule of the transition is set by the local time of the zone, and not by the universal one:
 			 *          the transition happens at 02:00 by its standard time. Formerly the moment
 			 *          was decomposed in the zero zone, and the sign was taken from the universal fields —
 			 *          for the eastern time of the USA that gave an error of five hours, and therefore
 			 *          on the 9th of March 2025 the zone gave back the daylight saving time already from 23:00 of the previous
-			 *          day by the local count
+			 *          day by the local count.
+			 *
 			 * @param date   timestamp in milliseconds
 			 * @param offset offset of the standard time of the zone in seconds
 			 * @return       result of the check
@@ -2331,6 +2446,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of counting the number of the leap years elapsed since the year 1970
+			 *
 			 * @param years number of the years elapsed since the year 1970
 			 * @return      number of the leap years with the Gregorian calendar taken into account
 			 *
@@ -2346,6 +2462,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the timestamp of the beginning of the specified year in milliseconds
+			 *
 			 * @param year year the beginning is needed to be obtained for
 			 * @return     timestamp of the beginning of the year in milliseconds
 			 *
@@ -2359,7 +2476,7 @@ namespace awh {
 			 * @details Начало года извлечению года попутно: оно вычисляется по ходу дела и
 			 *          прежде отбрасывалось, а вызывающая сторона получала его вторым
 			 *          проходом того же расчёта. Обе величины выводятся здесь за один
-			 *          проход, и перегрузка, начала года не принимающая, обращается сюда же
+			 *          проход, и перегрузка, начала года не принимающая, обращается сюда же.
 			 *
 			 * @param date  штамп времени в миллисекундах
 			 * @param begin штамп времени начала извлечённого года в миллисекундах
@@ -2369,13 +2486,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the year from a date together with the beginning of that year
+			 *
 			 * @details The beginning of the year comes along with the extraction of the year: it is computed along the way and
 			 *          formerly was discarded, and the calling side obtained it by a second
 			 *          pass of the same computation. Both quantities are yielded here in one
-			 *          pass, and the overload that does not take the beginning of the year addresses here as well
+			 *          pass, and the overload that does not take the beginning of the year addresses here as well.
+			 *
 			 * @param date  timestamp in milliseconds
 			 * @param begin timestamp of the beginning of the extracted year in milliseconds
 			 * @return      value of the year the date belongs to
+			 *
 			 * @see beginOfYear
 			 *
 			 * \~
@@ -2394,6 +2514,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the daylight saving time (DST) is in force by the rules of the USA/Canada
+			 *
 			 * @param month number of the month (1-12)
 			 * @param date  day of the month (1-31)
 			 * @param day   day of the week (1 is Monday, 7 is Sunday)
@@ -2413,6 +2534,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the timestamp from a date object
+			 *
 			 * @param dt date object the timestamp is needed to be obtained from
 			 * @return   timestamp in milliseconds
 			 *
@@ -2428,19 +2550,21 @@ namespace awh {
 			 *          Сборка штампа времени смещение вычитает, приводя запись к UTC, и
 			 *          принимает его потому с обратным знаком. Метод берёт на себя это
 			 *          обращение знака: собирать штамп времени из объекта даты, минуя его,
-			 *          значит сдвинуть время на величину зоны
+			 *          значит сдвинуть время на величину зоны.
 			 *
 			 * @param dt объект даты из которой необходимо получить штамп времени
 			 * @return   штамп времени в миллисекундах
 			 *
 			 * \~english
 			 * @brief Method of getting the timestamp from a date object with the time zone taken into account
+			 *
 			 * @details A date object holds the fields in its time zone, and the offset — such,
 			 *          as the record of the date itself writes it: for the Moscow zone it is +10800.
 			 *          The assembly of the timestamp subtracts the offset, bringing the record to UTC, and
 			 *          therefore takes it with the opposite sign. The method takes this inversion of the sign
 			 *          upon itself: to assemble a timestamp from a date object bypassing it
-			 *          means to shift the time by the value of the zone
+			 *          means to shift the time by the value of the zone.
+			 *
 			 * @param dt date object the timestamp is needed to be obtained from
 			 * @return   timestamp in milliseconds
 			 *
@@ -2456,19 +2580,21 @@ namespace awh {
 			 *          после перекладки в нулевую зону опишет то же мгновение как 09:37.
 			 *          Прежде эта перекладка была расписана по десятку мест сборкой штампа
 			 *          времени поверх самой себя, и объект, уже лежащий в своей зоне,
-			 *          сдвигался ею повторно
+			 *          сдвигался ею повторно.
 			 *
 			 * @param dt   объект даты который необходимо переложить
 			 * @param zone смещение временной зоны в секундах
 			 *
 			 * \~english
 			 * @brief Method of shifting a date object into the specified time zone
+			 *
 			 * @details The object describes one and the same moment of time, only the zone changes,
 			 *          in which its fields are written: a date object of 12:37 of the Moscow zone
 			 *          after the shift into the zero zone will describe the same instant as 09:37.
 			 *          Formerly this shift was spelled out over a dozen places as an assembly of the timestamp
 			 *          over itself, and an object already lying in its zone
-			 *          was shifted by it once more
+			 *          was shifted by it once more.
+			 *
 			 * @param dt   date object that needs to be shifted
 			 * @param zone offset of the time zone in seconds
 			 *
@@ -2482,16 +2608,18 @@ namespace awh {
 			 *
 			 * @details Правило раскрытия задаёт RFC 9110 (§5.6.7): обозначение, попадающее
 			 *          дальше в будущее, чем допускает окно, относится к ближайшему
-			 *          прошедшему году с теми же двумя разрядами
+			 *          прошедшему году с теми же двумя разрядами.
 			 *
 			 * @param value двузначное обозначение года
 			 * @return      полное обозначение года
 			 *
 			 * \~english
 			 * @brief Method of expanding a two-digit designation of a year into the full one
+			 *
 			 * @details The rule of the expansion is set by RFC 9110 (§5.6.7): a designation falling
 			 *          further into the future than the window allows belongs to the nearest
-			 *          past year with the same two digits
+			 *          past year with the same two digits.
+			 *
 			 * @param value two-digit designation of a year
 			 * @return      full designation of the year
 			 *
@@ -2507,6 +2635,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of filling a date object from a timestamp
+			 *
 			 * @param date date the object is needed to be filled from
 			 * @param dt   date object that needs to be filled
 			 *
@@ -2519,7 +2648,7 @@ namespace awh {
 			 *
 			 * @details Раскладка момента времени сразу в нужной зоне: связка из раскладки
 			 *          в нулевой зоне и последующей перекладки собирала штамп обратно из
-			 *          полей, чтобы тут же разложить его во второй раз
+			 *          полей, чтобы тут же разложить его во второй раз.
 			 *
 			 * @param date дата из которой необходимо заполнить объект
 			 * @param zone смещение временной зоны в секундах
@@ -2530,7 +2659,7 @@ namespace awh {
 			 *
 			 * @details Decomposing the moment straight into the required zone: decomposing
 			 *          in the zero zone and shifting afterwards assembled the timestamp back
-			 *          from the fields only to decompose it a second time
+			 *          from the fields only to decompose it a second time.
 			 *
 			 * @param date date the object is needed to be filled from
 			 * @param zone time zone offset in seconds
@@ -2546,7 +2675,7 @@ namespace awh {
 			 *
 			 * @details Общая реализация разбора для открытого метода parse и проверки
 			 *          validate. Довод valid принимает признак пригодности записи, а при
-			 *          нулевом указателе проверка пригодности не выполняется вовсе
+			 *          нулевом указателе проверка пригодности не выполняется вовсе.
 			 *
 			 * @param date    строка даты
 			 * @param format  формат даты
@@ -2556,9 +2685,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a string of a date and a time into a UnixTimestamp
+			 *
 			 * @details The common implementation of the parsing for the public parse method and for the validate
 			 *          check. The valid argument takes the sign of the fitness of the record, and at
-			 *          a null pointer the check of the fitness is not performed at all
+			 *          a null pointer the check of the fitness is not performed at all.
+			 *
 			 * @param date    string of the date
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -2580,6 +2711,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of filling an object of a date and a time
+			 *
 			 * @param dt     object of the date and the time to fill
 			 * @param text   text the search is performed in
 			 * @param format format of the performance of the search
@@ -2607,6 +2739,7 @@ namespace awh {
 			 *       Расхождение намеренное: аббревиатура служит показу продолжительности
 			 *       человеку, и «два месяца» в ней означает восемь недель, а не отрезок
 			 *       календаря. Для календарного счёта служат offset, begin, end и actual
+			 *
 			 * @param date дата в UnixTimestamp
 			 * @return     сформированная аббревиатура даты
 			 *
@@ -2620,10 +2753,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting a time into an abbreviation
+			 *
 			 * @details Picks the largest unit of the measurement in which the duration
 			 *          is expressed by a number not less than one, and yields it together with the value
 			 *          in that unit. Serves for showing durations to a human:
 			 *          «2.14 months» reads better than «5184000000 milliseconds».
+			 *
 			 * @note The argument is a duration in milliseconds, and not a moment of time: the picking
 			 *       goes from zero, and not from the epoch
 			 * @note A month here equals four weeks, and a year — twelve such months, that
@@ -2632,6 +2767,7 @@ namespace awh {
 			 *       The divergence is deliberate: the abbreviation serves for showing a duration
 			 *       to a human, and «two months» in it means eight weeks, and not an interval
 			 *       of the calendar. For the calendar count offset, begin, end and actual serve
+			 *
 			 * @param date date as a UnixTimestamp
 			 * @return     the built abbreviation of the date
 			 *
@@ -2643,6 +2779,7 @@ namespace awh {
 			 * chrono.abbreviation(5184000000);   // MONTH, 2.142857
 			 * @endcode
 			 *
+			 * \~
 			 */
 			std::pair <type_t, double> abbreviation(const uint64_t date) const noexcept;
 		public:
@@ -2658,9 +2795,11 @@ namespace awh {
 			 *
 			 * @note Неделя отсчитывается с понедельника, поэтому у воскресенья конец недели
 			 *       совпадает с концом суток
+			 *
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
 			 * @return     конец указанной даты в формате UnixTimestamp
+			 *
 			 * @see begin
 			 *
 			 * @code{.cpp}
@@ -2675,16 +2814,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the end of the position of the specified date
+			 *
 			 * @details Yields the boundary of the calendar interval the date falls into.
 			 *          The boundary is an exclusive one: it coincides with the beginning of the next interval, and not
 			 *          with its last millisecond. The interval is set by the half-interval
 			 *          [begin, end), and therefore its length equals the difference of the boundaries, and
 			 *          the check of the falling into it is written as (date >= begin) && (date < end).
+			 *
 			 * @note The week is counted from Monday, and therefore for a Sunday the end of the week
 			 *       coincides with the end of the day
+			 *
 			 * @param date date the position is needed to be obtained for
 			 * @param type type of the units of the measurements of the date
 			 * @return     end of the specified date in the UnixTimestamp format
+			 *
 			 * @see begin
 			 *
 			 * @code{.cpp}
@@ -2697,6 +2840,7 @@ namespace awh {
 			 * chrono.end(date, awh::chrono_t::type_t::YEAR);    // 2026-01-01T00:00:00
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t end(const uint64_t date, const type_t type) const noexcept;
 			/**
@@ -2715,11 +2859,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the end of the position of the current date
+			 *
 			 * @details The boundary of the local storage is counted in the zone of the object: the end of the day of
 			 *          a record lying in the UTC+3 zone falls on its local midnight, and not on
 			 *          the midnight of the zero zone. What is yielded at that is a timestamp, and it carries no zone
 			 *          and is counted from the beginning of the epoch in the zero one, as any other one.
 			 *          The boundary of the global storage is counted in the zero zone.
+			 *
 			 * @param type    type of the units of the measurements of the date
 			 * @param storage storage of the value of the time
 			 * @return        end of the current date in the UnixTimestamp format
@@ -2739,6 +2885,7 @@ namespace awh {
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
 			 * @return     начало указанной даты в формате UnixTimestamp
+			 *
 			 * @see end
 			 *
 			 * @code{.cpp}
@@ -2748,12 +2895,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the beginning of the position of the specified date
+			 *
 			 * @details Yields the beginning of the calendar interval the date falls into. The boundary is
 			 *          an inclusive one: the very date of the beginning of the interval falls into the interval. Together with end
 			 *          it sets the half-interval [begin, end).
+			 *
 			 * @param date date the position is needed to be obtained for
 			 * @param type type of the units of the measurements of the date
 			 * @return     beginning of the specified date in the UnixTimestamp format
+			 *
 			 * @see end
 			 *
 			 * @code{.cpp}
@@ -2761,6 +2911,7 @@ namespace awh {
 			 * const uint64_t day = chrono.begin(date, awh::chrono_t::type_t::DAY);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t begin(const uint64_t date, const type_t type) const noexcept;
 			/**
@@ -2779,11 +2930,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the beginning of the position of the current date
+			 *
 			 * @details The boundary of the local storage is counted in the zone of the object: the beginning of the day of
 			 *          a record lying in the UTC+3 zone falls on its local midnight, and not on
 			 *          the midnight of the zero zone. What is yielded at that is a timestamp, and it carries no zone
 			 *          and is counted from the beginning of the epoch in the zero one, as any other one.
 			 *          The boundary of the global storage is counted in the zero zone.
+			 *
 			 * @param type    type of the units of the measurements of the date
 			 * @param storage storage of the value of the time
 			 * @return        beginning of the current date in the UnixTimestamp format
@@ -2806,6 +2959,7 @@ namespace awh {
 			 * @note Недели - исключение: они округляются до ближайшего целого, как и
 			 *       единица unit_t::WEEKS, поэтому неполная неделя от половины и выше
 			 *       засчитывается целой
+			 *
 			 * @param date   дата относительно которой производятся расчёты
 			 * @param value  тип определяемых единиц измерений времени
 			 * @param type   тип единиц измерений даты
@@ -2823,15 +2977,18 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the actualization of the elapsed and of the remaining time
+			 *
 			 * @details Counts how many units of value have remained until the end of the interval of type or
 			 *          how many of them have elapsed from its beginning. The value argument sets the unit of the count,
 			 *          the type argument — the interval the count is kept inside of.
+			 *
 			 * @note Whole units are counted: an incomplete unit does not count. The sum of the
 			 *       elapsed and of the remaining units may therefore be one less than
 			 *       their full quantity in the interval
 			 * @note The weeks are an exception: they are rounded to the nearest whole, as the
 			 *       unit_t::WEEKS unit is, and therefore an incomplete week from a half and above
 			 *       counts as a whole one
+			 *
 			 * @param date   date the computations are performed relative to
 			 * @param value  type of the determined units of the measurements of the time
 			 * @param type   type of the units of the measurements of the date
@@ -2847,6 +3004,7 @@ namespace awh {
 			 * chrono.actual(date, ch::type_t::MONTH, ch::type_t::YEAR, ch::actual_t::LEFT);  // 8
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept;
 			/**
@@ -2861,6 +3019,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the actualization of the elapsed and of the remaining time
+			 *
 			 * @param value   type of the determined units of the measurements of the time
 			 * @param type    type of the units of the measurements of the date
 			 * @param actual  direction of the actualization
@@ -2884,11 +3043,13 @@ namespace awh {
 			 *       даёт 28 февраля, а обратное смещение возвращает 28 января, а не 31-е.
 			 *       Так же поступают все календарные библиотеки - иного корректного
 			 *       определения у этой операции нет
+			 *
 			 * @note Смещение на микросекунды и наносекунды меняет размерность ответа:
 			 *       довод принимается штампом времени в миллисекундах, а такой штамп
 			 *       доли миллисекунды не представляет, поэтому результат выдаётся в
 			 *       микросекундах либо наносекундах соответственно и в миллисекундных
 			 *       расчётах напрямую не участвует
+			 *
 			 * @param date   дата относительно которой производится смещение, в миллисекундах
 			 * @param value  значение на которое производится смещение
 			 * @param type   тип единиц измерений даты
@@ -2914,19 +3075,23 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the offset by the specified number of the units of time
+			 *
 			 * @details Moves a date by the given number of the units forward or backward.
 			 *          An offset by the units of a constant length (from a week and finer) is
 			 *          an addition of timestamps, an offset by months and years requires a decomposition
 			 *          of the date and its reverse assembly.
+			 *
 			 * @note An offset by months is irreversible: the 31st of January with an offset by a month forward
 			 *       gives the 28th of February, and the reverse offset returns the 28th of January, and not the 31st.
 			 *       So do all the calendar libraries — there is no other correct
 			 *       definition of this operation
+			 *
 			 * @note An offset by microseconds and nanoseconds changes the dimension of the answer:
 			 *       the argument is taken as a timestamp in milliseconds, and such a timestamp
 			 *       does not represent fractions of a millisecond, and therefore the result is yielded in
 			 *       microseconds or nanoseconds respectively and does not participate in millisecond
 			 *       computations directly
+			 *
 			 * @param date   date the offset is performed relative to, in milliseconds
 			 * @param value  value the offset is performed by
 			 * @param type   type of the units of the measurements of the date
@@ -2950,6 +3115,7 @@ namespace awh {
 			 * // 1743943021000001, microseconds
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept;
 			/**
@@ -2964,6 +3130,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the offset of the current date by the specified number of the units of time
+			 *
 			 * @param value   value the offset is performed by
 			 * @param type    type of the units of the measurements of the date
 			 * @param offset  direction of the offset
@@ -2988,7 +3155,9 @@ namespace awh {
 			 *       чтения человеком, и полная разрядность двоичного числа давала бы для
 			 *       тридцати суток 4.285714285714286w вместо 4.29w. Обратное чтение
 			 *       округлённого обозначения точного исходного значения поэтому не даёт
+			 *
 			 * @note Отрицательная продолжительность выводится со знаком, как и читается:
+			 *
 			 * @param seconds количество секунд для конвертации
 			 * @return        обозначение времени с указанием размерности
 			 *
@@ -3009,16 +3178,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the text value of a time
+			 *
 			 * @details Writes a duration by the largest unit in which it
 			 *          is expressed by a number not less than one. The unit is designated by one
 			 *          character: s is the seconds, m is the minutes, h is the hours, d is the days, w is the weeks,
 			 *          M is the months, y is the years. The reverse conversion is done by the overload of the same name
 			 *          taking a string.
+			 *
 			 * @note The fractional part is rounded to the hundredths: the designation is meant for
 			 *       reading by a human, and the full width of a binary number would give for
 			 *       thirty days 4.285714285714286w instead of 4.29w. The reverse reading of
 			 *       a rounded designation therefore does not give the exact original value
+			 *
 			 * @note A negative duration is yielded with a sign, as it is read as well:
+			 *
 			 * @param seconds number of the seconds to convert
 			 * @return        designation of the time with the dimension specified
 			 *
@@ -3037,6 +3210,7 @@ namespace awh {
 			 * chrono.seconds(-2592000.0); // -4.29w
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string seconds(const double seconds) const noexcept;
 			/**
@@ -3052,10 +3226,12 @@ namespace awh {
 			 *       и « 90m» дают ноль. Пробел между числом и единицей допускается («90 m»).
 			 *       Дробная часть отделяется точкой, запятая не принимается. Месяц и год
 			 *       берутся средней длительности - 30.436875 и 365 суток соответственно
+			 *
 			 * @note Обозначение состоит из одного числа и одной единицы: составные записи
 			 *       вида «1h30m» и «1w2d3h15m30s» не предусмотрены и дают ноль. Прежде
 			 *       разбор искал число с любой позиции записи и брал у составной один лишь
 			 *       её хвост, отбрасывая начало молча, а проверка такую запись одобряла
+			 *
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      размер в секундах
 			 *
@@ -3071,18 +3247,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the size in seconds from a string
+			 *
 			 * @details Converts a designation of a duration into seconds. It is convenient to set with it
 			 *          the lifetimes of the connections, the timeouts and the storage times in the settings: «90m»
 			 *          reads better than «5400».
+			 *
 			 * @note The designation occupies the record entirely: the number is obliged to stand at its beginning,
 			 *       and the unit of the dimension — at its end, and the records «42», «1,5h», «timeout=90m»
 			 *       and « 90m» give zero. A space between the number and the unit is allowed («90 m»).
 			 *       The fractional part is separated by a dot, a comma is not accepted. The month and the year
 			 *       are taken of the average length — 30.436875 and 365 days respectively
+			 *
 			 * @note The designation consists of one number and one unit: compound records
 			 *       of the form «1h30m» and «1w2d3h15m30s» are not provided for and give zero. Formerly
 			 *       the parsing searched for a number from any position of the record and took from a compound one only
 			 *       its tail, discarding the beginning silently, and the check approved such a record
+			 *
 			 * @param value string of the designation of the dimension (s, m, h, d, w, M, y)
 			 * @return      size in seconds
 			 *
@@ -3096,6 +3276,7 @@ namespace awh {
 			 * chrono.seconds("1y");    // 31536000
 			 * @endcode
 			 *
+			 * \~
 			 */
 			double seconds(string_view value) const noexcept;
 		public:
@@ -3111,8 +3292,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the status of the 12-hour format of the time
+			 *
 			 * @details Determines the half of the day the date belongs to: the hours from 0 to 11
 			 *          give AM, from 12 to 23 — PM. The midnight belongs to AM, the noon — to PM.
+			 *
 			 * @param date date to check
 			 * @return     half of the day the date belongs to
 			 *
@@ -3128,6 +3311,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the current status of the 12-hour format of the time
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        current set value of the status of the 12-hour format of the time
 			 *
@@ -3151,11 +3335,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the value of the year
+			 *
 			 * @details Yields the full designation of the year the date belongs to. The year
 			 *          is determined in the zero time zone, without the offset of the environment zone taken into account.
+			 *
 			 * @note A timestamp beyond the limit of the year 9999 yields the largest representable
 			 *       year — 9999: the year is written with four digits in all the standards
 			 *       the module serves, and is held by a field two octets wide
+			 *
 			 * @param date date to extract the year from
 			 * @return     full designation of the year
 			 *
@@ -3171,6 +3358,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the current value of the year
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        current value of the year
 			 *
@@ -3196,12 +3384,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the daylight saving time (DST) is in force on a date
+			 *
 			 * @details The check is performed by the rules of the USA and Canada in force since the year 2007:
 			 *          the daylight saving time begins on the second Sunday of March at 02:00 and
 			 *          ends on the first Sunday of November at 02:00.
+			 *
 			 * @note The rules of the transition are their own for every country, and this check is inapplicable
 			 *       to the European, Australian or South American zones. The module does not use the time zone
 			 *       database of the operating system and therefore does not know foreign rules
+			 *
 			 * @param date date to check
 			 * @return     result of the check
 			 *
@@ -3233,20 +3424,24 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the daylight saving time (DST) is in force
+			 *
 			 * @details The sign of the local storage is taken from the very object and therefore judges by
 			 *          its time zone: for the composite zones of North America — zone_t::AT,
 			 *          zone_t::CT, zone_t::ET, zone_t::MT, zone_t::NT and zone_t::PT — it
 			 *          is derived from the resolved offset and means exactly that the zone stands
 			 *          on the daylight saving time. The sign of the global storage decomposes the timestamp
 			 *          in the zero zone.
+			 *
 			 * @note For the zones with a constant offset — zone_t::UTC, zone_t::MSK, zone_t::EST and
 			 *       the rest — the sign remains an answer to the question «is the daylight saving time in force by
 			 *       the rules of the USA and Canada on this civil date», and not a property of the zone itself:
 			 *       the offset of such zones does not depend on the season at all, and their sign
 			 *       is true in the summer. The daylight saving time of a zone is derived from its offset, and not from here:
 			 *       by matching getTimeZone with a date and without one
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        result of the check
+			 *
 			 * @see getTimeZone(const zone_t, const uint64_t)
 			 *
 			 * \~
@@ -3266,9 +3461,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether a year is a leap one
+			 *
 			 * @details The check is performed by the rules of the Gregorian calendar: a year is a leap one,
 			 *          if it is divisible by four, but not by a hundred, or is divisible by four hundred.
 			 *          Therefore the year 2000 is a leap one, and 1900 and 2100 are not.
+			 *
 			 * @param year year to check
 			 * @return     result of the check
 			 *
@@ -3285,6 +3482,7 @@ namespace awh {
 			 * @note Обе перегрузки принимают целое число, поэтому целочисленный литерал
 			 *       подходит им одинаково и делает вызов неоднозначным. Довод следует
 			 *       передавать переменной либо приводить явно:
+			 *
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 *
@@ -3296,11 +3494,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether a year is a leap one
+			 *
 			 * @details Checks the year the date belongs to. Differs from the overload of the same name
 			 *          by the argument: that one takes the number of the year, this one — a timestamp.
+			 *
 			 * @note Both overloads take an integer, and therefore an integer literal
 			 *       suits them equally and makes the call ambiguous. The argument should
 			 *       be passed by a variable or cast explicitly:
+			 *
 			 * @param date date to check
 			 * @return     result of the check
 			 *
@@ -3310,6 +3511,7 @@ namespace awh {
 			 * chrono.leap(static_cast <uint64_t> (date));     // the check of the year of the date
 			 * @endcode
 			 *
+			 * \~
 			 */
 			bool leap(const uint64_t date) const noexcept;
 			/**
@@ -3321,6 +3523,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the current year is a leap one
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        result of the check
 			 *
@@ -3336,6 +3539,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of setting the data of a date and a time
+			 *
 			 * @tparam T type of the data the data is set in
 			 *
 			 * \~
@@ -3352,9 +3556,12 @@ namespace awh {
 			 *
 			 * @note Метод изменяет состояние объекта: согласование доступа при работе из
 			 *       нескольких потоков лежит на том, кто объектом пользуется
+			 *
 			 * @param date дата для обработки
 			 * @param unit элементы данных для установки
+			 *
 			 * @see timestamp
+			 *
 			 * @see clear
 			 *
 			 * @code{.cpp}
@@ -3370,15 +3577,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the data of a date and a time
+			 *
 			 * @details Changes a separate part of the internal date object — of the storage_t::LOCAL
 			 *          storage. The system clock (storage_t::GLOBAL) is not touched.
 			 *          Allows a date to be assembled piece by piece or one part of
 			 *          a parsed record to be corrected.
+			 *
 			 * @note The method changes the state of the object: the synchronization of the access when working from
 			 *       several threads lies on the one who uses the object
+			 *
 			 * @param date date to process
 			 * @param unit elements of the data to set
+			 *
 			 * @see timestamp
+			 *
 			 * @see clear
 			 *
 			 * @code{.cpp}
@@ -3392,6 +3604,7 @@ namespace awh {
 			 * chrono.format("%Y-%m-%d", ch::storage_t::LOCAL);  // 2030-12-06
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void set(const T date, const unit_t unit) noexcept;
 		private:
@@ -3406,6 +3619,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the data of a date and a time
+			 *
 			 * @param buffer binary buffer of the data
 			 * @param size   size of the binary buffer
 			 * @param unit   elements of the data to set
@@ -3423,6 +3637,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of extracting the data of a date and a time
+			 *
 			 * @tparam T type of the data the data is extracted in
 			 *
 			 * \~
@@ -3439,11 +3654,13 @@ namespace awh {
 			 * @note Извлечение любой составляющей требует полного разложения штампа
 			 *       времени, поэтому несколько составляющих одной даты дешевле получить
 			 *       разом через format, чем несколькими вызовами get
+			 *
 			 * @note Единица unit_t::WEEKS округляется до ближайшего целого, а не
 			 *       отбрасывает неполную неделю: 95 прошедших дней дают 14, а не 13.
 			 *       Величина эта отличается и от номера недели в году, который выдают
 			 *       переменные формата \%U и \%W: те отсчитывают неделю от её первого
 			 *       дня и дни до первого такого дня года относят к нулевой неделе
+			 *
 			 * @param date дата для обработки
 			 * @param unit элементы данных для извлечения
 			 * @return     значение данных даты и времени
@@ -3464,17 +3681,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
+			 *
 			 * @details Extracts a separate part of the calendar decomposition of a date.
 			 *          The DAY and MONTH parts are yielded both as a number and as a name — depending on
 			 *          which type is set by the template argument.
+			 *
 			 * @note Extracting any part requires a full decomposition of the timestamp,
 			 *       and therefore several parts of one date are cheaper to obtain
 			 *       all at once through format than by several get calls
+			 *
 			 * @note The unit_t::WEEKS unit is rounded to the nearest whole, and does not
 			 *       discard an incomplete week: 95 elapsed days give 14, and not 13.
 			 *       That quantity differs from the number of the week in the year as well, which is yielded by
 			 *       the \%U and \%W format variables: those count the week from its first
 			 *       day and attribute the days before the first such day of the year to the zeroth week
+			 *
 			 * @param date date to process
 			 * @param unit elements of the data to extract
 			 * @return     value of the data of the date and the time
@@ -3493,6 +3714,7 @@ namespace awh {
 			 * chrono.get <uint32_t> (date, ch::unit_t::MILLISECONDS); // 520
 			 * @endcode
 			 *
+			 * \~
 			 */
 			T get(const uint64_t date, const unit_t unit) const noexcept;
 			/**
@@ -3503,6 +3725,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of extracting the data of a date and a time
+			 *
 			 * @tparam T type of the data the data is extracted in
 			 *
 			 * \~
@@ -3517,6 +3740,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
+			 *
 			 * @param unit elements of the data to extract
 			 * @return     value of the data of the date and the time
 			 *
@@ -3531,6 +3755,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of extracting the data of a date and a time
+			 *
 			 * @tparam T type of the data the data is extracted in
 			 *
 			 * \~
@@ -3546,6 +3771,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
+			 *
 			 * @param unit    elements of the data to extract
 			 * @param storage storage of the value of the time
 			 * @return        value of the data of the date and the time
@@ -3566,6 +3792,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
+			 *
 			 * @param buffer binary buffer of the data
 			 * @param size   size of the binary buffer
 			 * @param date   date to process
@@ -3587,6 +3814,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
+			 *
 			 * @param buffer  binary buffer of the data
 			 * @param size    size of the binary buffer
 			 * @param unit    elements of the data to set
@@ -3605,6 +3833,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the time zone
+			 *
 			 * @param zone offset of the time zone to set (in seconds)
 			 *
 			 * \~
@@ -3618,6 +3847,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the time zone
+			 *
 			 * @param zone time zone to set
 			 *
 			 * \~
@@ -3634,10 +3864,13 @@ namespace awh {
 			 * @note Принимаются смещения от UTC-12 до UTC+14 - промежуток, которым
 			 *       исчерпываются пояса Земли. Обозначение вне этого промежутка, равно как
 			 *       и неизвестное, оставляет установленную зону нетронутой
+			 *
 			 * @note Установленное смещение читается методом getTimeZone с хранилищем
 			 *       storage_t::LOCAL: без довода хранилища тот выдаёт зону операционной
 			 *       системы, а не установленную объекту
+			 *
 			 * @param zone временная зона для установки
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -3649,16 +3882,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the time zone
+			 *
 			 * @details A designation sets the time zone entirely, and not a correction to
 			 *          the set one: a repeated setting of one and the same designation does not change
 			 *          the offset.
+			 *
 			 * @note Offsets from UTC-12 to UTC+14 are accepted — the range the belts of the Earth
 			 *       are exhausted by. A designation outside this range, as well
 			 *       as an unknown one, leaves the set zone untouched
+			 *
 			 * @note The set offset is read by the getTimeZone method with the storage_t::LOCAL
 			 *       storage: without the argument of the storage that one yields the zone of the operating
 			 *       system, and not the one set to the object
+			 *
 			 * @param zone time zone to set
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -3668,6 +3906,7 @@ namespace awh {
 			 * chrono.setTimeZone("3");        // +3:00, the number means hours
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void setTimeZone(string_view zone) noexcept;
 		public:
@@ -3681,8 +3920,10 @@ namespace awh {
 			 * @note Смещение по названию зоны выдаёт getTimeZone, принимающий строку: он
 			 *       понимает и название со смещением от него ("GMT+0530", "MSK+1"), чего
 			 *       этот метод не умеет
+			 *
 			 * @param zone временная зона для конвертации
 			 * @return     определённая временная зона
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -3693,13 +3934,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of performing the matching of a time zone
+			 *
 			 * @details Converts a text designation of a zone into an element of the enumeration. The search
 			 *          is performed without the case taken into account.
+			 *
 			 * @note The offset by the name of a zone is yielded by getTimeZone taking a string: it
 			 *       understands a name with an offset from it ("GMT+0530", "MSK+1") as well, which
 			 *       this method cannot do
+			 *
 			 * @param zone time zone to convert
 			 * @return     the determined time zone
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -3708,6 +3953,7 @@ namespace awh {
 			 * chrono.matchTimeZone("XXXX");  // zone_t::NONE
 			 * @endcode
 			 *
+			 * \~
 			 */
 			zone_t matchTimeZone(string_view zone) const noexcept;
 			/**
@@ -3719,6 +3965,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of performing the matching of a time zone
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        the determined time zone
 			 *
@@ -3748,17 +3995,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting a time zone into an offset
+			 *
 			 * @details Yields the offset of the zone from UTC in seconds. The offset is positive to
 			 *          the east of the zero meridian: the Moscow time gives 10800,
 			 *          the North American eastern standard one — minus 18000.
+			 *
 			 * @note The composite zones of North America — zone_t::AT, zone_t::CT, zone_t::ET,
 			 *       zone_t::MT, zone_t::NT and zone_t::PT — are resolved here by the current
 			 *       moment, and this is the purpose of the overload, and not an omission: it answers
 			 *       the question «what offset does the zone have now». The offset on a given date
 			 *       is yielded by the overload taking a date, and the parsing and the building of the records
 			 *       go through it. The offset of the other zones does not depend on the moment at all
+			 *
 			 * @param zone time zone to convert
 			 * @return     offset of the time zone in seconds
+			 *
 			 * @see getTimeZone(const zone_t, const uint64_t)
 			 *
 			 * \~
@@ -3776,6 +4027,7 @@ namespace awh {
 			 *
 			 * @note Смещение зон, сводными не являющихся, от момента не зависит, и ответ
 			 *       здесь равен ответу перегрузки, даты не принимающей
+			 *
 			 * @param zone временная зона для конвертации
 			 * @param date штамп времени в миллисекундах
 			 * @return     смещение временной зоны в секундах
@@ -3790,13 +4042,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting a time zone into an offset at the specified moment of time
+			 *
 			 * @details The composite zones of North America — zone_t::AT, zone_t::CT, zone_t::ET,
 			 *          zone_t::MT, zone_t::NT and zone_t::PT — designate now the standard time,
 			 *          now the daylight saving one, and the choice between them depends on the moment itself. This
 			 *          overload answers by the specified date and does not depend on the current moment
 			 *          at all — the parsing and the building of the records go through it.
+			 *
 			 * @note The offset of the zones that are not composite ones does not depend on the moment, and the answer
 			 *       here equals the answer of the overload that does not take a date
+			 *
 			 * @param zone time zone to convert
 			 * @param date timestamp in milliseconds
 			 * @return     offset of the time zone in seconds
@@ -3809,6 +4064,7 @@ namespace awh {
 			 * chrono.getTimeZone(ch::zone_t::ET, 1752580800000);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			int32_t getTimeZone(const zone_t zone, const uint64_t date) const noexcept;
 			/**
@@ -3826,8 +4082,10 @@ namespace awh {
 			 *       validateTimeZone: он знает и встроенные зоны, и добавленные в реестр,
 			 *       и запись одним лишь смещением, тогда как matchTimeZone переводит
 			 *       обозначение в элемент перечисления и зоны реестра ему неизвестны
+			 *
 			 * @param zone временная зона для конвертации
 			 * @return     смещение временной зоны в секундах
+			 *
 			 * @see matchTimeZone
 			 *
 			 * @code{.cpp}
@@ -3842,18 +4100,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting a time zone into an offset
+			 *
 			 * @details Parses a text designation of a zone. The acceptance is deliberately broad: a zone
 			 *          is set by a name, by an offset, or by a name with an offset from it.
 			 *          An offset is read with one, two, three and four digits, with a colon
 			 *          and without.
+			 *
 			 * @note An unrecognized designation gives the offset of the set zone of the object, and
 			 *       not a sign of an error. It is impossible to tell it from an honest zero offset,
 			 *       and therefore the designations from an untrusted source are worth checking by the
 			 *       validateTimeZone method: it knows both the built-in zones and the ones added to the registry,
 			 *       and the record by an offset alone, while matchTimeZone converts
 			 *       a designation into an element of the enumeration and the zones of the registry are unknown to it
+			 *
 			 * @param zone time zone to convert
 			 * @return     offset of the time zone in seconds
+			 *
 			 * @see matchTimeZone
 			 *
 			 * @code{.cpp}
@@ -3866,6 +4128,7 @@ namespace awh {
 			 * chrono.getTimeZone("XXXX");      // the offset of the zone of the object: not recognized
 			 * @endcode
 			 *
+			 * \~
 			 */
 			int32_t getTimeZone(string_view zone) const noexcept;
 		public:
@@ -3881,9 +4144,11 @@ namespace awh {
 			 *       методе dst, поэтому к зонам других стран способ неприменим
 			 * @note Выбор по текущей дате здесь намеренный: разбор и формирование записей
 			 *       этот способ не зовут вовсе - они идут через перегрузки, дату принимающие
+			 *
 			 * @param std временная зона стандартного времени
 			 * @param sum временная зона летнего времени
 			 * @return    смещение временной зоны в секундах
+			 *
 			 * @see dst
 			 *
 			 * @code{.cpp}
@@ -3894,16 +4159,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining the current time zone relative to the daylight saving time
+			 *
 			 * @details Chooses between the standard and the daylight saving time of a zone by the current date.
 			 *          Is needed because the enumeration of the zones sets only the offset: the standard and
 			 *          the daylight saving time of every zone are two different elements of it.
+			 *
 			 * @note The force of the daylight saving time is determined by the rules of the USA and Canada, as in
 			 *       the dst method, and therefore the way is inapplicable to the zones of other countries
 			 * @note The choice by the current date here is a deliberate one: the parsing and the building of the records
 			 *       do not call this way at all — they go through the overloads taking a date
+			 *
 			 * @param std time zone of the standard time
 			 * @param sum time zone of the daylight saving time
 			 * @return    offset of the time zone in seconds
+			 *
 			 * @see dst
 			 *
 			 * @code{.cpp}
@@ -3912,6 +4181,7 @@ namespace awh {
 			 * chrono.getTimeZone(ch::zone_t::EST, ch::zone_t::EDT);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			int32_t getTimeZone(const zone_t std, const zone_t sum) const noexcept;
 		public:
@@ -3926,6 +4196,7 @@ namespace awh {
 			 *
 			 * @param storage хранение значение времени
 			 * @return        смещение временной зоны в секундах
+			 *
 			 * @see setTimeZone
 			 *
 			 * @code{.cpp}
@@ -3936,12 +4207,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the set time zone
+			 *
 			 * @details The storage sets whose zone is yielded, and these values are different:
 			 *          storage_t::GLOBAL yields the zone of the operating system, storage_t::LOCAL
 			 *          — the zone set to the object itself by the setTimeZone method. By
 			 *          default the zone of the operating system is taken.
+			 *
 			 * @param storage storage of the value of the time
 			 * @return        offset of the time zone in seconds
+			 *
 			 * @see setTimeZone
 			 *
 			 * @code{.cpp}
@@ -3950,6 +4224,7 @@ namespace awh {
 			 * chrono.getTimeZone();                                 // the zone of the system
 			 * @endcode
 			 *
+			 * \~
 			 */
 			int32_t getTimeZone(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
@@ -3975,9 +4250,12 @@ namespace awh {
 			 *       его. Встроенные обозначения лежат в отдельной неизменяемой таблице
 			 *       модуля, которой ни addTimeZone, ни clearTimeZones не касаются: очистка
 			 *       снимает лишь добавленные обозначения, а встроенные остаются доступны
+			 *
 			 * @param name   название временной зоны
 			 * @param offset смещение времени в секундах
+			 *
 			 * @see setTimeZones
+			 *
 			 * @see clearTimeZones
 			 *
 			 * @code{.cpp}
@@ -3987,16 +4265,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding one's own time zone
+			 *
 			 * @details Supplements the registry of the zones with one's own designation. An added designation
 			 *          is recognized both by the getTimeZone method and by the parsing of the records of a date by
 			 *          the \%Z format variable.
+			 *
 			 * @note A designation coinciding with one already known in the added registry replaces
 			 *       it. The built-in designations lie in a separate immutable table
 			 *       of the module, which neither addTimeZone nor clearTimeZones touches: the clearing
 			 *       removes only the added designations, and the built-in ones remain available
+			 *
 			 * @param name   name of the time zone
 			 * @param offset offset of the time in seconds
+			 *
 			 * @see setTimeZones
+			 *
 			 * @see clearTimeZones
 			 *
 			 * @code{.cpp}
@@ -4004,6 +4287,7 @@ namespace awh {
 			 * chrono.getTimeZone("ANYKS");  // 12345
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void addTimeZone(string_view name, const int32_t offset) noexcept;
 			/**
@@ -4014,6 +4298,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting one's own list of the time zones
+			 *
 			 * @param zones list of the time zones to set
 			 *
 			 * \~
@@ -4030,9 +4315,12 @@ namespace awh {
 			 *
 			 * @note Метод изменяет состояние объекта: согласование доступа при работе из
 			 *       нескольких потоков лежит на том, кто объектом пользуется
+			 *
 			 * @param date дата для установки
 			 * @param type единицы измерения штампа времени
+			 *
 			 * @see set
+			 *
 			 * @see clear
 			 *
 			 * @code{.cpp}
@@ -4044,14 +4332,19 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting a timestamp in the specified units of the measurement
+			 *
 			 * @details Puts the specified moment of time into the internal date object — the storage_t::LOCAL
 			 *          storage. The type argument sets the dimension of the passed timestamp, and
 			 *          not the unit of the storage: the timestamp is brought to milliseconds.
+			 *
 			 * @note The method changes the state of the object: the synchronization of the access when working from
 			 *       several threads lies on the one who uses the object
+			 *
 			 * @param date date to set
 			 * @param type units of the measurement of the timestamp
+			 *
 			 * @see set
+			 *
 			 * @see clear
 			 *
 			 * @code{.cpp}
@@ -4061,6 +4354,7 @@ namespace awh {
 			 * chrono.timestamp(1743943021, ch::type_t::SECONDS);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			void timestamp(const uint64_t date, const type_t type) noexcept;
 			/**
@@ -4075,6 +4369,7 @@ namespace awh {
 			 *       источника ниже: младшие разряды у неё нулевые. На macOS и BSD обращение
 			 *       ко времени обслуживается через страницу общего доступа ядра и системным
 			 *       вызовом не является, поэтому вызов дёшев - около 24 наносекунд
+			 *
 			 * @param type    единицы измерения штампа времени
 			 * @param storage хранение значение времени
 			 * @return        штамп времени в указанных единицах измерения
@@ -4088,13 +4383,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting a timestamp in the specified units of the measurement
+			 *
 			 * @details Yields the moment of time in the given dimension. The GLOBAL storage takes the
 			 *          moment from the system clock anew at every call, LOCAL — from
 			 *          the internal date object.
+			 *
 			 * @note The nanosecond dimension is yielded, but the resolution of
 			 *       the source is lower: its lower digits are zero. On macOS and BSD the address
 			 *       to the time is served through a shared page of the kernel and is not a system
 			 *       call, and therefore the call is cheap — about 24 nanoseconds
+			 *
 			 * @param type    units of the measurement of the timestamp
 			 * @param storage storage of the value of the time
 			 * @return        timestamp in the specified units of the measurement
@@ -4106,6 +4404,7 @@ namespace awh {
 			 * chrono.timestamp(ch::type_t::NANOSECONDS);   // 1785332104852033000
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t timestamp(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
@@ -4129,21 +4428,25 @@ namespace awh {
 			 *          вперёд дальше допуска, заданного методом yearRollback, берётся
 			 *          предыдущий год. Вторая половина обеспечивает устойчивость: один и тот
 			 *          же довод даёт один и тот же результат вне зависимости от момента вызова.
+			 *
 			 * @note Разбор не сообщает об ошибке. Пустая запись либо пустой формат дают ноль,
 			 *       а запись, в которой не нашлось ни одного поля формата, даёт текущий
 			 *       момент целиком - по тому же правилу подстановки. Если запись приходит из
 			 *       недоверенного источника, результат следует проверять на осмысленность
 			 *       самостоятельно
+			 *
 			 * @note Значения полей не проверяются на допустимость и переносятся в соседние
 			 *       разряды: запись "2025-13-45" читается как 45-е число тринадцатого месяца
 			 *       и даёт 14 февраля 2026 года. Пригодность такой записи отвергает метод
 			 *       validate, а поля внутреннего объекта даты после разбора описывают
 			 *       выданный штамп времени, а не сырую запись
+			 *
 			 * @note Разбор в хранилище storage_t::LOCAL не только читает внутренний объект
 			 *       даты, но и записывает в него разобранный результат: следующий разбор
 			 *       будет считать текущим моментом результат предыдущего. Если этого не
 			 *       требуется, часы объекта следует переводить методом timestamp перед
 			 *       каждым разбором либо брать хранилище storage_t::GLOBAL
+			 *
 			 * @note Временная зона, форматом не заданная, зависит от хранилища. В
 			 *       хранилище storage_t::LOCAL она берётся у объекта, если выставлена
 			 *       методом setTimeZone, и лишь при её отсутствии - из окружения процесса.
@@ -4151,12 +4454,14 @@ namespace awh {
 			 *       окружения всегда, каким бы ни был setTimeZone. Запись без обозначения
 			 *       зоны поэтому читается по-разному на машинах с разными настройками -
 			 *       если это нежелательно, зону следует задавать форматом явно
+			 *
 			 * @note Календарь модуля охватывает годы с 1970 по 9999: отсчёт штампа времени
 			 *       ведётся от начала 1970 года, а год записывается четырьмя разрядами во
 			 *       всех стандартах, которым модуль служит. Запись года вне этих пределов
 			 *       разбор выводит началом эпохи, а проверка validate признаёт негодной.
 			 *       Тем же началом эпохи выводится и местная полночь первого дня эпохи в
 			 *       зоне восточнее UTC: момент этот приходится на время до её начала
+			 *
 			 * @warning Перегрузка признака пригодности не отдаёт, а число возвращается
 			 *          всегда - и для записи, строго образцу не отвечающей, и для мусора,
 			 *          в котором не нашлось ни одного поля: тогда это текущий момент,
@@ -4188,11 +4493,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a string of a date and a time into a UnixTimestamp
+			 *
 			 * @details Converts a record of a date into a timestamp by a pattern of a format. The parsing goes
 			 *          by a pattern, and not by a strict grammar: the characters of the format that are not
 			 *          variables serve only as separators, and the fields are searched for by their width.
 			 *          Therefore one and the same format reads the records slightly diverging in
 			 *          their arrangement.
+			 *
 			 *          <b>The substitution of the missing fields.</b> The fields not set by the format
 			 *          are substituted by an asymmetric rule: the fields coarser than the coarsest
 			 *          set one are taken as the current ones, the fields finer than the finest set one
@@ -4203,21 +4510,25 @@ namespace awh {
 			 *          forward further than the tolerance set by the yearRollback method, the
 			 *          previous year is taken. The second half provides the stability: one and the same
 			 *          argument gives one and the same result regardless of the moment of the call.
+			 *
 			 * @note The parsing does not report an error. An empty record or an empty format give zero,
 			 *       and a record in which not a single field of the format has been found gives the current
 			 *       moment entirely — by the same rule of the substitution. If the record comes from
 			 *       an untrusted source, the result should be checked for meaningfulness
 			 *       on one's own
+			 *
 			 * @note The values of the fields are not checked for admissibility and are carried over into the neighbouring
 			 *       digits: the record "2025-13-45" is read as the 45th day of the thirteenth month
 			 *       and gives the 14th of February 2026. The fitness of such a record is rejected by the validate
 			 *       method, and the fields of the internal date object after the parsing describe the
 			 *       yielded timestamp, and not the raw record
+			 *
 			 * @note The parsing into the storage_t::LOCAL storage not only reads the internal date
 			 *       object, but writes the parsed result into it as well: the next parsing
 			 *       will consider the result of the previous one to be the current moment. If this is not
 			 *       required, the clock of the object should be moved by the timestamp method before
 			 *       every parsing, or the storage_t::GLOBAL storage should be taken
+			 *
 			 * @note A time zone not set by the format depends on the storage. In
 			 *       the storage_t::LOCAL storage it is taken from the object, if it is set
 			 *       by the setTimeZone method, and only in its absence — from the environment of the process.
@@ -4225,12 +4536,14 @@ namespace awh {
 			 *       of the environment always, whatever setTimeZone may be. A record without a designation
 			 *       of a zone is therefore read differently on the machines with different settings —
 			 *       if this is undesirable, the zone should be set by the format explicitly
+			 *
 			 * @note The calendar of the module covers the years from 1970 to 9999: the count of the timestamp
 			 *       is kept from the beginning of the year 1970, and the year is written with four digits in
 			 *       all the standards the module serves. A record of a year outside these limits
 			 *       the parsing yields as the beginning of the epoch, and the validate check recognizes it as unfit.
 			 *       By the same beginning of the epoch the local midnight of the first day of the epoch in
 			 *       a zone to the east of UTC is yielded as well: that moment falls on the time before its beginning
+			 *
 			 * @warning The overload does not give out the sign of fitness, and a number is returned
 			 *          always - both for a record not strictly answering the pattern and for garbage
 			 *          in which not a single field has been found: then it is the current moment,
@@ -4238,6 +4551,7 @@ namespace awh {
 			 *          it is the legal date of the 1st of January 1970. Records from an untrusted
 			 *          source are parsed by the overload with the sign of fitness or checked by the
 			 *          validate method
+			 *
 			 * @param date    string of the date
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -4259,6 +4573,7 @@ namespace awh {
 			 * chrono.parse("12:37:01", "%H:%M:%S");        // the current day, 12:37:01.000
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t parse(string_view date, string_view format, const storage_t storage = storage_t::GLOBAL) noexcept;
 			/**
@@ -4283,7 +4598,9 @@ namespace awh {
 			 * @param standard стандарт записи даты
 			 * @param storage  хранение значение времени
 			 * @return         дата в UnixTimestamp
+			 *
 			 * @see format
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -4295,11 +4612,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a record of a date by a standard
+			 *
 			 * @details Parses a record set by a standard, accepting all the varieties allowed by it:
 			 *          RFC 5322 allows the day of the week to be omitted, RFC 3339 —
 			 *          the fraction of a second, ISO 8601 knows the basic and the extended forms of the record.
 			 *          The varieties are gone over in order, and the first one giving
 			 *          a fit record is taken.
+			 *
 			 * @warning The overload does not give out the sign of fitness, and a number is returned
 			 *          always - both for a record not strictly answering the pattern and for garbage
 			 *          in which not a single field has been found: then it is the current moment,
@@ -4307,11 +4626,14 @@ namespace awh {
 			 *          it is the legal date of the 1st of January 1970. Records from an untrusted
 			 *          source are parsed by the overload with the sign of fitness or checked by the
 			 *          validate method
+			 *
 			 * @param date     string of the date to parse
 			 * @param standard standard of the record of the date
 			 * @param storage  storage of the value of the time
 			 * @return         date as a UnixTimestamp
+			 *
 			 * @see format
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -4321,6 +4643,7 @@ namespace awh {
 			 * chrono.parse("20250406T123701Z", ch::standard_t::ISO8601);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			uint64_t parse(string_view date, const standard_t standard, const storage_t storage = storage_t::GLOBAL) noexcept;
 			/**
@@ -4357,6 +4680,13 @@ namespace awh {
 			 *          into «now» and looks plausible. The validity flag tells a parsed
 			 *          record from an unparsed one within the same single pass, whereas
 			 *          the validate method walks the record a second time.
+			 *
+			 *
+			 *          @code{.cpp}
+			 *          bool valid = false;
+			 *          const uint64_t date = chrono.parse("Feb 17 2023 23:30:15 YEKT", "%b %d %Y %H:%M:%S %Z", valid);
+			 *          if(!valid) // a record did not yield to a parsing
+			 *          @endcode
 			 *
 			 * @param date    date string
 			 * @param format  date format
@@ -4413,14 +4743,18 @@ namespace awh {
 			 *          Записи из недоверенного источника стоит проверять до разбора:
 			 * @note Проверка выполняется в глобальном хранилище и внутреннего объекта даты
 			 *       не изменяет, каким бы ни было хранилище последующего разбора
+			 *
 			 * @note Проверка не выполняет разбора повторно: если запись пригодна, разбор
 			 *       её всё равно придётся выполнить отдельным вызовом. Двойной проход по
 			 *       записи - плата за неизменность подписи метода parse
+			 *
 			 * @note Пригодными признаются годы с 1970 по 9999 и смещения временной зоны от
 			 *       UTC-12 до UTC+14 - промежуток, которым исчерпываются пояса Земли:
+			 *
 			 * @param date   строка даты
 			 * @param format формат даты
 			 * @return       признак пригодности записи для разбора
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -4444,23 +4778,31 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a record of a date for the parsing
+			 *
 			 * @details The parsing does not report an error: a record in which not a single
 			 *          field of the format has been found is returned as the current moment and is indistinguishable from
 			 *          an honest result. The check closes this gap, answering the question whether
 			 *          it is meaningful to parse the record by the given format.
+			 *
 			 *          A record is considered fit if every variable of the format has been found in it
 			 *          and the parsed fields of which lie within the admissible limits.
+			 *
 			 *          The records from an untrusted source are worth checking before the parsing:
+			 *
 			 * @note The check is performed in the global storage and does not change the internal date
 			 *       object, whatever the storage of the subsequent parsing may be
+			 *
 			 * @note The check does not perform the parsing twice: if the record is fit, the parsing
 			 *       will have to be performed anyway by a separate call. A double pass over
 			 *       the record is the price for the immutability of the signature of the parse method
+			 *
 			 * @note Recognized as fit are the years from 1970 to 9999 and the offsets of a time zone from
 			 *       UTC-12 to UTC+14 — the range the belts of the Earth are exhausted by:
+			 *
 			 * @param date   string of the date
 			 * @param format format of the date
 			 * @return       sign of the fitness of the record for the parsing
+			 *
 			 * @see parse
 			 *
 			 * @code{.cpp}
@@ -4482,6 +4824,7 @@ namespace awh {
 			 * chrono.validate("2025-04-06T14:30:45+1500", "%Y-%m-%dT%H:%M:%S%z"); // false
 			 * @endcode
 			 *
+			 * \~
 			 */
 			bool validate(string_view date, string_view format) noexcept;
 			/**
@@ -4489,7 +4832,7 @@ namespace awh {
 			 * @brief Метод проверки пригодности записи даты по стандарту
 			 *
 			 * @details Запись пригодна, если её принимает хотя бы одна из разновидностей,
-			 *          стандартом допускаемых, и все поля её допустимы
+			 *          стандартом допускаемых, и все поля её допустимы.
 			 *
 			 * @param date     строка даты для проверки
 			 * @param standard стандарт записи даты
@@ -4499,11 +4842,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a record of a date by a standard
+			 *
 			 * @details A record is fit if it is accepted by at least one of the varieties
-			 *          allowed by the standard, and all of its fields are admissible
+			 *          allowed by the standard, and all of its fields are admissible.
+			 *
 			 * @param date     string of the date to check
 			 * @param standard standard of the record of the date
 			 * @return         sign of the fitness of the record
+			 *
 			 * @see parse
 			 *
 			 * \~
@@ -4519,6 +4865,7 @@ namespace awh {
 			 *
 			 * @param zone обозначение временной зоны
 			 * @return     признак пригодности обозначения
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -4530,11 +4877,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a designation of a time zone
+			 *
 			 * @details The conversion of a designation of a zone does not report an error: an unknown
 			 *          designation gives the offset of the set zone of the object and is indistinguishable from
 			 *          its honest offset. The check closes this gap.
+			 *
 			 * @param zone designation of the time zone
 			 * @return     sign of the fitness of the designation
+			 *
 			 * @see getTimeZone
 			 *
 			 * @code{.cpp}
@@ -4544,6 +4894,7 @@ namespace awh {
 			 * chrono.validateTimeZone("XXXX");     // false
 			 * @endcode
 			 *
+			 * \~
 			 */
 			bool validateTimeZone(string_view zone) const noexcept;
 			/**
@@ -4555,6 +4906,7 @@ namespace awh {
 			 *
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      признак пригодности обозначения
+			 *
 			 * @see seconds
 			 *
 			 * @code{.cpp}
@@ -4567,10 +4919,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a designation of a dimension of a time
+			 *
 			 * @details The conversion of a designation of a dimension does not report an error: an unfit
 			 *          record gives zero seconds and is indistinguishable from an honest zero.
+			 *
 			 * @param value string of the designation of the dimension (s, m, h, d, w, M, y)
 			 * @return      sign of the fitness of the designation
+			 *
 			 * @see seconds
 			 *
 			 * @code{.cpp}
@@ -4581,6 +4936,7 @@ namespace awh {
 			 * chrono.validateSeconds("1h30m"); // false, the composite records are not provided for
 			 * @endcode
 			 *
+			 * \~
 			 */
 			bool validateSeconds(string_view value) const noexcept;
 		public:
@@ -4596,6 +4952,7 @@ namespace awh {
 			 *       нуля у часов, а обозначения UTC грамматика RFC 3339 не содержит вовсе.
 			 *       Для обмена данными следует брать переменные формата \%z, \%o либо \%i, а не
 			 *       этот метод. Разбор её принимает наравне с прочими
+			 *
 			 * @param zone временная зона (в секундах) в которой нужно получить результат
 			 * @return     строковое обозначение временной зоны
 			 *
@@ -4608,13 +4965,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of formatting a time zone
+			 *
 			 * @details Writes the offset of a zone abbreviated, for reading by a human: the whole hours
 			 *          as a single number, the ones not multiple of an hour — as hours and minutes through a colon.
 			 *          A zero offset gives UTC.
+			 *
 			 * @note This record corresponds to no standard: all of them require a leading
 			 *       zero at the hours, and the grammar of RFC 3339 does not contain the designation UTC at all.
 			 *       For the exchange of data one should take the \%z, \%o or \%i format variables, and not
 			 *       this method. The parsing accepts it on a par with the rest
+			 *
 			 * @param zone time zone (in seconds) the result is needed to be obtained in
 			 * @return     string designation of the time zone
 			 *
@@ -4625,6 +4985,7 @@ namespace awh {
 			 * chrono.format(-12600);  // UTC-3:30
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(const int32_t zone) const noexcept;
 			/**
@@ -4648,16 +5009,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of formatting a time zone
+			 *
 			 * @details Writes the designation of a zone by its commonly accepted abbreviation. For the zones
 			 *          having a daylight saving time, the abbreviation is chosen by the current date: the zone
 			 *          zone_t::ET gives EDT in the summer and EST in the winter.
+			 *
 			 * @note The choice by the current date is the purpose of the overload, and not an omission: it
 			 *       answers the question «how is the zone designated now». The designation on
 			 *       a given date is yielded by the overload taking a date, and the \%Z format variable
 			 *       goes through it — the designation of a composite zone is resolved by the record
 			 *       itself, and not by the instant it is built at
+			 *
 			 * @param zone time zone the result is needed to be obtained in
 			 * @return     string designation of the time zone
+			 *
 			 * @see format(const zone_t, const uint64_t)
 			 *
 			 * \~
@@ -4674,6 +5039,7 @@ namespace awh {
 			 *
 			 * @note Обозначение зон, сводными не являющихся, от момента не зависит, и ответ
 			 *       здесь равен ответу перегрузки, даты не принимающей
+			 *
 			 * @param zone временная зона в которой нужно получить результат
 			 * @param date штамп времени в миллисекундах
 			 * @return     строковое обозначение временной зоны
@@ -4688,12 +5054,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of formatting a time zone at the specified moment of time
+			 *
 			 * @details Writes the designation of a zone by its commonly accepted abbreviation, choosing
 			 *          between the standard and the daylight saving time by the specified date, and not by
 			 *          the current one. Through this overload the \%Z format variable goes:
 			 *          the designation of a composite zone is resolved by the record itself.
+			 *
 			 * @note The designation of the zones that are not composite ones does not depend on the moment, and the answer
 			 *       here equals the answer of the overload that does not take a date
+			 *
 			 * @param zone time zone the result is needed to be obtained in
 			 * @param date timestamp in milliseconds
 			 * @return     string designation of the time zone
@@ -4706,6 +5075,7 @@ namespace awh {
 			 * chrono.format(ch::zone_t::ET, 1752580800000);
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(const zone_t zone, const uint64_t date) const noexcept;
 		private:
@@ -4719,6 +5089,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building an object of a date and a time
+			 *
 			 * @param dt     object of the date and the time
 			 * @param format format of the date
 			 * @return       string containing the date
@@ -4745,17 +5116,22 @@ namespace awh {
 			 *       зоны первым доводом, поэтому малое число молча уходит в неё, а большое
 			 *       делает вызов неоднозначным. Дату следует передавать переменной либо
 			 *       приводить явно:
+			 *
 			 * @note Пустой формат даёт пустую строку. Нулевая дата пустой строки не даёт:
 			 *       это полночь первого января 1970 года, дата не менее действительная,
 			 *       чем любая другая
+			 *
 			 * @note Штамп времени за пределом 9999 года формируется последним представимым
 			 *       моментом - записью 9999-12-31 23:59:59.999. Раскладывать такие штампы
 			 *       нечем: поле года их обрезает, и запись выходила с несуществующим
 			 *       числом месяца вида 1934-12-200
+			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param format формат даты
 			 * @return       строка содержащая дату
+			 *
 			 * @see parse
+			 *
 			 * @see strip
 			 *
 			 * @code{.cpp}
@@ -4774,29 +5150,37 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a record of a date in the time zone of the environment
+			 *
 			 * @details Builds a record of a date by a pattern of a format. The characters of the format that are not
 			 *          variables are written as they are. The date is written in the time
 			 *          zone of the environment, determined on its own, and not in the zero one: the logs and
 			 *          the reporting are kept by the local time of the server, and it is known in advance
 			 *          far from always — especially when the server stands in another country.
+			 *
 			 *          Writing a date in a given zone is made possible by the overloads taking a zone
 			 *          as the second argument, and in the zero one — by the overload with a zero offset.
+			 *
 			 * @note The first argument is obliged to be a sixty four bit one. An integer
 			 *       literal suits both this overload and the overload with the offset of the time
 			 *       zone as the first argument, and therefore a small number goes silently into it, and a large one
 			 *       makes the call ambiguous. The date should be passed by a variable or
 			 *       cast explicitly:
+			 *
 			 * @note An empty format gives an empty string. A zero date does not give an empty string:
 			 *       it is the midnight of the first of January 1970, a date no less real
 			 *       than any other
+			 *
 			 * @note A timestamp beyond the limit of the year 9999 is built as the last representable
 			 *       moment — the record 9999-12-31 23:59:59.999. There is nothing to decompose such timestamps by:
 			 *       the field of the year truncates them, and the record came out with a non-existent
 			 *       day of the month of the form 1934-12-200
+			 *
 			 * @param date   date as a UnixTimestamp
 			 * @param format format of the date
 			 * @return       string containing the date
+			 *
 			 * @see parse
+			 *
 			 * @see strip
 			 *
 			 * @code{.cpp}
@@ -4813,6 +5197,7 @@ namespace awh {
 			 * chrono.format(static_cast <uint64_t> (1), "%Y-%m-%d"); // 1970-01-01
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(const uint64_t date, string_view format) const noexcept;
 		public:
@@ -4828,10 +5213,13 @@ namespace awh {
 			 *
 			 * @note Запись RFC 3164 ни года, ни зоны не несёт: устаревший системный журнал
 			 *       их не передаёт вовсе, и разбор такой записи берёт год у текущего момента
+			 *
 			 * @param date     дата в UnixTimestamp
 			 * @param standard стандарт записи даты
 			 * @return         строка содержащая дату
+			 *
 			 * @see parse
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -4844,17 +5232,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a record of a date by a standard
+			 *
 			 * @details Builds a record by the pattern that is set by a standard. The standards
 			 *          RFC 1123 and RFC 850 prescribe the zero zone and designate it by the word
 			 *          GMT, and therefore a record by them is built in the zero zone regardless of
 			 *          the zone of the object and of the environment. The rest are written in the zone of the environment
 			 *          on a par with the overload taking a format string.
+			 *
 			 * @note The RFC 3164 record carries neither a year nor a zone: the obsolete system log
 			 *       does not transmit them at all, and the parsing of such a record takes the year from the current moment
+			 *
 			 * @param date     date as a UnixTimestamp
 			 * @param standard standard of the record of the date
 			 * @return         string containing the date
+			 *
 			 * @see parse
+			 *
 			 * @see validate
 			 *
 			 * @code{.cpp}
@@ -4865,6 +5258,7 @@ namespace awh {
 			 * chrono.format(date, ch::standard_t::CLF);      // 06/Apr/2025:12:37:01 +0000
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(const uint64_t date, const standard_t standard) const noexcept;
 			/**
@@ -4881,8 +5275,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a record of a date by a standard in the specified zone
+			 *
 			 * @note The standards RFC 1123 and RFC 850 prescribe the zero zone, and the specified
 			 *       offset is not applied for them
+			 *
 			 * @param date     date as a UnixTimestamp
 			 * @param zone     offset of the time zone in seconds
 			 * @param standard standard of the record of the date
@@ -4912,9 +5308,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a UnixTimestamp with the time zone taken into account
+			 *
 			 * @details Builds a record of a date in the specified time zone. The moment of time at
 			 *          that does not change — only the civil time of its record changes, and
 			 *          the variables of the designation of the zone yield the given offset.
+			 *
 			 * @param date   date as a UnixTimestamp
 			 * @param zone   time zone the date is needed to be obtained in (in seconds)
 			 * @param format format of the date
@@ -4926,6 +5324,7 @@ namespace awh {
 			 * chrono.format(date, 19800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T18:07:01+05:30
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(const uint64_t date, const int32_t zone, string_view format) const noexcept;
 			/**
@@ -4939,6 +5338,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a UnixTimestamp with the time zone taken into account
+			 *
 			 * @param date   date as a UnixTimestamp
 			 * @param zone   time zone the date is needed to be obtained in
 			 * @param format format of the date
@@ -4958,6 +5358,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a UnixTimestamp with the time zone taken into account
+			 *
 			 * @param date   date as a UnixTimestamp
 			 * @param zone   time zone the date is needed to be obtained in
 			 * @param format format of the date
@@ -4978,7 +5379,9 @@ namespace awh {
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
 			 * @return        строка содержащая дату
+			 *
 			 * @see timestamp
+			 *
 			 * @see set
 			 *
 			 * @code{.cpp}
@@ -4988,13 +5391,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the current date without the time zone taken into account
+			 *
 			 * @details Builds a record of the current moment. The GLOBAL storage takes the moment from
 			 *          the system clock, LOCAL — from the internal date object, filled by
 			 *          the set and timestamp methods.
+			 *
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
 			 * @return        string containing the date
+			 *
 			 * @see timestamp
+			 *
 			 * @see set
 			 *
 			 * @code{.cpp}
@@ -5002,6 +5409,7 @@ namespace awh {
 			 * chrono.format("%Y-%m-%dT%H:%M:%S.%s%i");
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string format(string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
 			/**
@@ -5015,6 +5423,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the current date with the time zone taken into account
+			 *
 			 * @param zone    time zone the date is needed to be obtained in (in seconds)
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -5034,6 +5443,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the current date with the time zone taken into account
+			 *
 			 * @param zone    time zone the date is needed to be obtained in
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -5053,6 +5463,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the current date with the time zone taken into account
+			 *
 			 * @param zone    time zone the date is needed to be obtained in
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -5072,14 +5483,18 @@ namespace awh {
 			 * @note Правила подстановки недостающих полей те же, что и у parse: конечная
 			 *       запись может содержать поля, которых не было в исходной, и они будут
 			 *       заполнены по этим правилам
+			 *
 			 * @note Метод константным не является: с хранилищем storage_t::LOCAL разбор
 			 *       записывает разобранную дату в объект, ровно как это делает parse
+			 *
 			 * @param date    строка даты для преобразования
 			 * @param format1 формат даты из которой нужно получить дату
 			 * @param format2 формат даты в который нужно перевести дату
 			 * @param storage хранение значение времени
 			 * @return        результат работы
+			 *
 			 * @see parse
+			 *
 			 * @see format
 			 *
 			 * @code{.cpp}
@@ -5091,19 +5506,25 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting a date from one format into another
+			 *
 			 * @details Parses a record by one format and immediately builds it by another. Is equivalent to
 			 *          a pair of parse and format calls, but does not require an intermediate timestamp.
+			 *
 			 * @note The rules of the substitution of the missing fields are the same as for parse: the final
 			 *       record may contain the fields that were absent in the original one, and they will be
 			 *       filled by these rules
+			 *
 			 * @note The method is not a constant one: with the storage_t::LOCAL storage the parsing
 			 *       writes the parsed date into the object, exactly as parse does
+			 *
 			 * @param date    string of the date to convert
 			 * @param format1 format of the date the date is needed to be obtained from
 			 * @param format2 format of the date the date is needed to be converted into
 			 * @param storage storage of the value of the time
 			 * @return        result of the work
+			 *
 			 * @see parse
+			 *
 			 * @see format
 			 *
 			 * @code{.cpp}
@@ -5113,6 +5534,7 @@ namespace awh {
 			 *              "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T12:37:01Z
 			 * @endcode
 			 *
+			 * \~
 			 */
 			string strip(string_view date, string_view format1, string_view format2, const storage_t storage = storage_t::GLOBAL) noexcept;
 		public:
@@ -5130,7 +5552,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor

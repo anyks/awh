@@ -613,7 +613,13 @@
 	 */
 	#if defined(__clang__)
 		/**
-		 * Размещение подставляется во всякое место вызова
+		 * \~russian
+		 * @brief Размещение подставляется во всякое место вызова
+		 *
+		 * \~english
+		 * @brief An inlining is substituted at every place of a call
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_PLACING __AWH_INLINE__
 	/**
@@ -621,7 +627,13 @@
 	 */
 	#elif defined(__GNUC__)
 		/**
-		 * Размещение не подставляется нигде
+		 * \~russian
+		 * @brief Размещение не подставляется нигде
+		 *
+		 * \~english
+		 * @brief An inlining is substituted nowhere
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_PLACING AWH_REGEX_NOINLINE
 	/**
@@ -629,7 +641,13 @@
 	 */
 	#else
 		/**
-		 * О подстановке размещения судит собиратель
+		 * \~russian
+		 * @brief О подстановке размещения судит собиратель
+		 *
+		 * \~english
+		 * @brief A judgment on a substitution of an inlining is held by a builder
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_PLACING
 	#endif
@@ -734,14 +752,14 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Флаг компиляции выражения целиком
+				 * @brief Флаг компиляции выражения целиком
 				 *
 				 * @details Компиляция выражения целиком размещает инструкции конструкций,
 				 *          не принадлежащих регулярному подмножеству синтаксиса, исполнение
 				 *          которых доступно только способу исполнения с возвратом.
 				 *
 				 * \~english
-				 * Flag of compiling the expression as a whole
+				 * @brief Flag of compiling the expression as a whole
 				 *
 				 * @details Compiling the expression as a whole places the instructions of the constructs
 				 *          that do not belong to the regular subset of the syntax, whose execution
@@ -757,7 +775,7 @@ namespace awh {
 				uint32_t _cells;
 				/**
 				 * \~russian
-				 * Номер ячейки отметки ветви, компилируемой ныне
+				 * @brief Номер ячейки отметки ветви, компилируемой ныне
 				 *
 				 * @details Ячейка отводится ветви выбора, глагол перехода несущей,
 				 *          и достаётся глаголам её: возврат в глагол отсекает
@@ -765,7 +783,7 @@ namespace awh {
 				 *          означает отсутствие ветви охватывающей вовсе.
 				 *
 				 * \~english
-				 * Number of the mark cell of the branch being compiled now
+				 * @brief Number of the mark cell of the branch being compiled now
 				 *
 				 * @details The cell is allotted to a branch of an alternation that carries the verb
 				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
@@ -825,7 +843,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Набор режимов, с какими размещался всякий класс символов
+				 * @brief Набор режимов, с какими размещался всякий класс символов
 				 *
 				 * @details Набор ведётся ради отсева повторов классов и живёт
 				 *          лишь при сборке: в запись хранилища он не входит,
@@ -842,7 +860,7 @@ namespace awh {
 				 *          «Regex.EngineRepeatTables».
 				 *
 				 * \~english
-				 * Set of the modes with which each character class was stored
+				 * @brief Set of the modes with which each character class was stored
 				 *
 				 * @details The set is kept for the sake of folding duplicate classes and lives
 				 *          only during the build: it does not enter the storage record, so the
@@ -892,14 +910,14 @@ namespace awh {
 				vector <node_id_t> _chain;
 				/**
 				 * \~russian
-				 * Соответствие номеров групп индексам их узлов синтаксического дерева
+				 * @brief Соответствие номеров групп индексам их узлов синтаксического дерева
 				 *
 				 * @details Держится плотным рядом по тем же доводам, что и
 				 *          соответствие адресов тел. Отсутствие записи означено
 				 *          приметою `INVALID_NODE`.
 				 *
 				 * \~english
-				 * Correspondence of the group numbers to the indices of their nodes of the syntax tree
+				 * @brief Correspondence of the group numbers to the indices of their nodes of the syntax tree
 				 *
 				 * @details It maintains a contiguous layout based on the same logic
 				 *          as the body address mapping. The absence of an entry
@@ -910,7 +928,7 @@ namespace awh {
 				vector <node_id_t> _groups;
 				/**
 				 * \~russian
-				 * Сберегательный след узлов при проверке продвижения по тексту
+				 * @brief Сберегательный след узлов при проверке продвижения по тексту
 				 *
 				 * @details Проверка обязательного продвижения обходит дерево
 				 *          со следом, вызовы рекурсивные различающим, и след
@@ -919,7 +937,7 @@ namespace awh {
 				 *          не знает - оттого достаточно очистки, а не отметки.
 				 *
 				 * \~english
-				 * Scratch trace of the nodes for the check of advancing over the text
+				 * @brief Scratch trace of the nodes for the check of advancing over the text
 				 *
 				 * @details The mandatory-propagation check traverses the tree
 				 *          while maintaining a trace; recursive calls are
@@ -1038,7 +1056,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Соответствие имён отметок номерам ячеек их положения
+				 * @brief Соответствие имён отметок номерам ячеек их положения
 				 *
 				 * @details Ячейка отводится единожды на имя, а не на глагол отметки:
 				 *          отметки одного имени пишут в неё положение своё, отчего
@@ -1046,7 +1064,7 @@ namespace awh {
 				 *          того имени.
 				 *
 				 * \~english
-				 * Correspondence of mark names to the numbers of their position cells
+				 * @brief Correspondence of mark names to the numbers of their position cells
 				 *
 				 * @details The cell is allotted once per name, not per mark verb: the marks
 				 *          of one name write their position into it, whereby the lookup
@@ -1060,7 +1078,7 @@ namespace awh {
 				vector <pair <address_t, uint32_t>> _calls;
 				/**
 				 * \~russian
-				 * Соответствие номеров классов разбора номерам классов программы
+				 * @brief Соответствие номеров классов разбора номерам классов программы
 				 *
 				 * @details Счётное повторение компилируется копиями, и всякая копия
 				 *          класса символов звала размещение, а размещение сличало
@@ -1078,7 +1096,7 @@ namespace awh {
 				 *          означено приметою `INVALID_CLASS`.
 				 *
 				 * \~english
-				 * Correspondence of the class numbers of the parser to the class numbers of the program
+				 * @brief Correspondence of the class numbers of the parser to the class numbers of the program
 				 *
 				 * @details A counted repetition is compiled by copies, and every copy of a
 				 *          character class called the placement, while the placement compared

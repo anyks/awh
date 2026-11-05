@@ -144,14 +144,17 @@ namespace awh {
 				 * \~russian
 				 * @brief Структура для управления состоянием ICMP-клиента
 				 *
-				 * @details Содержит информацию о времени ожидания ответа от удалённого сервера, идентификаторе события ICMP-клиента,
-				 *          адресе удалённого сервера для выполнения запросов и локальном адресе, с которого выполняется запрос.
+				 * @details Содержит информацию о времени ожидания ответа от удалённого сервера,
+				 *          идентификаторе события ICMP-клиента, адресе удалённого сервера для
+				 *          выполнения запросов и локальном адресе, с которого выполняется запрос.
 				 *
 				 * \~english
 				 * @brief Structure for managing the state of the ICMP client
 				 *
-				 * @details Contains information about the time of waiting for a response from the remote server, the event identifier of the ICMP client,
-				 *          the address of the remote server for performing the requests and the local address from which the request is performed.
+				 * @details Contains information about the time of waiting for a response from the
+				 *          remote server, the event identifier of the ICMP client, the address of
+				 *          the remote server for performing the requests and the local address from
+				 *          which the request is performed.
 				 *
 				 * \~
 				 */
@@ -179,16 +182,17 @@ namespace awh {
 				 * \~russian
 				 * @brief Структура для управления передачей данных при выполнении запросов ICMP
 				 *
-				 * @details Содержит информацию о текущем идентификаторе запроса, флаге ожидания ответа от удалённого сервера,
-				 *          количестве повторений запросов, номере последовательности последнего отправленного запроса
-				 *          и штампе времени начала запроса.
+				 * @details Содержит информацию о текущем идентификаторе запроса, флаге ожидания
+				 *          ответа от удалённого сервера, количестве повторений запросов, номере
+				 *          последовательности последнего отправленного запроса и штампе времени начала запроса.
 				 *
 				 * \~english
 				 * @brief Structure for managing the data transfer while performing ICMP requests
 				 *
-				 * @details Contains information about the current request identifier, the flag of waiting for a response from the remote server,
-				 *          the number of request repetitions, the sequence number of the last sent request
-				 *          and the timestamp of the beginning of the request.
+				 * @details Contains information about the current request identifier, the flag of
+				 *          waiting for a response from the remote server, the number of request
+				 *          repetitions, the sequence number of the last sent request and the timestamp
+				 *          of the beginning of the request.
 				 *
 				 * \~
 				 */
@@ -268,6 +272,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the errors of the events of the ICMP client
+				 *
 				 * @param eid         event identifier of the ICMP client
 				 * @param error       error code of the event of the ICMP client
 				 * @param description error description of the event of the ICMP client
@@ -591,8 +596,8 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of performing pings of a remote server
-				 * @param id    identifier of the ICMP client for performing a request to a remote server
 				 *
+				 * @param id    identifier of the ICMP client for performing a request to a remote server
 				 * @param count number of the requests to be performed
 				 * @param mode  mode of performing the requests
 				 * @return      result of performing the request
@@ -610,7 +615,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				ICMP(const ICMP &) = delete;
+				explicit ICMP(const ICMP &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

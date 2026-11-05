@@ -614,7 +614,13 @@
 	 */
 	#if defined(__clang__) && (defined(__x86_64__) || (defined(_M_X64) && !defined(_M_ARM64EC)))
 		/**
-		 * Литерал разбирается своим случаем кода операции
+		 * \~russian
+		 * @brief Литерал разбирается своим случаем кода операции
+		 *
+		 * \~english
+		 * @brief A literal is parsed by its own case of an operation code
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_LITERAL_CASE 1
 	/**
@@ -622,7 +628,13 @@
 	 */
 	#else
 		/**
-		 * Литерал разбирается пометкой без кода операции
+		 * \~russian
+		 * @brief Литерал разбирается пометкой без кода операции
+		 *
+		 * \~english
+		 * @brief A literal is parsed by a mark without an operation code
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_LITERAL_CASE 0
 	#endif
@@ -682,7 +694,13 @@
 		 */
 		#if defined(__APPLE__)
 			/**
-			 * Кадры не пересекают границ страниц в шестнадцать килобайтов
+			 * \~russian
+			 * @brief Кадры не пересекают границ страниц в шестнадцать килобайтов
+			 *
+			 * \~english
+			 * @brief The frames do not cross the boundaries of the pages of sixteen kilobytes
+			 *
+			 * \~
 			 */
 			#define AWH_REGEX_STACK_PAGE 0x4000
 		/**
@@ -690,7 +708,13 @@
 		 */
 		#else
 			/**
-			 * Кадры не пересекают границ страниц в четыре килобайта
+			 * \~russian
+			 * @brief Кадры не пересекают границ страниц в четыре килобайта
+			 *
+			 * \~english
+			 * @brief The frames do not cross the boundaries of the pages of four kilobytes
+			 *
+			 * \~
 			 */
 			#define AWH_REGEX_STACK_PAGE 0x1000
 		#endif
@@ -699,7 +723,13 @@
 	 */
 	#else
 		/**
-		 * Кадры от границ страниц не отводятся
+		 * \~russian
+		 * @brief Кадры от границ страниц не отводятся
+		 *
+		 * \~english
+		 * @brief The frames are not turned away from the page boundaries
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_STACK_PAGE 0
 	#endif
@@ -734,7 +764,13 @@
  */
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__LCC__) && (__GNUC__ < 11)
 	/**
-	 * Поля не отмечаются: GCC до 11 отметки у поля не принимает
+	 * \~russian
+	 * @brief Поля не отмечаются: GCC до 11 отметки у поля не принимает
+	 *
+	 * \~english
+	 * @brief The fields are not marked: GCC before 11 does not accept a marking of a field
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_PROBED
 /**
@@ -742,7 +778,13 @@
  */
 #else
 	/**
-	 * Поля отмечаются возможным отсутствием чтения
+	 * \~russian
+	 * @brief Поля отмечаются возможным отсутствием чтения
+	 *
+	 * \~english
+	 * @brief The fields are marked by a possible absence of a reading
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_PROBED [[maybe_unused]]
 #endif
@@ -792,7 +834,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_STEPS = 0x989680;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшее допустимое количество точек возврата
@@ -811,7 +852,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_POINTS = 0x100000;
-
 		/**
 		 * \~russian
 		 * @brief Признак цепочки ограниченного повторения, одним ходом не пройденной
@@ -834,7 +874,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t UNCHAINED = static_cast <size_t> (-1);
-
 		/**
 		 * \~russian
 		 * @brief Признак обрыва сличения литерала на байте, литералу не отвечающем
@@ -858,7 +897,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t BROKEN = 0x100;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшее допустимое количество кадров рекурсивных вызовов
@@ -877,7 +915,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_FRAMES = 0x100000;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшее допустимое количество записей журнала изменений
@@ -898,7 +935,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_JOURNAL = 0x400000;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшая допустимая глубина рекурсивных вызовов
@@ -996,7 +1032,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t STACK_ENTRY = 768;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшее количество таблиц принадлежности байтов классам
@@ -1284,7 +1319,7 @@ namespace awh {
 					 *          перебирает их запуском вложенным, тогда как проверка
 					 *          не отсекающая обязана держать перебор живым и после
 					 *          выполнения своего: точка с установленным флагом
-					 *          длину очередную и несёт - в поле ряда позиций
+					 *          длину очередную и несёт - в поле ряда позиций.
 					 *
 					 * \~english
 					 * Flag of the walk over the lengths of a non-atomic lookbehind check
@@ -1295,7 +1330,7 @@ namespace awh {
 					 *          walks them by a nested run, whereas a non-atomic
 					 *          check must keep the walk alive even after
 					 *          its own fulfilment: a point with the flag set
-					 *          carries the current length — in the field of the run of positions
+					 *          carries the current length — in the field of the run of positions.
 					 *
 					 * \~
 					 */
@@ -1374,7 +1409,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Вид глагола управления, попытку сопоставления прекратившего
+				 * @brief Вид глагола управления, попытку сопоставления прекратившего
 				 *
 				 * @details Значение выводится увеличенным на единицу наравне с точкой
 				 *          возврата, а нуль означает прекращение обыкновенное. Внешний
@@ -1383,7 +1418,7 @@ namespace awh {
 				 *          переноса задают позицию продолжения.
 				 *
 				 * \~english
-				 * Kind of the control verb that terminated the matching attempt
+				 * @brief Kind of the control verb that terminated the matching attempt
 				 *
 				 * @details The value is yielded increased by one along with the backtracking point,
 				 *          whereas zero means an ordinary termination. The outer walk over the starting
@@ -1401,7 +1436,7 @@ namespace awh {
 				size_t _steps;
 				/**
 				 * \~russian
-				 * Позиция первой попытки сопоставления
+				 * @brief Позиция первой попытки сопоставления
 				 *
 				 * @details Позиция действует на одно последующее сопоставление и служит
 				 *          вызывающей стороне, знающей, что левее неё совпадение не
@@ -1410,7 +1445,7 @@ namespace awh {
 				 *          «ATSTART» по-прежнему судят о нём.
 				 *
 				 * \~english
-				 * Position of the first matching attempt
+				 * @brief Position of the first matching attempt
 				 *
 				 * @details The position acts on one subsequent match and serves a calling side
 				 *          that knows no match starts to the left of it: the attempts there have
@@ -1425,13 +1460,13 @@ namespace awh {
 				size_t _limit;
 				/**
 				 * \~russian
-				 * Допустимое количество шагов сопоставления
+				 * @brief Допустимое количество шагов сопоставления
 				 *
 				 * @details Объём действует на одно сопоставление и восстанавливается
 				 *          предельным по его завершении.
 				 *
 				 * \~english
-				 * Admissible number of matching steps
+				 * @brief Admissible number of matching steps
 				 *
 				 * @details The amount acts on one match and is restored to
 				 *          the limiting one on its completion.
@@ -1441,14 +1476,14 @@ namespace awh {
 				size_t _budget;
 				/**
 				 * \~russian
-				 * Действующий наибольший объём памяти сопоставления в байтах
+				 * @brief Действующий наибольший объём памяти сопоставления в байтах
 				 *
 				 * @details Объём задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
 				 *          и считается по наборам точек возврата, кадров вызовов
 				 *          и записей журнала наравне с прочими пределами их размеров.
 				 *
 				 * \~english
-				 * Effective largest amount of the matching memory in bytes
+				 * @brief Effective largest amount of the matching memory in bytes
 				 *
 				 * @details The amount is set by the expression itself by the «(*LIMIT_HEAP=N)» option
 				 *          and is counted over the sets of the backtracking points, the call frames
@@ -1463,7 +1498,7 @@ namespace awh {
 				size_t _nested;
 				/**
 				 * \~russian
-				 * Адрес глагола отметки, попыткою последней пройденного
+				 * @brief Адрес глагола отметки, попыткою последней пройденного
 				 *
 				 * @details Ячейка отметки возвратом отменяется, отчего по отказу
 				 *          сопоставления в ней ничего не остаётся. Эталонная же
@@ -1473,7 +1508,7 @@ namespace awh {
 				 *          очищается, а глаголом отсечения снимается.
 				 *
 				 * \~english
-				 * Address of the mark verb passed by the last attempt
+				 * @brief Address of the mark verb passed by the last attempt
 				 *
 				 * @details The mark cell is undone by backtracking, whereby nothing remains in it
 				 *          upon a failure of the matching. The reference implementation, however,
@@ -1487,7 +1522,7 @@ namespace awh {
 				size_t _failing;
 				/**
 				 * \~russian
-				 * Позиция, с которой начата попытка сопоставления нынешняя
+				 * @brief Позиция, с которой начата попытка сопоставления нынешняя
 				 *
 				 * @details Глагол переноса с именем, отметку найдя в положении
 				 *          не позднее начала попытки, не правит вовсе: перенос
@@ -1495,7 +1530,7 @@ namespace awh {
 				 *          отняло бы ветви, глаголу не пройденные.
 				 *
 				 * \~english
-				 * Position from which the current matching attempt was started
+				 * @brief Position from which the current matching attempt was started
 				 *
 				 * @details The moving verb with a name, having found a mark at a position
 				 *          no later than the beginning of the attempt, has no effect at all:
@@ -1509,13 +1544,13 @@ namespace awh {
 				size_t _current;
 				/**
 				 * \~russian
-				 * Наибольший допустимый объём работы сопоставления
+				 * @brief Наибольший допустимый объём работы сопоставления
 				 *
 				 * @details Потолок обрезает объём, вычисленный вызывающей стороною, и
 				 *          устанавливается ею же: умолчанием служит «MAX_STEPS».
 				 *
 				 * \~english
-				 * Largest admissible amount of work of the matching
+				 * @brief Largest admissible amount of work of the matching
 				 *
 				 * @details The ceiling truncates the amount computed by the calling side and
 				 *          is set by it as well: «MAX_STEPS» serves as the default.
@@ -1527,7 +1562,7 @@ namespace awh {
 				size_t _nesting;
 				/**
 				 * \~russian
-				 * Действующая наибольшая глубина рекурсивных вызовов сопоставления
+				 * @brief Действующая наибольшая глубина рекурсивных вызовов сопоставления
 				 *
 				 * @details Глубина берётся наименьшей из заданной вызывающей стороной
 				 *          и заданной самим выражением указанием «(*LIMIT_DEPTH=N)»:
@@ -1535,7 +1570,7 @@ namespace awh {
 				 *          но не повышает его.
 				 *
 				 * \~english
-				 * Effective largest depth of the recursive calls of the matching
+				 * @brief Effective largest depth of the recursive calls of the matching
 				 *
 				 * @details The depth is taken as the smallest of the one set by the calling side
 				 *          and the one set by the expression itself by the «(*LIMIT_DEPTH=N)» option:
@@ -1547,14 +1582,14 @@ namespace awh {
 				size_t _deepest;
 				/**
 				 * \~russian
-				 * Позиция вхождения обязательного литерала, вызывающей стороной найденная
+				 * @brief Позиция вхождения обязательного литерала, вызывающей стороной найденная
 				 *
 				 * @details Позиция действует на одно последующее сопоставление, как и
 				 *          позиция первой попытки. Поле стоит последним намеренно:
 				 *          смещения полей, читаемых циклом исполнения, оно не сдвигает.
 				 *
 				 * \~english
-				 * Position of the occurrence of the mandatory literal found by the calling side
+				 * @brief Position of the occurrence of the mandatory literal found by the calling side
 				 *
 				 * @details The position acts on one subsequent match, as the position of the
 				 *          first attempt does. The field stands last deliberately: it does not shift
@@ -1565,7 +1600,7 @@ namespace awh {
 				size_t _located;
 				/**
 				 * \~russian
-				 * Наибольшее число попыток сопоставления
+				 * @brief Наибольшее число попыток сопоставления
 				 *
 				 * @details Предел действует на одно последующее сопоставление и служит
 				 *          вызывающей стороне, располагающей запасным способом: поиск,
@@ -1573,7 +1608,7 @@ namespace awh {
 				 *          отсутствием совпадения он не является.
 				 *
 				 * \~english
-				 * Largest number of matching attempts
+				 * @brief Largest number of matching attempts
 				 *
 				 * @details The limit acts on one subsequent match and serves
 				 *          a calling side that has a fallback way at its disposal: the search
@@ -1588,7 +1623,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Счётчики мер работы сопоставления, разысканием ведомые
+				 * @brief Счётчики мер работы сопоставления, разысканием ведомые
 				 *
 				 * @details Счётчики ведутся полями, а не общим учётом «probe_t»:
 				 *          приращение разделяемого счётчика внутри проверки
@@ -1604,7 +1639,7 @@ namespace awh {
 				 *          бы соседние поля по смещениям чужим.
 				 *
 				 * \~english
-				 * Counters of the measures of the work of matching, kept for the investigation
+				 * @brief Counters of the measures of the work of matching, kept for the investigation
 				 *
 				 * @details The counters are kept as fields rather than in the shared "probe_t"
 				 *          accounting: incrementing a shared counter inside the check of
@@ -1641,14 +1676,14 @@ namespace awh {
 				vector <size_t> _slots;
 				/**
 				 * \~russian
-				 * Набор отметок состояния возврата атомарных конструкций
+				 * @brief Набор отметок состояния возврата атомарных конструкций
 				 *
 				 * @details Отметка сохраняет глубину набора точек возврата на входе
 				 *          в атомарную конструкцию, благодаря чему её завершение
 				 *          отказывается от точек возврата, накопленных внутри неё.
 				 *
 				 * \~english
-				 * Set of the marks of the backtracking state of the atomic constructs
+				 * @brief Set of the marks of the backtracking state of the atomic constructs
 				 *
 				 * @details A mark keeps the depth of the set of backtracking points at the entry
 				 *          into an atomic construct, thanks to which its completion
@@ -1660,7 +1695,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Номера таблиц принадлежности байтов по номерам классов программы
+				 * @brief Номера таблиц принадлежности байтов по номерам классов программы
 				 *
 				 * @details Номер «INVALID_ADDRESS» означает, что таблица классу ещё
 				 *          не заведена. Набор растёт до наибольшего номера класса,
@@ -1668,7 +1703,7 @@ namespace awh {
 				 *          сброс его при смене программы обходится без обхода.
 				 *
 				 * \~english
-				 * Numbers of the byte belonging tables by the numbers of the classes of the program
+				 * @brief Numbers of the byte belonging tables by the numbers of the classes of the program
 				 *
 				 * @details The number «INVALID_ADDRESS» means that no table has been set up for
 				 *          the class yet. The set grows up to the largest number of a class
@@ -1687,7 +1722,7 @@ namespace awh {
 				vector <point_t> _points;
 				/**
 				 * \~russian
-				 * Таблицы принадлежности байтов классам, пройденным повторением
+				 * @brief Таблицы принадлежности байтов классам, пройденным повторением
 				 *
 				 * @details Таблица заводится на КАЖДЫЙ класс, а не одна на класс последний
 				 *          встреченный. Повторение «(?:[a-z]+/)+» компиляция разворачивает
@@ -1700,7 +1735,7 @@ namespace awh {
 				 *          с таблицей на каждый класс.
 				 *
 				 * \~english
-				 * Byte belonging tables of the classes walked by a repetition
+				 * @brief Byte belonging tables of the classes walked by a repetition
 				 *
 				 * @details A table is set up for EVERY class rather than one for the last encountered
 				 *          class. The compilation unrolls the repetition «(?:[a-z]+/)+» into two
@@ -1721,7 +1756,7 @@ namespace awh {
 				vector <change_t> _journal;
 				/**
 				 * \~russian
-				 * Разрешения таблиц принадлежности байтов по номерам классов
+				 * @brief Разрешения таблиц принадлежности байтов по номерам классов
 				 *
 				 * @details Набор служит прямым путём от номера класса к таблице его.
 				 *          Ведётся он рядом с набором номеров, а не взамен его:
@@ -1729,7 +1764,7 @@ namespace awh {
 				 *          нет, и восстановление адресов идёт именно по номерам.
 				 *
 				 * \~english
-				 * Resolutions of the byte belonging tables by the numbers of the classes
+				 * @brief Resolutions of the byte belonging tables by the numbers of the classes
 				 *
 				 * @details The set serves as a direct way from the number of a class to its table.
 				 *          It is kept next to the set of numbers rather than instead of it:

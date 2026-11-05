@@ -40,7 +40,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -50,7 +49,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -101,6 +99,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing file write events
+				 *
 				 * @param eid  filesystem event identifier
 				 * @param size message size
 				 *
@@ -117,6 +116,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing file read events
+				 *
 				 * @param eid  filesystem event identifier
 				 * @param data message data
 				 * @param size message size
@@ -134,6 +134,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the filesystem state
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param status event status
 				 *
@@ -151,6 +152,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing filesystem event exceptions
+				 *
 				 * @param eid     filesystem event identifier
 				 * @param error   error type
 				 * @param message error message
@@ -170,6 +172,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing directory events
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param action directory event action (addition/removal)
 				 * @param vnode  filesystem event
@@ -187,6 +190,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a filesystem event
+				 *
 				 * @param eid filesystem event identifier
 				 *
 				 * \~
@@ -202,6 +206,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a filesystem event
+				 *
 				 * @param type type of the filesystem to be created
 				 * @return     filesystem event identifier
 				 *
@@ -218,6 +223,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the filesystem node type
+				 *
 				 * @param eid filesystem event identifier
 				 * @return    filesystem node type
 				 *
@@ -234,6 +240,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -249,6 +256,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event address
+				 *
 				 * @param eid filesystem event identifier
 				 * @return    value of the event address
 				 *
@@ -265,6 +273,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the event address
+				 *
 				 * @param eid   filesystem event identifier
 				 * @param value value of the event address
 				 * @return      result of performing the setting
@@ -284,6 +293,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data to a file
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data buffer
@@ -303,6 +313,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the offset in the event file
+				 *
 				 * @param eid  filesystem event identifier
 				 * @param seek type of the offset in the event file
 				 * @return     offset in the event file
@@ -321,6 +332,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the offset in the event file
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param seek   type of the offset in the event file
 				 * @param offset offset in the event file
@@ -339,6 +351,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event options
+				 *
 				 * @param eid event identifier
 				 * @return    event options
 				 *
@@ -349,13 +362,14 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод установки опций события
 				 *
-				 * @param eid    идентификатор события
+				 * @param eid     идентификатор события
 				 * @param options опции события для установки
 				 * @return        результат выполнения установки
 				 *
 				 * \~english
 				 * @brief Method of setting the event options
-				 * @param eid    event identifier
+				 *
+				 * @param eid     event identifier
 				 * @param options event options to be set
 				 * @return        result of performing the setting
 				 *
@@ -373,6 +387,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting an event option
+				 *
 				 * @param eid    event identifier
 				 * @param option event option to be set
 				 * @param mode   mode of setting the event option
@@ -392,6 +407,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event buffer size
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param action event action type
 				 * @return       event buffer size
@@ -410,6 +426,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the event buffer size
+				 *
 				 * @param eid    filesystem event identifier
 				 * @param action event action type
 				 * @param size   event buffer size
@@ -429,7 +446,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Filesystem(const Filesystem &) = delete;
+				explicit Filesystem(const Filesystem &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)
@@ -439,6 +456,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -449,7 +467,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -459,7 +476,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

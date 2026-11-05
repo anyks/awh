@@ -55,7 +55,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -93,6 +91,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the server module of the QUIC transport protocol
+		 *
 		 * @details Links the QUIC connections with the asynchronous network engine.
 		 *          A connection is addressed by a set of identifiers which changes
 		 *          in the course of the work: to the one issued at the establishment there are added the ones
@@ -121,39 +120,74 @@ namespace awh {
 					// Флаг оповещения приложения об установленном соединении
 					bool connected;
 					/**
-					 * Идентификатор события-приёмника объединения данных (splice): собранные
-					 * данные потоков этой сессии перенаправляются в это событие вместо
-					 * выдачи приложению (0 - объединение не установлено)
+					 * \~russian
+					 * @brief Идентификатор события-приёмника объединения данных (splice): собранные
+					 *        данные потоков этой сессии перенаправляются в это событие вместо
+					 *        выдачи приложению (0 - объединение не установлено)
+					 *
+					 * \~english
+					 * @brief Identifier of an event-receiver of a merging of the data (splice): the assembled
+					 *        data of the streams of this session are redirected into this event instead of
+					 *        issuing to an application (0 - a merging is not established)
+					 *
+					 * \~
 					 */
 					event::id_t dest;
 					/**
-					 * Идентификатор туннельного потока для входящих объединённых данных:
-					 * байты, поступающие в эту сессию из события-источника, отправляются
-					 * этим потоком приложения (INVALID_STREAM - поток ещё не открыт)
+					 * \~russian
+					 * @brief Идентификатор туннельного потока для входящих объединённых данных:
+					 *        байты, поступающие в эту сессию из события-источника, отправляются
+					 *        этим потоком приложения (INVALID_STREAM - поток ещё не открыт)
+					 *
+					 * \~english
+					 * @brief Identifier of a tunnel stream for the incoming merged data: the
+					 *        bytes arriving into this session from an event-source are sent
+					 *        by this stream of the application (INVALID_STREAM - a stream is not yet opened)
+					 *
+					 * \~
 					 */
 					uint64_t tunnel;
 					/**
-					 * Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
-					 * моделью: движок принимает выданное целиком, но указатель обязан
-					 * оставаться действительным до возврата из функции-источника, поэтому
-					 * буфер переиспользуется и очищается только на следующем вызове
+					 * \~russian
+					 * @brief Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
+					 *        моделью: движок принимает выданное целиком, но указатель обязан
+					 *        оставаться действительным до возврата из функции-источника, поэтому
+					 *        буфер переиспользуется и очищается только на следующем вызове
+					 *
+					 * \~english
+					 * @brief A buffer of an outgoing datagram, issued to a network engine by a pulling
+					 *        model: an engine accepts the issued wholly, but a pointer is obliged
+					 *        to stay valid up to a return from a function-source, therefore
+					 *        a buffer is reused and cleared only on the next call
+					 *
+					 * \~
 					 */
 					string datagram;
 					// Флаг выдачи буфера исходящей датаграммы сетевому движку
 					bool handed;
 					/**
-					 * Маркировка исходящих датаграмм соединения (RFC 9000 §13.4)
+					 * \~russian
+					 * @brief Маркировка исходящих датаграмм соединения (RFC 9000 §13.4)
 					 *
 					 * @details Маркировка держится у соединения, а не у сокета: сокет
 					 *          сервера один на все соединения, и путь одного из них
 					 *          мог проверку поддержки ECN не пройти, тогда как
-					 *          остальным маркировка сохраняется
+					 *          остальным маркировка сохраняется.
+					 *
+					 * \~english
+					 * @brief Marking of the outgoing datagrams of a connection (RFC 9000 §13.4)
+					 *
+					 * @details A marking is held at a connection, and not at a socket: a socket of
+					 *          a server is one over all the connections, and a path of one of them
+					 *          could fail a validation of the ECN support, while for the rest
+					 *          a marking is kept.
+					 *
+					 * \~
 					 */
 					event::ecn_t marking;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -170,6 +204,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the parameters of the cluster
+				 *
 				 * @details The parameters of the cluster are given at its creation and cannot be changed in the course of the work.
 				 *
 				 * \~
@@ -191,7 +226,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -201,7 +235,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -216,11 +249,21 @@ namespace awh {
 				// Идентификатор события интервала таймеров соединений
 				event::id_t _tid;
 				/**
-				 * Унаследованный до fork идентификатор события сервера. В режиме кластера
-				 * дочерний процесс пересоздаёт собственное событие сервера с новым
-				 * идентификатором, а фасад продолжает обращаться к унаследованному: значение
-				 * сохраняется для приведения унаследованного идентификатора к собственному
-				 * (см. actual())
+				 * \~russian
+				 * @brief Унаследованный до fork идентификатор события сервера. В режиме кластера
+				 *        дочерний процесс пересоздаёт собственное событие сервера с новым
+				 *        идентификатором, а фасад продолжает обращаться к унаследованному: значение
+				 *        сохраняется для приведения унаследованного идентификатора к собственному
+				 *        (см. actual())
+				 *
+				 * \~english
+				 * @brief An identifier of a server event inherited before a fork. In a mode of a cluster
+				 *        a child process recreates its own server event with a new
+				 *        identifier, and a facade keeps addressing an inherited one: a value
+				 *        is kept for a reducing of an inherited identifier to its own
+				 *        (see actual())
+				 *
+				 * \~
 				 */
 				event::id_t _inheritedEid;
 			private:
@@ -232,10 +275,19 @@ namespace awh {
 				event::family_t _family;
 			private:
 				/**
-				 * Общий ключ вывода токенов сброса без сохранения состояния. Генерируется
-				 * при запуске сервера, если не задан приложением: сохранённый между
-				 * запусками ключ позволяет сбрасывать соединения, о которых сервер
-				 * после перезапуска уже ничего не помнит (RFC 9000 §10.3.2)
+				 * \~russian
+				 * @brief Общий ключ вывода токенов сброса без сохранения состояния. Генерируется
+				 *        при запуске сервера, если не задан приложением: сохранённый между
+				 *        запусками ключ позволяет сбрасывать соединения, о которых сервер
+				 *        после перезапуска уже ничего не помнит (RFC 9000 §10.3.2)
+				 *
+				 * \~english
+				 * @brief A shared key of a derivation of the stateless reset tokens. It is generated
+				 *        at a starting of a server, if not set by an application: a key kept between
+				 *        the startings allows to reset the connections about which a server
+				 *        after a restart remembers nothing already (RFC 9000 §10.3.2)
+				 *
+				 * \~
 				 */
 				string _resetKey;
 			private:
@@ -255,27 +307,47 @@ namespace awh {
 				cluster_params_t _clusterParams;
 			private:
 				/**
-				 * Идентификаторы дочерних процессов, не получивших порт прослушивания при
-				 * раздаче родительским процессом (работают в холостую без сокета сервера).
-				 * Заполняется только на системах, где порт выделяется дочернему процессу
-				 * монопольно (macOS/Solaris/OpenBSD/NetBSD), и позволяет доотправить порт
-				 * такому процессу вручную (clusterIdle()/clusterAssign())
+				 * \~russian
+				 * @brief Идентификаторы дочерних процессов, не получивших порт прослушивания при
+				 *        раздаче родительским процессом (работают в холостую без сокета сервера).
+				 *        Заполняется только на системах, где порт выделяется дочернему процессу
+				 *        монопольно (macOS/Solaris/OpenBSD/NetBSD), и позволяет доотправить порт
+				 *        такому процессу вручную (clusterIdle()/clusterAssign())
+				 *
+				 * \~english
+				 * @brief Identifiers of the child processes that got no listening port at a
+				 *        distribution by a parent process (working idle without a server socket).
+				 *        It is filled only on the systems where a port is allotted to a child process
+				 *        monopolously (macOS/Solaris/OpenBSD/NetBSD), and allows to send a port additionally
+				 *        to such a process by hand (clusterIdle()/clusterAssign())
+				 *
+				 * \~
 				 */
 				unordered_set <pid_t> _idle;
 				/**
-				 * Порт прослушивания, выделенный каждому дочернему процессу при раздаче
-				 * родительским процессом. Позволяет автоматически вернуть возрождённому
-				 * (после падения) дочернему процессу тот же порт, что был у него до гибели
+				 * \~russian
+				 * @brief Порт прослушивания, выделенный каждому дочернему процессу при раздаче
+				 *        родительским процессом. Позволяет автоматически вернуть возрождённому
+				 *        (после падения) дочернему процессу тот же порт, что был у него до гибели
+				 *
+				 * \~english
+				 * @brief A listening port, allotted to each child process at a distribution by a
+				 *        parent process. It allows to return automatically to a revived
+				 *        (after a fall) child process that same port which it had before a death
+				 *
+				 * \~
 				 */
 				unordered_map <pid_t, uint16_t> _ports;
 			private:
 				/**
-				 * Параметры прослушивания, кэшируемые для пересоздания сокета в дочернем
-				 * процессе кластера. Фасад настраивает событие сервера в родительском
-				 * процессе, а каждый дочерний процесс поднимает собственный сокет после
-				 * fork, поэтому адрес, порт и размер очереди сохраняются заранее
+				 * @brief Тип адреса прослушивания (IPv4 или IPv6)
+				 *
+				 * @details Параметры прослушивания, кэшируемые для пересоздания сокета в дочернем
+				 *          процессе кластера. Фасад настраивает событие сервера в родительском
+				 *          процессе, а каждый дочерний процесс поднимает собственный сокет после
+				 *          fork, поэтому адрес, порт и размер очереди сохраняются заранее.
+				 *
 				 */
-				// Тип адреса прослушивания (IPv4 или IPv6)
 				event::address_t _listenType;
 				// Флаг ожидания дочерним процессом выделенного родительским процессом порта
 				bool _awaitingPort;
@@ -298,6 +370,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the current time in milliseconds
+				 *
 				 * @return current time in milliseconds
 				 *
 				 * \~
@@ -312,6 +385,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming the address of the remote endpoint of a session
+				 *
 				 * @param oid event identifier of the session
 				 * @return    address of the remote endpoint in the form "address:port"
 				 *
@@ -332,10 +406,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the remote endpoint to a connection from the engine
+				 *
 				 * @note The address of the source is extracted by the regular structure of the network address
 				 *       of the framework net::addr_t, the port — by the regular method of the engine; a change of the
 				 *       address on an established connection means a migration of the path
 				 *       (RFC 9000 §9)
+				 *
 				 * @param oid        event identifier of the session
 				 * @param connection connection to which the address of the endpoint is set
 				 *
@@ -355,6 +431,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of determining the session of an accepted datagram (RFC 9000 §17.2)
+				 *
 				 * @param eid  event identifier of the server
 				 * @param data data of the datagram
 				 * @param size size of the datagram
@@ -373,6 +450,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a session of a new connection
+				 *
 				 * @param eid event identifier of the server
 				 * @param oid event identifier of the session
 				 *
@@ -389,6 +467,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing an accepted datagram of a session
+				 *
 				 * @param oid  event identifier of the session
 				 * @param data data of the datagram
 				 * @param size size of the datagram
@@ -405,6 +484,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the expired timers of the connections
+				 *
 				 * @param eid    event identifier of the interval
 				 * @param status status of the interval event
 				 *
@@ -426,10 +506,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of synchronizing the routing of a connection
+				 *
 				 * @note The identifiers introduced into the circulation by the connection are bound
 				 *       to the session of the engine, while the withdrawn ones are removed. Without the synchronization
 				 *       a datagram with a new identifier would be taken for a new
 				 *       connection
+				 *
 				 * @param oid     event identifier of the session
 				 * @param session session of the connection
 				 *
@@ -444,6 +526,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of issuing the assembled data of the application streams
+				 *
 				 * @param oid event identifier of the session
 				 *
 				 * \~
@@ -456,15 +539,18 @@ namespace awh {
 				 * @note Маркировка ставится событию соединения, а не сокету сервера: сокет
 				 *       у датаграммного сервера один на все соединения, и метка сокета
 				 *       помечала бы датаграммы всех соединений разом
+				 *
 				 * @param oid     идентификатор события сессии
 				 * @param session сессия соединения
 				 * @param marking требуемая маркировка исходящих датаграмм
 				 *
 				 * \~english
 				 * @brief Method of applying the marking to the outgoing datagrams of a connection
+				 *
 				 * @note The marking is set to the event of the connection instead of the socket of the
 				 *       server: the socket of a datagram server is one for all the connections, and a
 				 *       marking of the socket would mark the datagrams of all the connections at once
+				 *
 				 * @param oid     event identifier of the session
 				 * @param session session of the connection
 				 * @param marking required marking of the outgoing datagrams
@@ -481,6 +567,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending the ready outgoing datagrams of a connection
+				 *
 				 * @param oid     event identifier of the session
 				 * @param session session of the connection
 				 *
@@ -494,8 +581,10 @@ namespace awh {
 				 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
 				 *       тогда, когда готов их отправить, поэтому маркировка ECN накладывается
 				 *       здесь же и соответствует выдаваемой датаграмме
+				 *
 				 * @note Датаграмма отдаётся целиком либо не отдаётся вовсе: если выданной
 				 *       ёмкости не хватает, она удерживается до следующего запроса
+				 *
 				 * @param oid    идентификатор события сессии
 				 * @param buffer адрес указателя на буфер выдаваемых данных
 				 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
@@ -503,11 +592,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of giving out an outgoing datagram of a session to the network engine
+				 *
 				 * @note Source function of the pull model: the engine asks for the data exactly
 				 *       when it is ready to send them, so the ECN marking is imposed here as well
 				 *       and corresponds to the given out datagram
+				 *
 				 * @note A datagram is given out entirely or not given out at all: if the given
 				 *       capacity is not enough, it is held until the next request
+				 *
 				 * @param oid    event identifier of the session
 				 * @param buffer address of the pointer to the buffer of the given out data
 				 * @param size   capacity of the request at the input and size of the given out data at the output
@@ -532,10 +624,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending the joined data into the tunnel stream of a session
+				 *
 				 * @note The bytes that have arrived from the source event of the joining (splice) — be
 				 *       it an ordinary socket through the network engine or another QUIC session —
 				 *       are sent by the tunnel stream of the destination session with their encryption
 				 *       at the level of the connection (RFC 9000 §2.1)
+				 *
 				 * @param oid  event identifier of the destination session
 				 * @param data data to be sent into the tunnel stream
 				 * @param size size of the data to be sent
@@ -557,9 +651,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of redirecting the assembled data of a session into the destination event of the joining
+				 *
 				 * @note If the destination is another QUIC session, the data is re-encrypted into its
 				 *       tunnel stream; if it is an ordinary event of the engine (TCP/UDP) — it is sent
 				 *       as raw bytes
+				 *
 				 * @param dest event identifier of the destination of the data joining
 				 * @param data data to be redirected
 				 *
@@ -581,9 +677,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a stateless reset (RFC 9000 §10.3)
+				 *
 				 * @note Sent in answer to a datagram addressed to a connection
 				 *       about which the server remembers nothing: without the reset the remote node
 				 *       will continue the sending right up to the idle timeout
+				 *
 				 * @param oid  event identifier of the session
 				 * @param data data of the datagram that has caused the reset
 				 * @param size size of the datagram that has caused the reset
@@ -600,6 +698,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of terminating the session of a connection
+				 *
 				 * @param oid event identifier of the session
 				 *
 				 * \~
@@ -615,6 +714,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of the recreation of a process of the cluster
+				 *
 				 * @param old old process identifier
 				 * @param pid current process identifier
 				 *
@@ -630,6 +730,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving the event of the termination of the work of a process of the cluster
+				 *
 				 * @param pid    process identifier
 				 * @param status state with which the process has terminated
 				 *
@@ -645,6 +746,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of sending a message to a process of the cluster
+				 *
 				 * @param pid  process identifier
 				 * @param size size of the sent message
 				 *
@@ -666,11 +768,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving the activation/deactivation events of the cluster
+				 *
 				 * @note At the START event of a child process an independent QUIC server
 				 *       is raised: the socket is created and bound already in the very
 				 *       child process, therefore every worker owns its own
 				 *       socket (SO_REUSEPORT on a common port for Linux/FreeBSD or
 				 *       a port allocated from a range for the other systems)
+				 *
 				 * @param pid   process identifier
 				 * @param event flag of the cluster event
 				 *
@@ -687,6 +791,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of receiving a message from a process of the cluster
+				 *
 				 * @param pid  process identifier
 				 * @param data data of the received message
 				 * @param size data size of the received message
@@ -703,6 +808,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing status change events of a process of the cluster
+				 *
 				 * @param pid    process identifier
 				 * @param status new status of the process of the cluster
 				 *
@@ -719,6 +825,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing cluster error events
+				 *
 				 * @param pid         process identifier
 				 * @param error       error type
 				 * @param description error description
@@ -736,6 +843,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing availability/unavailability events of the outgoing message queue of the cluster
+				 *
 				 * @param pid    process identifier
 				 * @param status queue availability status
 				 * @param size   size of the available queue data
@@ -753,6 +861,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending an allocated listening port to a child process of the cluster
+				 *
 				 * @param pid  identifier of the child process
 				 * @param port listening port being allocated
 				 * @return     result of the sending
@@ -769,6 +878,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching/stopping the work of the server
+				 *
 				 * @param status status of the launch/stop of the server
 				 *
 				 * \~
@@ -787,8 +897,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the relevance of a server event
+				 *
 				 * @note An event is relevant if it is a server event or an active session
 				 *       of a connection (addressed by the event identifier of the session)
+				 *
 				 * @param eid event identifier
 				 * @return    result of checking the relevance of the event
 				 *
@@ -811,12 +923,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of bringing the server event identifier passed by the facade to the relevant one
+				 *
 				 * @note In the cluster mode a child process recreates its own server
 				 *       event with a new identifier (see message()), while the facade continues
 				 *       to address the identifier inherited before the fork. The method substitutes
 				 *       the inherited identifier with the own identifier of the server event
 				 *       of the child process; an active session with the same identifier
 				 *       (at a repeated allocation of the identifier) has the priority
+				 *
 				 * @param eid event identifier passed by the facade
 				 * @return    relevant identifier of the server event
 				 *
@@ -835,9 +949,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the template of the security context of the connections
+				 *
 				 * @note The cryptography of the connections is given entirely on the template of the context:
 				 *       the certificates, the trusted authorities, the verification of the node and the list
 				 *       of the ALPN protocols are configured there
+				 *
 				 * @param ctx identifier of the template of the security context
 				 *
 				 * \~
@@ -851,6 +967,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local transport parameters of the connections (RFC 9000 §7.4)
+				 *
 				 * @param params local transport parameters
 				 *
 				 * \~
@@ -864,6 +981,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the verification of the address of the client through a Retry packet (RFC 9000 §8.1.2)
+				 *
 				 * @param mode mode of the verification of the address of the client
 				 *
 				 * \~
@@ -884,12 +1002,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the notification about the congestion of the path (RFC 9000 §13.4)
+				 *
 				 * @note The outgoing datagrams are marked with the support of ECN, while the marking of the
 				 *       incoming ones is reported to the connections: a router on the path
 				 *       signals about a congestion without discarding the packet, and the congestion window
 				 *       is reduced earlier and without a loss of the data. The mode is enabled before
 				 *       the launch of the server and requires the extraction of the metadata of every
 				 *       datagram, which lowers the throughput of the reception
+				 *
 				 * @param mode mode of the notification about the congestion of the path
 				 *
 				 * \~
@@ -907,9 +1027,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the common key of the derivation of the reset tokens (RFC 9000 §10.3.2)
+				 *
 				 * @note Called before the launch of the server. Without an explicit setting the key is generated
 				 *       randomly at the launch: the stateless reset will work
 				 *       within the life of the process but will not outlive its restart
+				 *
 				 * @param key common key of the derivation of the reset tokens
 				 *
 				 * \~
@@ -931,9 +1053,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a QUIC server event on top of UDP
+				 *
 				 * @note The QUIC transport works on top of a datagram UDP socket: the type and the
 				 *       protocol are forcibly brought to DATAGRAM/UDP regardless of the
 				 *       passed values (RFC 9000)
+				 *
 				 * @param family   address family of the server event
 				 * @param type     event type (ignored, brought to DATAGRAM)
 				 * @param protocol event protocol (ignored, brought to UDP)
@@ -952,6 +1076,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of committing the settings of a server event
+				 *
 				 * @param eid event identifier of the server
 				 * @return    result of performing the commit
 				 *
@@ -967,6 +1092,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching the work of a server event
+				 *
 				 * @param eid event identifier of the server
 				 * @return    result of performing the launch
 				 *
@@ -983,6 +1109,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of listening on the port of the server for accepting the incoming connections
+				 *
 				 * @param eid event identifier of the server
 				 * @param max maximum size of the queue of the waiting connections
 				 * @return    result of performing the listening
@@ -999,6 +1126,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of suspending the work of a server event
+				 *
 				 * @param eid event identifier of the server
 				 * @return    result of performing the suspension of the work
 				 *
@@ -1014,6 +1142,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resuming the work of a server event
+				 *
 				 * @param eid event identifier of the server
 				 * @return    result of performing the resumption of the work
 				 *
@@ -1029,6 +1158,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving data from a client
+				 *
 				 * @param eid client event identifier
 				 * @return    result of receiving the data
 				 *
@@ -1050,9 +1180,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data to a client
+				 *
 				 * @note Sends the application data of the session of a connection by the default stream
 				 *       through the opening of a bidirectional stream (RFC 9000 §2.1);
 				 *       for an explicit choice of the stream the send(oid, sid, data, fin) overload is used
+				 *
 				 * @param eid    event identifier of the session
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data to be sent
@@ -1075,9 +1207,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of joining the data streams between two events
+				 *
 				 * @note For the QUIC transport the joining at the level of the socket is not supported:
 				 *       the data is encrypted at the level of the connection, therefore the method always
 				 *       returns a negative result
+				 *
 				 * @param eid  identifier of the source event
 				 * @param dest identifier of the destination event
 				 * @return     result of the joining
@@ -1099,9 +1233,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the context of a client event
+				 *
 				 * @note For the QUIC transport the context of a session is conducted by the module itself by
 				 *       the event identifier of the session, therefore an external context is not
 				 *       set
+				 *
 				 * @param eid client event identifier
 				 * @param ctx context of the client event
 				 * @return    result of performing the setting
@@ -1117,6 +1253,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a server event
+				 *
 				 * @param eid identifier of the event to be destroyed
 				 *
 				 * \~
@@ -1132,6 +1269,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the options of a server event
+				 *
 				 * @param eid event identifier of the server
 				 * @return    options of the server event
 				 *
@@ -1148,6 +1286,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the options of a server event
+				 *
 				 * @param eid     event identifier of the server
 				 * @param options options of the server event to be set
 				 * @return        result of performing the setting
@@ -1166,6 +1305,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting an option of a server event
+				 *
 				 * @param eid    event identifier of the server
 				 * @param option option of the server event to be set
 				 * @param mode   mode of setting the option of the server event
@@ -1184,6 +1324,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the metadata of the last received datagram packet
+				 *
 				 * @param eid event identifier of the server
 				 * @return    metadata of the last received datagram packet
 				 *
@@ -1200,6 +1341,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the hops of the last received packet
+				 *
 				 * @param eid event identifier of the server
 				 * @return    number of the hops of the last received packet
 				 *
@@ -1216,6 +1358,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of the hops of the last received packet
+				 *
 				 * @param eid  event identifier of the server
 				 * @param hops number of the hops of the last received packet
 				 * @return     result of performing the setting
@@ -1232,6 +1375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid event identifier of the server
 				 * @return    maximum number of the hops
 				 *
@@ -1248,6 +1392,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid  event identifier of the server
 				 * @param hops maximum number of the hops
 				 * @return     result of the work of the function
@@ -1265,6 +1410,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of the server
+				 *
 				 * @param eid event identifier of the server
 				 * @return    network interface of the server
 				 *
@@ -1281,6 +1427,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of the server
+				 *
 				 * @param eid  event identifier of the server
 				 * @param name name of the network interface to be set
 				 * @return     result of performing the setting
@@ -1301,8 +1448,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address family of a server event
+				 *
 				 * @note Overrides the base method in order to bring the identifier of an event inherited by a child
 				 *       process of the cluster to its own one (see actual())
+				 *
 				 * @param eid event identifier of the server
 				 * @return    address family of the server event
 				 *
@@ -1318,6 +1467,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the server
+				 *
 				 * @param eid event identifier of the server
 				 * @return    port of the server
 				 *
@@ -1334,6 +1484,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the server
+				 *
 				 * @param eid  event identifier of the server
 				 * @param port port of the server to be set
 				 * @return     result of performing the setting
@@ -1352,6 +1503,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the server
+				 *
 				 * @param eid     event identifier of the server
 				 * @param address address type of the server
 				 * @return        value of the address of the server
@@ -1370,6 +1522,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the server
+				 *
 				 * @param eid     event identifier of the server
 				 * @param address address type of the server
 				 * @param value   value of the address of the server
@@ -1389,6 +1542,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the server
+				 *
 				 * @param eid     event identifier of the server
 				 * @param address address type of the server
 				 * @param value   structure of the network address of the server
@@ -1408,6 +1562,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the server
+				 *
 				 * @param eid     event identifier of the server
 				 * @param address address type of the server
 				 * @param value   object for extracting the address of the server
@@ -1426,6 +1581,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of the network interface
+				 *
 				 * @param eid event identifier of the server
 				 * @return    MTU of the network interface
 				 *
@@ -1442,6 +1598,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of the network interface
+				 *
 				 * @param eid event identifier of the server
 				 * @param mtu MTU size of the interface
 				 * @return    result of setting the MTU of the network interface
@@ -1458,6 +1615,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid event identifier of the server
 				 * @return    current MTU discovery mode
 				 *
@@ -1474,6 +1632,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid  event identifier of the server
 				 * @param mode discovery mode of the maximum packet size (MTU)
 				 * @return     result of the work of the function
@@ -1491,6 +1650,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the packet delivery mode of the server
+				 *
 				 * @param eid event identifier of the server
 				 * @return    packet delivery mode (unicast, multicast, broadcast)
 				 *
@@ -1507,6 +1667,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the packet delivery mode of the server
+				 *
 				 * @param eid      event identifier of the server
 				 * @param delivery packet delivery mode (unicast, multicast, broadcast)
 				 * @return         result of performing the setting
@@ -1525,6 +1686,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the buffer size of the server
+				 *
 				 * @param eid    event identifier of the server
 				 * @param action action type of the server
 				 * @return       buffer size of the server
@@ -1543,6 +1705,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the buffer size of the server
+				 *
 				 * @param eid    event identifier of the server
 				 * @param action action type of the server
 				 * @param size   buffer size of the server
@@ -1561,6 +1724,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the usage mode of the read timeout of the event
+				 *
 				 * @param eid event identifier
 				 * @return    usage mode of the read timeout of the event
 				 *
@@ -1576,6 +1740,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the usage mode of the read timeout of the event
+				 *
 				 * @param eid   event identifier
 				 * @param usage usage mode of the read timeout of the event (reusable or disposable)
 				 *
@@ -1592,6 +1757,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the timeout of the server
+				 *
 				 * @param eid    event identifier of the server
 				 * @param action action type of the server
 				 * @return       value of the timeout in milliseconds
@@ -1609,6 +1775,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout of the server
+				 *
 				 * @param eid     event identifier of the server
 				 * @param action  action type of the server
 				 * @param timeout value of the timeout in milliseconds
@@ -1628,6 +1795,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the server
+				 *
 				 * @param eid       event identifier of the server
 				 * @param limiting  mode of limiting the bandwidth of the server (egress or ingress)
 				 * @param bandwidth bandwidth of the server to be set
@@ -1648,6 +1816,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the keep-alive parameters for the server
+				 *
 				 * @param eid   event identifier of the server
 				 * @param cnt   number of the keep-alive packets
 				 * @param idle  idle time before sending the first keep-alive packet in seconds
@@ -1667,6 +1836,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid event identifier of the server
 				 * @return    DSCP value
 				 *
@@ -1683,6 +1853,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid  event identifier of the server
 				 * @param dscp DSCP value
 				 * @return     result of the work of the function
@@ -1704,6 +1875,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    event identifier of the server
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1727,6 +1899,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    event identifier of the server
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1746,6 +1919,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the name of the cluster
+				 *
 				 * @param name name of the cluster to be set
 				 *
 				 * \~
@@ -1760,6 +1934,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of the cluster
+				 *
 				 * @return family to which the cluster belongs (MASTER or CHILDREN)
 				 *
 				 * \~
@@ -1774,6 +1949,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the activation mode of the cluster
+				 *
 				 * @return activation mode of the cluster
 				 *
 				 * \~
@@ -1787,6 +1963,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the working mode of the cluster
+				 *
 				 * @param mode activation/deactivation mode of the cluster
 				 *
 				 * \~
@@ -1801,6 +1978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the processes
+				 *
 				 * @return maximum number of the processes
 				 *
 				 * \~
@@ -1814,6 +1992,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the processes
+				 *
 				 * @param count maximum number of the processes
 				 *
 				 * \~
@@ -1828,6 +2007,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of the child processes
+				 *
 				 * @return list of the child processes
 				 *
 				 * \~
@@ -1849,11 +2029,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the range of the ports for allocating to the child processes of the cluster
+				 *
 				 * @note The parent process distributes the ports from the range to the child processes,
 				 *       each of which raises its own server socket. On Linux/FreeBSD
 				 *       a port may repeat (several processes share it through SO_REUSEPORT),
 				 *       on the other systems a port is allocated to a child process exclusively.
 				 *       An empty range means the use of a single listening port
+				 *
 				 * @param begin initial port of the range (0 — use the listening port)
 				 * @param end   final port of the range (0 — use the listening port)
 				 *
@@ -1875,11 +2057,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of the child processes that have not received a listening port
+				 *
 				 * @note On the systems where a port is allocated to a child process exclusively
 				 *       (macOS/Solaris/OpenBSD/NetBSD), at a shortage of the ports of the range a part of the
 				 *       child processes is left without a server socket. Their identifiers
 				 *       are returned here so that the application can send them a port additionally
 				 *       by hand with the clusterAssign() method
+				 *
 				 * @return list of the identifiers of the child processes working idly
 				 *
 				 * \~
@@ -1899,9 +2083,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a listening port to a particular child process of the cluster
+				 *
 				 * @note Makes it possible to raise a server by hand on a child process which has not got a port at
 				 *       the automatic distribution (see clusterIdle()). The child
 				 *       process raises its own socket on the received port
+				 *
 				 * @param pid  identifier of the child process
 				 * @param port listening port for the child process
 				 * @return     result of sending the port to the child process
@@ -1920,6 +2106,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to the parent process
+				 *
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
 				 * @return       number of bytes of the sent message
@@ -1938,6 +2125,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to a child process
+				 *
 				 * @param pid    identifier of the process for receiving the message
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
@@ -1957,6 +2145,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to all the child processes
+				 *
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
 				 * @return       number of bytes of the sent message
@@ -1973,6 +2162,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the flag of the automatic revival of the processes
+				 *
 				 * @param mode flag of the revival of the processes
 				 *
 				 * \~
@@ -1987,6 +2177,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the parameters of the protection against a loop of restarts of the processes of the cluster
+				 *
 				 * @param limit  maximum number of consecutive fast falls before the cluster is stopped (0 — without a limit)
 				 * @param window time window of a «fast» (early) fall of a process in milliseconds
 				 *
@@ -2002,6 +2193,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of the data transfer protocol between the workers
+				 *
 				 * @return type of the data transfer protocol between the workers
 				 *
 				 * \~
@@ -2015,6 +2207,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the type of the data transfer protocol between the workers
+				 *
 				 * @param type type of the data transfer protocol between the workers to be set
 				 *
 				 * \~
@@ -2031,6 +2224,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event buffer size
+				 *
 				 * @param pid    process identifier
 				 * @param action event action type
 				 * @return       event buffer size
@@ -2049,6 +2243,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the event buffer size
+				 *
 				 * @param pid    process identifier
 				 * @param action event action type
 				 * @param size   event buffer size
@@ -2089,6 +2284,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of opening an application stream of a connection
+				 *
 				 * @param oid  event identifier of the session
 				 * @param mode mode of a unidirectional stream
 				 * @return     identifier of the opened stream
@@ -2108,6 +2304,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data into an application stream of a connection
+				 *
 				 * @param oid  event identifier of the session
 				 * @param sid  identifier of the application stream
 				 * @param data data being sent
@@ -2131,9 +2328,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the watermarks of the sending buffer of the streams of a connection (backpressure)
+				 *
 				 * @note The upper mark limits the volume of the unassembled data per stream: beyond it send()
 				 *       accepts the data only partially, while upon the emptying of the buffer below the lower mark the stream
 				 *       is signalled by the "writable" callback. Zero removes the limit (the buffer is not limited)
+				 *
 				 * @param oid  event identifier of the session
 				 * @param high upper watermark (capacity of the sending buffer of the stream)
 				 * @param low  lower watermark (threshold of the "writable" signal)
@@ -2154,8 +2353,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of assigning a pull source of the data of a stream (RFC 9000 §2.2)
+				 *
 				 * @note An alternative to send() for large bodies: the engine itself requests the data from the source
 				 *       as the space in the sending buffer of the stream appears, without requiring to keep a copy of the whole body
+				 *
 				 * @param oid    event identifier of the session
 				 * @param sid    identifier of the application stream
 				 * @param source pull source of the data of the body of the stream
@@ -2177,9 +2378,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending an application datagram to a connection (RFC 9221)
+				 *
 				 * @note The delivery of the datagrams is unreliable: a lost datagram is not
 				 *       sent again, the order of the delivery is not guaranteed. The sending
 				 *       is possible only when the remote node has announced their reception
+				 *
 				 * @param oid  event identifier of the session
 				 * @param data data of the application datagram
 				 * @return     result of the sending
@@ -2196,6 +2399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limit size of a datagram being sent (RFC 9221 §3)
+				 *
 				 * @param oid event identifier of the session
 				 * @return    limit size of the data of a datagram in octets (0 — the datagrams are not supported)
 				 *
@@ -2212,6 +2416,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the termination of a connection by the application (RFC 9000 §10.2)
+				 *
 				 * @param oid    event identifier of the session
 				 * @param code   error code of the application
 				 * @param reason human-readable reason of the termination
@@ -2229,6 +2434,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the negotiated ALPN protocol of a connection
+				 *
 				 * @param oid event identifier of the session
 				 * @return    negotiated ALPN protocol
 				 *
@@ -2244,6 +2450,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the remote endpoint of a connection
+				 *
 				 * @param oid event identifier of the session
 				 * @return    address of the remote endpoint in the form "address:port"
 				 *
@@ -2264,10 +2471,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @note The following callback functions are supported: "open" on an established
 				 *       connection, "read" on the assembled data of an application stream,
 				 *       "datagram" on an accepted application datagram and "close"
 				 *       on a terminated connection
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -2277,7 +2486,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -2291,9 +2499,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -2304,7 +2512,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -2314,7 +2521,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
@@ -2332,15 +2538,16 @@ namespace awh {
 		 *          сетевого движка. Билет возобновления, присланный сервером после
 		 *          установления соединения, сохраняется модулем и подставляется
 		 *          при следующем подключении, поэтому повторное соединение с тем
-		 *          же сервером обходится без полного хендшейка (RFC 9001 §4.6)
+		 *          же сервером обходится без полного хендшейка (RFC 9001 §4.6).
 		 *
 		 * \~english
 		 * @brief Class of the client module of the QUIC transport protocol
+		 *
 		 * @details Conducts a single connection with a remote server on top of the asynchronous
 		 *          network engine. The resumption ticket sent by the server after
 		 *          the establishment of the connection is preserved by the module and is substituted
 		 *          at the next connection, therefore a repeated connection with the same
-		 *          server makes do without a full handshake (RFC 9001 §4.6)
+		 *          server makes do without a full handshake (RFC 9001 §4.6).
 		 *
 		 * \~
 		 */
@@ -2367,9 +2574,17 @@ namespace awh {
 				tls::coder::id_t _ctx;
 			private:
 				/**
-				 * Сохранённый токен проверки адреса фрейма NEW_TOKEN. Подставляется
-				 * в первый пакет следующего соединения и позволяет пропустить обмен
-				 * пакетом Retry, сэкономив круг задержки (RFC 9000 §8.1.3)
+				 * \~russian
+				 * @brief Сохранённый токен проверки адреса фрейма NEW_TOKEN. Подставляется
+				 *        в первый пакет следующего соединения и позволяет пропустить обмен
+				 *        пакетом Retry, сэкономив круг задержки (RFC 9000 §8.1.3)
+				 *
+				 * \~english
+				 * @brief A kept token of an address validation of a NEW_TOKEN frame. It is put
+				 *        into a first packet of the next connection and allows to skip an exchange
+				 *        by a Retry packet, sparing a round of a delay (RFC 9000 §8.1.3)
+				 *
+				 * \~
 				 */
 				string _token;
 			private:
@@ -2385,25 +2600,50 @@ namespace awh {
 				unique_ptr <quic::connection_t> _connection;
 			private:
 				/**
-				 * Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
-				 * моделью: движок принимает выданное целиком, но указатель обязан
-				 * оставаться действительным до возврата из функции-источника, поэтому
-				 * буфер переиспользуется и очищается только на следующем вызове
+				 * \~russian
+				 * @brief Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
+				 *        моделью: движок принимает выданное целиком, но указатель обязан
+				 *        оставаться действительным до возврата из функции-источника, поэтому
+				 *        буфер переиспользуется и очищается только на следующем вызове
+				 *
+				 * \~english
+				 * @brief A buffer of an outgoing datagram, issued to a network engine by a pulling
+				 *        model: an engine accepts the issued wholly, but a pointer is obliged
+				 *        to stay valid up to a return from a function-source, therefore
+				 *        a buffer is reused and cleared only on the next call
+				 *
+				 * \~
 				 */
 				string _datagram;
 				// Флаг выдачи буфера исходящей датаграммы сетевому движку
 				bool _handed;
 			private:
 				/**
-				 * Идентификатор события-приёмника объединения данных (splice): собранные
-				 * данные потоков соединения перенаправляются в это событие вместо выдачи
-				 * приложению (0 - объединение не установлено)
+				 * \~russian
+				 * @brief Идентификатор события-приёмника объединения данных (splice): собранные
+				 *        данные потоков соединения перенаправляются в это событие вместо выдачи
+				 *        приложению (0 - объединение не установлено)
+				 *
+				 * \~english
+				 * @brief Identifier of an event-receiver of a merging of the data (splice): the assembled
+				 *        data of the streams of a connection are redirected into this event instead of issuing
+				 *        to an application (0 - a merging is not established)
+				 *
+				 * \~
 				 */
 				event::id_t _dest;
 				/**
-				 * Идентификатор туннельного потока для входящих объединённых данных:
-				 * байты, поступающие в соединение из события-источника, отправляются
-				 * этим потоком приложения (INVALID_STREAM - поток ещё не открыт)
+				 * \~russian
+				 * @brief Идентификатор туннельного потока для входящих объединённых данных:
+				 *        байты, поступающие в соединение из события-источника, отправляются
+				 *        этим потоком приложения (INVALID_STREAM - поток ещё не открыт)
+				 *
+				 * \~english
+				 * @brief Identifier of a tunnel stream for the incoming merged data: the
+				 *        bytes arriving into a connection from an event-source are sent
+				 *        by this stream of the application (INVALID_STREAM - a stream is not yet opened)
+				 *
+				 * \~
 				 */
 				uint64_t _tunnel;
 			private:
@@ -2415,6 +2655,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the current time in milliseconds
+				 *
 				 * @return current time in milliseconds
 				 *
 				 * \~
@@ -2431,6 +2672,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing an accepted datagram of a connection
+				 *
 				 * @param eid  client event identifier
 				 * @param data data of the datagram
 				 * @param size size of the datagram
@@ -2447,6 +2689,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the expired timers of a connection
+				 *
 				 * @param eid    event identifier of the interval
 				 * @param status status of the interval event
 				 *
@@ -2462,6 +2705,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the completion of the connection to the server
+				 *
 				 * @param eid client event identifier
 				 * @param ok  result of the connection to the server
 				 *
@@ -2490,6 +2734,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of notifying the application about a terminated connection
+				 *
 				 * @note A connection is terminated both by the remote endpoint and by
 				 *       the expiration of the closing period held after the termination of the
 				 *       connection by the application itself (RFC 9000 §10.2). The notification
@@ -2506,6 +2751,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of applying the marking of a connection to the socket of the client event
+				 *
 				 * @param marking required marking of the outgoing datagrams
 				 *
 				 * \~
@@ -2528,8 +2774,10 @@ namespace awh {
 				 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
 				 *       тогда, когда готов их отправить, поэтому маркировка ECN накладывается
 				 *       здесь же и соответствует выдаваемой датаграмме
+				 *
 				 * @note Датаграмма отдаётся целиком либо не отдаётся вовсе: если выданной
 				 *       ёмкости не хватает, она удерживается до следующего запроса
+				 *
 				 * @param eid    идентификатор события клиента
 				 * @param buffer адрес указателя на буфер выдаваемых данных
 				 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
@@ -2537,11 +2785,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of giving out an outgoing datagram of a connection to the network engine
+				 *
 				 * @note Source function of the pull model: the engine asks for the data exactly
 				 *       when it is ready to send them, so the ECN marking is imposed here as well
 				 *       and corresponds to the given out datagram
+				 *
 				 * @note A datagram is given out entirely or not given out at all: if the given
 				 *       capacity is not enough, it is held until the next request
+				 *
 				 * @param eid    event identifier of the client
 				 * @param buffer address of the pointer to the buffer of the given out data
 				 * @param size   capacity of the request at the input and size of the given out data at the output
@@ -2564,9 +2815,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending the joined data into the tunnel stream of a connection
+				 *
 				 * @note The bytes that have arrived from the source event of the joining (splice)
 				 *       are sent by the tunnel stream of the connection with their encryption
 				 *       at the level of the connection (RFC 9000 §2.1)
+				 *
 				 * @param data data to be sent into the tunnel stream
 				 * @param size size of the data to be sent
 				 * @return     result of placing the data into the sending queue
@@ -2582,6 +2835,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of redirecting the assembled data of a connection into the destination event of the joining
+				 *
 				 * @param data data to be redirected
 				 *
 				 * \~
@@ -2597,6 +2851,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the relevance of a client event
+				 *
 				 * @param eid event identifier
 				 * @return    result of checking the relevance of the event
 				 *
@@ -2611,6 +2866,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching/stopping the work of the client
+				 *
 				 * @param status status of the launch/stop of the client
 				 *
 				 * \~
@@ -2625,6 +2881,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the template of the security context of the connection
+				 *
 				 * @param ctx identifier of the template of the security context
 				 *
 				 * \~
@@ -2642,9 +2899,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the notification about the congestion of the path (RFC 9000 §13.4)
+				 *
 				 * @note The outgoing datagrams are marked with the support of ECN, while the marking of the
 				 *       accepted ones is extracted from the header of the IP packet. A path that erases
 				 *       the marking is revealed by the connection itself, and it removes the marking
+				 *
 				 * @param mode mode of the notification about the congestion of the path
 				 *
 				 * \~
@@ -2658,6 +2917,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local transport parameters of the connection (RFC 9000 §7.4)
+				 *
 				 * @param params local transport parameters
 				 *
 				 * \~
@@ -2676,9 +2936,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the preserved address verification token (RFC 9000 §8.1.3)
+				 *
 				 * @note The token is sent by the server upon the completion of the connection and is preserved
 				 *       by the module by itself, outliving the connection and being suitable
 				 *       for a presentation between the runs of the application
+				 *
 				 * @return address verification token (empty — the token has not been received)
 				 *
 				 * \~
@@ -2692,6 +2954,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the preserved address verification token (RFC 9000 §8.1.3)
+				 *
 				 * @param token address verification token
 				 *
 				 * \~
@@ -2710,9 +2973,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the acceptance of the early data by the remote server (RFC 9001 §4.6.2)
+				 *
 				 * @note The server has the right to refuse the early data, and then the content sent
 				 *       by it is transmitted anew after the handshake. The check
 				 *       is needed by an application to which it is important to know whether the 0-RTT has taken place
+				 *
 				 * @return result of the check
 				 *
 				 * \~
@@ -2734,9 +2999,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a QUIC client event on top of UDP
+				 *
 				 * @note The QUIC transport works on top of a datagram UDP socket: the type and the
 				 *       protocol are forcibly brought to DATAGRAM/UDP regardless of the
 				 *       passed values (RFC 9000)
+				 *
 				 * @param family   address family of the client event
 				 * @param type     event type (ignored, brought to DATAGRAM)
 				 * @param protocol event protocol (ignored, brought to UDP)
@@ -2755,6 +3022,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of committing the settings of a client event
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the commit
 				 *
@@ -2770,6 +3038,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching the work of a client event
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the launch
 				 *
@@ -2785,6 +3054,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of suspending the work of a client event
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the suspension of the work
 				 *
@@ -2800,6 +3070,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resuming the work of a client event
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the resumption of the work
 				 *
@@ -2815,6 +3086,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of disconnecting the client from the remote server
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the disconnection
 				 *
@@ -2835,9 +3107,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting the client to a remote server
+				 *
 				 * @note Creates a QUIC connection on the template of the security context and
 				 *       begins the handshake (RFC 9001). The address and the port of the remote server
 				 *       are taken from the previously set regular structure of the network address
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the connection
 				 *
@@ -2853,6 +3127,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of connecting the client to a remote server
+				 *
 				 * @param ids list of the event identifiers to be connected
 				 * @return    result of performing the connection
 				 *
@@ -2868,6 +3143,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving data from the remote server
+				 *
 				 * @param eid client event identifier
 				 * @return    result of receiving the data
 				 *
@@ -2889,9 +3165,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data to the remote server
+				 *
 				 * @note Sends the application data by the default stream through the opening
 				 *       of a bidirectional stream (RFC 9000 §2.1); for an explicit choice of the stream
 				 *       the send(sid, data, fin) overload is used
+				 *
 				 * @param eid    client event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data to be sent
@@ -2914,9 +3192,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of joining the data streams between two events
+				 *
 				 * @note For the QUIC transport the joining at the level of the socket is not supported:
 				 *       the data is encrypted at the level of the connection, therefore the method always
 				 *       returns a negative result
+				 *
 				 * @param eid  identifier of the source event
 				 * @param dest identifier of the destination event
 				 * @return     result of the joining
@@ -2932,6 +3212,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a client event
+				 *
 				 * @param eid identifier of the event to be destroyed
 				 *
 				 * \~
@@ -2947,6 +3228,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the options of a client event
+				 *
 				 * @param eid client event identifier
 				 * @return    options of the client event
 				 *
@@ -2963,6 +3245,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the options of a client event
+				 *
 				 * @param eid     client event identifier
 				 * @param options options of the client event to be set
 				 * @return        result of performing the setting
@@ -2981,6 +3264,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting an option of a client event
+				 *
 				 * @param eid    client event identifier
 				 * @param option option of the client event to be set
 				 * @param mode   mode of setting the option of the client event
@@ -2999,6 +3283,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the metadata of the last received datagram packet
+				 *
 				 * @param eid client event identifier
 				 * @return    metadata of the last received datagram packet
 				 *
@@ -3015,6 +3300,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the hops of the last received packet
+				 *
 				 * @param eid client event identifier
 				 * @return    number of the hops of the last received packet
 				 *
@@ -3031,6 +3317,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of the hops of the last received packet
+				 *
 				 * @param eid  client event identifier
 				 * @param hops number of the hops of the last received packet
 				 * @return     result of performing the setting
@@ -3047,6 +3334,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid client event identifier
 				 * @return    maximum number of the hops
 				 *
@@ -3063,6 +3351,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid  client event identifier
 				 * @param hops maximum number of the hops
 				 * @return     result of the work of the function
@@ -3080,6 +3369,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    network interface of the client
 				 *
@@ -3096,6 +3386,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of the client
+				 *
 				 * @param eid  client event identifier
 				 * @param name name of the network interface to be set
 				 * @return     result of performing the setting
@@ -3113,6 +3404,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the internal port of the event
+				 *
 				 * @param eid event identifier
 				 * @return    internal port of the event
 				 *
@@ -3129,6 +3421,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the internal port of the event
+				 *
 				 * @param eid  event identifier
 				 * @param port internal port of the event
 				 * @return     result of performing the setting
@@ -3145,6 +3438,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the remote server
+				 *
 				 * @param eid client event identifier
 				 * @return    port of the remote server
 				 *
@@ -3161,6 +3455,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the remote server
+				 *
 				 * @param eid  client event identifier
 				 * @param port port of the remote server to be set
 				 * @return     result of performing the setting
@@ -3178,6 +3473,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid client event identifier
 				 * @return    host address of the target machine
 				 *
@@ -3194,6 +3490,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -3211,6 +3508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target structure of the network address of the host of the target machine
 				 * @return       result of performing the setting
@@ -3228,6 +3526,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target object for extracting the host address of the target machine
 				 * @return       result of extracting the host address of the target machine
@@ -3246,6 +3545,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @return        value of the client address
@@ -3264,6 +3564,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   value of the client address
@@ -3283,6 +3584,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   structure of the network address of the client
@@ -3302,6 +3604,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   object for extracting the client address
@@ -3320,6 +3623,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of the network interface
+				 *
 				 * @param eid client event identifier
 				 * @return    MTU of the network interface
 				 *
@@ -3336,6 +3640,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of the network interface
+				 *
 				 * @param eid client event identifier
 				 * @param mtu MTU size of the interface
 				 * @return    result of setting the MTU of the network interface
@@ -3352,6 +3657,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid client event identifier
 				 * @return    current MTU discovery mode
 				 *
@@ -3368,6 +3674,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid  client event identifier
 				 * @param mode discovery mode of the maximum packet size (MTU)
 				 * @return     result of the work of the function
@@ -3385,6 +3692,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the packet delivery mode of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    packet delivery mode (unicast, multicast, broadcast)
 				 *
@@ -3401,6 +3709,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the packet delivery mode of the client
+				 *
 				 * @param eid      client event identifier
 				 * @param delivery packet delivery mode (unicast, multicast, broadcast)
 				 * @return         result of performing the setting
@@ -3419,6 +3728,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the buffer size of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @return       buffer size of the client
@@ -3437,6 +3747,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the buffer size of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @param size   buffer size of the client
@@ -3455,6 +3766,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the usage mode of the read timeout of the event
+				 *
 				 * @param eid event identifier
 				 * @return    usage mode of the read timeout of the event
 				 *
@@ -3470,6 +3782,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the usage mode of the read timeout of the event
+				 *
 				 * @param eid   event identifier
 				 * @param usage usage mode of the read timeout of the event (reusable or disposable)
 				 *
@@ -3486,6 +3799,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the timeout of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @return       value of the timeout in milliseconds
@@ -3503,6 +3817,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout of the client
+				 *
 				 * @param eid     client event identifier
 				 * @param action  action type of the client
 				 * @param timeout value of the timeout in milliseconds
@@ -3522,6 +3837,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the client
+				 *
 				 * @param eid       client event identifier
 				 * @param limiting  mode of limiting the bandwidth of the client (egress or ingress)
 				 * @param bandwidth bandwidth of the client to be set
@@ -3542,6 +3858,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the keep-alive parameters for the client
+				 *
 				 * @param eid   client event identifier
 				 * @param cnt   number of the keep-alive packets
 				 * @param idle  idle time before sending the first keep-alive packet in seconds
@@ -3561,6 +3878,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid client event identifier
 				 * @return    DSCP value
 				 *
@@ -3577,6 +3895,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid  client event identifier
 				 * @param dscp DSCP value
 				 * @return     result of the work of the function
@@ -3598,6 +3917,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    client event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -3621,6 +3941,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    client event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -3662,6 +3983,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of opening an application stream of the connection
+				 *
 				 * @param mode mode of a unidirectional stream
 				 * @return     identifier of the opened stream
 				 *
@@ -3679,6 +4001,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data into an application stream of the connection
+				 *
 				 * @param sid  identifier of the application stream
 				 * @param data data being sent
 				 * @param fin  flag of the termination of the stream
@@ -3700,9 +4023,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the watermarks of the sending buffer of the streams of the connection (backpressure)
+				 *
 				 * @note The upper mark limits the volume of the unassembled data per stream: beyond it send()
 				 *       accepts the data only partially, while upon the emptying of the buffer below the lower mark the stream
 				 *       is signalled by the "writable" callback. Zero removes the limit (the buffer is not limited)
+				 *
 				 * @param high upper watermark (capacity of the sending buffer of the stream)
 				 * @param low  lower watermark (threshold of the "writable" signal)
 				 *
@@ -3721,8 +4046,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of assigning a pull source of the data of a stream (RFC 9000 §2.2)
+				 *
 				 * @note An alternative to send() for large bodies: the engine itself requests the data from the source
 				 *       as the space in the sending buffer of the stream appears, without requiring to keep a copy of the whole body
+				 *
 				 * @param sid    identifier of the application stream
 				 * @param source pull source of the data of the body of the stream
 				 *
@@ -3742,9 +4069,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending an application datagram to the server (RFC 9221)
+				 *
 				 * @note The delivery of the datagrams is unreliable: a lost datagram is not
 				 *       sent again, the order of the delivery is not guaranteed. The sending
 				 *       is possible only when the server has announced their reception
+				 *
 				 * @param data data of the application datagram
 				 * @return     result of the sending
 				 *
@@ -3759,6 +4088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limit size of a datagram being sent (RFC 9221 §3)
+				 *
 				 * @return limit size of the data of a datagram in octets (0 — the datagrams are not supported)
 				 *
 				 * \~
@@ -3773,6 +4103,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the termination of the connection by the application (RFC 9000 §10.2)
+				 *
 				 * @param code   error code of the application
 				 * @param reason human-readable reason of the termination
 				 *
@@ -3788,6 +4119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the negotiated ALPN protocol of the connection
+				 *
 				 * @return negotiated ALPN protocol
 				 *
 				 * \~
@@ -3807,10 +4139,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @note The following callback functions are supported: "open" on an established
 				 *       connection, "read" on the assembled data of an application stream,
 				 *       "datagram" on an accepted application datagram and "close"
 				 *       on a terminated connection
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -3821,22 +4155,21 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
 				 *
 				 * \~
 				 */
-				QuicClient(const QuicClient &) = delete;
+				explicit QuicClient(const QuicClient &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -3847,7 +4180,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -3857,7 +4189,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

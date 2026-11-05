@@ -45,7 +45,13 @@
 #include "../../sys/macro/global.hpp"
 
 /**
- * Предварительные объявления типов BoringSSL (реализация в crypto.cpp)
+ * \~russian
+ * @brief Предварительные объявления типов BoringSSL (реализация в crypto.cpp)
+ *
+ * \~english
+ * @brief Preliminary declarations of the BoringSSL types (the implementation is in crypto.cpp)
+ *
+ * \~
  */
 struct aes_key_st;
 struct evp_aead_ctx_st;
@@ -53,7 +59,6 @@ struct evp_aead_ctx_st;
 /**
  * \~russian
  * @brief основное пространство имён
- *
  *
  * \~english
  * @brief main namespace
@@ -69,7 +74,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
-	 *
 	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
@@ -89,6 +93,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the layer of the protection of the QUIC packets (RFC 9001 §5)
+		 *
 		 * @details The derivation of the keys (HKDF-Expand-Label with the labels "quic key"/"quic iv"/"quic hp"),
 		 *          the per-packet AEAD encryption, the header protection,
 		 *          the key update ("quic ku") and the integrity tag of a Retry packet.
@@ -165,20 +170,34 @@ namespace awh {
 				// Ключ защиты заголовка ("quic hp")
 				string hp;
 				/**
-				 * Контекст AEAD-шифрования, развёрнутый один раз на время жизни ключей.
-				 * Ключи копируются при установке фазы (install/update), поэтому владение
-				 * разделяемое - контекст неизменяем после инициализации
+				 * \~russian
+				 * @brief Контекст AEAD-шифрования, развёрнутый один раз на время жизни ключей.
+				 *        Ключи копируются при установке фазы (install/update), поэтому владение
+				 *        разделяемое - контекст неизменяем после инициализации
+				 *
+				 * \~english
+				 * @brief Context of the AEAD encryption, expanded once for the lifetime of the keys.
+				 *        The keys are copied on setting of a phase (install/update), therefore an ownership
+				 *        is shared - the context is immutable after the initialization
+				 *
+				 * \~
 				 */
 				shared_ptr <evp_aead_ctx_st> aead;
 				/**
-				 * Развёрнутый ключ защиты заголовка для наборов на основе AES.
-				 * Для ChaCha20 не используется - у потокового шифра нет развёртки ключа
+				 * \~russian
+				 * @brief Развёрнутый ключ защиты заголовка для наборов на основе AES.
+				 *        Для ChaCha20 не используется - у потокового шифра нет развёртки ключа
+				 *
+				 * \~english
+				 * @brief Expanded key of the protection of a header for the suites based on AES.
+				 *        Not used for ChaCha20 - a stream cipher has no expansion of a key
+				 *
+				 * \~
 				 */
 				shared_ptr <aes_key_st> mask;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -187,11 +206,21 @@ namespace awh {
 				 */
 				explicit Keys() noexcept;
 				/**
-				 * Конструкторы копирования и перемещения стандартны - они создают новый
-				 * экземпляр, затираемый в своём деструкторе. Операторы присваивания
-				 * переопределены: перед перезаписью существующего экземпляра его прежний
-				 * ключевой материал затирается, иначе освобождение старого буфера строки
-				 * оставило бы ключи в куче (RFC 9001 §6, defense-in-depth)
+				 * \~russian
+				 * @brief Конструкторы копирования и перемещения стандартны - они создают новый
+				 *        экземпляр, затираемый в своём деструкторе. Операторы присваивания
+				 *        переопределены: перед перезаписью существующего экземпляра его прежний
+				 *        ключевой материал затирается, иначе освобождение старого буфера строки
+				 *        оставило бы ключи в куче (RFC 9001 §6, defense-in-depth)
+				 *
+				 * \~english
+				 * @brief The constructors of a copy and a moving are standard - they create a new
+				 *        instance, wiped in its own destructor. The operators of an assignment are
+				 *        redefined: before an overwrite of an existing instance its former
+				 *        key material is wiped, otherwise a release of the old buffer of a string
+				 *        would leave the keys in the heap (RFC 9001 §6, defense-in-depth)
+				 *
+				 * \~
 				 */
 				Keys(const Keys &) = default;
 				Keys(Keys &&) noexcept = default;
@@ -207,6 +236,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Destructor
+				 *
 				 * @note Wipes the secret and the derived keys in the memory before the release
 				 *       so that the key material does not remain in the heap after a break of a
 				 *       connection or after a change of the phase (RFC 9001 §6, defense-in-depth)
@@ -229,6 +259,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the derivation of the keys by HKDF-Expand-Label (RFC 8446 §7.1 / RFC 9001 §5.1)
+			 *
 			 * @param suite  cryptographic suite (determines the hash function)
 			 * @param secret secret being the source of the derivation
 			 * @param label  label of the derivation (without the "tls13 " prefix)
@@ -253,8 +284,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the derivation of the Initial keys of both directions (RFC 9001 §5.2)
+			 *
 			 * @note The keys are derived from the DCID of the first Initial packet of the client
 			 *       with the fixed salt of QUIC v1 and with the AES_128_GCM_SHA256 suite
+			 *
 			 * @param dcid   connection identifier of the recipient of the first Initial packet of the client
 			 * @param client keys of the protection of the packets of the client
 			 * @param server keys of the protection of the packets of the server
@@ -274,7 +307,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the derivation of the keys of the protection of the packets from the secret of a direction (RFC 9001 §5.1)
+			 *
 			 * @note The suite and secret fields of the structure must be filled in
+			 *
 			 * @param keys keys of the protection of the packets (the key/iv/hp are filled in)
 			 * @return     result of the derivation (false — an error of the cryptographic library)
 			 *
@@ -293,7 +328,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the update of the keys to a new phase (RFC 9001 §6)
+			 *
 			 * @note The new secret is derived with the "quic ku" label, the key of the header protection does not change
+			 *
 			 * @param current current keys of the protection of the packets
 			 * @param next    keys of the protection of the packets of the next phase
 			 * @return        result of the update (false — an error of the cryptographic library)
@@ -312,6 +349,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of computing the mask of the header protection (RFC 9001 §5.4)
+			 *
 			 * @param keys   keys of the protection of the packets
 			 * @param sample sample of the protected payload (16 octets)
 			 * @param mask   computed mask of the header protection (5 octets)
@@ -336,8 +374,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the full protection of a packet: the AEAD encryption of the payload and the header protection (RFC 9001 §5.3/§5.4)
+			 *
 			 * @note The header must be assembled in full and must end with the Packet Number field,
 			 *       the size of the packet number is taken from the bits of the first octet of the header
+			 *
 			 * @param output  output buffer (the protected packet is appended in full)
 			 * @param keys    keys of the protection of the packets of the sender
 			 * @param pn      full packet number (for the AEAD nonce)
@@ -367,8 +407,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the full removal of the protection of a packet: the header protection and the AEAD decryption (RFC 9001 §5.3/§5.4)
+			 *
 			 * @note The buffer of the packet is modified in place: the protection is removed from the header.
 			 *       The pnOffset and size parameters correspond to the parsed header of the packet
+			 *
 			 * @param packet    buffer of the packet (modified)
 			 * @param size      full size of the packet
 			 * @param pnOffset  offset of the Packet Number field (the boundary of the header protection)
@@ -393,6 +435,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of computing the integrity tag of a Retry packet (RFC 9001 §5.8)
+			 *
 			 * @param odcid  DCID of the first Initial packet of the client
 			 * @param packet Retry packet without the integrity tag
 			 * @param tag    computed integrity tag (16 octets)
@@ -411,6 +454,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of checking the integrity tag of a Retry packet (RFC 9001 §5.8)
+			 *
 			 * @param odcid  DCID of the first Initial packet of the client
 			 * @param packet Retry packet in full (including the integrity tag)
 			 * @return       result of the check (true — the integrity tag is correct)

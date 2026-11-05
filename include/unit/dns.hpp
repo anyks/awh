@@ -198,13 +198,13 @@ namespace awh {
 						 * @brief Оператор копирующего присваивания параметров пакета
 						 *
 						 * @param packet объект параметров пакета
-						 * @return        текущие параметры пакета
+						 * @return       текущие параметры пакета
 						 *
 						 * \~english
 						 * @brief Copy assignment operator of the parameters of the packet
 						 *
 						 * @param packet object of the parameters of the packet
-						 * @return        current parameters of the packet
+						 * @return       current parameters of the packet
 						 *
 						 * \~
 						 */
@@ -218,6 +218,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Move constructor
+						 *
 						 * @param packet object of the parameters of the packet
 						 *
 						 * \~
@@ -231,6 +232,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Copy constructor
+						 *
 						 * @param packet object of the parameters of the packet
 						 *
 						 * \~
@@ -1472,26 +1474,26 @@ namespace awh {
 				 *
 				 * @par Намеренные решения
 				 *
-				 * **Номер выдаётся случайным, а не последовательным.** Прежде здесь стоял
-				 * счётчик с приращением, и заменён он был на случайную выдачу молча, без
-				 * пояснения - оттого решение и записано здесь, чтобы больше не менялось
-				 * втихую ни в ту, ни в другую сторону.
+				 *      **Номер выдаётся случайным, а не последовательным.** Прежде здесь стоял
+				 *      счётчик с приращением, и заменён он был на случайную выдачу молча, без
+				 *      пояснения - оттого решение и записано здесь, чтобы больше не менялось
+				 *      втихую ни в ту, ни в другую сторону.
 				 *
-				 * Довод не в договоре как таковом, хотя RFC 5452 случайности и требует.
-				 * Довод в устройстве самого резолвера: события обмена заводятся однажды и
-				 * живут весь срок работы, переиспользуясь через очередь свободных. Порт
-				 * каждому ядро выдаёт единожды, и все вопросы за всё время уходят с одних
-				 * и тех же портов.
+				 *      Довод не в договоре как таковом, хотя RFC 5452 случайности и требует.
+				 *      Довод в устройстве самого резолвера: события обмена заводятся однажды и
+				 *      живут весь срок работы, переиспользуясь через очередь свободных. Порт
+				 *      каждому ядро выдаёт единожды, и все вопросы за всё время уходят с одних
+				 *      и тех же портов.
 				 *
-				 * Отсюда следствие: порт перестаёт быть тайной после первого же обмена, и
-				 * единственное, что отделяет подложный ответ от принятого, - это номер
-				 * вопроса. При счётчике узнавший порт знает и следующий номер, а принятый
-				 * подлог оседает в кэше на весь срок жизни записи, отравляя его для всех
-				 * служб приложения разом - кэш общий на процесс намеренно.
+				 *      Отсюда следствие: порт перестаёт быть тайной после первого же обмена, и
+				 *      единственное, что отделяет подложный ответ от принятого, - это номер
+				 *      вопроса. При счётчике узнавший порт знает и следующий номер, а принятый
+				 *      подлог оседает в кэше на весь срок жизни записи, отравляя его для всех
+				 *      служб приложения разом - кэш общий на процесс намеренно.
 				 *
-				 * Будь событие одноразовым, порт менялся бы на каждый вопрос и давал свои
-				 * шестнадцать разрядов - тогда счётчик был бы терпим. При долгоживущих
-				 * событиях эти разряды достаются противнику даром.
+				 *      Будь событие одноразовым, порт менялся бы на каждый вопрос и давал свои
+				 *      шестнадцать разрядов - тогда счётчик был бы терпим. При долгоживущих
+				 *      событиях эти разряды достаются противнику даром.
 				 *
 				 * @warning Плата за случайность - совпадение номеров у одновременно
 				 *          ожидающих вопросов. Диапазон шестнадцатиразрядный, и по
@@ -1508,26 +1510,26 @@ namespace awh {
 				 *
 				 * @par Deliberate decisions
 				 *
-				 * **The number is issued randomly rather than sequentially.** Previously there was
-				 * an incrementing counter here, and it was replaced by a random issuance silently, without
-				 * an explanation — that is why the decision is recorded here, so that it is no longer changed
-				 * quietly in either direction.
+				 *      **The number is issued randomly rather than sequentially.** Previously there was
+				 *      an incrementing counter here, and it was replaced by a random issuance silently, without
+				 *      an explanation — that is why the decision is recorded here, so that it is no longer changed
+				 *      quietly in either direction.
 				 *
-				 * The argument is not in the protocol as such, although RFC 5452 does require randomness.
-				 * The argument is in the design of the resolver itself: the exchange events are created once and
-				 * live for the whole term of the work, being reused through a queue of the free ones. The port
-				 * is issued to each of them by the kernel once, and all the questions over the whole time go out from the
-				 * same ports.
+				 *      The argument is not in the protocol as such, although RFC 5452 does require randomness.
+				 *      The argument is in the design of the resolver itself: the exchange events are created once and
+				 *      live for the whole term of the work, being reused through a queue of the free ones. The port
+				 *      is issued to each of them by the kernel once, and all the questions over the whole time go out from the
+				 *      same ports.
 				 *
-				 * Hence the consequence: the port ceases to be a secret after the very first exchange, and
-				 * the only thing that separates a forged response from an accepted one is the number of the
-				 * question. With a counter, whoever has learnt the port knows the next number as well, while an accepted
-				 * forgery settles in the cache for the whole lifetime of the record, poisoning it for all the
-				 * services of the application at once — the cache is common to the process deliberately.
+				 *      Hence the consequence: the port ceases to be a secret after the very first exchange, and
+				 *      the only thing that separates a forged response from an accepted one is the number of the
+				 *      question. With a counter, whoever has learnt the port knows the next number as well, while an accepted
+				 *      forgery settles in the cache for the whole lifetime of the record, poisoning it for all the
+				 *      services of the application at once — the cache is common to the process deliberately.
 				 *
-				 * Were the event a disposable one, the port would change with every question and would give its own
-				 * sixteen bits — then a counter would be tolerable. With long-living
-				 * events those bits go to the adversary for free.
+				 *      Were the event a disposable one, the port would change with every question and would give its own
+				 *      sixteen bits — then a counter would be tolerable. With long-living
+				 *      events those bits go to the adversary for free.
 				 *
 				 * @warning The price of the randomness is a coincidence of the numbers of the simultaneously
 				 *          waiting questions. The range is a sixteen-bit one, and by the
@@ -1681,7 +1683,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				DNS(const DNS &) = delete;
+				explicit DNS(const DNS &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)
@@ -1695,7 +1697,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				DNS & operator = (const DNS &) = delete;
+				explicit DNS & operator = (const DNS &) = delete;
 			public:
 				/**
 				 * \~russian

@@ -51,7 +51,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -82,6 +81,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Type of the task queue
+			 *
 			 * @details The task queue keeps objects of the std::function<void()> type, representing the tasks to be performed in the thread pool.
 			 *
 			 * \~
@@ -115,6 +115,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the completion of the freezing of the thread
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -169,10 +170,11 @@ namespace awh {
 							// Удаляем текущее задание
 							this->_tasks.pop();
 						/**
-						 * Очередь пуста: сюда попадаем только при запросе ожидания (_wait).
-						 * Задачи, добавленные из других задач, выполняются синхронно до возврата
-						 * из task(), поэтому обслуживающий их поток гарантированно заберёт их при
-						 * следующей итерации - потери вложенных задач не происходит.
+						 * @brief Очередь пуста: сюда попадаем только при запросе ожидания (_wait).
+						 *        Задачи, добавленные из других задач, выполняются синхронно до возврата
+						 *        из task(), поэтому обслуживающий их поток гарантированно заберёт их при
+						 *        следующей итерации - потери вложенных задач не происходит
+						 *
 						 */
 						} else return;
 					}
@@ -189,6 +191,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the initialisation of the thread pool
+			 *
 			 * @return result of the check
 			 *
 			 * \~
@@ -210,8 +213,15 @@ namespace awh {
 			void wait() noexcept {
 				{
 					/**
-					 * Меняем флаг под мьютексом условной переменной: иначе возможна потеря пробуждения,
-					 * когда поток уже проверил предикат, но ещё не успел уснуть на условной переменной
+					 * \~russian
+					 * @brief Меняем флаг под мьютексом условной переменной: иначе возможна потеря пробуждения,
+					 *        когда поток уже проверил предикат, но ещё не успел уснуть на условной переменной
+					 *
+					 * \~english
+					 * @brief We change a flag under a mutex of a condition variable: otherwise a loss of a waking is possible,
+					 *        when a thread already checked a predicate but has not yet had time to fall asleep on a condition variable
+					 *
+					 * \~
 					 */
 					unique_lock <std::mutex> lock(this->_locker);
 					// Устанавливаем флаг ожидания выполнения всех задач
@@ -246,8 +256,15 @@ namespace awh {
 			void stop() noexcept {
 				{
 					/**
-					 * Меняем флаг под мьютексом условной переменной: иначе возможна потеря пробуждения,
-					 * когда поток уже проверил предикат, но ещё не успел уснуть на условной переменной
+					 * \~russian
+					 * @brief Меняем флаг под мьютексом условной переменной: иначе возможна потеря пробуждения,
+					 *        когда поток уже проверил предикат, но ещё не успел уснуть на условной переменной
+					 *
+					 * \~english
+					 * @brief We change a flag under a mutex of a condition variable: otherwise a loss of a waking is possible,
+					 *        when a thread already checked a predicate but has not yet had time to fall asleep on a condition variable
+					 *
+					 * \~
 					 */
 					unique_lock <std::mutex> lock(this->_locker);
 					// Останавливаем работу потоков
@@ -283,8 +300,15 @@ namespace awh {
 				// Если в пуле остались рабочие потоки, выполняем их корректную остановку
 				if(!this->_workers.empty())
 					/**
-					 * Полная остановка пула: сигнал завершения, ожидание потоков и очистка.
-					 * Это исключает уничтожение ещё работающих потоков и вызов std::terminate
+					 * \~russian
+					 * @brief Полная остановка пула: сигнал завершения, ожидание потоков и очистка.
+					 *        Это исключает уничтожение ещё работающих потоков и вызов std::terminate
+					 *
+					 * \~english
+					 * @brief A full stop of a pool: a signal of a finish, a waiting of the threads and a cleaning.
+					 *        This excludes a destruction of the still working threads and a call of std::terminate
+					 *
+					 * \~
 					 */
 					this->stop();
 			}
@@ -296,6 +320,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of initialising the work of the thread pool
+			 *
 			 * @param count number of threads
 			 *
 			 * \~
@@ -333,6 +358,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of returning the number of messages in the queue of the tasks to be performed
+			 *
 			 * @return result of the work of the function
 			 *
 			 * \~
@@ -352,6 +378,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param count number of threads
 			 *
 			 * \~
@@ -372,7 +399,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Деструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Destructor
 			 *
@@ -392,6 +418,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of adding tasks to the pool
+			 *
 			 * @tparam Func data type of the callback function
 			 * @tparam Args arguments of the callback function
 			 *
@@ -407,6 +434,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding tasks to the pool
+			 *
 			 * @param func function for the handling
 			 * @param args arguments to pass to the function
 			 *
@@ -442,11 +470,13 @@ namespace awh {
 					// Сообщаем потокам, что появилась новая задача
 					this->_cv.notify_one();
 				/**
-				 * Если пул остановлен, задание не добавляется, а связанный packaged_task будет уничтожен.
-				 * В этом случае вызов result.get() выбросит std::future_error(broken_promise),
-				 * что является штатным способом сигнализировать вызывающему об отклонении задачи.
+				 * @brief Возвращаем результат
+				 *
+				 * @details Если пул остановлен, задание не добавляется, а связанный packaged_task будет уничтожен.
+				 *          В этом случае вызов result.get() выбросит std::future_error(broken_promise),
+				 *          что является штатным способом сигнализировать вызывающему об отклонении задачи.
+				 *
 				 */
-				// Возвращаем результат
 				return result;
 			}
 	} thr_t;

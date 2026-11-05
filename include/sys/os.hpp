@@ -436,11 +436,23 @@
 	 */
 
 	/**
-	 * Идентификатор пользователя
+	 * \~russian
+	 * @brief Идентификатор пользователя
+	 *
+	 * \~english
+	 * @brief Identifier of a user
+	 *
+	 * \~
 	 */
 	typedef uint16_t uid_t;
 	/**
-	 * Идентификатор группы пользователя
+	 * \~russian
+	 * @brief Идентификатор группы пользователя
+	 *
+	 * \~english
+	 * @brief Identifier of a group of a user
+	 *
+	 * \~
 	 */
 	typedef uint16_t gid_t;
 
@@ -513,19 +525,43 @@
 		 */
 
 		/**
-		 * Тип целого происхождения BSD
+		 * \~russian
+		 * @brief Тип целого происхождения BSD
+		 *
+		 * \~english
+		 * @brief A type of an integer of a BSD origin
+		 *
+		 * \~
 		 */
 		typedef unsigned int u_int;
 		/**
-		 * Тип длинного целого происхождения BSD
+		 * \~russian
+		 * @brief Тип длинного целого происхождения BSD
+		 *
+		 * \~english
+		 * @brief A type of a long integer of a BSD origin
+		 *
+		 * \~
 		 */
 		typedef unsigned long u_long;
 		/**
-		 * Тип байта происхождения BSD
+		 * \~russian
+		 * @brief Тип байта происхождения BSD
+		 *
+		 * \~english
+		 * @brief A type of a byte of a BSD origin
+		 *
+		 * \~
 		 */
 		typedef unsigned char u_char;
 		/**
-		 * Тип короткого целого происхождения BSD
+		 * \~russian
+		 * @brief Тип короткого целого происхождения BSD
+		 *
+		 * \~english
+		 * @brief A type of a short integer of a BSD origin
+		 *
+		 * \~
 		 */
 		typedef unsigned short u_short;
 	/**
@@ -638,7 +674,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace

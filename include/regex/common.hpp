@@ -53,7 +53,7 @@
 
 /**
  * \~russian
- * Если предсказание маловероятной ветви ещё не определено
+ * @brief Если предсказание маловероятной ветви ещё не определено
  *
  * @details Предсказание расставляется у заслонов, исполняемых на каждом
  *          символе: ветвь отказа там не берётся почти никогда, и указание
@@ -62,7 +62,7 @@
  *          предсказание там сводится к самому условию.
  *
  * \~english
- * If the prediction of an unlikely branch is not yet defined
+ * @brief If the prediction of an unlikely branch is not yet defined
  *
  * @details The prediction is placed at the gates that are executed for every
  *          character: the failure branch is almost never taken there, and
@@ -78,7 +78,13 @@
 	 */
 	#if defined(__GNUC__) || defined(__clang__)
 		/**
-		 * Предсказание маловероятной ветви средствами GCC и Clang
+		 * \~russian
+		 * @brief Предсказание маловероятной ветви средствами GCC и Clang
+		 *
+		 * \~english
+		 * @brief A prediction of an improbable branch by the means of GCC and Clang
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_UNLIKELY(expression) __builtin_expect(!!(expression), 0)
 	/**
@@ -86,7 +92,13 @@
 	 */
 	#else
 		/**
-		 * Предсказание маловероятной ветви, к условию сведённое
+		 * \~russian
+		 * @brief Предсказание маловероятной ветви, к условию сведённое
+		 *
+		 * \~english
+		 * @brief A prediction of an improbable branch, reduced to a condition
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_UNLIKELY(expression) (expression)
 	#endif
@@ -94,7 +106,7 @@
 
 /**
  * \~russian
- * Если запрет подстановки метода телом вызывающего ещё не определён
+ * @brief Если запрет подстановки метода телом вызывающего ещё не определён
  *
  * @details Запрет нужен исполнению с возвратом и медленному пути пополнения
  *          набора записей ниже. Определение ведётся здесь одним местом:
@@ -102,7 +114,7 @@
  *          prefilter.hpp, а тому запрет не нужен.
  *
  * \~english
- * If the prohibition of method inlining into the caller is not yet defined
+ * @brief If the prohibition of method inlining into the caller is not yet defined
  *
  * @details The prohibition is needed for the backtracking execution and the
  *          slow path of replenishing the set of records below. The definition
@@ -117,7 +129,13 @@
 	 */
 	#if defined(_MSC_VER)
 		/**
-		 * Запрет подстановки средствами Visual Studio
+		 * \~russian
+		 * @brief Запрет подстановки средствами Visual Studio
+		 *
+		 * \~english
+		 * @brief A forbid of an inlining by the means of Visual Studio
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_NOINLINE __declspec(noinline)
 	/**
@@ -125,7 +143,13 @@
 	 */
 	#else
 		/**
-		 * Запрет подстановки средствами GCC и Clang
+		 * \~russian
+		 * @brief Запрет подстановки средствами GCC и Clang
+		 *
+		 * \~english
+		 * @brief A forbid of an inlining by the means of GCC and Clang
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_NOINLINE __attribute__((noinline))
 	#endif
@@ -458,7 +482,7 @@ namespace awh {
 			RESTRICT   = 0x2000, // Сопоставление без учёта регистра ограничено одной письменностью
 			/**
 			 * \~russian
-			 * Сопоставление выполняется порождённым машинным кодом
+			 * @brief Сопоставление выполняется порождённым машинным кодом
 			 *
 			 * @details Режим порождает при сборке выражения сопоставитель в виде
 			 *          машинного кода и исполняет им сопоставление. Кодогенерацию
@@ -479,7 +503,7 @@ namespace awh {
 			 *          и прочие односложные имена подвержены тому же
 			 *
 			 * \~english
-			 * Matching is performed by generated machine code
+			 * @brief Matching is performed by generated machine code
 			 *
 			 * @details The mode makes the expression build produce a matcher in the form of
 			 *          machine code and performs matching with it. Code generation covers
@@ -504,7 +528,7 @@ namespace awh {
 			JIT = 0x4000,
 			/**
 			 * \~russian
-			 * Текст сопоставления на правильность записи не проверяется
+			 * @brief Текст сопоставления на правильность записи не проверяется
 			 *
 			 * @details Под режимом «UTF» текст разбирается посимвольно, и запись,
 			 *          кодировке UTF-8 не отвечающая, разбору не поддаётся, поэтому
@@ -520,7 +544,7 @@ namespace awh {
 			 *          отвечающие.
 			 *
 			 * \~english
-			 * The matched text is not checked for encoding validity
+			 * @brief The matched text is not checked for encoding validity
 			 *
 			 * @details Under the «UTF» mode the text is parsed character by character, and an encoding
 			 *          that does not conform to UTF-8 cannot be parsed, therefore
@@ -539,7 +563,7 @@ namespace awh {
 			UNCHECKED = 0x8000,
 			/**
 			 * \~russian
-			 * Оптимизации отыскания начала совпадения не применяются
+			 * @brief Оптимизации отыскания начала совпадения не применяются
 			 *
 			 * @details Сборка выводит набор допустимых начальных байтов и обязательный
 			 *          литерал совпадения, каковыми сопоставление отсеивает позиции,
@@ -550,7 +574,7 @@ namespace awh {
 			 *          и заведён ради него: своей нужды снимать отбор у модуля нет.
 			 *
 			 * \~english
-			 * The optimizations of finding the start of a match are not applied
+			 * @brief The optimizations of finding the start of a match are not applied
 			 *
 			 * @details The compilation derives the set of admissible starting bytes and the required
 			 *          literal of a match, by which the matching filters out the positions
@@ -564,7 +588,7 @@ namespace awh {
 			NOSTART = 0x10000,
 			/**
 			 * \~russian
-			 * Пустое совпадение в позиции начала попытки совпадением не считается
+			 * @brief Пустое совпадение в позиции начала попытки совпадением не считается
 			 *
 			 * @details Режим запрещает совпадение пустое одною лишь позицией начала
 			 *          поиска, тогда как режим «NOTEMPTY» запрещает его всюду:
@@ -573,7 +597,7 @@ namespace awh {
 			 *          указанию «(*NOTEMPTY_ATSTART)» эталонной реализации.
 			 *
 			 * \~english
-			 * An empty match at the position of the start of the attempt is not counted as a match
+			 * @brief An empty match at the position of the start of the attempt is not counted as a match
 			 *
 			 * @details The mode forbids an empty match at the search start position alone,
 			 *          whereas the «NOTEMPTY» mode forbids it everywhere:
@@ -725,7 +749,7 @@ namespace awh {
 			uint16_t id;
 			/**
 			 * \~russian
-			 * Флаг отрицания свойства, устанавливается для последовательности «\P»
+			 * @brief Флаг отрицания свойства, устанавливается для последовательности «\P»
 			 *
 			 * @note Хранится байтом, а не логическим значением: набор свойств
 			 *       восстанавливается обзором образа памяти записи хранилища, а запись
@@ -733,7 +757,7 @@ namespace awh {
 			 *       состояние, языком не отведённое
 			 *
 			 * \~english
-			 * Property negation flag, set for the «\P» sequence
+			 * @brief Property negation flag, set for the «\P» sequence
 			 *
 			 * @note Stored as a byte rather than as a boolean value: the set of properties
 			 *       is restored by viewing the memory image of the storage record, and the record
@@ -1022,7 +1046,7 @@ namespace awh {
 				uint32_t _count;
 				/**
 				 * \~russian
-				 * Количество записей, размещённых набором
+				 * @brief Количество записей, размещённых набором
 				 *
 				 * @details Значение отлично от нуля, если набор содержимым
 				 *          владеет, и равно нулю, если набор обозревает участок
@@ -1032,7 +1056,7 @@ namespace awh {
 				 *          через попадание полей программы в общую строку кэша.
 				 *
 				 * \~english
-				 * Number of records allocated by the sequence
+				 * @brief Number of records allocated by the sequence
 				 *
 				 * @details The value is non-zero if the sequence owns its content
 				 *          and equals zero if the sequence views a span of a
@@ -1864,7 +1888,7 @@ namespace awh {
 				 _count(sequence._count), _capacity(0), _records(sequence._records) {
 					/**
 					 * \~russian
-					 * Если копируемый набор записей не содержит
+					 * @brief Если копируемый набор записей не содержит
 					 *
 					 * @details Набор пустой перенимается пустым же, а не обзором
 					 *          места копируемого: обзор такой указывал бы на место
@@ -1873,7 +1897,7 @@ namespace awh {
 					 *          под ноль записей.
 					 *
 					 * \~english
-					 * If the sequence being copied has no records
+					 * @brief If the sequence being copied has no records
 					 *
 					 * @details An empty sequence is taken over as empty rather than by
 					 *          viewing the room of the source one: such a view would
@@ -1922,7 +1946,7 @@ namespace awh {
 					this->clear();
 					/**
 					 * \~russian
-					 * Если копируемый набор записей не содержит
+					 * @brief Если копируемый набор записей не содержит
 					 *
 					 * @details Набор пустой перенимается пустым же, а не обзором
 					 *          места копируемого: обзор такой указывал бы на место
@@ -1931,7 +1955,7 @@ namespace awh {
 					 *          под ноль записей.
 					 *
 					 * \~english
-					 * If the sequence being copied has no records
+					 * @brief If the sequence being copied has no records
 					 *
 					 * @details An empty sequence is taken over as empty rather than by
 					 *          viewing the room of the source one: such a view would

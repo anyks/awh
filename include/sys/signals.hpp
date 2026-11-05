@@ -74,7 +74,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -112,7 +111,7 @@ namespace awh {
 				 *          из проекции завершается честным отказом, не трогая остальной процесс.
 				 *          Точка ставится на время одного чтения из проекции; вложенные точки
 				 *          одним потоком не поддерживаются. Под MS Windows проекция за концом
-				 *          файла заполняется нулями и сигнала нет — класс там пуст
+				 *          файла заполняется нулями и сигнала нет — класс там пуст.
 				 *
 				 * \~english
 				 * @brief Class of the thread recovery point for the SIGBUS signal
@@ -125,7 +124,7 @@ namespace awh {
 				 *          touching the rest of the process. The point is set for the duration of
 				 *          a single read from a mapping; nested points are not supported by one
 				 *          thread. Under MS Windows the mapping beyond the end of the file is
-				 *          zero-filled and there is no signal — the class is empty there
+				 *          zero-filled and there is no signal — the class is empty there.
 				 *
 				 * \~
 				 */
@@ -146,7 +145,7 @@ namespace awh {
 						 *          вызывающий, буфер sigjmp_buf объявляется рядом и передаётся
 						 *          сюда: прыжок из обработчика возвращается в живой кадр, а не в
 						 *          мёртвый кадр конструктора-помощника. Повторное конструирование
-						 *          после прыжка безвредно: регистрация идемпотентна
+						 *          после прыжка безвредно: регистрация идемпотентна.
 						 *
 						 * @param point буфер точки возврата, объявленный в кадре вызывающей функции
 						 *
@@ -161,8 +160,7 @@ namespace awh {
 						 *          by the caller, the sigjmp_buf is declared next to it and passed
 						 *          here: the jump from the handler returns into a live frame, not
 						 *          into the dead frame of a helper constructor. A repeated
-						 *          construction after the jump is harmless: the registration is
-						 *          idempotent
+						 *          construction after the jump is harmless: the registration is idempotent.
 						 *
 						 * @param point return point buffer declared in the frame of the calling function
 						 *
@@ -195,6 +193,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the signal events
+				 *
 				 * @details For an operating system other than MS Windows the sigaction structure is used to set the signal handler,
 				 *          which allows passing the context into the signal handler.
 				 *
@@ -218,7 +217,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -267,8 +265,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the signal events
+				 *
 				 * @details For the MS Windows operating system the signal() function is used to set the signal handler,
 				 *          which returns a pointer to the previous signal handler.
+				 *
 				 * @note A deliberate decision: under MS Windows the interception is split in two, and
 				 *       those handlers are only one half of it. The SIGFPE,
 				 *       SIGILL and SIGSEGV handlers of the MS Windows runtime library
@@ -303,7 +303,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -333,16 +332,27 @@ namespace awh {
 				// Запасной стек обработчика сбоев, нужный при срыве основного
 				stack_t _stack;
 				/**
-				 * Прежнее расположение сигнала SIGPIPE, сохранённое при запуске
+				 * \~russian
+				 * @brief Прежнее расположение сигнала SIGPIPE, сохранённое при запуске
 				 *
 				 * @note Настройка эта общая на весь процесс и переживала бы остановку,
 				 *       навязывая чужому коду изменённое поведение. Оттого прежнее
 				 *       расположение запоминается запуском и возвращается снятием
+				 *
+				 * \~english
+				 * @brief Former disposition of a SIGPIPE signal, saved at a starting
+				 *
+				 * @note This setting is common for the whole process and would outlive a stopping,
+				 *       imposing a changed behaviour on an alien code. Therefore a former
+				 *       disposition is remembered by a starting and returned by a removing
+				 *
+				 * \~
 				 */
 				struct sigaction _pipesig;
 			#endif
 		private:
 			/**
+			 * \~russian
 			 * @brief Мьютекс защиты операций запуска/останова/установки колбэка
 			 *
 			 * @note Замок берётся состоянием блокировок фреймворка, а не голым
@@ -356,6 +366,23 @@ namespace awh {
 			 *       поток - разные потоки по самому устройству модуля, а не по выбору
 			 *       потребителя
 			 *
+			 *
+			 * \~english
+			 * @brief Mutex of the protection of the operations of a starting/a stopping/a setting of a callback
+			 *
+			 * @note A lock is taken by a state of the framework locks, and not by a bare
+			 *       `std::mutex`: a framework branches, and a bare mutex is handed to a
+			 *       descendant in that very shape in which a branching found it - captured
+			 *       by an alien thread, it stays captured forever. A state of the locks
+			 *       remembers a process number and starts a mutex anew
+			 *
+			 * @note To disable the locks here is IMPOSSIBLE, and a switcher of the threads safety
+			 *       the module has none on purpose: a signals interceptor and a working
+			 *       thread are different threads by the very device of the module, and not by a choice
+			 *       of a consumer
+			 *
+			 *
+			 * \~
 			 */
 			lock_state_t <std::mutex> _mtx;
 		private:
@@ -367,6 +394,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function on the receipt of a signal
+			 *
 			 * @param sig number of the received signal
 			 *
 			 * \~
@@ -409,6 +437,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of handling a received signal outside the context of the handler
+				 *
 				 * @param sig  number of the received signal
 				 * @param pid  identifier of the sending process
 				 * @param uid  identifier of the sending user
@@ -429,6 +458,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of handling a received signal outside the context of the handler
+				 *
 				 * @param sig number of the received signal
 				 *
 				 * \~
@@ -444,9 +474,12 @@ namespace awh {
 			 *          умолчанию. Заглушение `SIGPIPE`, выставленное запуском, остановкой
 			 *          НЕ снимается и переживает её: настройка эта общая на весь процесс
 			 *
-			 *
 			 * \~english
 			 * @brief Method of stopping the signal handling
+			 *
+			 * @warning A stopping of an interception is performed for SEVEN signals, restored by a
+			 *         default. A silencing of `SIGPIPE`, set by a starting, by a stopping
+			 *         is NOT removed and outlives it: this setting is common for the whole process
 			 *
 			 * \~
 			 */
@@ -470,6 +503,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback function that must fire on the receipt of a signal
+			 *
 			 * @param callback callback function
 			 *
 			 * \~
@@ -489,7 +523,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor

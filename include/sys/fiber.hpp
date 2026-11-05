@@ -58,6 +58,7 @@
  * \~
  *
  * @copyright Copyright © 2026
+ *
  */
 
 #pragma once
@@ -76,7 +77,13 @@
 #include "macro/suppress.hpp"
 
 /**
- * awh пространство имён
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -104,6 +111,7 @@ namespace awh {
 		 * \~
 		 */
 		class Context;
+
 		/**
 		 * \~russian
 		 * @brief Тип контекста волокна
@@ -124,6 +132,7 @@ namespace awh {
 		 * \~
 		 */
 		using task_t = function <void (void)>;
+
 		/**
 		 * \~russian
 		 * @brief Состояние волокна
@@ -139,6 +148,7 @@ namespace awh {
 			SUSPENDED = 0x02, // Волокно спит на своём стеке
 			FINISHED  = 0x03  // Волокно доработало и подлежит уничтожению
 		};
+
 		/**
 		 * \~russian
 		 * @brief Размер стека волокна по умолчанию в октетах

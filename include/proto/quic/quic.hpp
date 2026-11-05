@@ -52,7 +52,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -75,6 +74,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Namespace of the QUIC transport protocol (RFC 9000/9001)
+	 *
 	 * @details Contains the base types and the constants of the protocol, common to the layer of the variable-length
 	 *          integers (varint.hpp), to the layer of the packets (packet.hpp) and to the layer of the frames
 	 *          (frame.hpp). There is no logic here — only the enumerations, the constants of the protocol
@@ -208,7 +208,6 @@ namespace awh {
 			CLIENT = 0x00, // Инициатор соединения
 			SERVER = 0x01  // Принимающая сторона
 		};
-
 		/**
 		 * \~russian
 		 * @brief Результат пошаговой обработки/разбора
@@ -223,7 +222,6 @@ namespace awh {
 			INCOMPLETE = 0x01, // Данных недостаточно - нужен ещё ввод
 			ERROR      = 0x02  // Ошибка протокола - см. сопутствующий error_t
 		};
-
 		/**
 		 * \~russian
 		 * @brief Тип пакета QUIC (RFC 9000 §17)
@@ -242,7 +240,6 @@ namespace awh {
 			ONE_RTT             = 0x05, // Пакет с коротким заголовком после завершения хендшейка (RFC 9000 §17.3)
 			UNKNOWN             = 0xFF  // Неизвестный или нераспознанный тип пакета
 		};
-
 		/**
 		 * \~russian
 		 * @brief Уровень шифрования пакета (RFC 9001 §4)
@@ -258,18 +255,18 @@ namespace awh {
 			HANDSHAKE   = 0x02, // Ключи хендшейка
 			APPLICATION = 0x03  // Ключи приложения (1-RTT)
 		};
-
 		/**
 		 * \~russian
 		 * @brief Тип фрейма QUIC (RFC 9000 §12.4) — значение целого числа переменной длины
 		 *
 		 * @details Фреймы STREAM занимают диапазон 0x08-0x0F: три младших бита типа
-		 *          кодируют наличие полей Offset (0x04), Length (0x02) и флага FIN (0x01)
+		 *          кодируют наличие полей Offset (0x04), Length (0x02) и флага FIN (0x01).
 		 *
 		 * \~english
 		 * @brief Type of a QUIC frame (RFC 9000 §12.4) — a value of a variable-length integer
+		 *
 		 * @details The STREAM frames occupy the range 0x08-0x0F: the three low bits of the type
-		 *          encode the presence of the Offset (0x04) and Length (0x02) fields and of the FIN flag (0x01)
+		 *          encode the presence of the Offset (0x04) and Length (0x02) fields and of the FIN flag (0x01).
 		 *
 		 * \~
 		 */
@@ -301,7 +298,6 @@ namespace awh {
 			DATAGRAM            = 0x30, // Ненадёжно доставляемая датаграмма приложения, базовый тип диапазона 0x30-0x31 (RFC 9221 §4)
 			UNKNOWN             = 0xFFFFFFFFFFFFFFFF // Неизвестный или нераспознанный тип фрейма
 		};
-
 		/**
 		 * \~russian
 		 * @brief Коды ошибок транспорта QUIC (RFC 9000 §20.1) — используются в CONNECTION_CLOSE
@@ -370,6 +366,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Comparison operator of the connection identifiers
+		 *
 		 * @param a first connection identifier
 		 * @param b second connection identifier
 		 * @return  result of the comparison
@@ -377,7 +374,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool operator == (const cid_t & a, const cid_t & b) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция извлечения идентификатора соединения получателя из датаграммы (RFC 9000 §17.2)
@@ -395,10 +391,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of extracting the connection identifier of the recipient from a datagram (RFC 9000 §17.2)
+		 *
 		 * @note The connection identifier is deliberately left open so that a datagram
 		 *       can be assigned to a connection without decrypting it. The packets with a long
 		 *       header carry the length of the identifier explicitly, the short ones do not, therefore
 		 *       for them it is taken from the local policy of the issuance of the identifiers
+		 *
 		 * @param data   data of the datagram
 		 * @param size   size of the datagram
 		 * @param length length of the identifiers issued by the local endpoint
@@ -408,7 +406,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool route(const uint8_t * data, const size_t size, const uint8_t length, net::origin_key_t & key) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция вывода токена сброса без сохранения состояния (RFC 9000 §10.3.2)
@@ -424,9 +421,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the derivation of a stateless reset token (RFC 9000 §10.3.2)
+		 *
 		 * @note The token is derived from the connection identifier and from the common key, therefore
 		 *       it is reproduced without storing the state — including for a connection
 		 *       about which the local endpoint no longer remembers anything
+		 *
 		 * @param key   common key of the derivation of the reset tokens
 		 * @param cid   connection identifier of the local endpoint
 		 * @param token derived stateless reset token
@@ -435,7 +434,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool resetToken(string_view key, const cid_t & cid, uint8_t token[proto::RESET_TOKEN_SIZE]) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция генерации общего ключа вывода токенов сброса (RFC 9000 §10.3.2)
@@ -449,16 +447,17 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the generation of the common key of the derivation of the reset tokens (RFC 9000 §10.3.2)
+		 *
 		 * @note The key lives as long as the tokens issued on it: so that the reset
 		 *       works after a restart of the application as well, the key should be preserved
 		 *       and restored rather than generated anew
+		 *
 		 * @param output generated common key of the derivation of the reset tokens
 		 * @return       result of the generation (false — an error of the random number generator)
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool resetKey(string & output) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция сборки пакета сброса без сохранения состояния (RFC 9000 §10.3)
@@ -476,10 +475,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of assembling a stateless reset packet (RFC 9000 §10.3)
+		 *
 		 * @note The packet is indistinguishable from a 1-RTT packet with a random content and ends
 		 *       with the reset token. The size is chosen smaller than the size of the datagram that has caused it:
 		 *       otherwise two endpoints that have lost their state would answer one another
 		 *       with the resets indefinitely long (RFC 9000 §10.3.3)
+		 *
 		 * @param output  output buffer of the reset packet
 		 * @param key     common key of the derivation of the reset tokens
 		 * @param cid     connection identifier of the recipient from the datagram that has caused it
@@ -489,7 +490,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool reset(string & output, string_view key, const cid_t & cid, const size_t trigger) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция получения человекочитаемого названия типа пакета
@@ -499,13 +499,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the human-readable name of a type of a packet
+		 *
 		 * @param type type of the packet
 		 * @return     name of the type of the packet
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string_view packetName(const packet_t type) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция получения человекочитаемого названия типа фрейма
@@ -515,13 +515,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the human-readable name of a type of a frame
+		 *
 		 * @param type type of the frame
 		 * @return     name of the type of the frame
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция получения человекочитаемого названия кода ошибки транспорта
@@ -531,6 +531,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the human-readable name of a transport error code
+		 *
 		 * @param code transport error code
 		 * @return     name of the error code
 		 *

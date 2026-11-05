@@ -38,8 +38,13 @@
  */
 #if !defined(AWH_NAME)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем название библиотеки
 	 *
+	 * \~english
+	 * @brief Set a name of the library
+	 *
+	 * \~
 	 */
 	#define AWH_NAME "ANYKS-WEB"
 #endif
@@ -48,8 +53,13 @@
  */
 #if !defined(AWH_SHORT_NAME)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем короткое название библиотеки
 	 *
+	 * \~english
+	 * @brief Set a short name of the library
+	 *
+	 * \~
 	 */
 	#define AWH_SHORT_NAME "AWH"
 #endif
@@ -58,8 +68,13 @@
  */
 #if !defined(AWH_VERSION)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем версию библиотеки
 	 *
+	 * \~english
+	 * @brief Set a version of the library
+	 *
+	 * \~
 	 */
 	#define AWH_VERSION "5.0.0"
 #endif
@@ -68,8 +83,13 @@
  */
 #if !defined(AWH_HOST)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем хост библиотеки
 	 *
+	 * \~english
+	 * @brief Set a host of the library
+	 *
+	 * \~
 	 */
 	#define AWH_HOST "anyks.com"
 #endif
@@ -78,8 +98,13 @@
  */
 #if !defined(AWH_SITE)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем адрес сайта библиотеки
 	 *
+	 * \~english
+	 * @brief Set an address of a site of the library
+	 *
+	 * \~
 	 */
 	#define AWH_SITE "https://anyks.com"
 #endif
@@ -88,8 +113,13 @@
  */
 #if !defined(AWH_EMAIL)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем адрес электронной почты библиотеки
 	 *
+	 * \~english
+	 * @brief Set an address of the e-mail of the library
+	 *
+	 * \~
 	 */
 	#define AWH_EMAIL "info@anyks.com"
 #endif
@@ -98,8 +128,13 @@
  */
 #if !defined(AWH_CONTACT)
 	/**
+	 * \~russian
 	 * @brief Устанавливаем контактный адрес библиотеки
 	 *
+	 * \~english
+	 * @brief Set a contact address of the library
+	 *
+	 * \~
 	 */
 	#define AWH_CONTACT "https://t.me/forman"
 #endif
@@ -112,8 +147,13 @@
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
+		 * \~russian
 		 * @brief Устанавливаем локаль словаря по умолчанию
 		 *
+		 * \~english
+		 * @brief Set a locale of a dictionary by default
+		 *
+		 * \~
 		 */
 		#define AWH_LOCALE "C"
 	/**
@@ -121,8 +161,13 @@
 	 */
 	#else
 		/**
+		 * \~russian
 		 * @brief Устанавливаем локаль словаря по умолчанию
 		 *
+		 * \~english
+		 * @brief Set a locale of a dictionary by default
+		 *
+		 * \~
 		 */
 		#define AWH_LOCALE "en_US.UTF-8"
 	#endif
@@ -175,7 +220,13 @@
  */
 #if !defined(AWH_MAX_BODY_SIZE)
 	/**
-	 * Устанавливаем максимальный размер HTTP-тела 10Mb
+	 * \~russian
+	 * @brief Устанавливаем максимальный размер HTTP-тела 10Mb
+	 *
+	 * \~english
+	 * @brief Set a maximum size of an HTTP body as 10Mb
+	 *
+	 * \~
 	 */
 	#define AWH_MAX_BODY_SIZE 0xA00000
 #endif

@@ -12,7 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * @brief Тесты вектора с малым инлайн-хранилищем (awh::quic::small_vector) —
+ * @brief Тесты вектора с малым инлайн-хранилищем (awh::quic::small_vector_t) —
  *        покрытие инлайн- и кучевого путей, перемещения, обмена и очистки с
  *        детектором утечек и двойных освобождений через счётчик живых экземпляров
  *
@@ -43,7 +43,7 @@ namespace {
 	 *
 	 * @details Копирование запрещено (как у элемента учётной записи пакета), а
 	 *          счётчик живых экземпляров ловит утечку (остался > 0) и двойное
-	 *          освобождение (ушёл < 0) на любом пути small_vector
+	 *          освобождение (ушёл < 0) на любом пути small_vector_t
 	 *
 	 */
 	struct Tracker {
@@ -74,7 +74,7 @@ namespace {
 		 */
 		Tracker & operator = (Tracker && o) noexcept { this->id = o.id; this->payload = std::move(o.payload); o.id = -1; return * this; }
 		/**
-		 * Копирование запрещено - small_vector не должен копировать элементы
+		 * Копирование запрещено - small_vector_t не должен копировать элементы
 		 */
 		Tracker(const Tracker &) = delete;
 		Tracker & operator = (const Tracker &) = delete;
@@ -93,7 +93,7 @@ namespace {
 	 *
 	 */
 	template <size_t N>
-	std::vector <int> ids(awh::quic::small_vector <Tracker, N> & vec) noexcept {
+	std::vector <int> ids(awh::quic::small_vector_t <Tracker, N> & vec) noexcept {
 		// Результирующий вектор идентификаторов
 		std::vector <int> result;
 		// Обходим элементы вектора диапазонным циклом (как в движке)
@@ -114,13 +114,13 @@ TEST(QuicSmallVector, InlineBasics){
 	Tracker::live = 0;
 	{
 		// Создаём вектор с инлайн-хранилищем на 2 элемента
-		awh::quic::small_vector <Tracker, 2> vec;
+		awh::quic::small_vector_t <Tracker, 2> vec;
 		// Проверяем исходную пустоту
 		EXPECT_TRUE(vec.empty());
 		EXPECT_EQ(vec.size(), 0u);
 		// Добавляем два элемента в пределах инлайн-хранилища
-		vec.push_back(Tracker(10));
-		vec.push_back(Tracker(20));
+		vec.push(Tracker(10));
+		vec.push(Tracker(20));
 		// Проверяем размер и содержимое
 		EXPECT_FALSE(vec.empty());
 		EXPECT_EQ(vec.size(), 2u);
@@ -139,10 +139,10 @@ TEST(QuicSmallVector, GrowToHeapPreservesOrder){
 	Tracker::live = 0;
 	{
 		// Создаём вектор с инлайн-хранилищем на 2 элемента
-		awh::quic::small_vector <Tracker, 2> vec;
+		awh::quic::small_vector_t <Tracker, 2> vec;
 		// Добавляем пять элементов - переход инлайн -> куча на третьем
 		for(int i = 1; i <= 5; i++)
-			vec.push_back(Tracker(i * 100));
+			vec.push(Tracker(i * 100));
 		// Проверяем размер и сохранение порядка после переносов роста
 		EXPECT_EQ(vec.size(), 5u);
 		EXPECT_EQ(ids(vec), (std::vector <int> {100, 200, 300, 400, 500}));
@@ -162,10 +162,10 @@ TEST(QuicSmallVector, ClearAndReuse){
 	Tracker::live = 0;
 	{
 		// Создаём вектор с инлайн-хранилищем на 2 элемента
-		awh::quic::small_vector <Tracker, 2> vec;
+		awh::quic::small_vector_t <Tracker, 2> vec;
 		// Заполняем до кучевого хранилища
 		for(int i = 1; i <= 4; i++)
-			vec.push_back(Tracker(i));
+			vec.push(Tracker(i));
 		// Все четыре элемента живы
 		EXPECT_EQ(Tracker::live, 4);
 		// Очищаем вектор
@@ -174,9 +174,9 @@ TEST(QuicSmallVector, ClearAndReuse){
 		EXPECT_TRUE(vec.empty());
 		EXPECT_EQ(Tracker::live, 0);
 		// Повторно используем вектор
-		vec.push_back(Tracker(7));
-		vec.push_back(Tracker(8));
-		vec.push_back(Tracker(9));
+		vec.push(Tracker(7));
+		vec.push(Tracker(8));
+		vec.push(Tracker(9));
 		EXPECT_EQ(ids(vec), (std::vector <int> {7, 8, 9}));
 	}
 	// После разрушения вектора живых экземпляров быть не должно
@@ -192,11 +192,11 @@ TEST(QuicSmallVector, MoveConstruct){
 	Tracker::live = 0;
 	{
 		// Источник в инлайн-хранилище
-		awh::quic::small_vector <Tracker, 2> src;
-		src.push_back(Tracker(1));
-		src.push_back(Tracker(2));
+		awh::quic::small_vector_t <Tracker, 2> src;
+		src.push(Tracker(1));
+		src.push(Tracker(2));
 		// Перемещаем в новый вектор
-		awh::quic::small_vector <Tracker, 2> dst(std::move(src));
+		awh::quic::small_vector_t <Tracker, 2> dst(std::move(src));
 		// Источник опустошён, приёмник получил элементы
 		EXPECT_TRUE(src.empty());
 		EXPECT_EQ(ids(dst), (std::vector <int> {1, 2}));
@@ -204,11 +204,11 @@ TEST(QuicSmallVector, MoveConstruct){
 	EXPECT_EQ(Tracker::live, 0);
 	{
 		// Источник в кучевом хранилище
-		awh::quic::small_vector <Tracker, 2> src;
+		awh::quic::small_vector_t <Tracker, 2> src;
 		for(int i = 1; i <= 5; i++)
-			src.push_back(Tracker(i));
+			src.push(Tracker(i));
 		// Перемещаем в новый вектор (кража кучевого буфера)
-		awh::quic::small_vector <Tracker, 2> dst(std::move(src));
+		awh::quic::small_vector_t <Tracker, 2> dst(std::move(src));
 		// Источник опустошён, приёмник получил все элементы в порядке
 		EXPECT_TRUE(src.empty());
 		EXPECT_EQ(ids(dst), (std::vector <int> {1, 2, 3, 4, 5}));
@@ -225,9 +225,9 @@ TEST(QuicSmallVector, MoveAssign){
 	Tracker::live = 0;
 	{
 		// Приёмник в куче, источник в куче
-		awh::quic::small_vector <Tracker, 2> dst, src;
-		for(int i = 1; i <= 5; i++) dst.push_back(Tracker(i));
-		for(int i = 1; i <= 3; i++) src.push_back(Tracker(i * 10));
+		awh::quic::small_vector_t <Tracker, 2> dst, src;
+		for(int i = 1; i <= 5; i++) dst.push(Tracker(i));
+		for(int i = 1; i <= 3; i++) src.push(Tracker(i * 10));
 		dst = std::move(src);
 		EXPECT_TRUE(src.empty());
 		EXPECT_EQ(ids(dst), (std::vector <int> {10, 20, 30}));
@@ -235,14 +235,14 @@ TEST(QuicSmallVector, MoveAssign){
 	EXPECT_EQ(Tracker::live, 0);
 	{
 		// Приёмник в куче, источник в инлайне (приёмник должен освободить кучу и вернуться в инлайн)
-		awh::quic::small_vector <Tracker, 2> dst, src;
-		for(int i = 1; i <= 5; i++) dst.push_back(Tracker(i));
-		src.push_back(Tracker(99));
+		awh::quic::small_vector_t <Tracker, 2> dst, src;
+		for(int i = 1; i <= 5; i++) dst.push(Tracker(i));
+		src.push(Tracker(99));
 		dst = std::move(src);
 		EXPECT_TRUE(src.empty());
 		EXPECT_EQ(ids(dst), (std::vector <int> {99}));
 		// Повторное заполнение после возврата в инлайн работает
-		dst.push_back(Tracker(98));
+		dst.push(Tracker(98));
 		EXPECT_EQ(ids(dst), (std::vector <int> {99, 98}));
 	}
 	EXPECT_EQ(Tracker::live, 0);
@@ -257,10 +257,10 @@ TEST(QuicSmallVector, SelfMoveAssignIsSafe){
 	Tracker::live = 0;
 	{
 		// Создаём и заполняем вектор
-		awh::quic::small_vector <Tracker, 2> vec;
-		for(int i = 1; i <= 3; i++) vec.push_back(Tracker(i));
+		awh::quic::small_vector_t <Tracker, 2> vec;
+		for(int i = 1; i <= 3; i++) vec.push(Tracker(i));
 		// Самоперемещение через ссылку не должно разрушать содержимое
-		awh::quic::small_vector <Tracker, 2> & ref = vec;
+		awh::quic::small_vector_t <Tracker, 2> & ref = vec;
 		vec = std::move(ref);
 		// Содержимое сохранено
 		EXPECT_EQ(ids(vec), (std::vector <int> {1, 2, 3}));
@@ -278,10 +278,10 @@ TEST(QuicSmallVector, Swap){
 	Tracker::live = 0;
 	{
 		// Инлайн <-> инлайн
-		awh::quic::small_vector <Tracker, 2> a, b;
-		a.push_back(Tracker(1));
-		b.push_back(Tracker(2));
-		b.push_back(Tracker(3));
+		awh::quic::small_vector_t <Tracker, 2> a, b;
+		a.push(Tracker(1));
+		b.push(Tracker(2));
+		b.push(Tracker(3));
 		a.swap(b);
 		EXPECT_EQ(ids(a), (std::vector <int> {2, 3}));
 		EXPECT_EQ(ids(b), (std::vector <int> {1}));
@@ -289,9 +289,9 @@ TEST(QuicSmallVector, Swap){
 	EXPECT_EQ(Tracker::live, 0);
 	{
 		// Инлайн <-> куча
-		awh::quic::small_vector <Tracker, 2> a, b;
-		a.push_back(Tracker(1));
-		for(int i = 1; i <= 5; i++) b.push_back(Tracker(i * 10));
+		awh::quic::small_vector_t <Tracker, 2> a, b;
+		a.push(Tracker(1));
+		for(int i = 1; i <= 5; i++) b.push(Tracker(i * 10));
 		a.swap(b);
 		EXPECT_EQ(ids(a), (std::vector <int> {10, 20, 30, 40, 50}));
 		EXPECT_EQ(ids(b), (std::vector <int> {1}));
@@ -299,9 +299,9 @@ TEST(QuicSmallVector, Swap){
 	EXPECT_EQ(Tracker::live, 0);
 	{
 		// Куча <-> куча
-		awh::quic::small_vector <Tracker, 2> a, b;
-		for(int i = 1; i <= 4; i++) a.push_back(Tracker(i));
-		for(int i = 1; i <= 6; i++) b.push_back(Tracker(i + 100));
+		awh::quic::small_vector_t <Tracker, 2> a, b;
+		for(int i = 1; i <= 4; i++) a.push(Tracker(i));
+		for(int i = 1; i <= 6; i++) b.push(Tracker(i + 100));
 		a.swap(b);
 		EXPECT_EQ(ids(a), (std::vector <int> {101, 102, 103, 104, 105, 106}));
 		EXPECT_EQ(ids(b), (std::vector <int> {1, 2, 3, 4}));
@@ -318,13 +318,13 @@ TEST(QuicSmallVector, VectorOfSmallVectorsRealloc){
 	Tracker::live = 0;
 	{
 		// Контейнер векторов с малым инлайн-хранилищем
-		std::vector <awh::quic::small_vector <Tracker, 2>> box;
+		std::vector <awh::quic::small_vector_t <Tracker, 2>> box;
 		// Множественная вставка вызывает реаллокации контейнера (перемещение элементов)
 		for(int n = 0; n < 32; n++){
 			// Создаём вектор с кучевым и инлайн-содержимым попеременно
-			awh::quic::small_vector <Tracker, 2> vec;
+			awh::quic::small_vector_t <Tracker, 2> vec;
 			const int count = ((n % 2 == 0) ? 5 : 1);
-			for(int i = 0; i < count; i++) vec.push_back(Tracker(n * 1000 + i));
+			for(int i = 0; i < count; i++) vec.push(Tracker(n * 1000 + i));
 			// Перемещаем в контейнер
 			box.push_back(std::move(vec));
 		}

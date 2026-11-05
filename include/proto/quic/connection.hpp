@@ -56,7 +56,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -72,7 +71,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
 	 *
-	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
 	 *
@@ -81,7 +79,23 @@ namespace awh {
 	namespace quic {
 		/**
 		 * \~russian
-		 * @brief Вектор с малым инлайн-хранилищем (small buffer optimization)
+		 * @brief Шаблон класса вектора с малым инлайн-хранилищем (small buffer optimization)
+		 *
+		 * @tparam T тип элемента
+		 * @tparam N число элементов инлайн-хранилища
+		 *
+		 * \~english
+		 * @brief Vector class template with small-buffer optimization
+		 *
+		 * @tparam T type of an element
+		 * @tparam N number of the elements of the inline storage
+		 *
+		 * \~
+		 */
+		template <class T, size_t N>
+		/**
+		 * \~russian
+		 * @brief Класс вектора с малым инлайн-хранилищем (small buffer optimization)
 		 *
 		 * @details Первые N элементов размещаются в самом объекте без обращения к куче;
 		 *          свыше N хранилище переносится в кучу с удвоением ёмкости. Применяется
@@ -89,34 +103,36 @@ namespace awh {
 		 *          пакет несёт один STREAM-фрейм, поэтому инлайн-хранилища на N элементов
 		 *          хватает и выделение на каждый пакет не выполняется. При переносе в
 		 *          кучу ёмкость удерживается методом clear() (по образцу пула отправки).
-		 *          Реализован минимальный набор операций, требуемый учётной записью пакета
+		 *          Реализован минимальный набор операций, требуемый учётной записью пакета.
 		 *
 		 * @tparam T тип элемента
 		 * @tparam N число элементов инлайн-хранилища
 		 *
 		 * \~english
-		 * @brief Vector with a small inline storage (a small buffer optimization)
+		 * @brief Vector class with small-buffer optimization
+		 *
 		 * @details The first N elements are placed in the object itself without an address to the heap;
 		 *          above N the storage is carried over into the heap with a doubling of the capacity. It is applied
 		 *          for the account records of the sent blocks of the streams in a packet: a typical
 		 *          packet carries one STREAM frame, therefore an inline storage for N elements
 		 *          suffices and an allocation per every packet is not performed. At a carrying over into
 		 *          the heap the capacity is held by the method clear() (by the model of the pool of the sending).
-		 *          A minimal collection of the operations required by an account record of a packet is implemented
+		 *          A minimal collection of the operations required by an account record of a packet is implemented.
+		 *
 		 * @tparam T type of an element
 		 * @tparam N number of the elements of the inline storage
 		 *
 		 * \~
 		 */
-		template <class T, size_t N>
-		class small_vector {
-			/**
-			 * Кучевое хранилище выделяется базовым ::operator new, гарантирующим
-			 * выравнивание лишь до __STDCPP_DEFAULT_NEW_ALIGNMENT__. Тип с большим
-			 * требованием выравнивания был бы недовыровнен на кучевом пути, поэтому
-			 * запрещаем его на этапе компиляции (для chunk_t выравнивание равно 8)
-			 */
-			static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__, "small_vector: over-aligned element type is unsupported on the heap path");
+		class Small_Vector {
+			private:
+				/**
+				 * Кучевое хранилище выделяется базовым ::operator new, гарантирующим
+				 * выравнивание лишь до __STDCPP_DEFAULT_NEW_ALIGNMENT__. Тип с большим
+				 * требованием выравнивания был бы недовыровнен на кучевом пути, поэтому
+				 * запрещаем его на этапе компиляции (для chunk_t выравнивание равно 8)
+				 */
+				static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__, "Small_Vector: over-aligned element type is unsupported on the heap path");
 			private:
 				// Число хранимых элементов
 				size_t _size;
@@ -124,9 +140,10 @@ namespace awh {
 				size_t _cap;
 				// Указатель на активное хранилище (инлайн либо куча)
 				T * _data;
+			private:
 				/**
 				 * \~russian
-				 * Инлайн-хранилище первых N элементов
+				 * @brief Инлайн-хранилище первых N элементов
 				 *
 				 * @note Поле звалось прежде _inline, и под MinGW имя это непригодно:
 				 *       заголовок _mingw.h заводит "#define _inline __inline" ради
@@ -137,7 +154,8 @@ namespace awh {
 				 *       по себе
 				 *
 				 * \~english
-				 * Inline storage of the first N elements
+				 * @brief Inline storage of the first N elements
+				 *
 				 * @note The field was called _inline before, and under MinGW this name is unsuitable:
 				 *       the header _mingw.h starts a "#define _inline __inline" for the sake of
 				 *       a compatibility with MSVC, and the declaration turned into
@@ -158,6 +176,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer to the inline storage
+				 *
 				 * @return pointer to the inline storage
 				 *
 				 * \~
@@ -174,6 +193,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the placement of the storage in the inline buffer
+				 *
 				 * @return flag of the placement in the inline buffer
 				 *
 				 * \~
@@ -190,6 +210,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extension of the storage by a carrying over into the heap
+				 *
 				 * @param need required smallest number of the elements
 				 *
 				 * \~
@@ -201,18 +222,18 @@ namespace awh {
 					if(capacity < need)
 						capacity = need;
 					// Выделяем новое хранилище в куче
-					T * data = static_cast <T *> (::operator new(capacity * sizeof(T)));
+					T * data = static_cast <T *> (operator new(capacity * sizeof(T)));
 					// Переносим элементы в новое хранилище
 					for(size_t i = 0; i < this->_size; i++){
 						// Перемещаем элемент в новое хранилище
-						::new (data + i) T(std::move(this->_data[i]));
+						new (data + i) T(std::move(this->_data[i]));
 						// Уничтожаем исходный элемент
 						this->_data[i].~T();
 					}
 					// Если прежнее хранилище было в куче - освобождаем его
 					if(!this->isInlined())
 						// Освобождаем прежнее хранилище кучи
-						::operator delete(this->_data);
+						operator delete(this->_data);
 					// Переключаемся на новое хранилище
 					this->_data = data;
 					// Запоминаем новую ёмкость
@@ -226,11 +247,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the carrying over of the content from another vector
+				 *
 				 * @param other vector-source (is emptied)
 				 *
 				 * \~
 				 */
-				void adopt(small_vector && other) noexcept {
+				void adopt(Small_Vector && other) noexcept {
 					// Если источник размещён в куче - забираем его хранилище
 					if(!other.isInlined()){
 						// Забираем указатель на хранилище кучи
@@ -269,6 +291,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the emptiness of the vector
+				 *
 				 * @return flag of the absence of the elements
 				 *
 				 * \~
@@ -285,6 +308,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the elements
+				 *
 				 * @return number of the stored elements
 				 *
 				 * \~
@@ -301,6 +325,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer to the beginning
+				 *
 				 * @return pointer to the first element
 				 *
 				 * \~
@@ -314,6 +339,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer to the end
+				 *
 				 * @return pointer behind the last element
 				 *
 				 * \~
@@ -327,6 +353,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the constant pointer to the beginning
+				 *
 				 * @return constant pointer to the first element
 				 *
 				 * \~
@@ -340,6 +367,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the constant pointer to the end
+				 *
 				 * @return constant pointer behind the last element
 				 *
 				 * \~
@@ -353,11 +381,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an element by a moving into the end
+				 *
 				 * @param value element being added
 				 *
 				 * \~
 				 */
-				void push_back(T && value) noexcept {
+				void push(T && value) noexcept {
 					// Если хранилище исчерпано - расширяем его
 					if(this->_size == this->_cap)
 						// Расширяем хранилище под ещё один элемент
@@ -392,13 +421,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the exchange of the content with another vector
+				 *
 				 * @param other vector for the exchange
 				 *
 				 * \~
 				 */
-				void swap(small_vector & other) noexcept {
+				void swap(Small_Vector & other) noexcept {
 					// Выполняем обмен через перемещения (инлайн-хранилище исключает обмен указателями)
-					small_vector temp(std::move(other));
+					Small_Vector temp(std::move(other));
 					// Переносим собственное содержимое в источник
 					other = std::move(* this);
 					// Переносим временное содержимое в себя
@@ -407,46 +437,31 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Конструктор
-				 *
+				 * @brief Запрещаем оператор копирования - учётная запись пакета перемещается, но не копируется
 				 *
 				 * \~english
-				 * @brief Constructor
+				 * @brief We disable the copy operator — a package account is moved, not copied.
 				 *
 				 * \~
 				 */
-				small_vector() noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {}
-				/**
-				 * \~russian
-				 * @brief Конструктор перемещения
-				 *
-				 * @param other вектор-источник
-				 *
-				 * \~english
-				 * @brief Constructor of the moving
-				 * @param other vector-source
-				 *
-				 * \~
-				 */
-				small_vector(small_vector && other) noexcept : _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {
-					// Переносим содержимое источника
-					this->adopt(std::move(other));
-				}
+				Small_Vector & operator = (const Small_Vector &) = delete;
+			public:
 				/**
 				 * \~russian
 				 * @brief Оператор перемещения
 				 *
 				 * @param other вектор-источник
-				 * @return       ссылка на текущий вектор
+				 * @return      ссылка на текущий вектор
 				 *
 				 * \~english
 				 * @brief Operator of the moving
+				 *
 				 * @param other vector-source
-				 * @return       reference to the current vector
+				 * @return      reference to the current vector
 				 *
 				 * \~
 				 */
-				small_vector & operator = (small_vector && other) noexcept {
+				Small_Vector & operator = (Small_Vector && other) noexcept {
 					// Если присваивается не сам себе
 					if(this != & other){
 						// Уничтожаем собственные элементы
@@ -470,22 +485,58 @@ namespace awh {
 					// Выводим ссылку на текущий вектор
 					return * this;
 				}
+			public:
 				/**
-				 * Копирование запрещено - учётная запись пакета перемещается, но не копируется
+				 * \~russian
+				 * @brief Запрещаем оператор копирования - учётная запись пакета перемещается, но не копируется
+				 *
+				 * \~english
+				 * @brief We disable the copy operator — a package account is moved, not copied.
+				 *
+				 * \~
 				 */
-				small_vector(const small_vector &) = delete;
-				small_vector & operator = (const small_vector &) = delete;
+				explicit Small_Vector(const Small_Vector &) = delete;
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор перемещения
+				 *
+				 * @param other вектор-источник
+				 *
+				 * \~english
+				 * @brief Constructor of the moving
+				 *
+				 * @param other vector-source
+				 *
+				 * \~
+				 */
+				explicit Small_Vector(Small_Vector && other) noexcept :
+				 _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {
+					// Переносим содержимое источника
+					this->adopt(std::move(other));
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Small_Vector() noexcept :
+				 _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {}
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~small_vector() noexcept {
+				~Small_Vector() noexcept {
 					// Уничтожаем хранимые элементы
 					for(size_t i = 0; i < this->_size; i++)
 						// Уничтожаем элемент
@@ -498,6 +549,33 @@ namespace awh {
 		};
 		/**
 		 * \~russian
+		 * @brief Шаблон класса вектора с малым инлайн-хранилищем (small buffer optimization)
+		 *
+		 * @tparam T тип элемента
+		 * @tparam N число элементов инлайн-хранилища
+		 *
+		 * \~english
+		 * @brief Vector class template with small-buffer optimization
+		 *
+		 * @tparam T type of an element
+		 * @tparam N number of the elements of the inline storage
+		 *
+		 * \~
+		 */
+		template <class T, size_t N>
+		/**
+		 * \~russian
+		 * @brief Создаём тип данных класса вектора с малым инлайн-хранилищем (small buffer optimization)
+		 *
+		 * \~english
+		 * @brief Creating a vector-like data type with small-buffer optimization (inline storage)
+		 *
+		 * \~
+		 */
+		using small_vector_t = Small_Vector <T, N>;
+
+		/**
+		 * \~russian
 		 * @brief Сегментированный FIFO-буфер собранных данных потока на переиспользуемых блоках
 		 *
 		 * @details Собранные данные потока копятся до выдачи приложению. Непрерывная строка
@@ -507,10 +585,11 @@ namespace awh {
 		 *          общего пула соединения и возвращаемых в него при сливе: блоки выделяются
 		 *          один раз и переиспользуются между потоками, поэтому рост буфера
 		 *          перевыделений не порождает. Семантика чисто FIFO: дозапись в хвост и слив
-		 *          целиком с начала - частичного среза с головы у выдачи данных потока нет
+		 *          целиком с начала - частичного среза с головы у выдачи данных потока нет.
 		 *
 		 * \~english
 		 * @brief Segmented FIFO buffer of the assembled data of a stream on the reused blocks
+		 *
 		 * @details The assembled data of a stream accumulates until the issue to the application. A continuous string
 		 *          is grown by a doubling of the capacity - a succession of the reallocations with a copying
 		 *          giving a multiple cumulative expenditure of the memory on the long transmissions.
@@ -518,11 +597,11 @@ namespace awh {
 		 *          a common pool of the connection and returned into it at a draining: the blocks are allotted
 		 *          once and are reused between the streams, therefore a growth of the buffer
 		 *          generates no reallocations. The semantics is purely FIFO: an appending into the tail and a draining
-		 *          entirely from the beginning - there is no partial slice from the head at the issue of the data of a stream
+		 *          entirely from the beginning - there is no partial slice from the head at the issue of the data of a stream.
 		 *
 		 * \~
 		 */
-		class chunked_fifo_t {
+		typedef class __AWH_SHARED_EXPORT__ Chunked_FIFO {
 			public:
 				// Размер блока данных в октетах
 				static constexpr size_t BLOCK = 16384;
@@ -543,30 +622,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a block from the pool or of allotting a new one
+				 *
 				 * @param pool pool of the reused blocks
 				 * @return     block with a preserved or a reserved capacity
 				 *
 				 * \~
 				 */
-				static string acquire(vector <string> & pool) noexcept {
-					// Если в пуле есть освобождённый блок
-					if(!pool.empty()){
-						// Забираем блок из пула с сохранённой ёмкостью
-						string block = std::move(pool.back());
-						// Удаляем забранный блок из пула
-						pool.pop_back();
-						// Сбрасываем размер блока (ёмкость сохраняется)
-						block.clear();
-						// Выводим переиспользуемый блок
-						return block;
-					}
-					// Создаём новый блок
-					string block;
-					// Резервируем ёмкость блока под его полный размер
-					block.reserve(BLOCK);
-					// Выводим созданный блок
-					return block;
-				}
+				static string acquire(vector <string> & pool) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод возврата блока в пул либо его освобождения сверх предела
@@ -576,20 +638,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the return of a block into the pool or of its release above the limit
+				 *
 				 * @param pool  pool of the reused blocks
 				 * @param block block being returned
 				 *
 				 * \~
 				 */
-				static void release(vector <string> & pool, string && block) noexcept {
-					// Если пул ещё не достиг предела удержания блоков
-					if(pool.size() < POOL_LIMIT){
-						// Сбрасываем размер блока (ёмкость сохраняется для переиспользования)
-						block.clear();
-						// Возвращаем блок в пул
-						pool.push_back(std::move(block));
-					}
-				}
+				static void release(vector <string> & pool, string && block) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -599,14 +654,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the absence of the accumulated data
+				 *
 				 * @return flag of the absence of the data
 				 *
 				 * \~
 				 */
-				bool empty() const noexcept {
-					// Выводим признак отсутствия накопленных данных
-					return (this->_bytes == 0);
-				}
+				bool empty() const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения суммарного размера накопленных данных
@@ -615,14 +668,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the total size of the accumulated data
+				 *
 				 * @return total size of the data in octets
 				 *
 				 * \~
 				 */
-				size_t size() const noexcept {
-					// Выводим суммарный размер накопленных данных
-					return this->_bytes;
-				}
+				size_t size() const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод дозаписи данных в хвост буфера
@@ -632,32 +683,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the appending of the data into the tail of the buffer
+				 *
 				 * @param pool pool of the reused blocks
 				 * @param data data being appended
 				 *
 				 * \~
 				 */
-				void append(vector <string> & pool, string_view data) noexcept {
-					// Пока есть данные для записи
-					while(!data.empty()){
-						// Если хвостового блока нет либо он заполнен
-						if(this->_blocks.empty() || (this->_blocks.back().size() >= BLOCK))
-							// Добавляем в хвост новый блок из пула
-							this->_blocks.push_back(acquire(pool));
-						// Получаем хвостовой блок
-						string & tail = this->_blocks.back();
-						// Вычисляем свободное место в хвостовом блоке
-						const size_t room = (BLOCK - tail.size());
-						// Вычисляем объём, помещающийся в хвостовой блок
-						const size_t count = ((room < data.size()) ? room : data.size());
-						// Дописываем помещающуюся часть данных в хвостовой блок
-						tail.append(data.data(), count);
-						// Отбрасываем записанную часть данных
-						data.remove_prefix(count);
-						// Продвигаем суммарный размер накопленных данных
-						this->_bytes += count;
-					}
-				}
+				void append(vector <string> & pool, string_view data) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод слива всех накопленных данных в выходной буфер
@@ -667,24 +699,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the draining of all the accumulated data into the output buffer
+				 *
 				 * @param pool   pool of the reused blocks (the blocks are returned into it)
 				 * @param output output buffer (the data is appended)
 				 *
 				 * \~
 				 */
-				void drain(vector <string> & pool, string & output) noexcept {
-					// Перебираем накопленные блоки в порядке записи
-					for(auto & block : this->_blocks){
-						// Дописываем данные блока в выходной буфер
-						output.append(block);
-						// Возвращаем блок в пул
-						release(pool, std::move(block));
-					}
-					// Очищаем цепочку блоков (ёмкость вектора сохраняется)
-					this->_blocks.clear();
-					// Сбрасываем суммарный размер накопленных данных
-					this->_bytes = 0;
-				}
+				void drain(vector <string> & pool, string & output) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отбрасывания всех накопленных данных
@@ -693,33 +714,24 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the discarding of all the accumulated data
+				 *
 				 * @param pool pool of the reused blocks (the blocks are returned into it)
 				 *
 				 * \~
 				 */
-				void clear(vector <string> & pool) noexcept {
-					// Перебираем накопленные блоки
-					for(auto & block : this->_blocks)
-						// Возвращаем блок в пул
-						release(pool, std::move(block));
-					// Очищаем цепочку блоков (ёмкость вектора сохраняется)
-					this->_blocks.clear();
-					// Сбрасываем суммарный размер накопленных данных
-					this->_bytes = 0;
-				}
+				void clear(vector <string> & pool) noexcept;
 			public:
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				explicit chunked_fifo_t() noexcept : _bytes(0) {}
-		};
+				explicit Chunked_FIFO() noexcept;
+		} chunked_fifo_t;
 		/**
 		 * \~russian
 		 * @brief Класс соединения QUIC (RFC 9000 §5)
@@ -742,6 +754,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of a QUIC connection (RFC 9000 §5)
+		 *
 		 * @details A layer of the connection over the handshake machine: the acceptance and the assembly of the UDP datagrams
 		 *          entirely - the parsing of the coalesced packets, the removal/the installation of the protection,
 		 *          the dispatching of the frames, the spaces of the numbers of the packets, the generation
@@ -799,6 +812,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Type of the pull source of the data of a stream (for the big bodies without a superfluous copy)
+				 *
 				 * @details An alternative to send(): the engine itself requests the data from the source exactly
 				 *          then when the window is open and there is a place in the buffer of the sending of the stream below
 				 *          the upper water mark. The source writes the data directly into the transmitted
@@ -806,6 +820,7 @@ namespace awh {
 				 *          of the body and returns the number of the written octets, or -1 at an error (the stream
 				 *          will be emergently completed by a RESET_STREAM). The application does not hold a copy of the whole
 				 *          body - it generates the data as it goes away into the network
+				 *
 				 * @param sid    identifier of the stream
 				 * @param buffer buffer for the filling (the tail of the buffer of the sending of the stream)
 				 * @param cap    capacity of the buffer
@@ -846,6 +861,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Length of the generated identifiers of the connection (RFC 9000 §7.2 requires not less than 8 for the DCID of a client)
+				 *
 				 * @note The length is the same at all the issued identifiers: the packets
 				 *       with a short header do not carry a field of the length, and to parse
 				 *       the identifier of the receiver is possible only knowing it beforehand
@@ -864,6 +880,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Limiting size of an outgoing datagram at the search of the size of the path (RFC 8899)
+				 *
 				 * @note It is chosen by the typical size of an Ethernet frame minus the headers
 				 *       of IPv6 and UDP: on a path with an IPv4 header the reserve only increases.
 				 *       A datagram above this size is never sent,
@@ -917,17 +934,26 @@ namespace awh {
 					// Флаг завершения потока (FIN)
 					bool fin;
 					/**
-					 * Данные потока приложения. На горячем пути свежей отправки не
-					 * заполняются: учётная запись пакета ссылается на буфер отправки
-					 * потока (sid+offset+size), а сам буфер удерживается до подтверждения.
-					 * Заполняются лишь при постановке в очередь ретрансмиссии после
-					 * потери - перечитыванием из буфера отправки потока (RFC 9000 §13.3)
+					 * \~russian
+					 * @brief Данные потока приложения. На горячем пути свежей отправки не
+					 *        заполняются: учётная запись пакета ссылается на буфер отправки
+					 *        потока (sid+offset+size), а сам буфер удерживается до подтверждения.
+					 *        Заполняются лишь при постановке в очередь ретрансмиссии после
+					 *        потери - перечитыванием из буфера отправки потока (RFC 9000 §13.3).
+					 *
+					 * \~english
+					 * @brief Data of a stream of the application. On a hot path of a fresh sending they are not
+					 *        filled: an account record of a packet refers to the send buffer of the
+					 *        stream (sid+offset+size), and the buffer itself is held up to the acknowledgment.
+					 *        Filled only when putting into the queue of the retransmission after a loss -
+					 *        by rereading from the send buffer of the stream (RFC 9000 §13.3).
+					 *
+					 * \~
 					 */
 					string data;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -955,44 +981,80 @@ namespace awh {
 					// Флаг наличия фрейма HANDSHAKE_DONE в пакете
 					bool handshakeDone;
 					/**
-					 * Флаг отправки пакета на уровне ранних данных. Уровни ранних данных
-					 * и приложения делят одно пространство номеров пакетов, а различать
-					 * их необходимо: при отказе удалённого узла в ранних данных
-					 * содержимое ранних пакетов подлежит повторной отправке
-					 * защитой уровня приложения (RFC 9001 §4.6.2)
+					 * \~russian
+					 * @brief Флаг отправки пакета на уровне ранних данных. Уровни ранних данных
+					 *        и приложения делят одно пространство номеров пакетов, а различать
+					 *        их необходимо: при отказе удалённого узла в ранних данных
+					 *        содержимое ранних пакетов подлежит повторной отправке
+					 *        защитой уровня приложения (RFC 9001 §4.6.2)
+					 *
+					 * \~english
+					 * @brief Flag of sending of a packet at the level of the early data. The levels of the early
+					 *        data and of the application share one space of the numbers of the packets, and to
+					 *        distinguish them is necessary: at a refusal of the remote node in the early data
+					 *        the contents of the early packets is subject to the repeated sending by
+					 *        the protection of the level of the application (RFC 9001 §4.6.2)
+					 *
+					 * \~
 					 */
 					bool early;
 					/**
-					 * Флаг отправки пакета с маркировкой поддержки ECN. Проверка пути
-					 * сверяет счётчики маркировок удалённого узла с числом подтверждённых
-					 * помеченных пакетов, поэтому маркировка запоминается пакетно
-					 * (RFC 9000 §13.4.2.1)
+					 * \~russian
+					 * @brief Флаг отправки пакета с маркировкой поддержки ECN. Проверка пути
+					 *        сверяет счётчики маркировок удалённого узла с числом подтверждённых
+					 *        помеченных пакетов, поэтому маркировка запоминается пакетно
+					 *        (RFC 9000 §13.4.2.1)
+					 *
+					 * \~english
+					 * @brief Flag of sending of a packet with a marking of the ECN support. The path validation
+					 *        compares the counters of the markings of the remote node with the number of the acknowledged
+					 *        marked packets, therefore a marking is remembered per packet
+					 *        (RFC 9000 §13.4.2.1)
+					 *
+					 * \~
 					 */
 					bool ecn;
 					/**
-					 * Флаг отправки пакета зондом размера пути. Потеря зонда признаком
-					 * перегрузки не является: пакет отброшен как не помещающийся
-					 * в путь, а не из-за затора (RFC 9000 §14.4)
+					 * \~russian
+					 * @brief Флаг отправки пакета зондом размера пути. Потеря зонда признаком
+					 *        перегрузки не является: пакет отброшен как не помещающийся
+					 *        в путь, а не из-за затора (RFC 9000 §14.4)
+					 *
+					 * \~english
+					 * @brief Flag of sending of a packet by a probe of a path size. A loss of a probe is not
+					 *        a sign of an overload: the packet is dropped as not fitting
+					 *        into the path, and not because of a jam (RFC 9000 §14.4)
+					 *
+					 * \~
 					 */
 					bool pmtu;
 					/**
-					 * Флаг отправки пакета по прежнему пути соединения. Окно перегрузки и
-					 * оценка задержки характеризуют конкретный путь, поэтому подтверждения
-					 * и потери пакетов прежнего пути на состояние нового не влияют: их
-					 * содержимое переотправляется, но контроль перегрузки они не трогают
-					 * (RFC 9000 §9.4)
+					 * \~russian
+					 * @brief Флаг отправки пакета по прежнему пути соединения. Окно перегрузки и
+					 *        оценка задержки характеризуют конкретный путь, поэтому подтверждения
+					 *        и потери пакетов прежнего пути на состояние нового не влияют: их
+					 *        содержимое переотправляется, но контроль перегрузки они не трогают
+					 *        (RFC 9000 §9.4)
+					 *
+					 * \~english
+					 * @brief Flag of sending of a packet by the previous path of the connection. The congestion window and
+					 *        the estimation of the delay characterise a concrete path, therefore the acknowledgments
+					 *        and the losses of the packets of the previous path do not affect the state of the new one: their
+					 *        contents is retransmitted, but the congestion control they do not touch
+					 *        (RFC 9000 §9.4)
+					 *
+					 * \~
 					 */
 					bool stale;
+					// Отправленные блоки данных потоков приложения (для ретрансмиссии): инлайн-хранилище на типовой пакет
+					small_vector_t <chunk_t, 2> stream;
 					// Отправленные CRYPTO-данные пакета со смещениями (для ретрансмиссии)
 					vector <std::pair <uint64_t, string>> crypto;
-					// Отправленные блоки данных потоков приложения (для ретрансмиссии): инлайн-хранилище на типовой пакет
-					small_vector <chunk_t, 2> stream;
 					// Отправленные управляющие фреймы: тип и идентификатор потока (для повтора при потере)
 					vector <std::pair <frame_t, uint64_t>> control;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1016,31 +1078,67 @@ namespace awh {
 					// Буфер исходящих данных потока (ожидают упаковки в пакеты)
 					string txBuffer;
 					/**
-					 * Pull-источник данных тела потока (пусто - не задан). Если задан, движок сам
-					 * дозаполняет txBuffer из источника при упаковке, пока не открыт eof; ставится
-					 * методом dataSource(). Альтернатива постановке данных через send()
+					 * \~russian
+					 * @brief Pull-источник данных тела потока (пусто - не задан). Если задан, движок сам
+					 *        дозаполняет txBuffer из источника при упаковке, пока не открыт eof; ставится
+					 *        методом dataSource(). Альтернатива постановке данных через send()
+					 *
+					 * \~english
+					 * @brief Pull-source of the data of the stream body (empty - not set). If set, the engine itself
+					 *        refills the txBuffer from the source on packing, while the eof is not opened; set by
+					 *        the dataSource() method. An alternative to putting the data through send()
+					 *
+					 * \~
 					 */
 					data_source_callback_t txSource;
 					/**
-					 * Количество уже упакованных октетов в начале буфера. Упакованные
-					 * данные не вырезаются сразу: вырезание сдвигает весь остаток буфера,
-					 * что даёт квадратичную стоимость на длинных передачах. Освобождение
-					 * выполняется уплотнением, когда потреблённая часть занимает
-					 * существенную долю буфера
+					 * \~russian
+					 * @brief Количество уже упакованных октетов в начале буфера. Упакованные
+					 *        данные не вырезаются сразу: вырезание сдвигает весь остаток буфера,
+					 *        что даёт квадратичную стоимость на длинных передачах. Освобождение
+					 *        выполняется уплотнением, когда потреблённая часть занимает
+					 *        существенную долю буфера
+					 *
+					 * \~english
+					 * @brief Number of the already packed octets at the beginning of the buffer. The packed
+					 *        data are not cut out at once: a cutting shifts the whole remainder of the buffer,
+					 *        which gives a quadratic cost on long transfers. The release
+					 *        is performed by a compaction when the consumed part occupies
+					 *        a significant share of the buffer
+					 *
+					 * \~
 					 */
 					size_t txCursor;
 					/**
-					 * Смещение непрерывно подтверждённого префикса отправленных данных.
-					 * Буфер отправки удерживает отправленные, но ещё не подтверждённые
-					 * данные для их ретрансмиссии по ссылке из учётной записи пакета,
-					 * а уплотнением освобождается лишь подтверждённая часть (RFC 9000 §13.3)
+					 * \~russian
+					 * @brief Смещение непрерывно подтверждённого префикса отправленных данных.
+					 *        Буфер отправки удерживает отправленные, но ещё не подтверждённые
+					 *        данные для их ретрансмиссии по ссылке из учётной записи пакета,
+					 *        а уплотнением освобождается лишь подтверждённая часть (RFC 9000 §13.3)
+					 *
+					 * \~english
+					 * @brief Offset of the continuously acknowledged prefix of the sent data.
+					 *        The send buffer holds the sent but not yet acknowledged
+					 *        data for their retransmission by a reference from an account record of a packet,
+					 *        and a compaction releases only the acknowledged part (RFC 9000 §13.3)
+					 *
+					 * \~
 					 */
 					uint64_t txAcked;
 					/**
-					 * Подтверждённые блоки отправленных данных, идущие не по порядку.
-					 * Отправленные блоки примыкают вплотную и не пересекаются, поэтому
-					 * ключ - смещение начала блока, значение - смещение его конца:
-					 * подтверждённый префикс продвигается по цепочке примыкающих блоков
+					 * \~russian
+					 * @brief Подтверждённые блоки отправленных данных, идущие не по порядку.
+					 *        Отправленные блоки примыкают вплотную и не пересекаются, поэтому
+					 *        ключ - смещение начала блока, значение - смещение его конца:
+					 *        подтверждённый префикс продвигается по цепочке примыкающих блоков
+					 *
+					 * \~english
+					 * @brief The acknowledged blocks of the sent data going not in order.
+					 *        The sent blocks adjoin tightly and do not intersect, therefore the
+					 *        key is the offset of the beginning of a block, the value is the offset of its end:
+					 *        the acknowledged prefix moves along the chain of the adjoining blocks
+					 *
+					 * \~
 					 */
 					map <uint64_t, uint64_t> txPending;
 					// Лимит отправки потока от удалённого эндпоинта (MAX_STREAM_DATA)
@@ -1060,10 +1158,19 @@ namespace awh {
 					// Лимит, о блокировке которым уже уведомлён удалённый эндпоинт
 					uint64_t txBlockedAt;
 					/**
-					 * Флаг поданного сигнала writable для текущего заполнения буфера отправки.
-					 * Взводится (false) при частичном приёме в send() - буфер достиг верхней
-					 * водяной метки; сбрасывается подачей сигнала при падении буфера ниже нижней
-					 * метки, чтобы на одно заполнение приходился ровно один сигнал возобновления
+					 * \~russian
+					 * @brief Флаг поданного сигнала writable для текущего заполнения буфера отправки.
+					 *        Взводится (false) при частичном приёме в send() - буфер достиг верхней
+					 *        водяной метки; сбрасывается подачей сигнала при падении буфера ниже нижней
+					 *        метки, чтобы на одно заполнение приходился ровно один сигнал возобновления
+					 *
+					 * \~english
+					 * @brief Flag of the already given signal writable for the current filling of the send buffer.
+					 *        Raised (false) at a partial acceptance in send() - the buffer reached the upper
+					 *        high-water mark; dropped by giving the signal when the buffer falls below the lower
+					 *        mark, so that one signal of the resumption falls on one filling
+					 *
+					 * \~
 					 */
 					bool writableNotified;
 					// Смещение непрерывно собранных входящих данных потока
@@ -1099,24 +1206,42 @@ namespace awh {
 					// Флаг учтённого завершения потока в лимите MAX_STREAMS
 					bool credited;
 					/**
-					 * Флаг присутствия потока в списке готовых к выдаче. Означает
-					 * именно членство в списке, а не готовность: готовность
-					 * перевычисляется при чтении списка, поэтому поток попадает
-					 * в него не более одного раза
+					 * \~russian
+					 * @brief Флаг присутствия потока в списке готовых к выдаче. Означает
+					 *        именно членство в списке, а не готовность: готовность
+					 *        перевычисляется при чтении списка, поэтому поток попадает
+					 *        в него не более одного раза
+					 *
+					 * \~english
+					 * @brief Flag of the presence of a stream in the list of those ready for issuing. Means
+					 *        exactly a membership in the list, and not a readiness: the readiness
+					 *        is recomputed on reading the list, therefore a stream gets into
+					 *        it not more than once
+					 *
+					 * \~
 					 */
 					bool queued;
 					/**
-					 * Флаг присутствия потока в списке ожидающих управляющих фреймов.
-					 * По аналогии с `queued` означает членство в списке, а не наличие
-					 * фрейма: наличие перевычисляется при обходе списка, поэтому поток
-					 * попадает в него не более одного раза, а обход управляющих фреймов
-					 * идёт по нему вместо всего списка потоков
+					 * \~russian
+					 * @brief Флаг присутствия потока в списке ожидающих управляющих фреймов.
+					 *        По аналогии с `queued` означает членство в списке, а не наличие
+					 *        фрейма: наличие перевычисляется при обходе списка, поэтому поток
+					 *        попадает в него не более одного раза, а обход управляющих фреймов
+					 *        идёт по нему вместо всего списка потоков
+					 *
+					 * \~english
+					 * @brief Flag of the presence of a stream in the list of those waiting for the control frames.
+					 *        By analogy with `queued` means a membership in the list, and not the presence
+					 *        of a frame: the presence is recomputed on walking the list, therefore a stream
+					 *        gets into it not more than once, and the walk over the control frames
+					 *        goes by it instead of the whole list of the streams
+					 *
+					 * \~
 					 */
 					bool controlPending;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1146,10 +1271,19 @@ namespace awh {
 					// Флаг приёма хотя бы одного пакета
 					bool hasRx;
 					/**
-					 * Битовая маска приёма 64 номеров пакетов ниже наибольшего принятого:
-					 * бит i соответствует номеру largestRx - (i + 1). Служит защитой от
-					 * повторной обработки пакета и не зависит от прореживания списка
-					 * диапазонов ranges, который хранится только для сборки фреймов ACK
+					 * \~russian
+					 * @brief Битовая маска приёма 64 номеров пакетов ниже наибольшего принятого:
+					 *        бит i соответствует номеру largestRx - (i + 1). Служит защитой от
+					 *        повторной обработки пакета и не зависит от прореживания списка
+					 *        диапазонов ranges, который хранится только для сборки фреймов ACK
+					 *
+					 * \~english
+					 * @brief Bit mask of the acceptance of 64 numbers of the packets below the largest received:
+					 *        bit i corresponds to the number largestRx - (i + 1). Serves as a protection
+					 *        against a repeated processing of a packet and does not depend on the thinning of the list
+					 *        of the ranges, which is stored only for the assembling of the ACK frames
+					 *
+					 * \~
 					 */
 					uint64_t dedup;
 					// Флаг необходимости отправки подтверждения (принят ack-eliciting пакет)
@@ -1157,17 +1291,33 @@ namespace awh {
 					// Флаг необходимости немедленного подтверждения без задержки (принят пакет вне очереди, RFC 9000 §13.2.1)
 					bool ackImmediate;
 					/**
-					 * Время приёма ack-eliciting пакета, породившего необходимость
-					 * подтверждения. Разница с временем отправки подтверждения
-					 * кодируется полем Ack Delay фрейма ACK (RFC 9000 §19.3)
+					 * \~russian
+					 * @brief Время приёма ack-eliciting пакета, породившего необходимость
+					 *        подтверждения. Разница с временем отправки подтверждения
+					 *        кодируется полем Ack Delay фрейма ACK (RFC 9000 §19.3)
+					 *
+					 * \~english
+					 * @brief Time of the acceptance of an ack-eliciting packet that gave rise to the necessity
+					 *        of the acknowledgment. The difference with the time of sending the acknowledgment
+					 *        is encoded by the Ack Delay field of the ACK frame (RFC 9000 §19.3)
+					 *
+					 * \~
 					 */
 					uint64_t ackTime;
 					// Диапазоны принятых номеров пакетов в порядке убывания
 					vector <frame::range_t> ranges;
 					/**
-					 * Счётчики принятых пакетов по маркировке ECN заголовка IP-пакета.
-					 * Эхом возвращаются пиру во фрейме ACK_ECN, по их приросту он судит
-					 * о перегрузке пути, не дожидаясь потерь (RFC 9000 §13.4)
+					 * \~russian
+					 * @brief Счётчики принятых пакетов по маркировке ECN заголовка IP-пакета.
+					 *        Эхом возвращаются пиру во фрейме ACK_ECN, по их приросту он судит
+					 *        о перегрузке пути, не дожидаясь потерь (RFC 9000 §13.4)
+					 *
+					 * \~english
+					 * @brief Counters of the accepted packets by the ECN marking of the header of an IP packet.
+					 *        Returned by an echo to the peer in the ACK_ECN frame, by their growth he judges
+					 *        about the overload of the path without waiting for the losses (RFC 9000 §13.4)
+					 *
+					 * \~
 					 */
 					uint64_t ect0;
 					// Счётчик принятых пакетов с маркировкой ECT(1)
@@ -1183,9 +1333,17 @@ namespace awh {
 					// Флаг приёма счётчиков ECN от пира
 					bool hasPeerEcn;
 					/**
-					 * Количество пакетов пространства, отправленных с маркировкой поддержки
-					 * ECN. Счётчики маркировок удалённого узла не вправе его превышать -
-					 * иначе счётчики недостоверны (RFC 9000 §13.4.2.1)
+					 * \~russian
+					 * @brief Количество пакетов пространства, отправленных с маркировкой поддержки
+					 *        ECN. Счётчики маркировок удалённого узла не вправе его превышать -
+					 *        иначе счётчики недостоверны (RFC 9000 §13.4.2.1)
+					 *
+					 * \~english
+					 * @brief Number of the packets of the space sent with a marking of the support
+					 *        of the ECN. The counters of the markings of the remote node have no right to exceed it -
+					 *        otherwise the counters are unreliable (RFC 9000 §13.4.2.1)
+					 *
+					 * \~
 					 */
 					uint64_t ecnSent;
 					// Смещение начала буфера исходящих CRYPTO-данных в потоке уровня
@@ -1216,7 +1374,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1241,49 +1398,103 @@ namespace awh {
 					// Флаг подтверждённой достижимости пути
 					bool validated;
 					/**
-					 * Очередь данных принятых проверок пути: на каждый принятый фрейм
-					 * PATH_CHALLENGE отправляется свой фрейм PATH_RESPONSE с его данными,
-					 * поэтому одного слота недостаточно - вторая проверка, принятая до
-					 * сборки ответа, затёрла бы первую (RFC 9000 §8.2.2)
+					 * \~russian
+					 * @brief Очередь данных принятых проверок пути: на каждый принятый фрейм
+					 *        PATH_CHALLENGE отправляется свой фрейм PATH_RESPONSE с его данными,
+					 *        поэтому одного слота недостаточно - вторая проверка, принятая до
+					 *        сборки ответа, затёрла бы первую (RFC 9000 §8.2.2)
+					 *
+					 * \~english
+					 * @brief Queue of the data of the accepted path validations: for every accepted
+					 *        PATH_CHALLENGE frame its own PATH_RESPONSE frame is sent with its data,
+					 *        therefore one slot is not enough - a second validation, accepted before
+					 *        the assembling of the answer, would overwrite the first (RFC 9000 §8.2.2)
+					 *
+					 * \~
 					 */
 					deque <string> responses;
 					// Отправленные данные проверки достижимости пути
 					uint8_t probe[proto::PATH_DATA_SIZE];
 					/**
-					 * Флаг выполняемой проверки предпочтительного адреса сервера. Переезд
-					 * на него допустим лишь после подтверждения его достижимости, поэтому
-					 * проверка выполняется отдельной пробирующей датаграммой на сам
-					 * предпочтительный адрес, пока соединение работает по текущему пути
-					 * (RFC 9000 §9.6.2)
+					 * \~russian
+					 * @brief Флаг выполняемой проверки предпочтительного адреса сервера. Переезд
+					 *        на него допустим лишь после подтверждения его достижимости, поэтому
+					 *        проверка выполняется отдельной пробирующей датаграммой на сам
+					 *        предпочтительный адрес, пока соединение работает по текущему пути
+					 *        (RFC 9000 §9.6.2)
+					 *
+					 * \~english
+					 * @brief Flag of the performing validation of the preferred address of the server. A move
+					 *        onto it is allowed only after the confirmation of its reachability, therefore
+					 *        the validation is performed by a separate probing datagram to the preferred
+					 *        address itself, while the connection works by the current path
+					 *        (RFC 9000 §9.6.2)
+					 *
+					 * \~
 					 */
 					bool relocating;
 					/**
-					 * Флаг адресации собранной датаграммы предпочтительному адресу. Пока
-					 * проверка не пройдена, соединение отправляет по двум адресам сразу,
-					 * поэтому вызывающему коду сообщается адресат каждой датаграммы
+					 * \~russian
+					 * @brief Флаг адресации собранной датаграммы предпочтительному адресу. Пока
+					 *        проверка не пройдена, соединение отправляет по двум адресам сразу,
+					 *        поэтому вызывающему коду сообщается адресат каждой датаграммы
+					 *
+					 * \~english
+					 * @brief Flag of the addressing of the assembled datagram to the preferred address. While
+					 *        the validation is not passed, the connection sends to two addresses at once,
+					 *        therefore the calling code is informed of the addressee of each datagram
+					 *
+					 * \~
 					 */
 					bool alternate;
 					// Идентификатор соединения предпочтительного адреса сервера (RFC 9000 §5.1.1)
 					cid_t relocation;
 					/**
-					 * Дедлайн отказа от проверки достижимости пути в миллисекундах. Ответа
-					 * на проверку можно не дождаться вовсе, и переотправлять её бесконечно
-					 * незачем: по истечении дедлайна путь признаётся непригодным
-					 * (RFC 9000 §8.2.4)
+					 * \~russian
+					 * @brief Дедлайн отказа от проверки достижимости пути в миллисекундах. Ответа
+					 *        на проверку можно не дождаться вовсе, и переотправлять её бесконечно
+					 *        незачем: по истечении дедлайна путь признаётся непригодным
+					 *        (RFC 9000 §8.2.4)
+					 *
+					 * \~english
+					 * @brief Deadline of the refusal from the path reachability validation in milliseconds. An answer
+					 *        to the validation can be not waited for at all, and to retransmit it endlessly
+					 *        there is no reason: on the expiration of the deadline the path is recognised as unfit
+					 *        (RFC 9000 §8.2.4)
+					 *
+					 * \~
 					 */
 					uint64_t deadline;
 					/**
-					 * Адрес удалённого эндпоинта подтверждённого пути. Смена адреса при
-					 * установленном соединении означает миграцию: путь считается новым
-					 * и требует проверки достижимости (RFC 9000 §9)
+					 * \~russian
+					 * @brief Адрес удалённого эндпоинта подтверждённого пути. Смена адреса при
+					 *        установленном соединении означает миграцию: путь считается новым
+					 *        и требует проверки достижимости (RFC 9000 §9)
+					 *
+					 * \~english
+					 * @brief Address of the remote endpoint of the confirmed path. A change of the address at an
+					 *        established connection means a migration: the path is counted new
+					 *        and requires a reachability validation (RFC 9000 §9)
+					 *
+					 * \~
 					 */
 					string address;
 					/**
-					 * Последний адрес удалённого эндпоинта, достижимость которого подтверждена.
-					 * Смену адреса способен подделать находящийся на пути посторонний, и
-					 * непройденная проверка нового адреса обязана возвращать соединение на
-					 * этот - иначе одна поддельная датаграмма разрывала бы соединение
-					 * (RFC 9000 §9.3.2)
+					 * \~russian
+					 * @brief Последний адрес удалённого эндпоинта, достижимость которого подтверждена.
+					 *        Смену адреса способен подделать находящийся на пути посторонний, и
+					 *        непройденная проверка нового адреса обязана возвращать соединение на
+					 *        этот - иначе одна поддельная датаграмма разрывала бы соединение
+					 *        (RFC 9000 §9.3.2)
+					 *
+					 * \~english
+					 * @brief Last address of the remote endpoint, the reachability of which is confirmed.
+					 *        A change of the address is able to be forged by a stranger standing on the path, and
+					 *        a not passed validation of a new address is obliged to return the connection to
+					 *        this one - otherwise one forged datagram would break the connection
+					 *        (RFC 9000 §9.3.2)
+					 *
+					 * \~
 					 */
 					string previous;
 					// Количество выполненных смен пути соединения
@@ -1291,7 +1502,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1323,10 +1533,19 @@ namespace awh {
 					// Порог принятых пакетов для повторной отправки CONNECTION_CLOSE (RFC 9000 §10.2.1)
 					uint64_t threshold;
 					/**
-					 * Дедлайн периода завершения соединения в миллисекундах: по его истечении
-					 * состояние соединения подлежит освобождению, а до него локальный эндпоинт
-					 * повторяет фрейм CONNECTION_CLOSE в ответ на приходящие пакеты
-					 * (RFC 9000 §10.2). Нулевое значение - дедлайн ещё не взведён
+					 * \~russian
+					 * @brief Дедлайн периода завершения соединения в миллисекундах: по его истечении
+					 *        состояние соединения подлежит освобождению, а до него локальный эндпоинт
+					 *        повторяет фрейм CONNECTION_CLOSE в ответ на приходящие пакеты
+					 *        (RFC 9000 §10.2). Нулевое значение - дедлайн ещё не взведён
+					 *
+					 * \~english
+					 * @brief Deadline of the period of the connection completion in milliseconds: on its expiration
+					 *        the state of the connection is subject to release, and before it the local endpoint
+					 *        repeats the CONNECTION_CLOSE frame in answer to the arriving packets
+					 *        (RFC 9000 §10.2). A zero value - the deadline is not yet armed
+					 *
+					 * \~
 					 */
 					uint64_t deadline;
 					// Причина завершения соединения
@@ -1334,7 +1553,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1366,9 +1584,17 @@ namespace awh {
 					// Количество зондирующих пакетов, разрешённых сверх окна перегрузки (RFC 9002 §7.5)
 					uint8_t probes;
 					/**
-					 * Время отправки наиболее позднего подтверждённого пакета по всем
-					 * пространствам номеров. Пакеты, отправленные после него и признанные
-					 * потерянными, образуют период устойчивой перегрузки (RFC 9002 §7.6)
+					 * \~russian
+					 * @brief Время отправки наиболее позднего подтверждённого пакета по всем
+					 *        пространствам номеров. Пакеты, отправленные после него и признанные
+					 *        потерянными, образуют период устойчивой перегрузки (RFC 9002 §7.6)
+					 *
+					 * \~english
+					 * @brief Time of sending of the most lately acknowledged packet over all
+					 *        spaces of the numbers. The packets sent after it and recognised as lost
+					 *        form the period of the persistent congestion (RFC 9002 §7.6)
+					 *
+					 * \~
 					 */
 					uint64_t acked;
 					// Флаг наличия хотя бы одного подтверждённого пакета
@@ -1376,7 +1602,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1411,7 +1636,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1430,28 +1654,52 @@ namespace awh {
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Marking {
 					/**
-					 * Маркировка ECN обрабатываемой датаграммы. Действует на время разбора
-					 * одной датаграммы: сетевого уровня соединение не имеет, и маркировку
-					 * ему сообщает вызывающий код
+					 * \~russian
+					 * @brief Маркировка ECN обрабатываемой датаграммы. Действует на время разбора
+					 *        одной датаграммы: сетевого уровня соединение не имеет, и маркировку
+					 *        ему сообщает вызывающий код
+					 *
+					 * \~english
+					 * @brief ECN marking of the datagram being processed. Acts for the time of the parsing of
+					 *        one datagram: the connection has no network level, and the marking
+					 *        is reported to it by the calling code
+					 *
+					 * \~
 					 */
 					event::ecn_t received;
 					/**
-					 * Флаг маркировки исходящих датаграмм поддержкой ECN. Устанавливается
-					 * вызывающим кодом: маркировка накладывается на заголовок IP-пакета,
-					 * до которого соединение не достаёт (RFC 9000 §13.4.1)
+					 * \~russian
+					 * @brief Флаг маркировки исходящих датаграмм поддержкой ECN. Устанавливается
+					 *        вызывающим кодом: маркировка накладывается на заголовок IP-пакета,
+					 *        до которого соединение не достаёт (RFC 9000 §13.4.1)
+					 *
+					 * \~english
+					 * @brief Flag of the marking of the outgoing datagrams with the ECN support. Set by
+					 *        the calling code: the marking is laid onto the header of an IP packet,
+					 *        which the connection does not reach (RFC 9000 §13.4.1)
+					 *
+					 * \~
 					 */
 					bool enabled;
 					/**
-					 * Флаг непройденной проверки пути на поддержку ECN. Путь может стирать
-					 * маркировку либо удалённый узел может её не возвращать: маркировать
-					 * далее бессмысленно, а счётчикам перегрузки доверять нельзя
-					 * (RFC 9000 §13.4.2)
+					 * \~russian
+					 * @brief Флаг непройденной проверки пути на поддержку ECN. Путь может стирать
+					 *        маркировку либо удалённый узел может её не возвращать: маркировать
+					 *        далее бессмысленно, а счётчикам перегрузки доверять нельзя
+					 *        (RFC 9000 §13.4.2)
+					 *
+					 * \~english
+					 * @brief Flag of the not passed path validation for the ECN support. A path can erase
+					 *        the marking or the remote node can not return it: to mark
+					 *        further is senseless, and the counters of the overload can not be trusted
+					 *        (RFC 9000 §13.4.2)
+					 *
+					 * \~
 					 */
 					bool failed;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1504,7 +1752,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1542,7 +1789,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1559,6 +1805,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the reused buffers of the assembly and of the parsing of the packets
+				 *
 				 * @details The buffers hold the capacity between the calls: an allocation of the memory
 				 *          per every datagram would come dearer than the processing itself
 				 *
@@ -1572,15 +1819,22 @@ namespace awh {
 					// Буфер собираемого заголовка исходящего пакета
 					string header;
 					/**
-					 * Буферы собираемой нагрузки по уровням шифрования. В одной датаграмме
-					 * пакет каждого уровня встречается не более одного раза, поэтому
-					 * индексация уровнем однозначна
+					 * \~russian
+					 * @brief Буферы собираемой нагрузки по уровням шифрования. В одной датаграмме
+					 *        пакет каждого уровня встречается не более одного раза, поэтому
+					 *        индексация уровнем однозначна
+					 *
+					 * \~english
+					 * @brief Buffers of the assembling payload by the levels of encryption. In one datagram
+					 *        a packet of every level occurs not more than once, therefore the
+					 *        indexing by a level is unambiguous
+					 *
+					 * \~
 					 */
 					string payload[handshake_t::LEVELS];
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1600,9 +1854,17 @@ namespace awh {
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Dgram {
 					/**
-					 * Очередь исходящих датаграмм приложения. Доставка датаграмм ненадёжна:
-					 * потерянные не ретранслируются, поэтому очередь только на отправку
-					 * и учёта отправленного не ведёт (RFC 9221 §5.2)
+					 * \~russian
+					 * @brief Очередь исходящих датаграмм приложения. Доставка датаграмм ненадёжна:
+					 *        потерянные не ретранслируются, поэтому очередь только на отправку
+					 *        и учёта отправленного не ведёт (RFC 9221 §5.2)
+					 *
+					 * \~english
+					 * @brief Queue of the outgoing datagrams of the application. The delivery of the datagrams is unreliable:
+					 *        the lost ones are not retransmitted, therefore the queue is only for sending
+					 *        and the account of the sent is not kept (RFC 9221 §5.2)
+					 *
+					 * \~
 					 */
 					deque <string> tx;
 					// Очередь принятых датаграмм приложения (ожидают выдачи приложению)
@@ -1612,7 +1874,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1649,7 +1910,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1672,8 +1932,15 @@ namespace awh {
 					// Количество октетов, отправленных удалённому эндпоинту
 					uint64_t sent;
 					/**
-					 * Флаг подтверждённого адреса удалённого эндпоинта. До подтверждения
-					 * сервер не вправе отправить более трёхкратного объёма принятого
+					 * \~russian
+					 * @brief Флаг подтверждённого адреса удалённого эндпоинта. До подтверждения
+					 *        сервер не вправе отправить более трёхкратного объёма принятого
+					 *
+					 * \~english
+					 * @brief Flag of the confirmed address of the remote endpoint. Before the confirmation
+					 *        the server has no right to send more than the threefold volume of the accepted
+					 *
+					 * \~
 					 */
 					bool validated;
 					/**
@@ -1684,6 +1951,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param endpoint role of the local endpoint on the connection
 					 *
 					 * \~
@@ -1709,7 +1977,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1739,9 +2006,17 @@ namespace awh {
 					// Битовые флаги настраиваемых опций соединения (пространство имён options в connection.cpp)
 					uint8_t options;
 					/**
-					 * Опаковое представление адреса удалённого эндпоинта. Слой соединения
-					 * работает без ввода-вывода и адреса не знает, поэтому его сообщает
-					 * вызывающий код: к нему привязывается токен проверки адреса (RFC 9000 §8.1.4)
+					 * \~russian
+					 * @brief Опаковое представление адреса удалённого эндпоинта. Слой соединения
+					 *        работает без ввода-вывода и адреса не знает, поэтому его сообщает
+					 *        вызывающий код: к нему привязывается токен проверки адреса (RFC 9000 §8.1.4)
+					 *
+					 * \~english
+					 * @brief Packable representation of the address of the remote endpoint. The connection layer
+					 *        works without input/output and does not know the address, therefore it is reported
+					 *        by the calling code: the address validation token is tied to it (RFC 9000 §8.1.4)
+					 *
+					 * \~
 					 */
 					string address;
 					/**
@@ -1752,6 +2027,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param endpoint role of the local endpoint on the connection
 					 *
 					 * \~
@@ -1775,7 +2051,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1806,7 +2081,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1829,52 +2103,104 @@ namespace awh {
 					// Очередь ретрансмиссии блоков данных потоков приложения
 					deque <chunk_t> retransmit;
 					/**
-					 * Идентификаторы потоков, готовых к выдаче данных приложению. Список
-					 * пополняется по месту изменения состояния приёма, а устаревшие записи
-					 * отсеиваются при чтении: обход всего списка потоков на каждый запрос
-					 * не окупается, а хранение набором стоило бы выделения памяти
-					 * на каждое изменение готовности
+					 * \~russian
+					 * @brief Идентификаторы потоков, готовых к выдаче данных приложению. Список
+					 *        пополняется по месту изменения состояния приёма, а устаревшие записи
+					 *        отсеиваются при чтении: обход всего списка потоков на каждый запрос
+					 *        не окупается, а хранение набором стоило бы выделения памяти
+					 *        на каждое изменение готовности.
+					 *
+					 * \~english
+					 * @brief Identifiers of the streams ready for issuing the data to the application. The list
+					 *        is refilled by the place of a change of the receiving state, and the outdated records
+					 *        are screened off on reading: a walk over the whole list of the streams for every
+					 *        request does not pay off, and a storage by a set would cost a memory allocation
+					 *        for every change of the readiness
+					 *
+					 * \~
 					 */
 					vector <uint64_t> readable;
 					/**
-					 * Идентификаторы потоков с ожидающими управляющими фреймами
-					 * (MAX_STREAM_DATA, RESET_STREAM, STOP_SENDING, STREAM_DATA_BLOCKED).
-					 * Список пополняется по месту постановки фрейма в очередь, а устаревшие
-					 * записи отсеиваются при обходе: обход всего списка потоков на каждый
-					 * пакет не окупается на множестве потоков - у отправителя данных
-					 * управляющих фреймов потоков нет вовсе, и список остаётся пустым
+					 * \~russian
+					 * @brief Идентификаторы потоков с ожидающими управляющими фреймами
+					 *        (MAX_STREAM_DATA, RESET_STREAM, STOP_SENDING, STREAM_DATA_BLOCKED).
+					 *        Список пополняется по месту постановки фрейма в очередь, а устаревшие
+					 *        записи отсеиваются при обходе: обход всего списка потоков на каждый
+					 *        пакет не окупается на множестве потоков - у отправителя данных
+					 *        управляющих фреймов потоков нет вовсе, и список остаётся пустым
+					 *
+					 * \~english
+					 * @brief Identifiers of the streams with the waiting control frames
+					 *        (MAX_STREAM_DATA, RESET_STREAM, STOP_SENDING, STREAM_DATA_BLOCKED).
+					 *        The list is refilled by the place of putting a frame into the queue, and the outdated
+					 *        records are screened off on a walk: a walk over the whole list of the streams for every
+					 *        packet does not pay off on a multitude of the streams - at a sender of the data
+					 *        the streams have no control frames at all, and the list stays empty
+					 *
+					 * \~
 					 */
 					vector <uint64_t> control;
 					/**
-					 * Идентификаторы потоков с данными к отправке, хранятся отсортированными.
-					 * Порядок значим - обход идёт круговым `lower_bound` по курсору, поэтому
-					 * набор упорядочен; вектор, а не set, чтобы вставка и удаление шли по
-					 * переиспользуемой ёмкости, не выделяя узел на каждую постановку потока
-					 * (методы `pending`/`dequeue`). Пополняется при постановке данных (send) и
-					 * разблокировке лимитом (MAX_STREAM_DATA), а устаревшие, слитые и
-					 * заблокированные записи отсеиваются по месту при обходе. Обход всего
-					 * списка потоков на каждый пакет не окупается: у соединения без передач пуст
+					 * \~russian
+					 * @brief Идентификаторы потоков с данными к отправке, хранятся отсортированными.
+					 *        Порядок значим - обход идёт круговым `lower_bound` по курсору, поэтому
+					 *        набор упорядочен; вектор, а не set, чтобы вставка и удаление шли по
+					 *        переиспользуемой ёмкости, не выделяя узел на каждую постановку потока
+					 *        (методы `pending`/`dequeue`). Пополняется при постановке данных (send) и
+					 *        разблокировке лимитом (MAX_STREAM_DATA), а устаревшие, слитые и
+					 *        заблокированные записи отсеиваются по месту при обходе. Обход всего
+					 *        списка потоков на каждый пакет не окупается: у соединения без передач пуст
+					 *
+					 * \~english
+					 * @brief Identifiers of the streams with the data for sending, stored sorted.
+					 *        The order matters - a walk goes by a circular `lower_bound` over the cursor, therefore the
+					 *        set is ordered; a vector, and not a set, so that an insertion and a removal went by
+					 *        a reusable capacity, not allocating a node for every putting of a stream
+					 *        (the `pending`/`dequeue` methods). Refilled when putting the data (send) and
+					 *        unblocking by a limit (MAX_STREAM_DATA), and the outdated, merged and
+					 *        blocked records are screened off by the place on a walk. A walk over the whole
+					 *        list of the streams for every packet does not pay off: at a connection without transfers it is empty
+					 *
+					 * \~
 					 */
 					vector <uint64_t> writable;
 					/**
-					 * Идентификаторы потоков, буфер отправки которых опустился ниже нижней
-					 * водяной метки после заполнения до верхней (сигнал writable). Список
-					 * пополняется по месту дренирования буфера и вычитывается методом
-					 * `drained()`: приложение, получившее частичный приём в send(), по этому
-					 * сигналу возобновляет выдачу данных потока. Пуст, пока backpressure
-					 * не срабатывал
+					 * \~russian
+					 * @brief Идентификаторы потоков, буфер отправки которых опустился ниже нижней
+					 *        водяной метки после заполнения до верхней (сигнал writable). Список
+					 *        пополняется по месту дренирования буфера и вычитывается методом
+					 *        `drained()`: приложение, получившее частичный приём в send(), по этому
+					 *        сигналу возобновляет выдачу данных потока. Пуст, пока backpressure
+					 *        не срабатывал
+					 *
+					 * \~english
+					 * @brief Identifiers of the streams, the send buffer of which fell below the lower
+					 *        high-water mark after a filling up to the upper (the writable signal). The list
+					 *        is refilled by the place of the draining of a buffer and read out by the
+					 *        `drained()` method: an application, having received a partial acceptance in send(), by this
+					 *        signal resumes the issuing of the stream data. Empty while the backpressure
+					 *        has not tripped
+					 *
+					 * \~
 					 */
 					vector <uint64_t> drained;
 					/**
-					 * Идентификатор потока, с которого начинается обход при упаковке данных.
-					 * Обеспечивает круговое обслуживание потоков: без него потоки с меньшими
-					 * идентификаторами занимали бы датаграмму целиком, а остальные простаивали
+					 * \~russian
+					 * @brief Идентификатор потока, с которого начинается обход при упаковке данных.
+					 *        Обеспечивает круговое обслуживание потоков: без него потоки с меньшими
+					 *        идентификаторами занимали бы датаграмму целиком, а остальные простаивали
+					 *
+					 * \~english
+					 * @brief Identifier of the stream from which a walk begins on packing the data.
+					 *        It provides a circular servicing of the streams: without it the streams with smaller
+					 *        identifiers would occupy a datagram entirely, and the rest would stand idle
+					 *
+					 * \~
 					 */
 					uint64_t cursor;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1902,22 +2228,38 @@ namespace awh {
 					// Токен проверки адреса, выданный сервером в пакете Retry
 					string retried;
 					/**
-					 * Токен проверки адреса фрейма NEW_TOKEN: у сервера - выданный на этом
-					 * соединении, у клиента - принятый от сервера и пригодный к предъявлению
-					 * в первом пакете следующего соединения (RFC 9000 §8.1.3)
+					 * \~russian
+					 * @brief Токен проверки адреса фрейма NEW_TOKEN: у сервера - выданный на этом
+					 *        соединении, у клиента - принятый от сервера и пригодный к предъявлению
+					 *        в первом пакете следующего соединения (RFC 9000 §8.1.3)
+					 *
+					 * \~english
+					 * @brief Token of the address validation of a NEW_TOKEN frame: at a server - the issued one on this
+					 *        connection, at a client - the accepted one from the server and fit for presenting
+					 *        in the first packet of the next connection (RFC 9000 §8.1.3)
+					 *
+					 * \~
 					 */
 					string address;
 					/**
-					 * Общий ключ вывода токенов сброса без сохранения состояния. Пока ключ
-					 * не задан, токены генерируются случайно: сброс без сохранения состояния
-					 * такому соединению недоступен, поскольку воспроизвести токен по одному
-					 * идентификатору невозможно (RFC 9000 §10.3.2)
+					 * \~russian
+					 * @brief Общий ключ вывода токенов сброса без сохранения состояния. Пока ключ
+					 *        не задан, токены генерируются случайно: сброс без сохранения состояния
+					 *        такому соединению недоступен, поскольку воспроизвести токен по одному
+					 *        идентификатору невозможно (RFC 9000 §10.3.2)
+					 *
+					 * \~english
+					 * @brief Shared key of the derivation of the stateless reset tokens. While the key
+					 *        is not set, the tokens are generated randomly: a stateless reset
+					 *        is unavailable for such a connection, since to reproduce a token by one
+					 *        identifier is impossible (RFC 9000 §10.3.2)
+					 *
+					 * \~
 					 */
 					string reset;
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1958,7 +2300,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1977,17 +2318,33 @@ namespace awh {
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Pmtu {
 					/**
-					 * Подтверждённый размер исходящей датаграммы. Начинается с размера,
-					 * который обязан пропускать любой путь, и наращивается зондированием
-					 * по мере подтверждения больших размеров
+					 * \~russian
+					 * @brief Подтверждённый размер исходящей датаграммы. Начинается с размера,
+					 *        который обязан пропускать любой путь, и наращивается зондированием
+					 *        по мере подтверждения больших размеров
+					 *
+					 * \~english
+					 * @brief Confirmed size of an outgoing datagram. Begins with a size
+					 *        which any path is obliged to let through, and grows by probing
+					 *        as the larger sizes are acknowledged
+					 *
+					 * \~
 					 */
 					size_t size;
 					// Верхняя граница поиска размера пути
 					size_t high;
 					/**
-					 * Верхняя граница поиска, заданная вызывающим кодом. Хранится отдельно
-					 * от рабочей границы: смена пути начинает поиск заново, и заданное
-					 * приложением ограничение обязано пережить её
+					 * \~russian
+					 * @brief Верхняя граница поиска, заданная вызывающим кодом. Хранится отдельно
+					 *        от рабочей границы: смена пути начинает поиск заново, и заданное
+					 *        приложением ограничение обязано пережить её
+					 *
+					 * \~english
+					 * @brief Upper bound of the search, set by the calling code. Stored separately
+					 *        from the working bound: a change of the path begins the search anew, and the set
+					 *        by the application limit is obliged to outlive it
+					 *
+					 * \~
 					 */
 					size_t limit;
 					// Размер отправляемого зонда размера пути (0 - зонд не собирается)
@@ -2001,7 +2358,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2025,9 +2381,17 @@ namespace awh {
 					// Флаг использования идентификатора в качестве DCID
 					bool used;
 					/**
-					 * Флаг наличия токена сброса без сохранения состояния. Идентификатор
-					 * хендшейка токена не имеет: он приходит только фреймом
-					 * NEW_CONNECTION_ID либо транспортным параметром (RFC 9000 §10.3.1)
+					 * \~russian
+					 * @brief Флаг наличия токена сброса без сохранения состояния. Идентификатор
+					 *        хендшейка токена не имеет: он приходит только фреймом
+					 *        NEW_CONNECTION_ID либо транспортным параметром (RFC 9000 §10.3.1)
+					 *
+					 * \~english
+					 * @brief Flag of the presence of a stateless reset token. A handshake identifier
+					 *        has no token: it comes only by a NEW_CONNECTION_ID frame
+					 *        or a transport parameter (RFC 9000 §10.3.1)
+					 *
+					 * \~
 					 */
 					bool hasToken;
 					// Идентификатор соединения
@@ -2037,7 +2401,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2080,7 +2443,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2105,7 +2467,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2139,6 +2500,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param endpoint role of the local endpoint on the connection
 					 * @param ctx      identifier of the template of the context of the safety
 					 *
@@ -2161,10 +2523,19 @@ namespace awh {
 				// Состояние контроля перегрузки (RFC 9002 §7)
 				congestion_t _congestion;
 				/**
-				 * Переиспользуемый буфер времён отправки пакетов, подтверждённых текущим
-				 * фреймом ACK: передаётся в детект потерь для разрыва периода устойчивой
-				 * перегрузки. Хранится членом, а не локальной переменной, чтобы обработка
-				 * каждого фрейма ACK в горячем пути не выделяла память заново (RFC 9002 §7.6)
+				 * \~russian
+				 * @brief Переиспользуемый буфер времён отправки пакетов, подтверждённых текущим
+				 *        фреймом ACK: передаётся в детект потерь для разрыва периода устойчивой
+				 *        перегрузки. Хранится членом, а не локальной переменной, чтобы обработка
+				 *        каждого фрейма ACK в горячем пути не выделяла память заново (RFC 9002 §7.6)
+				 *
+				 * \~english
+				 * @brief Reusable buffer of the sending times of the packets acknowledged by the current
+				 *        ACK frame: passed into the loss detection for the breaking of the period of the persistent
+				 *        congestion. Stored as a member, and not a local variable, so that the processing
+				 *        of every ACK frame in a hot path did not allocate memory anew (RFC 9002 §7.6)
+				 *
+				 * \~
 				 */
 				vector <uint64_t> _ackedTimes;
 			private:
@@ -2215,39 +2586,81 @@ namespace awh {
 				flow_t _flow;
 			private:
 				/**
-				 * Пул переиспользуемых учётных записей отправленных пакетов. На каждую
-				 * датаграмму запись создаётся и на подтверждении уничтожается; хранение
-				 * освобождённых записей с сохранённой ёмкостью их векторов снимает
-				 * выделение буфера блоков на каждый пакет (по образцу objpool ngtcp2)
+				 * \~russian
+				 * @brief Пул переиспользуемых учётных записей отправленных пакетов. На каждую
+				 *        датаграмму запись создаётся и на подтверждении уничтожается; хранение
+				 *        освобождённых записей с сохранённой ёмкостью их векторов снимает
+				 *        выделение буфера блоков на каждый пакет (по образцу objpool ngtcp2)
+				 *
+				 * \~english
+				 * @brief Pool of the reusable account records of the sent packets. For every
+				 *        datagram a record is created and on the acknowledgment destroyed; a storage of
+				 *        the released records with the kept capacity of their vectors removes
+				 *        an allocation of the blocks buffer for every packet (by the objpool ngtcp2 pattern)
+				 *
+				 * \~
 				 */
 				vector <sent_t> _sentPool;
 			private:
 				/**
-				 * Пул переиспользуемых блоков сегментированных приёмных буферов потоков.
-				 * Собранные данные каждого потока копятся до выдачи приложению цепочкой
-				 * блоков фиксированного размера; при сливе блоки возвращаются сюда и
-				 * переиспользуются другими потоками, поэтому рост приёмных буферов не
-				 * порождает перевыделений с копированием (churn роста непрерывной строки)
+				 * \~russian
+				 * @brief Пул переиспользуемых блоков сегментированных приёмных буферов потоков.
+				 *        Собранные данные каждого потока копятся до выдачи приложению цепочкой
+				 *        блоков фиксированного размера; при сливе блоки возвращаются сюда и
+				 *        переиспользуются другими потоками, поэтому рост приёмных буферов не
+				 *        порождает перевыделений с копированием (churn роста непрерывной строки)
+				 *
+				 * \~english
+				 * @brief Pool of the reusable blocks of the segmented receiving buffers of the streams.
+				 *        The assembled data of every stream accumulates before issuing to the application by a chain
+				 *        of blocks of a fixed size; on a merge the blocks return here and
+				 *        are reused by other streams, therefore a growth of the receiving buffers does not
+				 *        produce reallocations with copying (a churn of the growth of a continuous string)
+				 *
+				 * \~
 				 */
 				vector <string> _blockPool;
 			private:
 				/**
-				 * Верхняя водяная метка буфера отправки одного потока в октетах (backpressure).
-				 * send() принимает данные лишь до этого объёма несобранного буфера, возвращая
-				 * число принятых байт (частичный приём); остаток дописывает приложение. По
-				 * умолчанию ноль - ограничение снято (буфер растёт по мере поступления), что
-				 * повторяет прежнее поведение движка. Ненулевая метка включает backpressure и
-				 * ограничивает удержание памяти; на синтетических стендах с RTT≈0 меньшая метка
-				 * резко снижает удержание без потери пропускной способности. Ставится sendWaterMarks()
+				 * \~russian
+				 * @brief Верхняя водяная метка буфера отправки одного потока в октетах (backpressure).
+				 *        send() принимает данные лишь до этого объёма несобранного буфера, возвращая
+				 *        число принятых байт (частичный приём); остаток дописывает приложение. По
+				 *        умолчанию ноль - ограничение снято (буфер растёт по мере поступления), что
+				 *        повторяет прежнее поведение движка. Ненулевая метка включает backpressure и
+				 *        ограничивает удержание памяти; на синтетических стендах с RTT≈0 меньшая метка
+				 *        резко снижает удержание без потери пропускной способности. Ставится sendWaterMarks()
+				 *
+				 * \~english
+				 * @brief High-water mark of the send buffer of one stream in octets (backpressure).
+				 *        send() accepts the data only up to this volume of an unpicked buffer, returning
+				 *        the number of the accepted bytes (a partial acceptance); the remainder appends the application. By
+				 *        default zero - the limit is removed (the buffer grows as it arrives), which
+				 *        repeats the former behaviour of the engine. A non-zero mark turns on the backpressure and
+				 *        limits the memory holding; on the synthetic stands with RTT≈0 a smaller mark
+				 *        sharply reduces the holding without a loss of the throughput. Set by sendWaterMarks()
+				 *
+				 * \~
 				 */
 				size_t _sendHigh = 0;
 				/**
-				 * Нижняя водяная метка буфера отправки одного потока в октетах. Когда после
-				 * заполнения до верхней метки буфер дренируется ниже нижней, поток попадает в
-				 * список `drained` (сигнал writable приложению - можно досылать). По умолчанию
-				 * ноль (как и верхняя метка - backpressure выключен); при включении разумно брать
-				 * около половины верхней метки, чтобы приложение возобновляло выдачу, не дожидаясь
-				 * полного опустошения буфера. Ставится sendWaterMarks()
+				 * \~russian
+				 * @brief Нижняя водяная метка буфера отправки одного потока в октетах. Когда после
+				 *        заполнения до верхней метки буфер дренируется ниже нижней, поток попадает в
+				 *        список `drained` (сигнал writable приложению - можно досылать). По умолчанию
+				 *        ноль (как и верхняя метка - backpressure выключен); при включении разумно брать
+				 *        около половины верхней метки, чтобы приложение возобновляло выдачу, не дожидаясь
+				 *        полного опустошения буфера. Ставится sendWaterMarks()
+				 *
+				 * \~english
+				 * @brief Low-water mark of the send buffer of one stream in octets. When after
+				 *        a filling up to the upper mark the buffer is drained below the lower one, the stream gets into
+				 *        the `drained` list (the writable signal to the application - one can send more). By default
+				 *        zero (as well as the upper mark - the backpressure is off); on turning on it is reasonable to take
+				 *        about a half of the upper mark, so that the application resumed the issuing
+				 *        without waiting for a complete emptying of the buffer. Set by sendWaterMarks()
+				 *
+				 * \~
 				 */
 				size_t _sendLow = 0;
 			private:
@@ -2260,6 +2673,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the determination of the space of the numbers of the packets by the level of the encryption
+				 *
 				 * @param level level of the encryption
 				 * @return      space of the numbers of the packets
 				 *
@@ -2275,6 +2689,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the registration of an accepted number of a packet in the ranges of the space
+				 *
 				 * @param space space of the numbers of the packets
 				 * @param pn    accepted number of the packet
 				 *
@@ -2291,6 +2706,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking a repeated acceptance of a number of a packet
+				 *
 				 * @param space space of the numbers of the packets
 				 * @param pn    accepted number of the packet
 				 * @return      result of the checking (true - the packet has already been accepted)
@@ -2317,6 +2733,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of a completion of the connection with an error of the transport into the queue
+				 *
 				 * @param error error code of the transport
 				 *
 				 * \~
@@ -2331,6 +2748,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reset of the keys of a level together with the state of the recovery of the losses (RFC 9001 §4.9)
+				 *
 				 * @param level level of the encryption
 				 *
 				 * \~
@@ -2345,6 +2763,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the updating of the estimation of the delay of the reception-transmission (RFC 9002 §5.3)
+				 *
 				 * @param sample measured delay of the reception-transmission
 				 * @param delay  delay of the acknowledgement of the remote endpoint
 				 *
@@ -2359,6 +2778,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a reused account record of a packet from the pool
+				 *
 				 * @return account record with the cleared fields and the preserved capacity of the vectors
 				 *
 				 * \~
@@ -2372,6 +2792,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the return of an account record of a packet into the pool for a reuse
+				 *
 				 * @param record account record of the sent packet being released
 				 *
 				 * \~
@@ -2386,6 +2807,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of a repeated putting of the content of a packet into the queues of the sending (RFC 9002 §6.3)
+				 *
 				 * @param space  space of the numbers of the packets
 				 * @param packet account record of the lost or of the probed packet
 				 *
@@ -2404,9 +2826,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the account of the acknowledgement of a sent block of the data of a stream (RFC 9000 §13.3)
+				 *
 				 * @note It advances the continuously acknowledged prefix of the buffer of the sending of the stream,
 				 *       allowing the compaction to free the acknowledged data. The data held
 				 *       until the acknowledgement is reread from the buffer at a retransmission
+				 *
 				 * @param chunk sent block of the data of the stream from the account record of the packet
 				 *
 				 * \~
@@ -2424,9 +2848,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of a stream into the list of those awaiting the control frames
+				 *
 				 * @note A stream is added into the list not more than once (the flag `controlPending`),
 				 *       so that the traversal of the control frames would go by a short list rather than by the whole
 				 *       list of the streams. It is called at the place of the putting of a control frame into the queue
+				 *
 				 * @param sid identifier of the stream
 				 *
 				 * \~
@@ -2440,6 +2866,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of a stream into the collection of the streams with the data for the sending
+				 *
 				 * @param sid identifier of the stream
 				 *
 				 * \~
@@ -2453,6 +2880,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the removal of a stream from the collection of the streams with the data for the sending
+				 *
 				 * @param sid identifier of the stream
 				 *
 				 * \~
@@ -2473,9 +2901,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the path for the support of ECN by the counters of the acknowledgement (RFC 9000 §13.4.2.1)
+				 *
 				 * @note A not passed check removes the marking from the outgoing datagrams
 				 *       until a change of the path: the counters of the congestion have become unreliable, and
 				 *       to react to them by a reduction of the window is impossible
+				 *
 				 * @param space  space of the numbers of the packets
 				 * @param frame  parsed frame of the acknowledgement with the counters of the markings
 				 * @param marked number of the first-time acknowledged marked packets
@@ -2496,6 +2926,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the return of the content of the sent early data into the queues of the sending (RFC 9001 §4.6.2)
+				 *
 				 * @note It is called at a refusal of the remote node in the early data: the sent
 				 *       early packets have not been parsed by the remote node and will never be
 				 *       acknowledged, therefore their content is returned into the queues of the sending
@@ -2515,6 +2946,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the advancement of the search of the size of the path (RFC 8899 §5.3)
+				 *
 				 * @note The search is conducted by a division of the interval between the confirmed size
 				 *       and the upper boundary: a confirmed probe raises the lower
 				 *       boundary, a lost one lowers the upper
@@ -2533,6 +2965,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the account of a loss of a full-size datagram for the detection of a black hole of the path (RFC 8899 §5.4)
+				 *
 				 * @note It grows the counter of the consecutively lost datagrams above the base
 				 *       size. At the exhaustion of the limit of the trials the confirmed size of the path
 				 *       is lowered to the obligatory minimum, while the search begins anew:
@@ -2550,17 +2983,19 @@ namespace awh {
 				 *
 				 * @param space      пространство номеров пакетов
 				 * @param ackedTimes времена отправки пакетов, подтверждённых текущим фреймом
-				 *                    ACK (по возрастанию), для разрыва периода устойчивой
-				 *                    перегрузки на подтверждении внутри серии потерь
+				 *                   ACK (по возрастанию), для разрыва периода устойчивой
+				 *                   перегрузки на подтверждении внутри серии потерь
 				 *
 				 * \~english
 				 * @brief Method of the detection of the lost packets of a space (RFC 9002 §6.1)
+				 *
 				 * @note The lost CRYPTO data and the frame HANDSHAKE_DONE are put
 				 *       into the queue of the retransmission
+				 *
 				 * @param space      space of the numbers of the packets
 				 * @param ackedTimes times of the sending of the packets acknowledged by the current frame
-				 *                    ACK (in an ascending order), for a break of the period of a persistent
-				 *                    congestion at an acknowledgement inside a series of the losses
+				 *                   ACK (in an ascending order), for a break of the period of a persistent
+				 *                   congestion at an acknowledgement inside a series of the losses
 				 *
 				 * \~
 				 */
@@ -2573,6 +3008,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of the probing data of a space into the queue (RFC 9002 §6.2.4)
+				 *
 				 * @param space space of the numbers of the packets
 				 *
 				 * \~
@@ -2583,12 +3019,13 @@ namespace awh {
 				 * @brief Метод вычисления интервала таймера PTO (RFC 9002 §6.2.1)
 				 *
 				 * @param space пространство номеров пакетов
-				 * @return     интервал таймера PTO в миллисекундах
+				 * @return      интервал таймера PTO в миллисекундах
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the interval of the timer PTO (RFC 9002 §6.2.1)
+				 *
 				 * @param space space of the numbers of the packets
-				 * @return     interval of the timer PTO in milliseconds
+				 * @return      interval of the timer PTO in milliseconds
 				 *
 				 * \~
 				 */
@@ -2602,6 +3039,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the deadline of the timer PTO of a space (RFC 9002 §6.2.1)
+				 *
 				 * @param space space of the numbers of the packets
 				 * @return      deadline of the timer PTO in milliseconds (0 - the timer is not raised)
 				 *
@@ -2616,6 +3054,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the duration of the period of a persistent congestion (RFC 9002 §7.6.1)
+				 *
 				 * @return duration of the period of the persistent congestion in milliseconds
 				 *
 				 * \~
@@ -2629,6 +3068,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the deadline of the timeout of the idleness of the connection (RFC 9000 §10.1)
+				 *
 				 * @return deadline of the timeout of the idleness in milliseconds (0 - the timeout is not agreed)
 				 *
 				 * \~
@@ -2643,6 +3083,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the account of the data of a stream as consumed in the flow control of the connection
+				 *
 				 * @param stream state of the stream
 				 * @param target accounted displacement of the data of the stream in octets
 				 *
@@ -2663,9 +3104,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the detection of a stateless reset (RFC 9000 §10.3.1)
+				 *
 				 * @note A reset is recognized by a coincidence of the last 16 octets of a datagram
 				 *       with one of the tokens obtained from the remote endpoint for
 				 *       the used identifiers of the connection
+				 *
 				 * @param data buffer of the accepted datagram
 				 * @param size size of the accepted datagram
 				 * @return     result of the detection (true - the datagram is a reset)
@@ -2685,9 +3128,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the forming of the key of the server for the cache of the tickets of the resumption (RFC 9001 §4.6)
+				 *
 				 * @note The key is the domain name of the server (SNI) of the template of the context
 				 *       of the safety, while at its absence - an opaque representation
 				 *       of the address of the remote endpoint
+				 *
 				 * @return key of the server for the cache of the tickets of the resumption
 				 *
 				 * \~
@@ -2703,6 +3148,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the preservation of an obtained ticket of the resumption into the cache of the coder (RFC 9001 §4.6)
+				 *
 				 * @note The ticket is sent by the server already after the establishment of the connection;
 				 *       the preservation is performed once and makes the resumption of the session
 				 *       transparent for the calling code
@@ -2725,9 +3171,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the forming of a token of the checking of the address of a client (RFC 9000 §8.1.4)
+				 *
 				 * @note The token contains a time mark and the source DCID certified by a code
 				 *       of the authenticity from the address of the client: the checking is performed without
 				 *       a storing of a state on the side of the server
+				 *
 				 * @param mark   mark of the format of the token (issued by a Retry packet or by a NEW_TOKEN frame)
 				 * @param odcid  source DCID of the first Initial packet of the client (empty for a NEW_TOKEN frame)
 				 * @param output formed token of the checking of the address
@@ -2747,6 +3195,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the checking of a token of the checking of the address of a client (RFC 9000 §8.1.4)
+				 *
 				 * @param token   accepted token of the checking of the address
 				 * @param odcid   restored source DCID of the first Initial packet of the client
 				 * @param retried flag of the issue of the token by a Retry packet rather than by a NEW_TOKEN frame
@@ -2766,8 +3215,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the volume of the data available for the sending (RFC 9000 §8.1)
+				 *
 				 * @note Before the confirmation of the address of the remote endpoint a server is not entitled
 				 *       to send more than a threefold volume of the octets accepted from it
+				 *
 				 * @return volume of the data available for the sending in octets
 				 *
 				 * \~
@@ -2785,9 +3236,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the impossibility of a sending under the limit of the anti-amplification (RFC 9002 §6.2.2.1)
+				 *
 				 * @note A remainder of the limit smaller than the smallest size of a protected packet
 				 *       prohibits the sending not less reliably than an entirely exhausted one:
 				 *       not a single packet fits into it
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -2803,6 +3256,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the removal of the completed streams of the application
+				 *
 				 * @note A stream is removed only when both the sides have reached a terminal
 				 *       state and neither the queue of the retransmission nor the account
 				 *       records of the unacknowledged packets refer to it
@@ -2820,6 +3274,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the derivation of the keys of the next phase of the level of the application (RFC 9001 §6)
+				 *
 				 * @note It is called after the confirmation of the handshake - the keys of the next
 				 *       phase are derived beforehand for the acceptance of an update from the peer
 				 *
@@ -2835,6 +3290,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the switching to the next phase of the keys of the level of the application (RFC 9001 §6)
+				 *
 				 * @note The current keys of the reading are preserved for the belated packets
 				 *       of the previous phase, the keys of the new next phase are derived
 				 *
@@ -2850,6 +3306,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the account of an acknowledged packet in the congestion control (RFC 9002 §7.3.1)
+				 *
 				 * @param packet account record of the acknowledged packet
 				 *
 				 * \~
@@ -2863,6 +3320,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of an event of a congestion at the detection of the losses (RFC 9002 §7.3.2)
+				 *
 				 * @param time time of the sending of the latest lost packet
 				 *
 				 * \~
@@ -2878,6 +3336,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the issue of the additional identifiers of the connection (RFC 9000 §5.1.1)
+				 *
 				 * @note It is called after the establishment of the connection - the number
 				 *       is limited by the limit active_connection_id_limit of the remote endpoint
 				 *
@@ -2897,9 +3356,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the attachment of an identifier to the preferred address (RFC 9000 §5.1.1)
+				 *
 				 * @note The identifier with the ordinal number 1 is issued by the server together with
 				 *       the preferred address and is intended for the moving onto it.
 				 *       Occupied by the other needs, it makes the moving impossible
+				 *
 				 * @param seq ordinal number of the identifier of the connection
 				 * @return    result of the checking
 				 *
@@ -2916,6 +3377,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the possibility of a sending of the data into a stream by the local endpoint
+				 *
 				 * @param sid identifier of the stream
 				 * @return    result of the checking (true - the sending is admissible)
 				 *
@@ -2931,6 +3393,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the possibility of an acceptance of the data of a stream by the local endpoint
+				 *
 				 * @param sid identifier of the stream
 				 * @return    result of the checking (true - the acceptance is admissible)
 				 *
@@ -2946,6 +3409,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the initial limit of the acceptance of a stream from the local parameters
+				 *
 				 * @param sid identifier of the stream
 				 * @return    initial limit of the acceptance of the stream in octets
 				 *
@@ -2961,6 +3425,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the initial limit of the sending of a stream from the parameters of the remote endpoint
+				 *
 				 * @param sid identifier of the stream
 				 * @return    initial limit of the sending of the stream in octets
 				 *
@@ -2980,8 +3445,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search or of the creation of a stream by an accepted frame (RFC 9000 §3.2)
+				 *
 				 * @note It checks the admissibility of the identifier and the limits of the streams;
 				 *       a stream of the remote endpoint is created implicitly
+				 *
 				 * @param sid   identifier of the stream
 				 * @param error error code of the transport
 				 * @return      state of the stream (a nullptr - a violation of the protocol)
@@ -3005,12 +3472,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the closedness of a stream (RFC 9000 §3.2)
+				 *
 				 * @note A stream is closed, if it has been opened (locally or by the remote
 				 *       endpoint, including implicitly) but is absent from the list of the streams -
 				 *       collected by the collector. The frames of such a stream are a retransmission
 				 *       of an already completed stream and are obliged to be ignored rather than to resurrect
 				 *       the stream anew (an ngtcp2-like model through an eager materialization
 				 *       of the implicitly opened streams in accept())
+				 *
 				 * @param sid identifier of the stream
 				 * @return    result of the checking (true - the stream has been opened and is already collected)
 				 *
@@ -3026,6 +3495,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of an accepted STREAM frame (RFC 9000 §19.8)
+				 *
 				 * @param frame accepted frame of the data of a stream of the application
 				 * @return      result of the processing (OK/ERROR)
 				 *
@@ -3040,6 +3510,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the application of the transport parameters of the remote endpoint after the handshake
+				 *
 				 * @return result of the application (true - the parameters are applied)
 				 *
 				 * \~
@@ -3054,6 +3525,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the account of the completion of a stream of the remote endpoint in the limit MAX_STREAMS
+				 *
 				 * @param sid    identifier of the stream
 				 * @param stream state of the stream
 				 *
@@ -3069,6 +3541,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the readiness of a stream for the issue of the data to the application
+				 *
 				 * @param stream state of the stream
 				 * @return       result of the checking (true - there is something to issue to the application)
 				 *
@@ -3088,9 +3561,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of a stream into the list of those ready for the issue
+				 *
 				 * @note It is called at the places where a readiness of a stream may appear.
 				 *       A loss of the readiness does not require a separate processing: the outdated
 				 *       records are sifted out at the reading of the list
+				 *
 				 * @param sid    identifier of the stream
 				 * @param stream state of the stream
 				 *
@@ -3109,6 +3584,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of the incoming CRYPTO data with an assembly by the displacements
+				 *
 				 * @param level  level of the encryption of the packet with the CRYPTO frame
 				 * @param offset displacement of the data in the stream of the cryptographic handshake
 				 * @param data   data of the CRYPTO frame
@@ -3121,19 +3597,20 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод разбора и диспетчеризации фреймов расшифрованной нагрузки пакета
 				 *
-				 * @param level       уровень шифрования пакета
-				 * @param data        буфер расшифрованной нагрузки
-				 * @param size        размер расшифрованной нагрузки
-				 * @param nonProbing  признак наличия непробирующего фрейма (RFC 9000 §9.1)
-				 * @return            результат разбора (OK/ERROR)
+				 * @param level      уровень шифрования пакета
+				 * @param data       буфер расшифрованной нагрузки
+				 * @param size       размер расшифрованной нагрузки
+				 * @param nonProbing признак наличия непробирующего фрейма (RFC 9000 §9.1)
+				 * @return           результат разбора (OK/ERROR)
 				 *
 				 * \~english
 				 * @brief Method of the parsing and of the dispatching of the frames of the decrypted payload of a packet
-				 * @param level       level of the encryption of the packet
-				 * @param data        buffer of the decrypted payload
-				 * @param size        size of the decrypted payload
-				 * @param nonProbing  flag of the presence of a non-probing frame (RFC 9000 §9.1)
-				 * @return            result of the parsing (OK/ERROR)
+				 *
+				 * @param level      level of the encryption of the packet
+				 * @param data       buffer of the decrypted payload
+				 * @param size       size of the decrypted payload
+				 * @param nonProbing flag of the presence of a non-probing frame (RFC 9000 §9.1)
+				 * @return           result of the parsing (OK/ERROR)
 				 *
 				 * \~
 				 */
@@ -3153,6 +3630,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembly of the payload of the next packet of a level of the encryption
+				 *
 				 * @param level   level of the encryption of the packet
 				 * @param budget  octets available in the datagram for the payload
 				 * @param output  assembled payload of the packet (the frames)
@@ -3176,6 +3654,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the calculation of the size of the header of a packet of a level of the encryption
+				 *
 				 * @param level  level of the encryption of the packet
 				 * @param length value of the field Length (the number of the packet + the payload + the tag AEAD)
 				 * @param pnSize size of the encoding of the number of the packet in octets
@@ -3197,6 +3676,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembly and of the protection of a packet of a level of the encryption (the header + the payload)
+				 *
 				 * @param output  output buffer of the datagram (the packet is appended)
 				 * @param level   level of the encryption of the packet
 				 * @param payload payload of the packet (the frames)
@@ -3218,8 +3698,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the agreed ALPN protocol
+				 *
 				 * @note The list of the supported protocols is set at the context of the coder
 				 *       of the transport safety out of which the connection is created
+				 *
 				 * @return agreed ALPN protocol (an empty name - the agreement is not performed)
 				 *
 				 * \~
@@ -3239,10 +3721,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the resumable session of the connection (RFC 9001 §4.6)
+				 *
 				 * @note The session becomes accessible after the acceptance of a ticket of the resumption
 				 *       which the server sends already after the establishment of the connection.
 				 *       Having preserved it, the calling code resumes a connection with the same
 				 *       server without performing a full handshake
+				 *
 				 * @return serialized session (empty - the session is inaccessible)
 				 *
 				 * \~
@@ -3259,7 +3743,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the resumable session of the connection (RFC 9001 §4.6)
+				 *
 				 * @note It is set before the beginning of the connection and only at a client
+				 *
 				 * @param session serialized session
 				 * @return        result of the setting
 				 *
@@ -3274,6 +3760,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the acceptance of the early data by the remote node (RFC 9001 §4.6.2)
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -3291,9 +3778,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the readiness of the connection for the sending of the data of the application
+				 *
 				 * @note The readiness comes also before the completion of the handshake, if the session
 				 *       is resumed: the calling code needs this in order to put
 				 *       the early data into the queue in time (RFC 9001 §4.6)
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -3317,6 +3806,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the water marks of the buffer of the sending of a single stream (a backpressure)
+				 *
 				 * @note The upper mark limits the volume of the unassembled data accepted into
 				 *       the queue of a single stream: above it send() accepts the data only partially
 				 *       (it returns the number of the accepted octets), the remainder is appended by the application. To buffer more
@@ -3325,6 +3815,7 @@ namespace awh {
 				 *       When the buffer, having reached the upper mark, drains below the lower one, the stream
 				 *       gets into the list drained() - a signal to the application to resume the issue.
 				 *       An upper mark of zero removes the limitation (the buffer grows as the data arrives)
+				 *
 				 * @param high upper water mark (the capacity of the buffer of the sending of the stream)
 				 * @param low  lower water mark (the threshold of the signal of the resumption writable)
 				 *
@@ -3345,10 +3836,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the registration of a discarded packet
+				 *
 				 * @note The discarding of the packets is a regular part of the work of the protocol: onto the port
 				 *       of a connection both a foreign traffic and the outdated packets
 				 *       and the forgeries arrive. Therefore the diagnostics is conducted only at an assembly with
 				 *       a debugging, otherwise the stream of the messages would clog the log
+				 *
 				 * @param reason reason of the discarding of the packet
 				 *
 				 * \~
@@ -3366,8 +3859,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local transport parameters (RFC 9000 §7.4)
+				 *
 				 * @note The identifiers of the connection (initial_source_connection_id and
 				 *       original_destination_connection_id) are filled in automatically
+				 *
 				 * @param params local transport parameters
 				 *
 				 * \~
@@ -3383,6 +3878,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the transport parameters of the remote node (RFC 9000 §7.4)
+				 *
 				 * @param params transport parameters of the remote node
 				 * @param error  error code of the transport
 				 * @return       result of the extraction (OK/INCOMPLETE/ERROR)
@@ -3407,12 +3903,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the remote endpoint (RFC 9000 §8.1.4)
+				 *
 				 * @note The address is set by the regular structure of a network address of the framework
 				 *       net::addr_t (as the DNS and all the network units issue it) together with
 				 *       the port of the endpoint; out of them an opaque comparable
 				 *       representation of the path is formed. To it the token of the checking of the address
 				 *       of a Retry packet is attached: without the address the token remains suitable for a repetition from
 				 *       a foreign address
+				 *
 				 * @param addr structure of the network address of the remote endpoint
 				 * @param port port of the remote endpoint
 				 *
@@ -3432,10 +3930,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the remote endpoint (RFC 9000 §8.1.4)
+				 *
 				 * @note The address and the port are set by a single regular structure of the attributes
 				 *       of a connection net::attr_t (as the network units issue it); out of
 				 *       the network address and the port an opaque comparable
 				 *       representation of the path is formed
+				 *
 				 * @param attr structure of the attributes of the connection of the remote endpoint
 				 *
 				 * \~
@@ -3453,9 +3953,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the checking of the address of a client through a Retry packet (RFC 9000 §8.1.2)
+				 *
 				 * @note It is called by a server before the acceptance of the first datagram: the first
 				 *       Initial packet without a token gets in an answer a Retry packet with a token,
 				 *       the connection continues only with a correct token
+				 *
 				 * @param mode mode of the checking of the address of the client
 				 *
 				 * \~
@@ -3473,9 +3975,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the token of the checking of the address for the first packet (RFC 9000 §8.1.3)
+				 *
 				 * @note It is called by a client before the beginning of the connection. The token is issued by the server
 				 *       by a NEW_TOKEN frame on the past connection and allows to skip
 				 *       the exchange by a Retry packet, saving a round of the delay
+				 *
 				 * @param token token of the checking of the address
 				 *
 				 * \~
@@ -3494,10 +3998,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the common key of the derivation of the tokens of a reset (RFC 9000 §10.3.2)
+				 *
 				 * @note It is called before the beginning of the connection. The tokens of the issued identifiers
 				 *       are derived from the key, therefore they are reproduced also after a loss of
 				 *       the state of the connection - on this exactly a stateless reset
 				 *       holds
+				 *
 				 * @param key common key of the derivation of the tokens of a reset
 				 *
 				 * \~
@@ -3514,8 +4020,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the token of the checking of the address for the future connections (RFC 9000 §8.1.3)
+				 *
 				 * @note The token is sent by the server by a NEW_TOKEN frame already after
 				 *       the establishment of the connection, therefore it is requested in the course of the work
+				 *
 				 * @return token of the checking of the address (empty - the token has not been sent)
 				 *
 				 * \~
@@ -3533,9 +4041,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the marking of the outgoing datagrams by the support of ECN (RFC 9000 §13.4)
+				 *
 				 * @note The marking is imposed by the calling code onto the header of the IP packet,
 				 *       the connection only conducts the checking of the path and reports which marking
 				 *       to impose further - see marking()
+				 *
 				 * @param mode mode of the marking of the outgoing datagrams
 				 *
 				 * \~
@@ -3557,6 +4067,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the mode of the following of the migration of the remote endpoint (RFC 9000 §9)
+				 *
 				 * @note It controls the reaction to a change of the address of the remote endpoint: in the
 				 *       enabled mode (by default) the connection follows the peer onto a
 				 *       new address at the acceptance from it of an authenticated non-probing
@@ -3564,6 +4075,7 @@ namespace awh {
 				 *       In the disabled mode there is no reaction, which corresponds to the strict model
 				 *       of §9 where the migration is tracked only by a server: a client should then
 				 *       disable it, while at a server it should be left enabled
+				 *
 				 * @param mode mode of the following of the migration of the remote endpoint
 				 *
 				 * \~
@@ -3581,9 +4093,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the marking for the outgoing datagrams (RFC 9000 §13.4.2)
+				 *
 				 * @note The value changes in the course of the connection: a not passed check of the path
 				 *       removes the marking, while a change of the path begins the checking anew.
 				 *       It is requested before the sending of every datagram
+				 *
 				 * @return marking ECN for the outgoing datagrams
 				 *
 				 * \~
@@ -3602,9 +4116,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the beginning of a connection by a client
+				 *
 				 * @note It generates the random identifiers of the connection, derives the keys
 				 *       Initial and forms a ClientHello - the first datagram will be
 				 *       accessible through write()
+				 *
 				 * @return result of the beginning of the connection (OK/ERROR)
 				 *
 				 * \~
@@ -3626,9 +4142,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of an incoming UDP datagram
+				 *
 				 * @note A datagram may contain several coalesced packets.
 				 *       A server is initialized by the first Initial packet of a client.
 				 *       The packets which it is impossible to decrypt are discarded
+				 *
 				 * @param data buffer of the incoming UDP datagram
 				 * @param size size of the incoming UDP datagram
 				 * @param now  current time in milliseconds
@@ -3654,10 +4172,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of an incoming datagram with a marking ECN (RFC 9000 §13.4)
+				 *
 				 * @note The marking is taken from the header of the IP packet and is reported by the calling
 				 *       code: the connection has no network level. The counters of the markings
 				 *       are returned to the peer by an echo in an ACK_ECN frame, by their increment it judges
 				 *       about the congestion of the path without waiting for the losses
+				 *
 				 * @param data data of the datagram
 				 * @param size size of the datagram
 				 * @param now  current time in milliseconds
@@ -3681,9 +4201,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assembly of an outgoing UDP datagram
+				 *
 				 * @note It assembles the packets of the accessible levels of the encryption with a coalescence.
 				 *       A datagram with an Initial packet is supplemented up to 1200 octets
 				 *       (RFC 9000 §14.1). It is called cyclically until an empty result
+				 *
 				 * @param output buffer of the outgoing UDP datagram (is cleared)
 				 * @param now    current time in milliseconds
 				 * @return       result of the assembly (true - the datagram is ready for the sending)
@@ -3703,8 +4225,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the deadline of the nearest event of the timer (RFC 9002 §6)
+				 *
 				 * @note The calling code raises a timer to the obtained time and at its
 				 *       expiration calls tick(), then sends the datagrams write()
+				 *
 				 * @return deadline of the nearest event in milliseconds (0 - a timer is not required)
 				 *
 				 * \~
@@ -3721,8 +4245,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the processing of the expired timers (RFC 9002 §6.2)
+				 *
 				 * @note By the timer of the detection of the losses the detection and the retransmission are performed,
 				 *       by the timer PTO - the putting of the probing data into the queue
+				 *
 				 * @param now current time in milliseconds
 				 *
 				 * \~
@@ -3751,8 +4277,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the opening of a new stream of the application (RFC 9000 §2.1)
+				 *
 				 * @note It is accessible after the establishment of the connection; the limit of the remote
 				 *       endpoint (MAX_STREAMS) is checked automatically
+				 *
 				 * @param unidirectional flag of a unidirectional stream
 				 * @return               identifier of the stream (INVALID_STREAM - the opening is impossible)
 				 *
@@ -3778,6 +4306,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of the data of a stream into the queue of the sending (RFC 9000 §2.2)
+				 *
 				 * @note The data is copied into the internal buffer of the stream and is packed into the STREAM
 				 *       frames with the account of the flow control at the assembly of the datagrams write(). As many
 				 *       octets are accepted as fit up to the upper water mark (a partial acceptance):
@@ -3785,6 +4314,7 @@ namespace awh {
 				 *       by the signal drained(). The flag FIN is applied only at an acceptance of the data entirely.
 				 *       A return of 0 means either a filled buffer or an unsuitability of the stream for
 				 *       the sending (it is closed, reset, the connection is not ready) - the reason is reflected by the state
+				 *
 				 * @param sid  identifier of the stream
 				 * @param data data of the stream of the application
 				 * @param fin  flag of the completion of the stream (FIN)
@@ -3808,11 +4338,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the assignment of the pull source of the data of a stream (RFC 9000 §2.2)
+				 *
 				 * @note An alternative to send() for the big bodies: the engine itself requests the data from a
 				 *       source as there is a place in the buffer of the sending of the stream below the upper water
 				 *       mark and the window is open, without requiring from the application to hold a copy of the whole body.
 				 *       The source fills the buffer, sets eof at the end and returns the number of the octets
 				 *       (-1 emergently completes the stream). An empty source removes the pull mode
+				 *
 				 * @param sid    identifier of the stream
 				 * @param source pull source of the data of the body of the stream
 				 *
@@ -3832,9 +4364,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the putting of a datagram of the application into the queue of the sending (RFC 9221 §4)
+				 *
 				 * @note The delivery of the datagrams is unreliable: a lost datagram is not sent
 				 *       repeatedly, the order of the delivery is not guaranteed, while the size
 				 *       is limited by the limit announced by the remote node
+				 *
 				 * @param data data of the datagram of the application
 				 * @return     result of the putting (ERROR - the datagrams are not supported or the size is exceeded)
 				 *
@@ -3850,6 +4384,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of an accepted datagram of the application (RFC 9221 §4)
+				 *
 				 * @param output buffer of the accepted datagram of the application
 				 * @return       result of the extraction (false - there are no accepted datagrams)
 				 *
@@ -3868,14 +4403,40 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limiting size of a datagram being sent (RFC 9221 §3)
+				 *
 				 * @note The limit is announced by the remote node and is known only after
 				 *       the completion of the handshake. A zero value means that the datagrams
 				 *       are not accepted by the remote node
+				 *
 				 * @return limiting size of the data of a datagram being sent in octets
 				 *
 				 * \~
 				 */
 				size_t datagrams() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи потоков, буфер отправки которых освободился (сигнал writable)
+				 *
+				 * @note Возвращает идентификаторы потоков, чей буфер отправки после заполнения до
+				 *       верхней водяной метки дренировался ниже нижней. Приложение, получившее в
+				 *       send() частичный приём, по этому сигналу возобновляет выдачу данных потока.
+				 *       Список вычитывается (очищается) при каждом вызове, как и readable()
+				 *
+				 * @param output список идентификаторов потоков, готовых принять данные
+				 *
+				 * \~english
+				 * @brief Method of the issue of the streams the buffer of the sending of which has been freed (the signal writable)
+				 *
+				 * @note It returns the identifiers of the streams whose buffer of the sending after a filling up to
+				 *       the upper water mark has drained below the lower one. An application which has obtained in
+				 *       send() a partial acceptance, by this signal resumes the issue of the data of the stream.
+				 *       The list is read out (cleared) at every call, as readable()
+				 *
+				 * @param output list of the identifiers of the streams ready to accept the data
+				 *
+				 * \~
+				 */
+				void drained(vector <uint64_t> & output) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения списка потоков с данными для приложения
@@ -3890,37 +4451,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of the streams with the data for the application
+				 *
 				 * @note The list is filled into the buffer of the calling code: a return of a new
 				 *       container would cost an allocation of the memory per every call, while the call
 				 *       is performed in a cycle of the acceptance. The issue of the data of a stream through receive()
 				 *       during the traversal of the obtained list is safe - the list is
 				 *       a copy and does not depend on the state of the connection
+				 *
 				 * @param output list of the identifiers of the streams with the assembled data or with a completion
 				 *
 				 * \~
 				 */
-				/**
-				 * \~russian
-				 * @brief Метод выдачи потоков, буфер отправки которых освободился (сигнал writable)
-				 *
-				 * @note Возвращает идентификаторы потоков, чей буфер отправки после заполнения до
-				 *       верхней водяной метки дренировался ниже нижней. Приложение, получившее в
-				 *       send() частичный приём, по этому сигналу возобновляет выдачу данных потока.
-				 *       Список вычитывается (очищается) при каждом вызове, как и readable()
-				 *
-				 * @param output список идентификаторов потоков, готовых принять данные
-				 *
-				 * \~english
-				 * @brief Method of the issue of the streams the buffer of the sending of which has been freed (the signal writable)
-				 * @note It returns the identifiers of the streams whose buffer of the sending after a filling up to
-				 *       the upper water mark has drained below the lower one. An application which has obtained in
-				 *       send() a partial acceptance, by this signal resumes the issue of the data of the stream.
-				 *       The list is read out (cleared) at every call, as readable()
-				 * @param output list of the identifiers of the streams ready to accept the data
-				 *
-				 * \~
-				 */
-				void drained(vector <uint64_t> & output) noexcept;
 				void readable(vector <uint64_t> & output) noexcept;
 				/**
 				 * \~russian
@@ -3936,8 +4477,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the issue of the assembled data of a stream to the application (RFC 9000 §2.2)
+				 *
 				 * @note Only the continuously assembled data is issued; the limits of the flow
 				 *       control are updated automatically as it is consumed
+				 *
 				 * @param sid    identifier of the stream
 				 * @param output assembled data of the stream (is appended)
 				 * @param fin    flag of the completion of the stream by the remote endpoint (FIN)
@@ -3955,6 +4498,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the emergency completion of the sending of a stream (RFC 9000 §2.4)
+				 *
 				 * @param sid  identifier of the stream
 				 * @param code error code of the application
 				 *
@@ -3970,6 +4514,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the request of a cessation of the transmission by the remote endpoint (RFC 9000 §3.5)
+				 *
 				 * @param sid  identifier of the stream
 				 * @param code error code of the application
 				 *
@@ -3986,6 +4531,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking an emergency completion of a stream by the remote endpoint
+				 *
 				 * @param sid  identifier of the stream
 				 * @param code error code of the application of the accepted RESET_STREAM frame
 				 * @return     result of the checking (true - the stream is reset by the remote endpoint)
@@ -4006,8 +4552,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the initiation of an update of the keys of the level of the application (RFC 9001 §6)
+				 *
 				 * @note It is accessible after the confirmation of the handshake; a repeated update
 				 *       is possible only after the acknowledgement of a packet of the current phase
+				 *
 				 * @param now current time in milliseconds
 				 * @return    result of the initiation (OK/ERROR)
 				 *
@@ -4022,6 +4570,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the bit of the phase of the keys of the level of the application (RFC 9001 §6)
+				 *
 				 * @return bit of the phase of the keys
 				 *
 				 * \~
@@ -4041,10 +4590,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the limits AEAD of the current connection (RFC 9001 §6.6)
+				 *
 				 * @note The values are limited from above by the limits of the specification: the method
 				 *       is capable only of toughening the limits but not of weakening them. It serves for
 				 *       the checking of the paths of an update of the keys and of a completion at the reaching of a limit,
 				 *       unreachable at the regular values (2²³ packets and 2³⁶ refusals)
+				 *
 				 * @param confidentiality limiting number of the packets on one key
 				 * @param integrity       limiting number of the unsuccessful removals of the protection
 				 *
@@ -4065,10 +4616,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reset of the state of the path of the connection (RFC 9000 §9.4)
+				 *
 				 * @note The window of the congestion, the estimation of the delay and the size of the path characterize
 				 *       a particular path and are inapplicable on a new path. The limit of the anti-amplification
 				 *       is not always removed: it relates to the address of the remote endpoint,
 				 *       therefore a change of one's own address alone does not return it
+				 *
 				 * @param remote flag of a change of the address of the remote endpoint
 				 *
 				 * \~
@@ -4084,6 +4637,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the completion of the moving onto the preferred address (RFC 9000 §9.6.2)
+				 *
 				 * @note It is called at the confirmation of the reachability of the preferred address:
 				 *       the connection switches onto its identifier, while the state of the path
 				 *       is reset as at any change of the path
@@ -4105,9 +4659,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the refusal of the checking of the reachability of a path (RFC 9000 §8.2.4)
+				 *
 				 * @note A path which has not answered the checking in the allotted time is recognized
 				 *       unsuitable: the resending of the checking ceases. The connection thereby
 				 *       is not completed - an unsuitability of a path is not a break of it
+				 *
 				 * @param revert flag of a return onto the last checked address. A return
 				 *               is appropriate only when there is nowhere else to go: at a refusal for the sake of
 				 *               a transition onto the next new address it would erase this address
@@ -4129,11 +4685,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the initiation of a checking of the reachability of the path (RFC 9000 §8.2)
+				 *
 				 * @note It sends to the remote endpoint a PATH_CHALLENGE frame with the
 				 *       random data. The path is considered confirmed at the acceptance of a
 				 *       PATH_RESPONSE frame with the same data; an answer with other data
 				 *       completes the connection by a violation of the protocol. A repeated call
 				 *       before the receipt of the answer is rejected
+				 *
 				 * @return result of the initiation (false - the checking is already being performed or the connection is not established)
 				 *
 				 * \~
@@ -4147,6 +4705,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the state of the checking of the reachability of the path (RFC 9000 §8.2)
+				 *
 				 * @return state of the checking (true - the path is confirmed by an answer of the remote endpoint)
 				 *
 				 * \~
@@ -4166,11 +4725,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the initiation of a migration of the connection onto a new path (RFC 9000 §9)
+				 *
 				 * @note It is called after a change of the local network address. The connection
 				 *       switches onto an unused identifier of the remote
 				 *       endpoint, so that the new path would not be linked with the previous one by an
 				 *       identifier (RFC 9000 §9.5), resets the state of the path
 				 *       and begins the checking of its reachability
+				 *
 				 * @return result of the initiation (false - the connection is not established or there are no unused identifiers)
 				 *
 				 * \~
@@ -4188,9 +4749,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the possibility of a moving onto the preferred address of the server (RFC 9000 §9.6)
+				 *
 				 * @note A moving is possible at a client on an established connection, when
 				 *       the server has announced a preferred address and the moving has not yet
 				 *       been performed
+				 *
 				 * @return result of the checking
 				 *
 				 * \~
@@ -4211,9 +4774,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the preferred address of the server (RFC 9000 §9.6)
+				 *
 				 * @note The address is issued in the network order of the octets: the layer of the connection works
 				 *       without an input-output, while the reconnection of the socket onto the preferred
 				 *       address is performed by the calling code
+				 *
 				 * @param ipv6 flag of the extraction of an address of the family IPv6
 				 * @param ip   address of the server in the network order of the octets (4 octets of IPv4 or 16 octets of IPv6)
 				 * @param port port of the server
@@ -4235,10 +4800,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the remote endpoint of the current path (RFC 9000 §9.3)
+				 *
 				 * @note The connection chooses the path itself: a change of the address of the remote endpoint
 				 *       is accepted at the arrival of a datagram, while a not passed check of a new
 				 *       address returns the connection onto the last checked one. The calling
 				 *       code sends the datagrams exactly to this address
+				 *
 				 * @return address of the remote endpoint in the representation set by the calling code
 				 *
 				 * \~
@@ -4257,10 +4824,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the addressee of an assembled datagram (RFC 9000 §9.6.2)
+				 *
 				 * @note It is requested right after the assembly of a datagram. While the reachability
 				 *       of the preferred address is not confirmed, the connection sends
 				 *       to two addresses: the ordinary datagrams go away by the current path, while
 				 *       the probing ones - to the preferred address obtained from preferred()
+				 *
 				 * @return result of the checking (true - the datagram is addressed to the preferred address)
 				 *
 				 * \~
@@ -4279,10 +4848,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the moving of the connection onto the preferred address of the server (RFC 9000 §9.6)
+				 *
 				 * @note It is called after the reconnection of the socket and the setting of the new address
 				 *       by the method address(). The connection switches onto the identifier
 				 *       of the preferred address, resets the state of the path and begins
 				 *       the checking of its reachability
+				 *
 				 * @return result of the initiation of the moving (false - the moving is impossible)
 				 *
 				 * \~
@@ -4299,8 +4870,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the served streams of the application
+				 *
 				 * @note A stream is held in the list while both its sides are not completed
 				 *       and the queues of the sending do not refer to it, after which it is released
+				 *
 				 * @return number of the served streams of the application
 				 *
 				 * \~
@@ -4321,12 +4894,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the sanitary boundary of the announced initial limit of the streams (RFC 9000 §4.6)
+				 *
 				 * @note The boundary limits the window of the concurrency of the streams of the remote
 				 *       endpoint and protects from an excessive eager materialization of the implicitly
 				 *       opened streams. It limits only the starting limit but not
 				 *       the total number of the streams over the life of the connection (it is replenished
 				 *       by the MAX_STREAMS frames). It is applied before the setting of the transport
 				 *       parameters by the method params()
+				 *
 				 * @param limit upper boundary of the announced initial limit of the streams of one direction
 				 *
 				 * \~
@@ -4340,6 +4915,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the performed changes of the path of the connection
+				 *
 				 * @return number of the performed changes of the path
 				 *
 				 * \~
@@ -4353,6 +4929,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the confirmed size of an outgoing datagram (RFC 8899)
+				 *
 				 * @return confirmed size of an outgoing datagram in octets
 				 *
 				 * \~
@@ -4370,9 +4947,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the upper boundary of the search of the size of the path (RFC 8899 §5.1)
+				 *
 				 * @note It limits the search from above by a local limit: the interface of the sending
 				 *       may not let the datagrams through up to the limit announced
 				 *       by the remote node
+				 *
 				 * @param limit upper boundary of the size of an outgoing datagram in octets
 				 *
 				 * \~
@@ -4389,8 +4968,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the rotation of the identifier of the connection of the remote endpoint (RFC 9000 §5.1.1)
+				 *
 				 * @note It switches the DCID onto an unused identifier out of those announced
 				 *       by the NEW_CONNECTION_ID frames, the previous one is withdrawn from the circulation
+				 *
 				 * @return result of the rotation (false - there are no unused identifiers)
 				 *
 				 * \~
@@ -4405,6 +4986,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the window of the congestion of the congestion control (RFC 9002 §7)
+				 *
 				 * @return window of the congestion in octets
 				 *
 				 * \~
@@ -4418,6 +5000,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the unacknowledged octets in a flight
+				 *
 				 * @return number of the unacknowledged octets in a flight
 				 *
 				 * \~
@@ -4433,6 +5016,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the completion of the connection by the application (RFC 9000 §10.2)
+				 *
 				 * @param code   error code of the application
 				 * @param reason human-readable reason of the completion
 				 *
@@ -4448,6 +5032,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the state of the connection
+				 *
 				 * @return state of the connection
 				 *
 				 * \~
@@ -4461,6 +5046,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error code of the transport of the connection
+				 *
 				 * @return error code of the transport (NO_ERROR - there is no error)
 				 *
 				 * \~
@@ -4475,6 +5061,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the identifier of the connection of the local endpoint
+				 *
 				 * @return identifier of the connection of the local endpoint
 				 *
 				 * \~
@@ -4496,12 +5083,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the changes of the collection of the identifiers of the local endpoint
+				 *
 				 * @note A connection is addressed by a collection of the identifiers which changes
 				 *       in the course of the work: to that issued at the establishment the ones
 				 *       announced by the NEW_CONNECTION_ID frames are added, while the withdrawn from the
 				 *       circulation are removed. The accumulated changes are issued once
 				 *       and are reset - the calling code synchronizes by them
 				 *       the routing of the incoming datagrams
+				 *
 				 * @param added   identifiers brought into the circulation
 				 * @param removed identifiers withdrawn from the circulation
 				 *
@@ -4516,6 +5105,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the identifier of the connection of the remote endpoint
+				 *
 				 * @return identifier of the connection of the remote endpoint
 				 *
 				 * \~
@@ -4530,6 +5120,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the access to the machine of the cryptographic handshake
+				 *
 				 * @return machine of the cryptographic handshake
 				 *
 				 * \~
@@ -4537,8 +5128,15 @@ namespace awh {
 				const handshake_t & handshake() const noexcept;
 			public:
 				/**
-				 * Запрещаем копирование и перемещение (хендшейк-машина владеет
-				 * TLS-соединением с обратным указателем)
+				 * \~russian
+				 * @brief Запрещаем копирование и перемещение (хендшейк-машина владеет
+				 *        TLS-соединением с обратным указателем)
+				 *
+				 * \~english
+				 * @brief Forbid the copying and the moving (the handshake machine owns
+				 *        a TLS connection with a back pointer)
+				 *
+				 * \~
 				 */
 				Connection(const Connection &) = delete;
 				Connection(Connection &&) = delete;
@@ -4560,11 +5158,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @note The cryptography of a connection is entirely set by the template of the context
 				 *       of the coder of the transport safety: the certificates, the trusted
 				 *       centres, the checking of the node, the domain name and the list of the ALPN protocols
 				 *       are configured there and are not duplicated here. The ownership of the context
 				 *       remains at the transport security module
+				 *
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the context of the safety
 				 *

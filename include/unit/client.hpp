@@ -52,7 +52,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён модулей
 	 *
-	 *
 	 * \~english
 	 * @brief Modules namespace
 	 *
@@ -86,6 +85,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching/stopping the work of the client
+				 *
 				 * @param status status of the launch/stop of the client
 				 *
 				 * \~
@@ -100,6 +100,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of the connection of the client to a remote node
+				 *
 				 * @param eid event identifier
 				 * @param ok  result of the connection
 				 *
@@ -115,6 +116,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing data write events of the client
+				 *
 				 * @param eid  event identifier
 				 * @param size size of the data to be written
 				 *
@@ -130,6 +132,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing client status change events
+				 *
 				 * @param eid    event identifier
 				 * @param status new client status
 				 *
@@ -145,6 +148,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the client actions
+				 *
 				 * @param eid    event identifier
 				 * @param action client action
 				 *
@@ -160,6 +164,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the informational metadata about a datagram packet
+				 *
 				 * @param eid  event identifier
 				 * @param info informational metadata about the datagram packet
 				 *
@@ -176,6 +181,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing data reception events of the client
+				 *
 				 * @param eid  event identifier
 				 * @param data data of the client data reception event
 				 * @param size data size of the client data reception event
@@ -193,6 +199,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing availability/unavailability events of the client outgoing data queue
+				 *
 				 * @param eid    event identifier
 				 * @param status queue availability status
 				 * @param size   size of the available queue data
@@ -211,6 +218,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing client timeout expiration events
+				 *
 				 * @param eid    client identifier
 				 * @param action action type for the expired timeout
 				 * @param delay  timeout delay in milliseconds
@@ -229,6 +237,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing client error events
+				 *
 				 * @param eid         event identifier
 				 * @param error       error type
 				 * @param description error description
@@ -247,6 +256,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of the unsent data of the client
+				 *
 				 * @param eid   event identifier
 				 * @param error error type of the data sending
 				 * @param data  data that could not be sent
@@ -265,6 +275,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the relevance of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of checking the relevance of the event
 				 *
@@ -281,6 +292,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of committing the client settings
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the commit
 				 *
@@ -297,6 +309,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching the work of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the launch
 				 *
@@ -313,6 +326,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of suspending the work of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the suspension of the work
 				 *
@@ -328,6 +342,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resuming the work of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the resumption of the work
 				 *
@@ -344,6 +359,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of disconnecting the client from the remote node
+				 *
 				 * @param eid client event identifier
 				 * @return    result of performing the disconnection
 				 *
@@ -359,6 +375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of the multiconnection of the clients to remote hosts
+				 *
 				 * @tparam Args list of the identifiers of the clients to be connected
 				 *
 				 * \~
@@ -373,6 +390,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the multiconnection of the clients to remote hosts
+				 *
 				 * @param args list of the event identifiers to be connected
 				 * @return     result of performing the connection
 				 *
@@ -391,6 +409,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the multiconnection of the clients to remote hosts
+				 *
 				 * @param ids list of the event identifiers to be connected
 				 * @return    result of performing the connection
 				 *
@@ -407,6 +426,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving data from a remote node
+				 *
 				 * @param eid client event identifier
 				 * @return    result of receiving the data
 				 *
@@ -424,6 +444,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data to a remote node
+				 *
 				 * @param eid    client event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data to be sent
@@ -440,15 +461,18 @@ namespace awh {
 				 *       отправить, поэтому при переполнении очереди данные не теряются
 				 * @note Отказ источника гасит вытягивание: заводится оно заново пустой
 				 *       отправкой `send(eid, nullptr, 0)`
+				 *
 				 * @param eid    идентификатор события клиента
 				 * @param source функция обратного вызова источника данных
 				 *
 				 * \~english
 				 * @brief Method of setting the source of the data for the pull model of the sending
+				 *
 				 * @note The engine asks the source for the data exactly when it is ready to send
 				 *       them, so at an overflow of the queue the data are not lost
 				 * @note A refusal of the source extinguishes the pulling: it is set going again
 				 *       by an empty sending `send(eid, nullptr, 0)`
+				 *
 				 * @param eid    client event identifier
 				 * @param source callback function of the source of the data
 				 *
@@ -466,6 +490,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of joining the data streams between two events
+				 *
 				 * @param eid  identifier of the source event
 				 * @param dest identifier of the destination event
 				 * @return     result of the joining
@@ -483,6 +508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client options
+				 *
 				 * @param eid client event identifier
 				 * @return    client options
 				 *
@@ -499,6 +525,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the client options
+				 *
 				 * @param eid     client event identifier
 				 * @param options client options to be set
 				 * @return        result of performing the setting
@@ -517,6 +544,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting a client option
+				 *
 				 * @param eid    client event identifier
 				 * @param option client option to be set
 				 * @param mode   mode of setting the client option
@@ -535,6 +563,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the metadata of the last received datagram packet
+				 *
 				 * @param eid client event identifier
 				 * @return    metadata of the last received datagram packet
 				 *
@@ -551,6 +580,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the hops of the last received packet
+				 *
 				 * @param eid client event identifier
 				 * @return    number of the hops of the last received packet
 				 *
@@ -567,6 +597,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of the hops of the last received packet
+				 *
 				 * @param eid  client event identifier
 				 * @param hops number of the hops of the last received packet
 				 * @return     result of performing the setting
@@ -584,6 +615,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid client event identifier
 				 * @return    maximum number of the hops
 				 *
@@ -600,6 +632,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid  client event identifier
 				 * @param hops maximum number of the hops
 				 * @return     result of the work of the function
@@ -617,6 +650,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    network interface of the client
 				 *
@@ -633,6 +667,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of the client
+				 *
 				 * @param eid  client event identifier
 				 * @param name name of the network interface to be set
 				 * @return     result of performing the setting
@@ -650,6 +685,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the internal port of the event
+				 *
 				 * @param eid event identifier
 				 * @return    internal port of the event
 				 *
@@ -666,6 +702,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the internal port of the event
+				 *
 				 * @param eid  event identifier
 				 * @param port internal port of the event
 				 * @return     result of performing the setting
@@ -683,6 +720,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the remote node
+				 *
 				 * @param eid client event identifier
 				 * @return    port of the remote node
 				 *
@@ -699,6 +737,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the remote node
+				 *
 				 * @param eid  client event identifier
 				 * @param port port of the remote node to be set
 				 * @return     result of performing the setting
@@ -716,6 +755,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid client event identifier
 				 * @return    host address of the target machine
 				 *
@@ -732,6 +772,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -750,6 +791,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -767,6 +809,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid    client event identifier
 				 * @param target object for extracting the host address of the target machine
 				 * @return       result of extracting the host address of the target machine
@@ -785,6 +828,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @return        value of the client address
@@ -803,6 +847,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   value of the client address
@@ -823,6 +868,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   value of the client address
@@ -842,6 +888,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client address
+				 *
 				 * @param eid     client event identifier
 				 * @param address client address type
 				 * @param value   object for extracting the client address
@@ -860,6 +907,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of the network interface
+				 *
 				 * @param eid client event identifier
 				 * @return    MTU of the network interface
 				 *
@@ -876,6 +924,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of the network interface
+				 *
 				 * @param eid client event identifier
 				 * @param mtu MTU size of the interface
 				 * @return    result of setting the MTU of the network interface
@@ -893,6 +942,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the packet delivery mode of the client
+				 *
 				 * @param eid client event identifier
 				 * @return    packet delivery mode (unicast, multicast, broadcast)
 				 *
@@ -909,6 +959,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the packet delivery mode of the client
+				 *
 				 * @param eid      client event identifier
 				 * @param delivery packet delivery mode (unicast, multicast, broadcast)
 				 * @return         result of performing the setting
@@ -927,6 +978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the buffer size of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @return       buffer size of the client
@@ -945,6 +997,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the buffer size of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @param size   buffer size of the client
@@ -963,6 +1016,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the usage mode of the read timeout of the event
+				 *
 				 * @param eid event identifier
 				 * @return    usage mode of the read timeout of the event
 				 *
@@ -978,6 +1032,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the usage mode of the read timeout of the event
+				 *
 				 * @param eid   event identifier
 				 * @param usage usage mode of the read timeout of the event (reusable or disposable)
 				 *
@@ -995,6 +1050,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the timeout of the client
+				 *
 				 * @param eid    client event identifier
 				 * @param action action type of the client
 				 * @return       value of the timeout in milliseconds
@@ -1012,6 +1068,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout of the client
+				 *
 				 * @param eid     client event identifier
 				 * @param action  action type of the client
 				 * @param timeout value of the timeout in milliseconds
@@ -1031,6 +1088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the client
+				 *
 				 * @param eid       client event identifier
 				 * @param limiting  mode of limiting the bandwidth of the client (egress or ingress)
 				 * @param bandwidth bandwidth of the client to be set (for example, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" or "auto")
@@ -1052,6 +1110,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the keep-alive parameters for the client
+				 *
 				 * @param eid   client event identifier
 				 * @param cnt   number of the keep-alive packets
 				 * @param idle  idle time before sending the first keep-alive packet in seconds
@@ -1071,6 +1130,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid client event identifier
 				 * @return    DSCP value
 				 *
@@ -1087,6 +1147,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid  client event identifier
 				 * @param dscp DSCP value
 				 * @return     result of the work of the function
@@ -1104,6 +1165,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid client event identifier
 				 * @return    current MTU discovery mode
 				 *
@@ -1120,6 +1182,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the discovery mode of the maximum packet size (MTU)
+				 *
 				 * @param eid  client event identifier
 				 * @param mode discovery mode of the maximum packet size (MTU)
 				 * @return     result of the work of the function
@@ -1141,6 +1204,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    client event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1164,6 +1228,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    client event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1205,6 +1270,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -1219,6 +1285,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a client event
+				 *
 				 * @param eid identifier of the event to be destroyed
 				 *
 				 * \~
@@ -1236,6 +1303,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the client identifier for performing requests to a server
+				 *
 				 * @param family   address family
 				 * @param type     event type
 				 * @param protocol event protocol
@@ -1249,7 +1317,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
 				 *
@@ -1262,9 +1329,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -1275,7 +1342,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -1285,7 +1351,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

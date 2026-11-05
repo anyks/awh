@@ -48,7 +48,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -63,7 +62,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
-	 *
 	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
@@ -83,6 +81,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the QUIC packet layer (RFC 9000 §17): the parsing and the assembly of the headers
+		 *
 		 * @details The parsing is zero-copy: the payload is given away as a string_view with a pointer
 		 *          into the input datagram. The layer does not perform the cryptography: the parsing stops
 		 *          at the boundary of the header protection, the packet number is read
@@ -103,6 +102,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Structure of a parsed packet header (RFC 9000 §17.2/§17.3)
+			 *
 			 * @details For the Initial/0-RTT/Handshake packets the payload field points to the protected
 			 *          part (the Packet Number and the payload) of the length length. For Version Negotiation
 			 *          the payload contains the list of the versions, for Retry — the token with the integrity tag,
@@ -135,7 +135,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -154,6 +153,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of choosing the size of the encoding of the packet number (RFC 9000 §A.2)
+			 *
 			 * @param pn           number of the packet being sent
 			 * @param largestAcked largest packet number acknowledged by the peer (pn if there have been no acknowledgements yet)
 			 * @return             size of the encoding of the packet number in octets (1-4)
@@ -161,7 +161,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ size_t packetNumberSize(const uint64_t pn, const uint64_t largestAcked) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Функция восстановления полного номера пакета из усечённого (RFC 9000 §A.3)
@@ -173,6 +172,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of restoring the full packet number from a truncated one (RFC 9000 §A.3)
+			 *
 			 * @param largestPn largest packet number accepted in the given number space
 			 * @param truncated truncated packet number from the header
 			 * @param pnSize    size of the truncated packet number in octets (1-4)
@@ -208,8 +208,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing a packet header up to the boundary of the header protection
+				 *
 				 * @note For a short header (1-RTT) the length of the connection identifier
 				 *       is not encoded in the packet — it is given by the dcidSize parameter
+				 *
 				 * @param data     input datagram (the beginning of the next packet)
 				 * @param size     bytes available
 				 * @param dcidSize length of the connection identifier of the local endpoint (for a short header)
@@ -232,6 +234,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of reading a truncated packet number (after the header protection has been removed)
+				 *
 				 * @param data   buffer pointing at the Packet Number field
 				 * @param size   bytes available
 				 * @param pnSize size of the packet number in octets (1-4, from the bits of the first octet)
@@ -252,6 +255,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the list of the versions of a Version Negotiation packet (RFC 9000 §17.2.1)
+				 *
 				 * @param header header of the parsed Version Negotiation packet
 				 * @param output list of the versions supported by the peer
 				 * @param error  transport error code
@@ -272,6 +276,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the payload of a Retry packet (RFC 9000 §17.2.5)
+				 *
 				 * @param header header of the parsed Retry packet
 				 * @param token  token for a repeated Initial packet (zero-copy into the input datagram)
 				 * @param tag    integrity tag of the Retry packet (16 octets)
@@ -313,8 +318,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling a long packet header with the packet number (RFC 9000 §17.2)
+				 *
 				 * @note The Length field must include the size of the packet number, the payload and the AEAD tag.
 				 *       A token is admissible only for the Initial packets
+				 *
 				 * @param output  output buffer
 				 * @param type    type of the packet (INITIAL/ZERO_RTT/HANDSHAKE)
 				 * @param version version of the protocol
@@ -343,6 +350,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling a short header of a 1-RTT packet with the packet number (RFC 9000 §17.3)
+				 *
 				 * @param output   output buffer
 				 * @param dcid     connection identifier of the recipient
 				 * @param pn       packet number
@@ -367,6 +375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling a Version Negotiation packet in full (RFC 9000 §17.2.1)
+				 *
 				 * @param output   output buffer
 				 * @param dcid     connection identifier of the recipient (the SCID of the packet of the client)
 				 * @param scid     connection identifier of the sender (the DCID of the packet of the client)
@@ -394,8 +403,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling a Retry packet in full (RFC 9000 §17.2.5)
+				 *
 				 * @note The integrity tag is computed by the cryptographic layer (RFC 9001 §5.8)
 				 *       over a pseudo-packet with the ODCID and is passed here ready
+				 *
 				 * @param output  output buffer
 				 * @param version version of the protocol
 				 * @param dcid    connection identifier of the recipient (the SCID of the packet of the client)

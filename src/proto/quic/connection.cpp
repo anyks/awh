@@ -35,12 +35,16 @@
 #include <openssl/digest.h>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
  */
 #include <proto/quic/varint.hpp>
 #include <proto/quic/packet.hpp>
 #include <proto/quic/connection.hpp>
-#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -408,6 +412,138 @@ namespace {
 		return (::RAND_bytes(cid.data, CID_SIZE) == 1);
 	}
 };
+
+/**
+ * @brief Метод получения блока из пула либо выделения нового
+ *
+ * @param pool пул переиспользуемых блоков
+ * @return     блок с сохранённой либо зарезервированной ёмкостью
+ *
+ */
+string awh::quic::Chunked_FIFO::acquire(vector <string> & pool) noexcept {
+	// Если в пуле есть освобождённый блок
+	if(!pool.empty()){
+		// Забираем блок из пула с сохранённой ёмкостью
+		string block = std::move(pool.back());
+		// Удаляем забранный блок из пула
+		pool.pop_back();
+		// Сбрасываем размер блока (ёмкость сохраняется)
+		block.clear();
+		// Выводим переиспользуемый блок
+		return block;
+	}
+	// Создаём новый блок
+	string block;
+	// Резервируем ёмкость блока под его полный размер
+	block.reserve(BLOCK);
+	// Выводим созданный блок
+	return block;
+}
+/**
+ * @brief Метод возврата блока в пул либо его освобождения сверх предела
+ *
+ * @param pool  пул переиспользуемых блоков
+ * @param block возвращаемый блок
+ *
+ */
+void awh::quic::Chunked_FIFO::release(vector <string> & pool, string && block) noexcept {
+	// Если пул ещё не достиг предела удержания блоков
+	if(pool.size() < POOL_LIMIT){
+		// Сбрасываем размер блока (ёмкость сохраняется для переиспользования)
+		block.clear();
+		// Возвращаем блок в пул
+		pool.push_back(std::move(block));
+	}
+}
+/**
+ * @brief Метод проверки отсутствия накопленных данных
+ *
+ * @return признак отсутствия данных
+ *
+ */
+bool awh::quic::Chunked_FIFO::empty() const noexcept {
+	// Выводим признак отсутствия накопленных данных
+	return (this->_bytes == 0);
+}
+/**
+ * @brief Метод получения суммарного размера накопленных данных
+ *
+ * @return суммарный размер данных в октетах
+ *
+ */
+size_t awh::quic::Chunked_FIFO::size() const noexcept {
+	// Выводим суммарный размер накопленных данных
+	return this->_bytes;
+}
+/**
+ * @brief Метод дозаписи данных в хвост буфера
+ *
+ * @param pool пул переиспользуемых блоков
+ * @param data дописываемые данные
+ *
+ */
+void awh::quic::Chunked_FIFO::append(vector <string> & pool, string_view data) noexcept {
+	// Пока есть данные для записи
+	while(!data.empty()){
+		// Если хвостового блока нет либо он заполнен
+		if(this->_blocks.empty() || (this->_blocks.back().size() >= BLOCK))
+			// Добавляем в хвост новый блок из пула
+			this->_blocks.push_back(acquire(pool));
+		// Получаем хвостовой блок
+		string & tail = this->_blocks.back();
+		// Вычисляем свободное место в хвостовом блоке
+		const size_t room = (BLOCK - tail.size());
+		// Вычисляем объём, помещающийся в хвостовой блок
+		const size_t count = ((room < data.size()) ? room : data.size());
+		// Дописываем помещающуюся часть данных в хвостовой блок
+		tail.append(data.data(), count);
+		// Отбрасываем записанную часть данных
+		data.remove_prefix(count);
+		// Продвигаем суммарный размер накопленных данных
+		this->_bytes += count;
+	}
+}
+/**
+ * @brief Метод слива всех накопленных данных в выходной буфер
+ *
+ * @param pool   пул переиспользуемых блоков (блоки возвращаются в него)
+ * @param output выходной буфер (данные дописываются)
+ *
+ */
+void awh::quic::Chunked_FIFO::drain(vector <string> & pool, string & output) noexcept {
+	// Перебираем накопленные блоки в порядке записи
+	for(auto & block : this->_blocks){
+		// Дописываем данные блока в выходной буфер
+		output.append(block);
+		// Возвращаем блок в пул
+		release(pool, std::move(block));
+	}
+	// Очищаем цепочку блоков (ёмкость вектора сохраняется)
+	this->_blocks.clear();
+	// Сбрасываем суммарный размер накопленных данных
+	this->_bytes = 0;
+}
+/**
+ * @brief Метод отбрасывания всех накопленных данных
+ *
+ * @param pool пул переиспользуемых блоков (блоки возвращаются в него)
+ *
+ */
+void awh::quic::Chunked_FIFO::clear(vector <string> & pool) noexcept {
+	// Перебираем накопленные блоки
+	for(auto & block : this->_blocks)
+		// Возвращаем блок в пул
+		release(pool, std::move(block));
+	// Очищаем цепочку блоков (ёмкость вектора сохраняется)
+	this->_blocks.clear();
+	// Сбрасываем суммарный размер накопленных данных
+	this->_bytes = 0;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::quic::Chunked_FIFO::Chunked_FIFO() noexcept : _bytes(0) {}
 
 /**
  * @brief Конструктор отправленного блока данных потока приложения
@@ -4438,7 +4574,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			// вырезается по мере упаковки, поэтому перечитать их из буфера потока нельзя
 			sent.data = front.data.substr(0, chunk);
 			// Запоминаем отправленный блок данных в учётной записи пакета
-			meta.stream.push_back(::move(sent));
+			meta.stream.push(::move(sent));
 			// Устанавливаем флаг наличия ack-eliciting фреймов
 			elicit = true;
 			// Если блок данных упакован полностью
@@ -4600,7 +4736,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				 * Копия делается лишь при потере - перечитыванием из буфера в requeue()
 				 */
 				// Запоминаем отправленный блок данных в учётной записи пакета
-				meta.stream.push_back(::move(sent));
+				meta.stream.push(::move(sent));
 				// Устанавливаем флаг наличия ack-eliciting фреймов
 				elicit = true;
 				// Продвигаем смещение отправленных данных потока
@@ -4660,7 +4796,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				// Устанавливаем флаг завершения потока
 				sent.fin = true;
 				// Запоминаем отправленный блок данных в учётной записи пакета
-				meta.stream.push_back(::move(sent));
+				meta.stream.push(::move(sent));
 				// Устанавливаем флаг наличия ack-eliciting фреймов
 				elicit = true;
 				// Устанавливаем флаг выполненной отправки завершения потока

@@ -56,7 +56,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -71,6 +70,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the format of the data passed between the threads
+	 *
 	 * @tparam T data passed between the threads
 	 *
 	 * \~
@@ -167,11 +167,13 @@ namespace awh {
 			std::unique_ptr <std::thread> _thr;
 		private:
 			/**
-			 * Примитивы синхронизации хранятся через указатели, чтобы их можно было
-			 * безопасно пересоздать в дочернем процессе после вызова fork(), не
-			 * разрушая унаследованные (и потенциально захваченные) объекты родителя.
+			 * @brief Мютекс защиты очереди и условных переменных
+			 *
+			 * @details Примитивы синхронизации хранятся через указатели, чтобы их можно было
+			 *          безопасно пересоздать в дочернем процессе после вызова fork(), не
+			 *          разрушая унаследованные (и потенциально захваченные) объекты родителя.
+			 *
 			 */
-			// Мютекс защиты очереди и условных переменных
 			std::unique_ptr <std::mutex> _mtx;
 			// Условная переменная ожидания поступления данных
 			std::unique_ptr <std::condition_variable> _cv;
@@ -196,6 +198,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function that fires when data is passed to the child thread
+			 *
 			 * @param data data passed to the child thread
 			 *
 			 * \~
@@ -210,6 +213,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function on the filling or the freeing of the queue
+			 *
 			 * @param state state of the queue (increase/decrease)
 			 * @param size  size of the queue after the change
 			 *
@@ -225,6 +229,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of guaranteeing the existence of the working synchronisation primitives taking into account a change of the process
+			 *
 			 * @note Performs the lazy creation of the primitives and their recreation after fork()
 			 *
 			 * \~
@@ -237,13 +242,15 @@ namespace awh {
 					// Сбрасываем идентификатор потока
 					this->_id = 0;
 					/**
-					 * Унаследованные от родителя примитивы синхронизации и поток в дочернем
-					 * процессе использовать нельзя: рабочего потока здесь не существует, а
-					 * мьютекс мог остаться захваченным в момент fork(). Поэтому отказываемся
-					 * от владения ими БЕЗ разрушения (release), чтобы не вызвать ни join()
-					 * несуществующего потока, ни разрушение захваченного мьютекса.
+					 * @brief Отказываемся от унаследованного потока (объект родителя)
+					 *
+					 * @details Унаследованные от родителя примитивы синхронизации и поток в дочернем
+					 *          процессе использовать нельзя: рабочего потока здесь не существует, а
+					 *          мьютекс мог остаться захваченным в момент fork(). Поэтому отказываемся
+					 *          от владения ими БЕЗ разрушения (release), чтобы не вызвать ни join()
+					 *          несуществующего потока, ни разрушение захваченного мьютекса.
+					 *
 					 */
-					// Отказываемся от унаследованного потока (объект родителя)
 					if(this->_thr != nullptr)
 						// Освобождаем владение без вызова деструктора
 						this->_thr.release();
@@ -289,6 +296,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of applying the overflow policy of the queue
+			 *
 			 * @param lock captured lock of the mutex of the queue
 			 * @return     result: true — data may be added, false — the message is discarded
 			 *
@@ -339,6 +347,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of reporting an error of the work of the child thread
+			 *
 			 * @param error object of the caught error
 			 *
 			 * \~
@@ -462,6 +471,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the identifier of the thread
+			 *
 			 * @return identifier of the thread
 			 *
 			 * \~
@@ -479,6 +489,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the size of the queue
+			 *
 			 * @return size of the queue to get
 			 *
 			 * \~
@@ -495,6 +506,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the module is running at the moment
+			 *
 			 * @return result of the check whether the module is running
 			 *
 			 * \~
@@ -512,6 +524,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the maximum size of the queue
+			 *
 			 * @param size maximum size of the queue (0 — the queue is not bounded)
 			 *
 			 * \~
@@ -528,6 +541,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the policy of the behaviour on an overflow of the queue
+			 *
 			 * @param overflow policy of the behaviour on an overflow of the queue
 			 *
 			 * \~
@@ -545,6 +559,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback function of the activation of the trigger
+			 *
 			 * @param callback callback function to set
 			 *
 			 * \~
@@ -576,6 +591,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback function
+			 *
 			 * @param callback callback function to set
 			 *
 			 * \~
@@ -607,6 +623,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback function of getting the state of the queue
+			 *
 			 * @param callback callback function to set
 			 *
 			 * \~
@@ -639,6 +656,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the timeout in milliseconds
+			 *
 			 * @param delay value of the timeout to set in milliseconds
 			 *
 			 * \~
@@ -671,6 +689,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of sending a message to the screen
+			 *
 			 * @param data data of the sent message
 			 *
 			 * \~
@@ -718,6 +737,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of sending a message to the screen
+			 *
 			 * @param data data of the sent message
 			 *
 			 * \~
@@ -796,10 +816,11 @@ namespace awh {
 				 */
 				} catch(const std::exception &) {
 					/**
-					 * Пропускаем полученную ошибку.
+					 * @brief Пропускаем полученную ошибку.
 					 *
-					 * Этот метод вызывается также в деструкторе,
-					 * по этому ошибку выводить не надо, так-как она всплывает всегда
+					 * @details Этот метод вызывается также в деструкторе,
+					 *          по этому ошибку выводить не надо, так-как она всплывает всегда.
+					 *
 					 */
 				}
 			}
@@ -847,6 +868,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of checking whether the module is running at the moment
+			 *
 			 * @return result of the check whether the module is running
 			 *
 			 * \~
@@ -863,6 +885,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of getting the size of the queue
+			 *
 			 * @return size of the queue to get
 			 *
 			 * \~
@@ -881,6 +904,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of sending data to the screen
+			 *
 			 * @param data data of the sent message
 			 * @return     the current object
 			 *
@@ -901,6 +925,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of sending data to the screen
+			 *
 			 * @param data data of the sent message
 			 * @return     the current object
 			 *
@@ -921,6 +946,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of setting the timeout in milliseconds
+			 *
 			 * @param delay value of the timeout to set in milliseconds
 			 * @return      the current object
 			 *
@@ -941,6 +967,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of setting the callback function of the activation of the trigger
+			 *
 			 * @param callback callback function to set
 			 * @return         the current object
 			 *
@@ -961,6 +988,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of setting the callback function
+			 *
 			 * @param callback callback function to set
 			 * @return         the current object
 			 *
@@ -981,6 +1009,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Assignment operator of setting the callback function of getting the state of the queue
+			 *
 			 * @param callback callback function to set
 			 * @return         the current object
 			 *
@@ -997,7 +1026,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Оператор копирования
 			 *
-			 *
 			 * \~english
 			 * @brief Copy assignment operator
 			 *
@@ -1007,7 +1035,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор копирования
-			 *
 			 *
 			 * \~english
 			 * @brief Copy constructor
@@ -1019,7 +1046,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -1044,6 +1070,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param health health status
 			 *
 			 * \~
@@ -1064,7 +1091,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Деструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Destructor
 			 *
@@ -1083,13 +1109,20 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the format of the data passed between the threads
+	 *
 	 * @tparam T data passed between the threads
 	 *
 	 * \~
 	 */
 	template <class T>
 	/**
-	 * Создаём тип данных работы с экраном
+	 * \~russian
+	 * @brief Создаём тип данных работы с экраном
+	 *
+	 * \~english
+	 * @brief Create a type of data of a work with a screen
+	 *
+	 * \~
 	 */
 	using screen_t = Screen <T>;
 };

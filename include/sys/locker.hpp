@@ -59,14 +59,27 @@
 	 */
 	#if !defined(getpid)
 		/**
-		 * Подменяем функцию на системную в Windows API
+		 * \~russian
+		 * @brief Подменяем функцию на системную в Windows API
+		 *
+		 * \~english
+		 * @brief Substitute a function for a system one in the Windows API
+		 *
+		 * \~
 		 */
 		#define getpid _getpid
 	#endif
 
 	/**
-	 * Тип идентификатора процесса POSIX у нативного MSVC не заведён: `_getpid` отдаёт
-	 * `int`, им же и приводим
+	 * \~russian
+	 * @brief Тип идентификатора процесса POSIX у нативного MSVC не заведён: `_getpid` отдаёт
+	 *        `int`, им же и приводим
+	 *
+	 * \~english
+	 * @brief A type of a POSIX process identifier is not started at a native MSVC: `_getpid` gives out
+	 *        an `int`, by it also we reduce
+	 *
+	 * \~
 	 */
 	typedef int pid_t;
 /**
@@ -311,7 +324,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Enabled_Property(const bool value, function <void (bool)> callback = nullptr) noexcept :
+			explicit Enabled_Property(const bool value, function <void (bool)> callback = nullptr) noexcept :
 			 _value(value), _callback(callback) {}
 	} enabled_property_t;
 
@@ -816,7 +829,13 @@ namespace awh {
 			 */
 			void _lock() noexcept {
 				/**
-				 * Вычисляем константное выражение для определения поддержки shared_lock
+				 * \~russian
+				 * @brief Вычисляем константное выражение для определения поддержки shared_lock
+				 *
+				 * \~english
+				 * @brief Compute a constant expression for a defining of a shared_lock support
+				 *
+				 * \~
 				 */
 				constexpr bool hasShared = has_shared_lock <MutexType>::value;
 				// Если режим блокировки SHARED и мьютекс поддерживает shared_lock
@@ -837,7 +856,13 @@ namespace awh {
 			 */
 			void _unlock() noexcept {
 				/**
-				 * Вычисляем константное выражение для определения поддержки shared_lock
+				 * \~russian
+				 * @brief Вычисляем константное выражение для определения поддержки shared_lock
+				 *
+				 * \~english
+				 * @brief Compute a constant expression for a defining of a shared_lock support
+				 *
+				 * \~
 				 */
 				constexpr bool hasShared = has_shared_lock <MutexType>::value;
 				// Если режим блокировки SHARED и мьютекс поддерживает shared_lock
@@ -908,7 +933,13 @@ namespace awh {
 	 */
 	template <typename MutexType = std::mutex>
 	/**
-	 * Создаём тип данных работы с локом
+	 * \~russian
+	 * @brief Создаём тип данных работы с локом
+	 *
+	 * \~english
+	 * @brief Create a type of data of a work with a lock
+	 *
+	 * \~
 	 */
 	using locker_t = Locker <MutexType>;
 };

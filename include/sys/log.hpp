@@ -66,7 +66,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -228,6 +227,19 @@ namespace awh {
 		 *          of the kinds that are passed to the log is closed - strings, numbers, pointers and enumerations
 		 *          reducible to a number, - and this closed set fits into one value.
 		 *          Because of that the debug() became an ordinary function living entirely in the implementation.
+		 *
+		 *
+		 * @warning The startings are IMPLICIT on purpose, an `explicit` can not stand at them: the arguments
+		 *         are submitted by a starting list `{a, b}`, and this list reduces every its
+		 *         member implicitly. With an `explicit` NOT ONE call of debug() builds
+		 *
+		 * @warning The integer kinds are named by the main names - `short`, `int`, `long`,
+		 *         `long long`, - and NOT by the names of a constant width. The names of a constant width
+		 *         are nicknames of the main ones, and these nicknames lie differently over the systems:
+		 *         at macOS `int64_t` is `long long`, and at Linux LP64 - `long`. Had we declared
+		 *         side by side `long` and `int64_t` - at macOS there would be two different startings, and at
+		 *         Linux the same one twice, and a build would stop. The main names, however,
+		 *         are always distinct and cover by themselves all the nicknames
 		 *
 		 * @note The kinds are enumerated by name and not reduced to a pair of «signed - unsigned»:
 		 *       an argument of the `int` at two such constructors would suit both of them equally, and the choice
@@ -692,7 +704,7 @@ namespace awh {
 				 * @details Тела у заведения нет: перечисление приводится к числу и
 				 *          передоверяется заведению знакового довода.
 				 *
-				 * @tparam T вид перечисления
+				 * @tparam T    вид перечисления
 				 * @param value укладываемое значение довода
 				 *
 				 * \~english
@@ -701,7 +713,7 @@ namespace awh {
 				 * @details The constructor has no body: the enumeration is reduced to a number and
 				 *          is delegated to the constructor of the signed argument.
 				 *
-				 * @tparam T kind of the enumeration
+				 * @tparam T    kind of the enumeration
 				 * @param value the laid out value of the argument
 				 *
 				 * \~
@@ -730,7 +742,7 @@ namespace awh {
 				 *          строковые к нему не попадают - заведения их стоят выше и
 				 *          выбираются прежде шаблонного.
 				 *
-				 * @tparam T вид указуемого
+				 * @tparam T    вид указуемого
 				 * @param value укладываемое значение довода
 				 *
 				 * \~english
@@ -741,7 +753,7 @@ namespace awh {
 				 *          pointers do not reach it - their constructors stand above and
 				 *          are chosen before the templated one.
 				 *
-				 * @tparam T kind of the pointed to
+				 * @tparam T    kind of the pointed to
 				 * @param value the laid out value of the argument
 				 *
 				 * \~

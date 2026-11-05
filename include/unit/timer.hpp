@@ -45,7 +45,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -55,7 +54,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -91,6 +89,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of updating the timer state
+				 *
 				 * @param eid    timer identifier
 				 * @param status new timer status
 				 *
@@ -116,6 +115,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing a timer
+				 *
 				 * @param eid identifier of the timer to be cleared
 				 *
 				 * \~
@@ -131,6 +131,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a timeout
+				 *
 				 * @param delay time delay in milliseconds
 				 * @return      timer identifier
 				 *
@@ -146,6 +147,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating an interval
+				 *
 				 * @param delay time delay in milliseconds
 				 * @return      timer identifier
 				 *
@@ -159,9 +161,9 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -171,7 +173,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -185,9 +186,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -198,7 +199,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -208,7 +208,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

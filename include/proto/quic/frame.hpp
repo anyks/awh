@@ -46,7 +46,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -61,7 +60,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
-	 *
 	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
@@ -81,6 +79,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the QUIC frame layer (RFC 9000 §19): the parsing and the assembly of the frames
+		 *
 		 * @details The frames lie in the decrypted payload of a packet one after another without
 		 *          separators. The parsing is zero-copy: the data of the streams is given away as a string_view
 		 *          with a pointer into the buffer of the decrypted payload. Every function of the parsing
@@ -97,14 +96,15 @@ namespace awh {
 			 * @details Протокол количество диапазонов не ограничивает - в пакет 1200 октетов
 			 *          их помещается несколько сотен, а сопоставление каждого диапазона
 			 *          с отправленными пакетами стоит процессорного времени. Превышение
-			 *          лимита трактуется как FRAME_ENCODING_ERROR
+			 *          лимита трактуется как FRAME_ENCODING_ERROR.
 			 *
 			 * \~english
 			 * @brief Limit of the number of the ranges in an accepted ACK frame (RFC 9000 §19.3)
+			 *
 			 * @details The protocol does not limit the number of the ranges — several hundred of them fit
 			 *          into a packet of 1200 octets, while the matching of every range
 			 *          against the sent packets costs processor time. An excess
-			 *          of the limit is treated as FRAME_ENCODING_ERROR
+			 *          of the limit is treated as FRAME_ENCODING_ERROR.
 			 *
 			 * \~
 			 */
@@ -127,7 +127,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -162,7 +161,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -190,7 +188,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -216,7 +213,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -241,7 +237,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -272,7 +267,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -301,7 +295,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -332,7 +325,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -347,13 +339,14 @@ namespace awh {
 			 *
 			 * @details Каждая функция ожидает буфер, указывающий на октет типа фрейма,
 			 *          проверяет соответствие типа и возвращает количество потреблённых
-			 *          октетов через параметр consumed
+			 *          октетов через параметр consumed.
 			 *
 			 * \~english
 			 * @brief Namespace of the functions of the parsing of the QUIC frames (RFC 9000 §19)
+			 *
 			 * @details Every function expects a buffer pointing at the octet of the type of the frame,
 			 *          checks the correspondence of the type and returns the number of the consumed
-			 *          octets through the consumed parameter
+			 *          octets through the consumed parameter.
 			 *
 			 * \~
 			 */
@@ -369,6 +362,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of determining the type of the next frame in the payload
+				 *
 				 * @param data   buffer of the decrypted payload (the beginning of the next frame)
 				 * @param size   bytes available
 				 * @param output determined type of the frame (UNKNOWN — the type has not been recognized)
@@ -389,6 +383,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing a sequence of the PADDING frames (RFC 9000 §19.1)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param consumed number of the consumed octets (the length of the PADDING series)
@@ -410,6 +405,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the PING frame (RFC 9000 §19.2)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param consumed number of the consumed octets
@@ -435,8 +431,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the ACK/ACK_ECN frame (RFC 9000 §19.3)
+				 *
 				 * @note The ranges are decoded into the absolute packet numbers with a check
 				 *       of the monotonicity; a violation is FRAME_ENCODING_ERROR
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -460,6 +458,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the RESET_STREAM frame (RFC 9000 §19.4)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -483,6 +482,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the STOP_SENDING frame (RFC 9000 §19.5)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -506,6 +506,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the CRYPTO frame (RFC 9000 §19.6)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -529,6 +530,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the NEW_TOKEN frame (RFC 9000 §19.7)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param token    token for the future connections (zero-copy into the buffer of the payload)
@@ -556,9 +558,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the DATAGRAM frame of both variants 0x30-0x31 (RFC 9221 §4)
+				 *
 				 * @note The low bit of the type encodes the presence of the Length field. Without it the data
 				 *       occupies the whole remainder of the packet, therefore such a frame occurs
 				 *       in a packet only as the last one
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   data of the application datagram (zero-copy into the buffer of the payload)
@@ -582,6 +586,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the STREAM frame of all the variants 0x08-0x0F (RFC 9000 §19.8)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -610,9 +615,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the frames with a single integer field
+				 *
 				 * @details Suitable for MAX_DATA, MAX_STREAM_DATA (the second field), MAX_STREAMS,
 				 *          DATA_BLOCKED, STREAMS_BLOCKED and RETIRE_CONNECTION_ID — use
 				 *          the specialized functions below
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param type     expected type of the frame
@@ -641,7 +648,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the frames with the fields of a stream identifier and of a limit
+				 *
 				 * @details Suitable for MAX_STREAM_DATA and STREAM_DATA_BLOCKED
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param type     expected type of the frame
@@ -667,6 +676,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the NEW_CONNECTION_ID frame (RFC 9000 §19.15)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -691,6 +701,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the PATH_CHALLENGE/PATH_RESPONSE frames (RFC 9000 §19.17/§19.18)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param type     expected type of the frame
@@ -715,6 +726,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the CONNECTION_CLOSE frame of both variants (RFC 9000 §19.19)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param output   parsed frame
@@ -737,6 +749,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the HANDSHAKE_DONE frame (RFC 9000 §19.20)
+				 *
 				 * @param data     buffer of the decrypted payload (the beginning of the frame)
 				 * @param size     bytes available
 				 * @param consumed number of the consumed octets
@@ -767,6 +780,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling a sequence of the PADDING frames (the padding is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param count  number of the octets of the padding
 				 *
@@ -781,6 +795,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the PING frame (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 *
 				 * \~
@@ -798,7 +813,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the ACK/ACK_ECN frame (the frame is appended into output)
+				 *
 				 * @note The ranges must go in the descending order and must not intersect
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param frame  frame of the acknowledgement of the reception of the packets
 				 * @return       result of the assembly (false — the ranges are incorrect)
@@ -817,6 +834,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the RESET_STREAM frame (the frame is appended into output)
+				 *
 				 * @param output    output buffer of the payload of the packet
 				 * @param streamId  stream identifier
 				 * @param code      error code of the application
@@ -835,6 +853,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the STOP_SENDING frame (the frame is appended into output)
+				 *
 				 * @param output   output buffer of the payload of the packet
 				 * @param streamId stream identifier
 				 * @param code     error code of the application
@@ -852,6 +871,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the CRYPTO frame (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param offset offset of the data in the stream of the cryptographic handshake
 				 * @param data   data of the cryptographic handshake
@@ -869,6 +889,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the NEW_TOKEN frame (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param token  token for the future connections of the client (not empty)
 				 * @return       result of the assembly (false — an empty token is prohibited)
@@ -889,9 +910,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the DATAGRAM frame with the Length field (the frame is appended into output)
+				 *
 				 * @note The variant 0x31 with an explicit length is assembled: without it the frame occupies
 				 *       the whole remainder of the packet and the coalescing with the other frames
 				 *       becomes impossible (RFC 9221 §4)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param data   data of the application datagram
 				 *
@@ -913,8 +936,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the STREAM frame (the frame is appended into output)
+				 *
 				 * @note The Offset field is encoded only at a non-zero offset,
 				 *       the Length field is encoded always (the frame is not obliged to be the last one in the packet)
+				 *
 				 * @param output   output buffer of the payload of the packet
 				 * @param streamId stream identifier
 				 * @param offset   offset of the data in the stream
@@ -929,7 +954,7 @@ namespace awh {
 				 * @brief Функция сборки фреймов с одним целочисленным полем (фрейм дописывается в output)
 				 *
 				 * @details Подходит для MAX_DATA, MAX_STREAMS, DATA_BLOCKED,
-				 *          STREAMS_BLOCKED и RETIRE_CONNECTION_ID
+				 *          STREAMS_BLOCKED и RETIRE_CONNECTION_ID.
 				 *
 				 * @param output выходной буфер нагрузки пакета
 				 * @param type   тип фрейма
@@ -937,8 +962,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the frames with a single integer field (the frame is appended into output)
+				 *
 				 * @details Suitable for MAX_DATA, MAX_STREAMS, DATA_BLOCKED,
-				 *          STREAMS_BLOCKED and RETIRE_CONNECTION_ID
+				 *          STREAMS_BLOCKED and RETIRE_CONNECTION_ID.
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param type   type of the frame
 				 * @param value  value of the integer field
@@ -950,7 +977,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Функция сборки фреймов с полями идентификатора потока и лимита (фрейм дописывается в output)
 				 *
-				 * @details Подходит для MAX_STREAM_DATA и STREAM_DATA_BLOCKED
+				 * @details Подходит для MAX_STREAM_DATA и STREAM_DATA_BLOCKED.
 				 *
 				 * @param output   выходной буфер нагрузки пакета
 				 * @param type     тип фрейма
@@ -959,7 +986,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the frames with the fields of a stream identifier and of a limit (the frame is appended into output)
-				 * @details Suitable for MAX_STREAM_DATA and STREAM_DATA_BLOCKED
+				 *
+				 * @details Suitable for MAX_STREAM_DATA and STREAM_DATA_BLOCKED.
+				 *
 				 * @param output   output buffer of the payload of the packet
 				 * @param type     type of the frame
 				 * @param streamId stream identifier
@@ -978,6 +1007,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the NEW_CONNECTION_ID frame (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param frame  frame of the announcement of a new connection identifier
 				 * @return       result of the assembly (false — the length of the identifier is incorrect)
@@ -995,6 +1025,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the PATH_CHALLENGE/PATH_RESPONSE frames (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 * @param type   type of the frame (PATH_CHALLENGE or PATH_RESPONSE)
 				 * @param data   data of the path validation (8 octets)
@@ -1014,6 +1045,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the CONNECTION_CLOSE frame (the frame is appended into output)
+				 *
 				 * @param output    output buffer of the payload of the packet
 				 * @param code      error code (of the transport or of the application)
 				 * @param frameType type of the frame that has caused the error (ignored for an error of the application)
@@ -1031,6 +1063,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the HANDSHAKE_DONE frame (the frame is appended into output)
+				 *
 				 * @param output output buffer of the payload of the packet
 				 *
 				 * \~

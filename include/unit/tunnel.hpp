@@ -40,7 +40,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -50,7 +49,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -86,6 +84,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing tunnel status change events
+				 *
 				 * @param eid    event identifier
 				 * @param status new tunnel status
 				 *
@@ -102,6 +101,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing availability/unavailability events of the tunnel outgoing data queue
+				 *
 				 * @param eid    event identifier
 				 * @param status queue availability status
 				 * @param size   size of the available queue data
@@ -119,6 +119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing tunnel error events
+				 *
 				 * @param eid         event identifier
 				 * @param error       error type
 				 * @param description error description
@@ -137,6 +138,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing events of receiving information about packets in the tunnel
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param mid    mediator event identifier
 				 * @param action tunnel action
@@ -155,6 +157,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of committing the tunnel settings
+				 *
 				 * @param eid tunnel event identifier
 				 * @return    result of performing the commit
 				 *
@@ -173,6 +176,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data through the tunnel
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data to be sent
@@ -191,6 +195,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the tunnel options
+				 *
 				 * @param eid tunnel event identifier
 				 * @return    tunnel options
 				 *
@@ -207,6 +212,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the tunnel options
+				 *
 				 * @param eid     tunnel event identifier
 				 * @param options tunnel options to be set
 				 * @return        result of performing the setting
@@ -225,6 +231,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting a tunnel option
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param option tunnel option to be set
 				 * @param mode   mode of setting the tunnel option
@@ -243,6 +250,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of the tunnel
+				 *
 				 * @param eid tunnel event identifier
 				 * @return    network interface of the tunnel
 				 *
@@ -259,6 +267,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of the tunnel
+				 *
 				 * @param eid  tunnel event identifier
 				 * @param name name of the network interface to be set
 				 * @return     result of performing the setting
@@ -276,6 +285,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid tunnel event identifier
 				 * @return    host address of the target machine
 				 *
@@ -292,6 +302,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -310,6 +321,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the host address of the target machine
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param target host address of the target machine
 				 * @return       result of performing the setting
@@ -327,6 +339,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the host address of the target machine
+				 *
 				 * @param eid    tunnel event identifier
 				 * @param target object for extracting the host address of the target machine
 				 * @return       result of extracting the host address of the target machine
@@ -345,6 +358,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the tunnel address
+				 *
 				 * @param eid     tunnel event identifier
 				 * @param address tunnel address type
 				 * @return        value of the tunnel address
@@ -363,6 +377,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the tunnel address
+				 *
 				 * @param eid     tunnel event identifier
 				 * @param address tunnel address type
 				 * @param value   value of the tunnel address
@@ -383,6 +398,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the tunnel address
+				 *
 				 * @param eid     tunnel event identifier
 				 * @param address tunnel address type
 				 * @param value   value of the tunnel address
@@ -402,6 +418,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the tunnel address
+				 *
 				 * @param eid     tunnel event identifier
 				 * @param address tunnel address type
 				 * @param value   object for extracting the tunnel address
@@ -420,6 +437,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of the network interface
+				 *
 				 * @param eid tunnel event identifier
 				 * @return    MTU of the network interface
 				 *
@@ -436,6 +454,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of the network interface
+				 *
 				 * @param eid tunnel event identifier
 				 * @param mtu MTU size of the interface
 				 * @return    result of setting the MTU of the network interface
@@ -450,9 +469,9 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -467,6 +486,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a tunnel event
+				 *
 				 * @param eid identifier of the event to be destroyed
 				 *
 				 * \~
@@ -482,6 +502,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the tunnel identifier
+				 *
 				 * @param family address family
 				 * @return       identifier of the created tunnel
 				 *
@@ -492,7 +513,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
-				 *
 				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
@@ -506,9 +526,9 @@ namespace awh {
 				 *
 				 * @return текущее значение объекта
 				 *
-				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -519,7 +539,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -529,7 +548,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

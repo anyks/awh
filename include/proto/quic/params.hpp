@@ -46,7 +46,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -61,7 +60,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
-	 *
 	 *
 	 * \~english
 	 * @brief QUIC transport protocol namespace
@@ -81,6 +79,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Namespace of the codec of the QUIC transport parameters (RFC 9000 §18)
+		 *
 		 * @details The transport parameters are transmitted in the quic_transport_parameters TLS extension
 		 *          (RFC 9001 §8.2) as a sequence of the records (identifier, length, value)
 		 *          without a common header. The unknown parameters are ignored, the duplicates and
@@ -146,7 +145,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -160,12 +158,13 @@ namespace awh {
 			 * @brief Структура параметров транспорта QUIC (RFC 9000 §18.2)
 			 *
 			 * @details Скалярные поля инициализируются значениями по умолчанию из RFC 9000 §18.2.
-			 *          Наличие параметров без значений по умолчанию отражают флаги has*
+			 *          Наличие параметров без значений по умолчанию отражают флаги has*.
 			 *
 			 * \~english
 			 * @brief Structure of the QUIC transport parameters (RFC 9000 §18.2)
+			 *
 			 * @details The scalar fields are initialized with the default values from RFC 9000 §18.2.
-			 *          The presence of the parameters without the default values is reflected by the has* flags
+			 *          The presence of the parameters without the default values is reflected by the has* flags.
 			 *
 			 * \~
 			 */
@@ -205,9 +204,17 @@ namespace awh {
 				// Лимит активных идентификаторов соединения
 				uint64_t activeConnectionIdLimit;
 				/**
-				 * Предельный размер принимаемого фрейма DATAGRAM вместе с заголовком
-				 * фрейма. Нулевое значение означает, что фреймы DATAGRAM эндпоинтом
-				 * не принимаются, и отправлять их ему нельзя (RFC 9221 §3)
+				 * \~russian
+				 * @brief Предельный размер принимаемого фрейма DATAGRAM вместе с заголовком
+				 *        фрейма. Нулевое значение означает, что фреймы DATAGRAM эндпоинтом
+				 *        не принимаются, и отправлять их ему нельзя (RFC 9221 §3)
+				 *
+				 * \~english
+				 * @brief Limit size of an accepted DATAGRAM frame together with the header of a
+				 *        frame. A zero value means that the DATAGRAM frames are not accepted by an endpoint,
+				 *        and to send them to it is impossible (RFC 9221 §3)
+				 *
+				 * \~
 				 */
 				uint64_t maxDatagramFrameSize;
 				// Исходный DCID первого пакета Initial клиента (только сервер)
@@ -223,7 +230,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -259,8 +265,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of parsing the transport parameters from a TLS extension
+				 *
 				 * @note The sender parameter gives the role of the endpoint that has encoded the parameters:
 				 *       the server-only parameters in the parameters of a client — TRANSPORT_PARAMETER_ERROR
+				 *
 				 * @param data   buffer of the value of the quic_transport_parameters TLS extension
 				 * @param size   bytes available
 				 * @param sender role of the endpoint that has encoded the parameters
@@ -297,8 +305,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the transport parameters for a TLS extension
+				 *
 				 * @note The scalar parameters with the default values are not encoded.
 				 *       The server-only parameters at a client — an error of the assembly
+				 *
 				 * @param output output buffer of the value of the TLS extension
 				 * @param params transport parameters
 				 * @param sender role of the endpoint encoding the parameters
@@ -323,11 +333,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Function of assembling the context of the early data from the transport parameters (RFC 9001 §4.6.1)
+				 *
 				 * @note Only the parameters which the client remembers together with
 				 *       the resumption ticket and under whose limits it sends the early
 				 *       data are encoded. A full representation of the parameters is inapplicable here:
 				 *       the connection identifiers and the reset token are unique for every
 				 *       connection, and a coincidence of the contexts would become impossible
+				 *
 				 * @param output output buffer of the context of the early data
 				 * @param params transport parameters
 				 * @return       result of the assembly (false — the parameters are incorrect)

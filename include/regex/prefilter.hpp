@@ -226,7 +226,7 @@
 
 /**
  * \~russian
- * Выбор собственного поиска байта
+ * @brief Выбор собственного поиска байта
  *
  * @details В OpenBSD на x86-64 библиотечный memchr проходит текст командой
  *          repnz scasb. Собственный проход использует SSE2 и читает только
@@ -235,7 +235,7 @@
  *          двумя сборками стенда; AWH_REGEX_SCALAR отключает векторный путь.
  *
  * \~english
- * Choosing a custom byte search
+ * @brief Choosing a custom byte search
  *
  * @details On OpenBSD/x86-64, the library's `memchr` implementation scans
  *          the text using the `repnz scasb` instruction. The custom implementation
@@ -252,7 +252,13 @@
 	 */
 	#if defined(__OpenBSD__) && defined(__x86_64__)
 		/**
-		 * Ищем байт средствами модуля
+		 * \~russian
+		 * @brief Ищем байт средствами модуля
+		 *
+		 * \~english
+		 * @brief We search a byte by the means of the module
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_BYTE_SEARCH 1
 	/**
@@ -260,7 +266,13 @@
 	 */
 	#else
 		/**
-		 * Ищем байт средствами библиотеки
+		 * \~russian
+		 * @brief Ищем байт средствами библиотеки
+		 *
+		 * \~english
+		 * @brief We search a byte by the means of the library
+		 *
+		 * \~
 		 */
 		#define AWH_REGEX_BYTE_SEARCH 0
 	#endif
@@ -547,7 +559,7 @@ namespace awh {
 				bool active;
 				/**
 				 * \~russian
-				 * Признак единственного допустимого начального байта
+				 * @brief Признак единственного допустимого начального байта
 				 *
 				 * @details Единственный допустимый байт отыскивается поиском байта
 				 *          в тексте, выполняемым набором команд процессора над
@@ -555,7 +567,7 @@ namespace awh {
 				 *          байтов требует перебора текста побайтно.
 				 *
 				 * \~english
-				 * Indication of a single admissible starting byte
+				 * @brief Indication of a single admissible starting byte
 				 *
 				 * @details A single admissible byte is looked up by a byte search
 				 *          in the text performed by processor instructions over
@@ -576,7 +588,7 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * Наибольшее удаление обязательного литерала от начала совпадения
+				 * @brief Наибольшее удаление обязательного литерала от начала совпадения
 				 *
 				 * @details Совпадение обязано литерал содержать, отчего начало его
 				 *          не может лежать дальше чем за удаление до ближайшего
@@ -588,7 +600,7 @@ namespace awh {
 				 *          служит лишь проверке возможности совпадения.
 				 *
 				 * \~english
-				 * The greatest distance of the mandatory literal from the beginning of a match
+				 * @brief The greatest distance of the mandatory literal from the beginning of a match
 				 *
 				 * @details A match is bound to contain the literal, which is why its beginning
 				 *          cannot lie further than the distance before the nearest
@@ -605,7 +617,7 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * Литерал, присутствующий в любом совпадении выражения
+				 * @brief Литерал, присутствующий в любом совпадении выражения
 				 *
 				 * @details Выражению, привязанному к позиции начала поиска, литерал
 				 *          не выводится и остаётся пустым: попытка у такого выражения
@@ -613,7 +625,7 @@ namespace awh {
 				 *          «Намеренные решения» компилятора.
 				 *
 				 * \~english
-				 * Literal present in every match of the expression
+				 * @brief Literal present in every match of the expression
 				 *
 				 * @details For an expression anchored to the search start position the literal
 				 *          is not derived and stays empty: such an expression has a single
@@ -625,7 +637,7 @@ namespace awh {
 				string literal;
 				/**
 				 * \~russian
-				 * Последовательность символов, с которой начинается любое совпадение
+				 * @brief Последовательность символов, с которой начинается любое совпадение
 				 *
 				 * @details Ведущий литерал отыскивает позиции возможного начала совпадения
 				 *          поиском последовательности в тексте, тогда как набор допустимых
@@ -633,7 +645,7 @@ namespace awh {
 				 *          пропускает участки текста целиком и потому предпочтителен.
 				 *
 				 * \~english
-				 * The character sequence every match begins with
+				 * @brief The character sequence every match begins with
 				 *
 				 * @details The leading literal locates the positions of a possible beginning of a match
 				 *          by searching for the sequence in the text, whereas the set of admissible
@@ -646,7 +658,7 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * Альтернативные ведущие литералы выражения, начинающегося с alternation
+				 * @brief Альтернативные ведущие литералы выражения, начинающегося с alternation
 				 *
 				 * @details Заполняется, если первый узел выражения — alternation литералов
 				 *          одинаковой длины, и каждый литерал отыскивается SIMD-сканером
@@ -659,7 +671,7 @@ namespace awh {
 				 *          с разных байт, и SIMD-скан ведётся по объединению).
 				 *
 				 * \~english
-				 * Alternative leading literals of an expression starting with alternation
+				 * @brief Alternative leading literals of an expression starting with alternation
 				 *
 				 * @details Filled when the first node of the expression is an alternation of
 				 *          literals of equal length, each located by a SIMD pair scanner.

@@ -46,7 +46,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -56,7 +55,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён модулей
-	 *
 	 *
 	 * \~english
 	 * @brief Modules namespace
@@ -88,6 +86,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Structure of the parameters of the cluster
+				 *
 				 * @details The parameters of the cluster are given at its creation and cannot be changed in the course of the work.
 				 *
 				 * \~
@@ -109,7 +108,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -119,7 +117,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -143,46 +140,97 @@ namespace awh {
 			#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 				private:
 					/**
-					 * Признак объявления работника о готовности обслуживать подключения
+					 * \~russian
+					 * @brief Признак объявления работника о готовности обслуживать подключения
 					 *
 					 * @details Объявляется работник сам, и объявление это служит мастеру
 					 *          признаком связанности канала: порождение работника связи
-					 *          ещё не означает, а написанное работником - означает
+					 *          ещё не означает, а написанное работником - означает.
 					 *
 					 * @note Значение выбрано непечатным намеренно: объявление уходит
 					 *       первым сообщением работника и с полезной нагрузкой не
 					 *       смешивается
+					 *
+					 * \~english
+					 * @brief Sign of the declaration by a worker of a readiness to serve the connections
+					 *
+					 * @details It is declared by a worker itself, and this declaration serves a master as
+					 *          a sign of the connectedness of a channel: a spawning of a worker does not
+					 *          mean it yet, while what is written by a worker - does mean.
+					 *
+					 * @note A value is chosen unprintable on purpose: a declaration goes as the
+					 *       first message of a worker and is not mixed with a useful
+					 *       payload
+					 *
+					 * \~
 					 */
 					static constexpr uint8_t HANDOVER_REQUEST = 0x01;
 					/**
-					 * Признак передачи принятого подключения работнику
+					 * \~russian
+					 * @brief Признак передачи принятого подключения работнику
 					 *
 					 * @details Опознаватель ставится первым октетом сообщения: работник
-					 *          отличает им передачу движка от сообщения потребителя
+					 *          отличает им передачу движка от сообщения потребителя.
+					 *
+					 * \~english
+					 * @brief Sign of the transfer of an accepted connection to a worker
+					 *
+					 * @details A recogniser is set as the first octet of a message: a worker
+					 *          separates by it an engine transfer from a consumer message.
+					 *
+					 * \~
 					 */
 					static constexpr uint8_t HANDOVER_CONNECTION = 0x02;
 					/**
-					 * Список событий сервера работника, оставленных без своего сокета
+					 * \~russian
+					 * @brief Список событий сервера работника, оставленных без своего сокета
 					 *
 					 * @details Слушающего сокета работник кластера не заводит вовсе:
 					 *          принимает подключения мастер, а работнику отдаёт их
 					 *          снимками. Фиксация, прослушивание и запуск такому событию
-					 *          не нужны - оно служит лишь родителем принятых подключений
+					 *          не нужны - оно служит лишь родителем принятых подключений.
 					 *
 					 * @note Отвечают все три отсрочки успехом намеренно: событие заведено
 					 *       и принято к работе, а слушать работнику нечего
+					 *
+					 * \~english
+					 * @brief List of the server events of a worker left without its own socket
+					 *
+					 * @details A listening socket a worker of a cluster does not start at all:
+					 *          a master accepts the connections and gives them to a worker by snapshots.
+					 *          A fixation, a listening and a starting are not needed for such an event -
+					 *          it serves only as a parent of the accepted connections.
+					 *
+					 * @note All three delays answer with a success on purpose: an event is started
+					 *       and accepted to the work, and there is nothing for a worker to listen
+					 *
+					 * \~
 					 */
 					unordered_set <event::id_t> _handover;
 					/**
-					 * Позиция очереди раздачи подключений между работниками
+					 * \~russian
+					 * @brief Позиция очереди раздачи подключений между работниками
 					 *
+					 * \~english
+					 * @brief Position of a queue of a distribution of the connections between the workers
+					 *
+					 * \~
 					 */
 					size_t _handoverNext;
 					/**
-					 * Список работников, объявивших о готовности обслуживать подключения
+					 * \~russian
+					 * @brief Список работников, объявивших о готовности обслуживать подключения
 					 *
 					 * @note Учитываются они по объявлению, а не по порождению: до
 					 *       связанности канала передать работнику нечего
+					 *
+					 * \~english
+					 * @brief List of the workers having declared a readiness to serve the connections
+					 *
+					 * @note They are accounted by a declaration, and not by a spawning: before
+					 *       the connectedness of a channel there is nothing to pass to a worker
+					 *
+					 * \~
 					 */
 					vector <pid_t> _handoverWorkers;
 			#endif
@@ -201,6 +249,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing the link of a client with the server
+				 *
 				 * @param cid identifier of the client event
 				 *
 				 * \~
@@ -214,6 +263,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing all the clients of a server event
+				 *
 				 * @param sid identifier of the server event
 				 *
 				 * \~
@@ -228,6 +278,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of registering the link of a client with the server
+				 *
 				 * @param sid identifier of the server event
 				 * @param cid identifier of the client event
 				 *
@@ -243,6 +294,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching/stopping the work of the server
+				 *
 				 * @param status status of the launch/stop of the server
 				 *
 				 * \~
@@ -258,6 +310,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of the recreation of a process
+				 *
 				 * @param old old process identifier
 				 * @param pid current process identifier
 				 *
@@ -274,6 +327,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving the event of the termination of the work of a process
+				 *
 				 * @param pid    process identifier
 				 * @param status state with which the process has terminated
 				 *
@@ -290,6 +344,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of sending a message to a process of the cluster
+				 *
 				 * @param pid  process identifier
 				 * @param size size of the sent message
 				 *
@@ -306,6 +361,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing data write events of the server
+				 *
 				 * @param eid  event identifier
 				 * @param size size of the data to be written
 				 * @param ctx  intermediate context for passing into the callback function
@@ -323,6 +379,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of permitting a connection
+				 *
 				 * @param eid server identifier
 				 * @param cid client identifier
 				 *
@@ -340,6 +397,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the server actions
+				 *
 				 * @param eid    event identifier
 				 * @param action server action
 				 * @param ctx    intermediate context for passing into the callback function
@@ -357,6 +415,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing cluster status change events
+				 *
 				 * @param pid    event identifier
 				 * @param status new cluster status
 				 *
@@ -373,6 +432,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing server status change events
+				 *
 				 * @param eid    event identifier
 				 * @param status new server status
 				 * @param ctx    intermediate context for passing into the callback function
@@ -390,6 +450,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the informational metadata about a datagram packet
+				 *
 				 * @param eid  event identifier
 				 * @param info informational metadata about the datagram packet
 				 *
@@ -406,6 +467,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving the activation/deactivation events of the cluster
+				 *
 				 * @param pid   process identifier
 				 * @param event flag of the cluster event
 				 *
@@ -423,12 +485,18 @@ namespace awh {
 					 *
 					 * @details Объявляет о готовности работник сам, первым же своим
 					 *          сообщением: к мигу его отправки канал заведомо связан,
-					 *          тогда как порождение работника связи ещё не означает
+					 *          тогда как порождение работника связи ещё не означает.
 					 *
 					 * @param pid идентификатор процесса работника
 					 *
 					 * \~english
 					 * @brief Method of the accounting of a worker ready to serve the connections
+					 *
+					 *
+					 * @details A worker declares a readiness by himself, by his own first
+					 *         message: by a moment of its sending a channel is knowingly connected,
+					 *         while a spawning of a worker does not mean a connection yet.
+					 *
 					 * @param pid identifier of the process of the worker
 					 *
 					 * \~
@@ -443,7 +511,7 @@ namespace awh {
 					 *          слушающий сокет разделить нельзя - привязка к порту
 					 *          завершений живёт у объекта сокета, и второй процесс её не
 					 *          получает: система отвечает отказом 87, а завершения его
-					 *          приёмов уходят в порт процесса первого
+					 *          приёмов уходят в порт процесса первого.
 					 *
 					 * @note Не досталось работника - мастер обслуживает подключение сам
 					 *
@@ -452,6 +520,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the handover of an accepted connection to a worker of the cluster
+					 *
+					 * @details An acceptance of the connections at this system between the processes is shared
+					 *         only so: a master accepts, and a worker serves. An own
+					 *         listening socket can not be shared - a binding to a port of the completions
+					 *         lives at an object of a socket, and a second process does not get it:
+					 *         a system answers by a refusal 87, and a completions of its
+					 *         acceptances go into a port of a process of a first one.
+					 *
+					 * @note A worker did not fall to the lot - a master serves a connection by itself
+					 *
 					 * @param cid identifier of the accepted connection
 					 * @return    flag that the connection has been handed over to a worker
 					 *
@@ -464,7 +542,7 @@ namespace awh {
 					 *
 					 * @details Поднятое подключение отдаётся потребителю обычным путём
 					 *          принятого подключения: тем же откликом и с тем же
-					 *          устройством связей, каким его отдаёт приём свой
+					 *          устройством связей, каким его отдаёт приём свой.
 					 *
 					 * @param data данные полученного сообщения
 					 * @param size размер данных полученного сообщения
@@ -472,6 +550,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the raising of an accepted connection from the snapshot sent by the master
+					 *
+					 * @details An raised connection is given to a consumer by an usual way
+					 *         of an accepted connection: by that same callback and with that same
+					 *         device of the connections, by which an acceptance gives it.
+					 *
 					 * @param data data of the received message
 					 * @param size data size of the received message
 					 * @return     flag that the message was a handover of a connection
@@ -487,10 +570,16 @@ namespace awh {
 					 *          при фиксации настроек события - у работника она
 					 *          откладывается, - а спросить её не у чего, покуда кластера
 					 *          нет. Запускается же кластер прежним порядком, откликом о
-					 *          запуске юнита
+					 *          запуске юнита.
 					 *
 					 * \~english
 					 * @brief Method of the creation of the object of the cluster
+					 *
+					 * @details It is started before all the rest: a role of a process is needed already
+					 *         at a fixation of the settings of an event - at a worker it is
+					 *         put off, - and to ask it there is nothing while a cluster
+					 *         is none. A cluster, however, is started by a former order, by a callback about a
+					 *         starting of a unit.
 					 *
 					 * \~
 					 */
@@ -507,6 +596,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of receiving a message from a process of the cluster
+				 *
 				 * @param pid  process identifier
 				 * @param data data of the received message
 				 * @param size data size of the received message
@@ -525,6 +615,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing data reception events of the server
+				 *
 				 * @param eid  event identifier
 				 * @param data data of the server data reception event
 				 * @param size data size of the server data reception event
@@ -544,6 +635,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing availability/unavailability events of the outgoing message queue of the cluster
+				 *
 				 * @param pid    process identifier
 				 * @param status queue availability status
 				 * @param size   size of the available queue data
@@ -562,6 +654,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing availability/unavailability events of the server outgoing data queue
+				 *
 				 * @param eid    event identifier
 				 * @param status queue availability status
 				 * @param size   size of the available queue data
@@ -583,6 +676,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing timeout expiration events of a connected client
+				 *
 				 * @param eid    identifier of the connected client
 				 * @param action action type for the expired timeout
 				 * @param delay  timeout delay in milliseconds
@@ -603,6 +697,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing cluster error events
+				 *
 				 * @param pid         process identifier
 				 * @param error       error type
 				 * @param description error description
@@ -621,6 +716,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing server error events
+				 *
 				 * @param eid         event identifier
 				 * @param error       error type
 				 * @param description error description
@@ -642,6 +738,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the event of the unsent data of the server
+				 *
 				 * @param eid   event identifier
 				 * @param error error type of the data sending
 				 * @param data  data that could not be sent
@@ -661,6 +758,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the relevance of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of checking the relevance of the event
 				 *
@@ -677,6 +775,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the black list of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of performing the clearing
 				 *
@@ -692,6 +791,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the white list of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of performing the clearing
 				 *
@@ -709,6 +809,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address to the black list of an event
+				 *
 				 * @param eid   event identifier
 				 * @param value value of the event address
 				 * @return      result of performing the setting
@@ -726,6 +827,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an address to the white list of an event
+				 *
 				 * @param eid   event identifier
 				 * @param value value of the event address
 				 * @return      result of performing the setting
@@ -744,6 +846,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an address from the black list of an event
+				 *
 				 * @param eid   event identifier
 				 * @param value address to be removed from the black list
 				 * @return      result of performing the removal
@@ -761,6 +864,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an address from the white list of an event
+				 *
 				 * @param eid   event identifier
 				 * @param value address to be removed from the white list
 				 * @return      result of performing the removal
@@ -778,6 +882,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the black list of an event
+				 *
 				 * @param eid event identifier
 				 * @return    black list of the event
 				 *
@@ -793,6 +898,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the white list of an event
+				 *
 				 * @param eid event identifier
 				 * @return    white list of the event
 				 *
@@ -809,6 +915,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of committing the server settings
+				 *
 				 * @param eid server event identifier
 				 * @return    result of performing the commit
 				 *
@@ -825,6 +932,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of launching the work of the server
+				 *
 				 * @param eid server event identifier
 				 * @return    result of performing the launch
 				 *
@@ -841,6 +949,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of suspending the processing of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of performing the suspension
 				 *
@@ -856,6 +965,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resuming the processing of an event
+				 *
 				 * @param eid event identifier
 				 * @return    result of performing the resumption
 				 *
@@ -873,6 +983,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the intermediate context of the event of a connected client
+				 *
 				 * @param eid server event identifier
 				 * @param ctx pointer to the context of the event
 				 * @return    result of performing the setting
@@ -891,6 +1002,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of switching an event into the mode of listening for incoming connections
+				 *
 				 * @param eid server event identifier
 				 * @param max maximum number of the incoming connections
 				 * @return    result of performing the switch into the listening mode
@@ -908,6 +1020,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of receiving data from a client
+				 *
 				 * @param eid client event identifier
 				 * @return    result of receiving the data
 				 *
@@ -925,6 +1038,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending data to a client
+				 *
 				 * @param eid    client event identifier
 				 * @param buffer data buffer to be sent
 				 * @param size   size of the data to be sent
@@ -941,15 +1055,18 @@ namespace awh {
 				 *       отправить, поэтому при переполнении очереди данные не теряются
 				 * @note Отказ источника гасит вытягивание: заводится оно заново пустой
 				 *       отправкой `send(eid, nullptr, 0)`
+				 *
 				 * @param eid    идентификатор события клиента
 				 * @param source функция обратного вызова источника данных
 				 *
 				 * \~english
 				 * @brief Method of setting the source of the data for the pull model of the sending
+				 *
 				 * @note The engine asks the source for the data exactly when it is ready to send
 				 *       them, so at an overflow of the queue the data are not lost
 				 * @note A refusal of the source extinguishes the pulling: it is set going again
 				 *       by an empty sending `send(eid, nullptr, 0)`
+				 *
 				 * @param eid    client event identifier
 				 * @param source callback function of the source of the data
 				 *
@@ -967,6 +1084,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of joining the data between the server and another event
+				 *
 				 * @param eid  identifier of the source event
 				 * @param dest identifier of the destination event
 				 * @return     result of performing the joining
@@ -984,6 +1102,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the server options
+				 *
 				 * @param eid server event identifier
 				 * @return    server options
 				 *
@@ -1000,6 +1119,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the server options
+				 *
 				 * @param eid     server event identifier
 				 * @param options server options to be set
 				 * @return        result of performing the setting
@@ -1018,6 +1138,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting a server option
+				 *
 				 * @param eid    server event identifier
 				 * @param option server option to be set
 				 * @param mode   mode of setting the server option
@@ -1036,6 +1157,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the metadata of the last received datagram packet
+				 *
 				 * @param eid server event identifier
 				 * @return    metadata of the last received datagram packet
 				 *
@@ -1052,6 +1174,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the hops of the last received packet
+				 *
 				 * @param eid server event identifier
 				 * @return    number of the hops of the last received packet
 				 *
@@ -1068,6 +1191,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the number of the hops of the last received packet
+				 *
 				 * @param eid  server event identifier
 				 * @param hops number of the hops of the last received packet
 				 * @return     result of performing the setting
@@ -1085,6 +1209,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid server event identifier
 				 * @return    maximum number of the hops
 				 *
@@ -1101,6 +1226,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops through which a packet can pass
+				 *
 				 * @param eid  server event identifier
 				 * @param hops maximum number of the hops
 				 * @return     result of the work of the function
@@ -1118,6 +1244,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of the server
+				 *
 				 * @param eid server event identifier
 				 * @return    network interface of the server
 				 *
@@ -1134,6 +1261,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of the server
+				 *
 				 * @param eid  server event identifier
 				 * @param name name of the network interface to be set
 				 * @return     result of performing the setting
@@ -1151,6 +1279,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the server
+				 *
 				 * @param eid server event identifier
 				 * @return    port of the server
 				 *
@@ -1167,6 +1296,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the server
+				 *
 				 * @param eid  server event identifier
 				 * @param port port of the server to be set
 				 * @return     result of performing the setting
@@ -1185,6 +1315,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the server
+				 *
 				 * @param eid     server event identifier
 				 * @param address address type of the server
 				 * @return        value of the address of the server
@@ -1203,6 +1334,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the server
+				 *
 				 * @param eid     server event identifier
 				 * @param address address type of the server
 				 * @param value   value of the address of the server
@@ -1223,6 +1355,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the server
+				 *
 				 * @param eid     server event identifier
 				 * @param address address type of the server
 				 * @param value   value of the address of the server
@@ -1242,6 +1375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the server
+				 *
 				 * @param eid     server event identifier
 				 * @param address address type of the server
 				 * @param value   object for extracting the address of the server
@@ -1260,6 +1394,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of the network interface
+				 *
 				 * @param eid server event identifier
 				 * @return    MTU of the network interface
 				 *
@@ -1276,6 +1411,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of the network interface
+				 *
 				 * @param eid server event identifier
 				 * @param mtu MTU size of the interface
 				 * @return    result of setting the MTU of the network interface
@@ -1293,6 +1429,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the packet delivery mode of the server
+				 *
 				 * @param eid server event identifier
 				 * @return    packet delivery mode (unicast, multicast, broadcast)
 				 *
@@ -1309,6 +1446,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the packet delivery mode of the server
+				 *
 				 * @param eid      server event identifier
 				 * @param delivery packet delivery mode (unicast, multicast, broadcast)
 				 * @return         result of performing the setting
@@ -1327,6 +1465,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the buffer size of the server
+				 *
 				 * @param eid    server event identifier
 				 * @param action action type of the server
 				 * @return       buffer size of the server
@@ -1345,6 +1484,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the buffer size of the server
+				 *
 				 * @param eid    server event identifier
 				 * @param action action type of the server
 				 * @param size   buffer size of the server
@@ -1363,6 +1503,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the usage mode of the read timeout of the event
+				 *
 				 * @param eid event identifier
 				 * @return    usage mode of the read timeout of the event
 				 *
@@ -1378,6 +1519,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the usage mode of the read timeout of the event
+				 *
 				 * @param eid   event identifier
 				 * @param usage usage mode of the read timeout of the event (reusable or disposable)
 				 *
@@ -1395,6 +1537,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the timeout of the server
+				 *
 				 * @param eid    server event identifier
 				 * @param action action type of the server
 				 * @return       value of the timeout in milliseconds
@@ -1412,6 +1555,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout of the server
+				 *
 				 * @param eid     server event identifier
 				 * @param action  action type of the server
 				 * @param timeout value of the timeout in milliseconds
@@ -1431,6 +1575,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the server
+				 *
 				 * @param eid       server event identifier
 				 * @param limiting  mode of limiting the bandwidth of the server (egress or ingress)
 				 * @param bandwidth bandwidth of the server to be set (for example, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" or "auto")
@@ -1452,6 +1597,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the keep-alive parameters for the server
+				 *
 				 * @param eid   server event identifier
 				 * @param cnt   number of the keep-alive packets
 				 * @param idle  idle time before sending the first keep-alive packet in seconds
@@ -1471,6 +1617,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid server event identifier
 				 * @return    DSCP value
 				 *
@@ -1487,6 +1634,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param eid  server event identifier
 				 * @param dscp DSCP value
 				 * @return     result of the work of the function
@@ -1504,6 +1652,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the discovery of the maximum packet size (MTU)
+				 *
 				 * @param eid server event identifier
 				 * @return    discovery mode of the maximum packet size (MTU)
 				 *
@@ -1520,6 +1669,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the discovery of the maximum packet size (MTU)
+				 *
 				 * @param eid  server event identifier
 				 * @param mode discovery mode of the maximum packet size (MTU)
 				 * @return     result of the work of the function
@@ -1541,6 +1691,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    server event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1564,6 +1715,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of activating/deactivating a multicast group
+				 *
 				 * @param eid    server event identifier
 				 * @param mode   activation/deactivation mode
 				 * @param group  multicast group to be activated/deactivated
@@ -1613,9 +1765,9 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
+				 *
 				 * @param callback callback functions
 				 *
 				 * \~
@@ -1630,6 +1782,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of destroying a server event
+				 *
 				 * @param eid identifier of the event to be destroyed
 				 *
 				 * \~
@@ -1647,6 +1800,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a server event
+				 *
 				 * @param family   address family
 				 * @param type     event type
 				 * @param protocol event protocol
@@ -1664,6 +1818,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the name of the cluster
+				 *
 				 * @param name name of the cluster to be set
 				 *
 				 * \~
@@ -1678,6 +1833,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of the cluster
+				 *
 				 * @return family to which the cluster belongs (MASTER or CHILDREN)
 				 *
 				 * \~
@@ -1692,6 +1848,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the activation mode of the cluster
+				 *
 				 * @return activation mode of the cluster
 				 *
 				 * \~
@@ -1705,6 +1862,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the working mode of the cluster
+				 *
 				 * @param mode activation/deactivation mode of the cluster
 				 *
 				 * \~
@@ -1719,6 +1877,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the maximum number of the processes
+				 *
 				 * @return maximum number of the processes
 				 *
 				 * \~
@@ -1732,6 +1891,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the processes
+				 *
 				 * @param count maximum number of the processes
 				 *
 				 * \~
@@ -1746,6 +1906,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of the child processes
+				 *
 				 * @return list of the child processes
 				 *
 				 * \~
@@ -1762,6 +1923,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to the parent process
+				 *
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
 				 * @return       number of bytes of the sent message
@@ -1780,6 +1942,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to a child process
+				 *
 				 * @param pid    identifier of the process for receiving the message
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
@@ -1799,6 +1962,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending a message to all the child processes
+				 *
 				 * @param buffer binary buffer for sending the message
 				 * @param size   size of the binary buffer for sending the message
 				 * @return       number of bytes of the sent message
@@ -1815,6 +1979,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the flag of the automatic revival of the processes
+				 *
 				 * @param mode flag of the revival of the processes
 				 *
 				 * \~
@@ -1829,6 +1994,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the parameters of the protection against a loop of restarts of the processes of the cluster
+				 *
 				 * @param limit  maximum number of consecutive fast falls before the cluster is stopped (0 — without a limit)
 				 * @param window time window of a «fast» (early) fall of a process in milliseconds
 				 *
@@ -1844,6 +2010,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of the data transfer protocol between the workers
+				 *
 				 * @return type of the data transfer protocol between the workers
 				 *
 				 * \~
@@ -1857,6 +2024,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the type of the data transfer protocol between the workers
+				 *
 				 * @param type type of the data transfer protocol between the workers to be set
 				 *
 				 * \~
@@ -1873,6 +2041,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the event buffer size
+				 *
 				 * @param pid    process identifier
 				 * @param action event action type
 				 * @return       event buffer size
@@ -1891,6 +2060,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the event buffer size
+				 *
 				 * @param pid    process identifier
 				 * @param action event action type
 				 * @param size   event buffer size
@@ -1909,7 +2079,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Server(const Server &) = delete;
+				explicit Server(const Server &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирующего присваивания удалён
@@ -1918,6 +2088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Copy assignment operator deleted
+				 *
 				 * @return current value of the object
 				 *
 				 * \~
@@ -1928,7 +2099,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -1938,7 +2108,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

@@ -47,7 +47,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -63,6 +62,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the statuses of the holder
+	 *
 	 * @tparam T         data type of the statuses of the holder
 	 * @tparam MutexType data type of the external mutex (std::mutex or std::shared_mutex)
 	 *
@@ -100,6 +100,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the permission to perform an operation
+			 *
 			 * @param comp  set to compare the current status against
 			 * @param hold  status that needs to be set (held)
 			 * @param equal equivalence flag (true — allowed if present in comp, false — if absent)
@@ -133,6 +134,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param status reference to the stack of statuses
 			 * @param mtx    reference to the external mutex of the owner of the stack of statuses
 			 *
@@ -143,7 +145,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor
@@ -169,6 +170,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Template of the data format of the statuses of the holder
+	 *
 	 * @tparam T         data of the statuses of the holder
 	 * @tparam MutexType data type of the external mutex (std::mutex or std::shared_mutex)
 	 *
@@ -176,7 +178,13 @@ namespace awh {
 	 */
 	template <class T, typename MutexType = std::mutex>
 	/**
-	 * Создаём тип данных работы с холдером
+	 * \~russian
+	 * @brief Создаём тип данных работы с холдером
+	 *
+	 * \~english
+	 * @brief Create a type of data of a work with a holder
+	 *
+	 * \~
 	 */
 	using holder_t = Holder <T, MutexType>;
 };

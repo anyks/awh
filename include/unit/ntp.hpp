@@ -324,6 +324,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of processing the errors of the events of the NTP client
+				 *
 				 * @param eid         event identifier of the NTP client
 				 * @param error       error code of the event of the NTP client
 				 * @param description error description of the event of the NTP client
@@ -807,7 +808,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				NTP(const NTP &) = delete;
+				explicit NTP(const NTP &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

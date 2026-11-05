@@ -86,7 +86,7 @@ namespace awh {
 		enum class path_t : uint8_t {
 			/**
 			 * \~russian
-			 * Сопоставление порождённым машинным кодом
+			 * @brief Сопоставление порождённым машинным кодом
 			 *
 			 * @warning Путь этот НЕЛЬЗЯ звать «MACHINE»: FreeBSD объявляет это имя
 			 *          макросом в `<machine/param.h>`, подставляя вместо него строку с
@@ -98,7 +98,7 @@ namespace awh {
 			 *          Заводя новые пути, имя следует сличать с системными макросами.
 			 *
 			 * \~english
-			 * Matching by the generated machine code
+			 * @brief Matching by the generated machine code
 			 *
 			 * @warning This path must NOT be named "MACHINE": FreeBSD defines this name
 			 *          as a macro in `<machine/param.h>`, substituting the handler name
@@ -191,7 +191,7 @@ namespace awh {
 			FRAMES = 0x04, // Заведения кадра вызова подвыражения
 			/**
 			 * \~russian
-			 * Обходы цикла исполнения с возвратом
+			 * @brief Обходы цикла исполнения с возвратом
 			 *
 			 * @details Мера эта от «STEPS» отличается тем, что шаг считает
 			 *          работу, а обход - заход в разбор кода операции. Ряд
@@ -201,7 +201,7 @@ namespace awh {
 			 *          эта выигрыш прохода рядом единственная и показывает.
 			 *
 			 * \~english
-			 * Rounds of the backtracking execution loop
+			 * @brief Rounds of the backtracking execution loop
 			 *
 			 * @details This metric differs from "STEPS" in that a "step"
 			 *          counts the actual work performed, whereas a "pass"
@@ -219,7 +219,7 @@ namespace awh {
 			ROUNDS = 0x05,
 			/**
 			 * \~russian
-			 * Попытки сопоставления исполнением с возвратом
+			 * @brief Попытки сопоставления исполнением с возвратом
 			 *
 			 * @details Мера эта считает заходы в попытку: сброс ячеек захвата,
 			 *          очистку наборов, заход в цикл исполнения. Плата за заход
@@ -229,7 +229,7 @@ namespace awh {
 			 *          по сценариям.
 			 *
 			 * \~english
-			 * Attempts of the backtracking matching
+			 * @brief Attempts of the backtracking matching
 			 *
 			 * @details This metric counts "attempts"—specifically, the resetting
 			 *          of capture cells, the clearing of sets, and entry into the
@@ -244,10 +244,10 @@ namespace awh {
 			ATTEMPTS = 0x06,
 			/**
 			 * \~russian
-			 * Количество учитываемых мер работы
+			 * @brief Количество учитываемых мер работы
 			 *
 			 * \~english
-			 * Number of work measures taken into account
+			 * @brief Number of work measures taken into account
 			 *
 			 * \~
 			 */
@@ -388,15 +388,33 @@ namespace awh {
  */
 #if defined(AWH_REGEX_PROBING)
 	/**
-	 * Учёт прохождения пути исполнения сопоставления
+	 * \~russian
+	 * @brief Учёт прохождения пути исполнения сопоставления
+	 *
+	 * \~english
+	 * @brief An account of a passing of an execution path of a matching
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_TICK(PATH) awh::regex::Probe::tick(PATH)
 	/**
-	 * Учёт выполненных операций меры работы сопоставления
+	 * \~russian
+	 * @brief Учёт выполненных операций меры работы сопоставления
+	 *
+	 * \~english
+	 * @brief An account of the performed operations of a measure of a matching work
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_SPEND(WORK, COUNT) awh::regex::Probe::spend(WORK, COUNT)
 	/**
-	 * Приращение местного счётчика меры работы, полем исполнителя ведомого
+	 * \~russian
+	 * @brief Приращение местного счётчика меры работы, полем исполнителя ведомого
+	 *
+	 * \~english
+	 * @brief An increment of a local counter of a work measure, known by a field of an executor
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_COUNTED(FIELD) ((FIELD)++)
 /**
@@ -404,15 +422,33 @@ namespace awh {
  */
 #else
 	/**
-	 * Учёт не ведётся: приращение счётчика расхода стоит дороже пути учитываемого
+	 * \~russian
+	 * @brief Учёт не ведётся: приращение счётчика расхода стоит дороже пути учитываемого
+	 *
+	 * \~english
+	 * @brief An account is not kept: an increment of a consumption counter costs dearer than the accounted path
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_TICK(PATH) ((void) 0)
 	/**
-	 * Учёт не ведётся: приращение счётчика стоит дороже операции учитываемой
+	 * \~russian
+	 * @brief Учёт не ведётся: приращение счётчика стоит дороже операции учитываемой
+	 *
+	 * \~english
+	 * @brief An account is not kept: an increment of a counter costs dearer than an accounted operation
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_SPEND(WORK, COUNT) ((void) 0)
 	/**
-	 * Учёт не ведётся: приращение поля стоит дороже операции учитываемой
+	 * \~russian
+	 * @brief Учёт не ведётся: приращение поля стоит дороже операции учитываемой
+	 *
+	 * \~english
+	 * @brief An account is not kept: an increment of a field costs dearer than an accounted operation
+	 *
+	 * \~
 	 */
 	#define AWH_REGEX_COUNTED(FIELD) ((void) 0)
 #endif

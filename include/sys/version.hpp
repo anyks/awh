@@ -46,7 +46,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -80,6 +79,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the version as a number
+			 *
 			 * @return version as a number
 			 *
 			 * \~
@@ -91,12 +91,13 @@ namespace awh {
 			 * @brief Метод извлечения версии в виде строки
 			 *
 			 * @param octets количество октетов
-			 * @return      версия в виде строки
+			 * @return       версия в виде строки
 			 *
 			 * \~english
 			 * @brief Method of getting the version as a string
+			 *
 			 * @param octets number of octets
-			 * @return      version as a string
+			 * @return       version as a string
 			 *
 			 * \~
 			 */
@@ -108,9 +109,9 @@ namespace awh {
 			 *
 			 * @param version устанавливаемая версия
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting the version
+			 *
 			 * @param version version to set
 			 *
 			 * \~
@@ -122,9 +123,9 @@ namespace awh {
 			 *
 			 * @param version устанавливаемая версия
 			 *
-			 *
 			 * \~english
 			 * @brief Method of setting the version
+			 *
 			 * @param version version to set
 			 *
 			 * \~
@@ -139,6 +140,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of outputting the version as a number
+			 *
 			 * @return version as a number
 			 *
 			 * \~
@@ -152,6 +154,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator of outputting the version as a string
+			 *
 			 * @return version as a string
 			 *
 			 * \~
@@ -167,6 +170,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [<] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -182,6 +186,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [>] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -197,6 +202,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [<=] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -212,6 +218,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [>=] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -227,6 +234,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [!=] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -242,6 +250,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Operator [==] of the comparison of a version
+			 *
 			 * @param version version to compare with
 			 * @return        result of the comparison
 			 *
@@ -256,9 +265,9 @@ namespace awh {
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 *
-			 *
 			 * \~english
 			 * @brief Assignment operator of a version
+			 *
 			 * @param version version to assign
 			 * @return        the current object
 			 *
@@ -272,9 +281,9 @@ namespace awh {
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 *
-			 *
 			 * \~english
 			 * @brief Assignment operator of a version
+			 *
 			 * @param version version to assign
 			 * @return        the current object
 			 *
@@ -288,9 +297,9 @@ namespace awh {
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 *
-			 *
 			 * \~english
 			 * @brief Assignment operator of a version
+			 *
 			 * @param version version to assign
 			 * @return        the current object
 			 *
@@ -304,9 +313,9 @@ namespace awh {
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 *
-			 *
 			 * \~english
 			 * @brief Assignment operator of a version
+			 *
 			 * @param version version to assign
 			 * @return        the current object
 			 *
@@ -317,7 +326,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -331,9 +339,9 @@ namespace awh {
 			 *
 			 * @param version устанавливаемая версия
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param version version to set
 			 *
 			 * \~
@@ -345,9 +353,9 @@ namespace awh {
 			 *
 			 * @param version устанавливаемая версия
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param version version to set
 			 *
 			 * \~
@@ -359,9 +367,9 @@ namespace awh {
 			 *
 			 * @param version устанавливаемая версия
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param version version to set
 			 *
 			 * \~
@@ -371,7 +379,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Деструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Destructor
 			 *
@@ -379,6 +386,7 @@ namespace awh {
 			 */
 			~Version() noexcept = default;
 	} version_t;
+
 	/**
 	 * \~russian
 	 * @brief Оператор [>>] чтения из потока версии
@@ -388,6 +396,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Operator [>>] of reading a version from a stream
+	 *
 	 * @param is      stream to read from
 	 * @param version version to assign
 	 *
@@ -403,6 +412,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Operator [<<] of outputting a version to a stream
+	 *
 	 * @param os      stream to output the data to
 	 * @param version version being output
 	 *

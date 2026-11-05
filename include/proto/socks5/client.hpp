@@ -40,7 +40,6 @@
  * \~russian
  * @brief основное пространство имён
  *
- *
  * \~english
  * @brief main namespace
  *
@@ -55,7 +54,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён протоколов
-	 *
 	 *
 	 * \~english
 	 * @brief Protocols namespace
@@ -88,9 +86,9 @@ namespace awh {
 				 * @param ctx    объект для извлечения параметров сообщения
 				 * @return       результат парсинга входящих данных
 				 *
-				 *
 				 * \~english
 				 * @brief Method of parsing the incoming data
+				 *
 				 * @param buffer binary buffer of the incoming data
 				 * @param size   size of the binary buffer of the incoming data
 				 * @param ctx    object for extracting the parameters of the message
@@ -108,9 +106,9 @@ namespace awh {
 				 * @param udp    объект для извлечения параметров UDP заголовка
 				 * @return       результат парсинга входящих данных
 				 *
-				 *
 				 * \~english
 				 * @brief Method of parsing the incoming data
+				 *
 				 * @param buffer binary buffer of the incoming data
 				 * @param size   size of the binary buffer of the incoming data
 				 * @param udp    object for extracting the parameters of the UDP header
@@ -129,9 +127,9 @@ namespace awh {
 				 * @param ctx    объект для установки параметров сообщения
 				 * @return 	     результат извлечения данных в буфер
 				 *
-				 *
 				 * \~english
 				 * @brief Method of extracting the buffer of a request/response
+				 *
 				 * @param buffer pointer to the buffer for extracting the data
 				 * @param size   reference to the size of the buffer for extracting the data
 				 * @param ctx    object for setting the parameters of the message
@@ -149,9 +147,9 @@ namespace awh {
 				 * @param udp    объект для установки параметров UDP заголовка
 				 * @return 	     результат извлечения данных в буфер
 				 *
-				 *
 				 * \~english
 				 * @brief Method of extracting the buffer of a request/response
+				 *
 				 * @param buffer pointer to the buffer for extracting the data
 				 * @param size   reference to the size of the buffer for extracting the data
 				 * @param udp    object for setting the parameters of the UDP header
@@ -170,6 +168,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the parameters of the authorization
+				 *
 				 * @param username user name for the authorization on the server
 				 * @param password user password for the authorization on the server
 				 *
@@ -181,7 +180,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -191,7 +189,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

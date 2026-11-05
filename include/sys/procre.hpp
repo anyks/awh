@@ -60,7 +60,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -91,6 +90,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Structure of the ports
+			 *
 			 * @details The source port and the destination port of the process.
 			 *
 			 * \~
@@ -103,7 +103,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -120,6 +119,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Structure of the IP addresses of the process
+			 *
 			 * @details The source IP address and the destination IP address of the process.
 			 *
 			 * \~
@@ -132,7 +132,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -149,6 +148,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Structure of the informational metadata of the process
+			 *
 			 * @details Holds information about the ports, the IP addresses, the protocol family and the protocol of the process.
 			 *
 			 * \~
@@ -165,7 +165,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -188,9 +187,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function for getting information about a process
+			 *
 			 * @details It is called for every process found in the course of the scan of
 			 *          the active processes. If it is not set — the information about the processes
 			 *          is not returned.
+			 *
 			 * @param pid  identifier of the process
 			 * @param info object of the informational metadata of the process
 			 *
@@ -218,6 +219,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of the application by the identifier of the process
+			 *
 			 * @param pid identifier of the process
 			 * @return    name of the application the process belongs to
 			 *
@@ -233,6 +235,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the callback function for getting information about a process
+			 *
 			 * @param callback callback function
 			 *
 			 * \~
@@ -252,7 +255,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor
