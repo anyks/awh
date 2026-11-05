@@ -84,12 +84,12 @@ static double measure(awh::regex::engine_t & engine, const string & pattern,
 		// Выполняем сопоставление выражения с текстом
 		engine.exec(expression, text, 0, captures);
 	// Выполняем сброс счётчиков мер работы
-	awh::regex::probe_t::reset();
+	awh::regex::reset();
 	// Выполняем сопоставление выражения с текстом
 	engine.exec(expression, text, 0, captures);
 	// Получаем снятые меры работы сопоставления
-	rounds = awh::regex::probe_t::amount(awh::regex::work_t::ROUNDS);
-	steps = awh::regex::probe_t::amount(awh::regex::work_t::STEPS);
+	rounds = awh::regex::amount(awh::regex::work_t::ROUNDS);
+	steps = awh::regex::amount(awh::regex::work_t::STEPS);
 	// Количество проходов замера и количество попыток
 	constexpr uint32_t PASSES = 20000, ATTEMPTS = 8;
 	// Наименьшее время прохода набора повторений
@@ -137,7 +137,7 @@ int main() noexcept {
 	/**
 	 * Если учёт путей сопоставления при сборке не включён
 	 */
-	if(!awh::regex::probe_t::enabled())
+	if(!awh::regex::enabled())
 		/**
 		 * Выводим предупреждение об отсутствии учёта
 		 *
@@ -244,7 +244,7 @@ int main() noexcept {
 		 */
 		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++){
 			// Получаем количество прохождений пути исполнения
-			const uint64_t count = awh::regex::probe_t::count(static_cast <awh::regex::path_t> (i));
+			const uint64_t count = awh::regex::count(static_cast <awh::regex::path_t> (i));
 			// Если путь исполнения пройден, выводим его имя со счётом
 			if(count > 0) ::printf("%s=%llu ", PATHS[i], static_cast <unsigned long long> (count));
 		}

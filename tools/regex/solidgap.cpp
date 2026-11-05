@@ -80,7 +80,7 @@ int main() noexcept {
 	/**
 	 * Если учёт путей сопоставления при сборке не включён
 	 */
-	if(!awh::regex::probe_t::enabled()){
+	if(!awh::regex::enabled()){
 		// Выводим сообщение об отсутствии учёта путей
 		::printf("Щуп собран без признака PROBING: счётчики молчат\n");
 		// Выводим результат отказа
@@ -108,11 +108,11 @@ int main() noexcept {
 		// Создаём набор границ ячеек захвата текста
 		vector <pair <size_t, size_t>> captures;
 		// Выполняем сброс счётчиков путей сопоставления
-		awh::regex::probe_t::reset();
+		awh::regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		const bool matched = engine.exec(expression, item.text, 0, captures);
 		// Получаем количество пропусков точек возврата ряда повторения
-		const uint64_t solids = awh::regex::probe_t::count(awh::regex::path_t::SOLIDING);
+		const uint64_t solids = awh::regex::count(awh::regex::path_t::SOLIDING);
 		// Выводим строку итога случая
 		::printf("%-18s %-20s %10llu %8s  %s\n", item.pattern, item.text,
 		 static_cast <unsigned long long> (solids), (matched ? "есть" : "НЕТ"), item.note);

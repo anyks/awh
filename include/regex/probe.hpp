@@ -253,133 +253,105 @@ namespace awh {
 			 */
 			COUNT = 0x07
 		};
+
 		/**
 		 * \~russian
-		 * @brief Класс учёта путей исполнения сопоставления
+		 * @brief Функция проверки заведения учёта путей исполнения
 		 *
-		 * @details Учёт ведётся лишь у библиотеки, признаком сборки
-		 *          «AWH_REGEX_PROBING» собранной: приращение счётчика
-		 *          обходится в десятки наносекунд у сопоставления, какое
-		 *          само укладывается в двадцать, и месту его в выпускаемой
-		 *          сборке нет. Признак этот ставится набору проверок всегда,
-		 *          а метод «enabled» позволяет проверке отказать, если учёт
-		 *          не заведён: молчаливый пропуск проверки равен молчаливому
-		 *          отключению того, что она стережёт.
+		 * @return признак заведения учёта путей исполнения
 		 *
 		 * \~english
-		 * @brief Class of the accounting of the execution paths of matching
+		 * @brief Function of checking whether the accounting of the execution paths is compiled in
 		 *
-		 * @details The accounting is kept only by a library built with the build flag
-		 *          "AWH_REGEX_PROBING": incrementing a counter costs tens of nanoseconds
-		 *          for a match that itself fits into twenty, and it has no place in a
-		 *          release build. The flag is always set for the test suite, while the
-		 *          "enabled" method allows a test to fail if the accounting is not
-		 *          compiled in: silently skipping a test equals silently switching off
-		 *          what it guards.
+		 * @return indication that the accounting of the execution paths is compiled in
 		 *
 		 * \~
 		 */
-		typedef class __AWH_SHARED_EXPORT__ Probe {
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод проверки заведения учёта путей исполнения
-				 *
-				 * @return признак заведения учёта путей исполнения
-				 *
-				 * \~english
-				 * @brief Method of checking whether the accounting of the execution paths is compiled in
-				 *
-				 * @return indication that the accounting of the execution paths is compiled in
-				 *
-				 * \~
-				 */
-				static bool enabled() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод сброса счётчиков путей исполнения
-				 *
-				 * \~english
-				 * @brief Method of resetting the counters of the execution paths
-				 *
-				 * \~
-				 */
-				static void reset() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод извлечения счётчика пути исполнения
-				 *
-				 * @param path учитываемый путь исполнения сопоставления
-				 * @return     количество прохождений пути исполнения
-				 *
-				 * \~english
-				 * @brief Method of getting the counter of an execution path
-				 *
-				 * @param path execution path of matching being accounted for
-				 * @return     number of passes of the execution path
-				 *
-				 * \~
-				 */
-				static uint64_t count(const path_t path) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод учёта прохождения пути исполнения
-				 *
-				 * @param path пройденный путь исполнения сопоставления
-				 *
-				 * \~english
-				 * @brief Method of accounting for a pass of an execution path
-				 *
-				 * @param path execution path of matching that was passed
-				 *
-				 * \~
-				 */
-				static void tick(const path_t path) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод извлечения счётчика меры работы
-				 *
-				 * @param work учитываемая мера работы сопоставления
-				 * @return     количество операций учитываемой меры
-				 *
-				 * \~english
-				 * @brief Method of getting the counter of a measure of work
-				 *
-				 * @param work measure of the work of matching being accounted for
-				 * @return     number of operations of the measure being accounted for
-				 *
-				 * \~
-				 */
-				static uint64_t amount(const work_t work) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод учёта выполненных операций меры работы
-				 *
-				 * @param work  выполненная мера работы сопоставления
-				 * @param count количество выполненных операций
-				 *
-				 * @details Количество принимается величиной, а не единицей, ибо цикл
-				 *          исполнения ведёт счётчик шагов местной переменной и вносит
-				 *          его разом по завершении: приращение разделяемого счётчика
-				 *          на каждом шаге обошлось бы дороже самого шага и исказило бы
-				 *          образец стека, по какому и ведётся разыскание.
-				 *
-				 * \~english
-				 * @brief Method of accounting for the operations performed of a measure of work
-				 *
-				 * @param work  measure of the work of matching that was performed
-				 * @param count number of operations performed
-				 *
-				 * @details The count is taken as a quantity rather than as a unit, because the
-				 *          execution loop keeps its step counter in a local variable and adds it
-				 *          in one go upon completion: incrementing a shared counter at every step
-				 *          would cost more than the step itself and would distort the stack
-				 *          sample by which the investigation is carried out.
-				 *
-				 * \~
-				 */
-				static void spend(const work_t work, const uint64_t count) noexcept;
-		} probe_t;
+		__AWH_SHARED_EXPORT__ bool enabled() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция сброса счётчиков путей исполнения
+		 *
+		 * \~english
+		 * @brief Function of resetting the counters of the execution paths
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void reset() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения счётчика пути исполнения
+		 *
+		 * @param path учитываемый путь исполнения сопоставления
+		 * @return     количество прохождений пути исполнения
+		 *
+		 * \~english
+		 * @brief Function of getting the counter of an execution path
+		 *
+		 * @param path execution path of matching being accounted for
+		 * @return     number of passes of the execution path
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint64_t count(const path_t path) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция учёта прохождения пути исполнения
+		 *
+		 * @param path пройденный путь исполнения сопоставления
+		 *
+		 * \~english
+		 * @brief Function of accounting for a pass of an execution path
+		 *
+		 * @param path execution path of matching that was passed
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void tick(const path_t path) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения счётчика меры работы
+		 *
+		 * @param work учитываемая мера работы сопоставления
+		 * @return     количество операций учитываемой меры
+		 *
+		 * \~english
+		 * @brief Function of getting the counter of a measure of work
+		 *
+		 * @param work measure of the work of matching being accounted for
+		 * @return     number of operations of the measure being accounted for
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint64_t amount(const work_t work) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция учёта выполненных операций меры работы
+		 *
+		 * @param work  выполненная мера работы сопоставления
+		 * @param count количество выполненных операций
+		 *
+		 * @details Количество принимается величиной, а не единицей, ибо цикл
+		 *          исполнения ведёт счётчик шагов местной переменной и вносит
+		 *          его разом по завершении: приращение разделяемого счётчика
+		 *          на каждом шаге обошлось бы дороже самого шага и исказило бы
+		 *          образец стека, по какому и ведётся разыскание.
+		 *
+		 * \~english
+		 * @brief Function of accounting for the operations performed of a measure of work
+		 *
+		 * @param work  measure of the work of matching that was performed
+		 * @param count number of operations performed
+		 *
+		 * @details The count is taken as a quantity rather than as a unit, because the
+		 *          execution loop keeps its step counter in a local variable and adds it
+		 *          in one go upon completion: incrementing a shared counter at every step
+		 *          would cost more than the step itself and would distort the stack
+		 *          sample by which the investigation is carried out.
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void spend(const work_t work, const uint64_t count) noexcept;
 	};
 };
 
@@ -396,7 +368,7 @@ namespace awh {
 	 *
 	 * \~
 	 */
-	#define AWH_REGEX_TICK(PATH) awh::regex::Probe::tick(PATH)
+	#define AWH_REGEX_TICK(PATH) awh::regex::tick(PATH)
 	/**
 	 * \~russian
 	 * @brief Учёт выполненных операций меры работы сопоставления
@@ -406,7 +378,7 @@ namespace awh {
 	 *
 	 * \~
 	 */
-	#define AWH_REGEX_SPEND(WORK, COUNT) awh::regex::Probe::spend(WORK, COUNT)
+	#define AWH_REGEX_SPEND(WORK, COUNT) awh::regex::spend(WORK, COUNT)
 	/**
 	 * \~russian
 	 * @brief Приращение местного счётчика меры работы, полем исполнителя ведомого

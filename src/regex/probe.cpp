@@ -51,7 +51,7 @@ namespace {
 	 *          шаги цикла с порождением машинного кода.
 	 *
 	 */
-	atomic_uint64_t AMOUNTS[static_cast <size_t> (regex::work_t::COUNT)];
+	static atomic_uint64_t AMOUNTS[static_cast <size_t> (regex::work_t::COUNT)];
 	/**
 	 * @brief Счётчики путей исполнения сопоставления
 	 *
@@ -61,16 +61,16 @@ namespace {
 	 *          библиотеки и её заголовка.
 	 *
 	 */
-	atomic_uint64_t COUNTERS[static_cast <size_t> (regex::path_t::COUNT)];
+	static atomic_uint64_t COUNTERS[static_cast <size_t> (regex::path_t::COUNT)];
 };
 
 /**
- * @brief Метод проверки заведения учёта путей исполнения
+ * @brief Функция проверки заведения учёта путей исполнения
  *
  * @return признак заведения учёта путей исполнения
  *
  */
-bool awh::regex::Probe::enabled() noexcept {
+bool awh::regex::enabled() noexcept {
 	/**
 	 * Если учёт путей исполнения сопоставления заведён
 	 */
@@ -86,10 +86,10 @@ bool awh::regex::Probe::enabled() noexcept {
 	#endif
 }
 /**
- * @brief Метод сброса счётчиков путей исполнения
+ * @brief Функция сброса счётчиков путей исполнения
  *
  */
-void awh::regex::Probe::reset() noexcept {
+void awh::regex::reset() noexcept {
 	/**
 	 * Обходим счётчиков путей исполнения сопоставления
 	 */
@@ -104,13 +104,13 @@ void awh::regex::Probe::reset() noexcept {
 		AMOUNTS[i].store(0, memory_order_relaxed);
 }
 /**
- * @brief Метод извлечения счётчика пути исполнения
+ * @brief Функция извлечения счётчика пути исполнения
  *
  * @param path учитываемый путь исполнения сопоставления
  * @return     количество прохождений пути исполнения
  *
  */
-uint64_t awh::regex::Probe::count(const path_t path) noexcept {
+uint64_t awh::regex::count(const path_t path) noexcept {
 	/**
 	 * Если учитываемый путь исполнения за пределы набора выходит
 	 */
@@ -121,12 +121,12 @@ uint64_t awh::regex::Probe::count(const path_t path) noexcept {
 	return COUNTERS[static_cast <size_t> (path)].load(memory_order_relaxed);
 }
 /**
- * @brief Метод учёта прохождения пути исполнения
+ * @brief Функция учёта прохождения пути исполнения
  *
  * @param path пройденный путь исполнения сопоставления
  *
  */
-void awh::regex::Probe::tick(const path_t path) noexcept {
+void awh::regex::tick(const path_t path) noexcept {
 	/**
 	 * Если пройденный путь исполнения за пределы набора выходит
 	 */
@@ -137,13 +137,13 @@ void awh::regex::Probe::tick(const path_t path) noexcept {
 	COUNTERS[static_cast <size_t> (path)].fetch_add(1, memory_order_relaxed);
 }
 /**
- * @brief Метод извлечения счётчика меры работы
+ * @brief Функция извлечения счётчика меры работы
  *
  * @param work учитываемая мера работы сопоставления
  * @return     количество операций учитываемой меры
  *
  */
-uint64_t awh::regex::Probe::amount(const work_t work) noexcept {
+uint64_t awh::regex::amount(const work_t work) noexcept {
 	/**
 	 * Если мера работы за пределами набора счётчиков
 	 */
@@ -154,13 +154,13 @@ uint64_t awh::regex::Probe::amount(const work_t work) noexcept {
 	return AMOUNTS[static_cast <size_t> (work)].load(memory_order_relaxed);
 }
 /**
- * @brief Метод учёта выполненных операций меры работы
+ * @brief Функция учёта выполненных операций меры работы
  *
  * @param work  выполненная мера работы сопоставления
  * @param count количество выполненных операций
  *
  */
-void awh::regex::Probe::spend(const work_t work, const uint64_t count) noexcept {
+void awh::regex::spend(const work_t work, const uint64_t count) noexcept {
 	/**
 	 * Если мера работы за пределами набора счётчиков
 	 */

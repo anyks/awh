@@ -308,7 +308,7 @@ int main(int argc, char ** argv) {
 		// Выполняем прогрев пути исполнения
 		[[maybe_unused]] const bool found = engine.exec(expression, scenario.text, 0, captures);
 		// Выполняем сброс счётчиков путей исполнения
-		awh::regex::probe_t::reset();
+		awh::regex::reset();
 		// Выполняем снятие путей исполнения одним сопоставлением
 		engine.exec(expression, scenario.text, 0, captures);
 		// Набор снятых мер работы сопоставления
@@ -318,7 +318,7 @@ int main(int argc, char ** argv) {
 		 */
 		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::work_t::COUNT); i++)
 			// Получаем количество операций очередной меры работы
-			works[i] = awh::regex::probe_t::amount(static_cast <awh::regex::work_t> (i));
+			works[i] = awh::regex::amount(static_cast <awh::regex::work_t> (i));
 		// Строка перечня путей исполнения
 		string paths;
 		/**
@@ -326,7 +326,7 @@ int main(int argc, char ** argv) {
 		 */
 		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++){
 			// Получаем количество проходов пути исполнения
-			const uint64_t value = awh::regex::probe_t::count(static_cast <awh::regex::path_t> (i));
+			const uint64_t value = awh::regex::count(static_cast <awh::regex::path_t> (i));
 			/**
 			 * Если путь исполнения задействован
 			 */

@@ -118,7 +118,7 @@ int main() noexcept {
 	/**
 	 * Если учёт путей сопоставления при сборке не включён
 	 */
-	if(!awh::regex::probe_t::enabled()){
+	if(!awh::regex::enabled()){
 		// Выводим сообщение об отсутствии учёта путей
 		::printf("Щуп собран без признака PROBING: счётчики молчат\n");
 		// Выводим результат отказа
@@ -177,13 +177,13 @@ int main() noexcept {
 			// Выполняем сопоставление выражения с текстом
 			engine.exec(expression, text, 0, captures);
 		// Выполняем сброс счётчиков мер работы
-		awh::regex::probe_t::reset();
+		awh::regex::reset();
 		// Выполняем единственное сопоставление ради снятия мер работы
 		engine.exec(expression, text, 0, captures);
 		// Получаем снятые меры работы сопоставления
-		const uint64_t rounds   = awh::regex::probe_t::amount(awh::regex::work_t::ROUNDS);
-		const uint64_t steps    = awh::regex::probe_t::amount(awh::regex::work_t::STEPS);
-		const uint64_t attempts = awh::regex::probe_t::amount(awh::regex::work_t::ATTEMPTS);
+		const uint64_t rounds   = awh::regex::amount(awh::regex::work_t::ROUNDS);
+		const uint64_t steps    = awh::regex::amount(awh::regex::work_t::STEPS);
+		const uint64_t attempts = awh::regex::amount(awh::regex::work_t::ATTEMPTS);
 		// Выполняем замер времени сопоставления режима
 		const double spent = ::fastest(200000, [&]() noexcept -> void {
 			// Выполняем сопоставление выражения с текстом

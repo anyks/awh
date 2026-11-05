@@ -404,7 +404,7 @@ TEST(Regex, StaticParserOnDemand) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Получаем режим игнорирования пробельных символов
 	const uint32_t extended = static_cast <uint32_t> (regex::flag_t::EXTENDED);
 	// Число отметок, какое лишь больше нуля и точным не сличается
@@ -454,7 +454,7 @@ TEST(Regex, StaticParserOnDemand) {
 	 */
 	for(const auto & sample : samples){
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку исхода разбора регулярного выражения
 		ASSERT_EQ(parser.parse(sample.pattern, sample.flags), sample.parsed) << sample.pattern;
 		/**
@@ -472,7 +472,7 @@ TEST(Regex, StaticParserOnDemand) {
 		 */
 		auto expect = [&sample](const regex::path_t path, const int64_t wanted, const char * name) noexcept -> void {
 			// Получаем число отметок пути исполнения
-			const uint64_t count = regex::probe_t::count(path);
+			const uint64_t count = regex::count(path);
 			/**
 			 * Если ожидание требует отметок больше нуля
 			 */

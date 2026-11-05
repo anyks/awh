@@ -950,7 +950,7 @@ TEST(Regex, EngineRepeatTables) {
 	 *
 	 */
 	// Проверяем доступность учёта путей исполнения
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	/**
@@ -980,7 +980,7 @@ TEST(Regex, EngineRepeatTables) {
 		// Создаём набор границ совпадения
 		vector <pair <size_t, size_t>> captures;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем первое сопоставление, таблицы строящее
 		ASSERT_TRUE(backtrack.exec(expression.forward, text, 0, captures));
 		/**
@@ -992,7 +992,7 @@ TEST(Regex, EngineRepeatTables) {
 		 *          тогда следует сменить, а не ослабить сличение.
 		 *
 		 */
-		EXPECT_GE(regex::probe_t::count(regex::path_t::TABULATING), static_cast <uint64_t> (2));
+		EXPECT_GE(regex::count(regex::path_t::TABULATING), static_cast <uint64_t> (2));
 		// Выполняем проверку границ совпадения
 		// Проверяем количество извлечённых границ
 		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
@@ -1004,11 +1004,11 @@ TEST(Regex, EngineRepeatTables) {
 		 */
 		for(size_t i = 0; i < 3; i++){
 			// Выполняем сброс счётчиков путей исполнения
-			regex::probe_t::reset();
+			regex::reset();
 			// Выполняем повторное сопоставление
 			ASSERT_TRUE(backtrack.exec(expression.forward, text, 0, captures));
 			// Выполняем проверку отсутствия перестроек таблиц
-			EXPECT_EQ(regex::probe_t::count(regex::path_t::TABULATING), static_cast <uint64_t> (0)) << "сопоставление " << (i + 2);
+			EXPECT_EQ(regex::count(regex::path_t::TABULATING), static_cast <uint64_t> (0)) << "сопоставление " << (i + 2);
 		}
 	}
 	/**
@@ -1096,7 +1096,7 @@ TEST(Regex, EngineRepeatTables) {
 			// Создаём набор границ, установленных исполнением без возврата
 			vector <pair <size_t, size_t>> expected;
 			// Выполняем сброс счётчиков путей исполнения
-			regex::probe_t::reset();
+			regex::reset();
 			// Выполняем сопоставление исполнением с возвратом
 			ASSERT_TRUE(backtrack.exec(expression.forward, text, 0, received)) << "проход " << pass;
 			/**
@@ -1107,7 +1107,7 @@ TEST(Regex, EngineRepeatTables) {
 			 *          памяти не действует.
 			 *
 			 */
-			EXPECT_GT(regex::probe_t::count(regex::path_t::TABULATING), static_cast <uint64_t> (regex::MAX_TABLES)) << "проход " << pass;
+			EXPECT_GT(regex::count(regex::path_t::TABULATING), static_cast <uint64_t> (regex::MAX_TABLES)) << "проход " << pass;
 			// Выполняем сопоставление исполнением без возврата
 			ASSERT_TRUE(pike.exec(expression.forward, text, 0, expected)) << "проход " << pass;
 			// Выполняем проверку совпадения границ с исполнением без возврата
@@ -1342,7 +1342,7 @@ TEST(Regex, EngineProbing) {
 	 *
 	 */
 	// Проверяем доступность учёта путей исполнения
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Заводим набор границ совпадения
@@ -1373,7 +1373,7 @@ TEST(Regex, EngineProbing) {
 		// Выполняем проверку отсутствия сопоставителя на машине без порождения
 		else ASSERT_TRUE(expression.machine == nullptr) << "сопоставитель порождён набору команд, порождению не подлежащему";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем поиск совпадения в тексте
 		ASSERT_TRUE(engine.exec(expression, "mail forman@anyks and more", 0, captures));
 		/**
@@ -1381,9 +1381,9 @@ TEST(Regex, EngineProbing) {
 		 */
 		if(generated)
 			// Выполняем проверку прохождения пути сопоставления машинным кодом
-			EXPECT_GT(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
+			EXPECT_GT(regex::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
 		// Выполняем проверку непрохождения пути машинного кода на машине без порождения
-		else EXPECT_EQ(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
+		else EXPECT_EQ(regex::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения пути поиска последовательностью
@@ -1396,11 +1396,11 @@ TEST(Regex, EngineProbing) {
 		// Выполняем проверку признака сопоставления выражения литералом
 		ASSERT_TRUE(expression.forward.plain);
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем поиск совпадения в тексте
 		ASSERT_TRUE(engine.exec(expression, "site anyks and more", 0, captures));
 		// Выполняем проверку прохождения пути поиска последовательностью
-		EXPECT_GT(regex::probe_t::count(regex::path_t::PLAIN), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::PLAIN), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения отбора позиций исполнителями программы
@@ -1439,23 +1439,23 @@ TEST(Regex, EngineProbing) {
 		// Создаём объект детерминированного исполнения
 		regex::dfa_t dfa;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку обнаружения совпадения в тексте
 		EXPECT_TRUE(dfa.test(expression.forward, text, 0));
 		// Выполняем проверку прохождения отбора позиций у детерминированного исполнения
-		EXPECT_GT(regex::probe_t::count(regex::path_t::SEEKING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::SEEKING), static_cast <uint64_t> (0));
 		// Создаём объект исполнения без возврата
 		regex::pike_t pike;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку обнаружения совпадения в тексте
 		EXPECT_TRUE(pike.exec(expression.forward, text, 0, captures));
 		// Выполняем проверку прохождения отбора позиций у исполнения без возврата
-		EXPECT_GT(regex::probe_t::count(regex::path_t::PIKING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::PIKING), static_cast <uint64_t> (0));
 		// Создаём объект исполнения с возвратом
 		regex::backtrack_t backtrack;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку обнаружения совпадения в тексте
 		EXPECT_TRUE(backtrack.exec(expression.forward, text, 0, captures));
 		/**
@@ -1476,9 +1476,9 @@ TEST(Regex, EngineProbing) {
 		 *          оба порознь: сумма их прикрыла бы гашение всякого одного.
 		 *
 		 */
-		EXPECT_GT(regex::probe_t::count(regex::path_t::TRACKING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::TRACKING), static_cast <uint64_t> (0));
 		// Выполняем проверку прохождения отодвигания начала поиска
-		EXPECT_GT(regex::probe_t::count(regex::path_t::BOUNDING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::BOUNDING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения отказов, сопоставление отменяющих
@@ -1493,15 +1493,15 @@ TEST(Regex, EngineProbing) {
 		// Создаём объект исполнения без возврата
 		regex::pike_t pike;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку отсутствия совпадения в тексте
 		EXPECT_FALSE(pike.exec(expression.forward, text, 0, captures));
 		// Выполняем проверку отказа по проверке возможности совпадения
-		EXPECT_GT(regex::probe_t::count(regex::path_t::PRESUMING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::PRESUMING), static_cast <uint64_t> (0));
 		// Создаём объект исполнения с возвратом
 		regex::backtrack_t backtrack;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку отсутствия совпадения в тексте
 		EXPECT_FALSE(backtrack.exec(expression.forward, text, 0, captures));
 		/**
@@ -1513,7 +1513,7 @@ TEST(Regex, EngineProbing) {
 		 *          Ход избирается составом выражения, оттого сличается хоть один.
 		 *
 		 */
-		EXPECT_GT(regex::probe_t::count(regex::path_t::BOUNDING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::BOUNDING), static_cast <uint64_t> (0));
 		// Создаём собираемое выражение с литералом удаления неограниченного
 		regex::expression_t distant;
 		// Выполняем сборку выражения с литералом удаления неограниченного
@@ -1532,11 +1532,11 @@ TEST(Regex, EngineProbing) {
 		 */
 		ASSERT_EQ(distant.forward.prefilter.distance, string_view::npos);
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку отсутствия совпадения в тексте
 		EXPECT_FALSE(backtrack.exec(distant.forward, text, 0, captures));
 		// Выполняем проверку отказа по проверке возможности совпадения
-		EXPECT_GT(regex::probe_t::count(regex::path_t::DENYING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::DENYING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения отказа по пробе детерминированным исполнением
@@ -1560,11 +1560,11 @@ TEST(Regex, EngineProbing) {
 		// Создаём объект исполнения без возврата
 		regex::pike_t pike;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку отсутствия совпадения в тексте
 		EXPECT_FALSE(pike.exec(expression.forward, text, 0, captures));
 		// Выполняем проверку отказа по пробе детерминированным исполнением
-		EXPECT_GT(regex::probe_t::count(regex::path_t::VERIFYING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::VERIFYING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения единственной попытки и остановки автомата
@@ -1577,11 +1577,11 @@ TEST(Regex, EngineProbing) {
 		// Выполняем проверку признака прохода текста единственной попыткой
 		ASSERT_TRUE(expression.forward.sweeping);
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем поиск совпадения в тексте
 		EXPECT_TRUE(engine.exec(expression, "a haystack with a needle inside", 0, captures));
 		// Выполняем проверку прохождения текста единственной попыткой
-		EXPECT_GT(regex::probe_t::count(regex::path_t::SWEEPING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::SWEEPING), static_cast <uint64_t> (0));
 		// Создаём собираемое выражение, привязанное к позиции начала поиска
 		regex::expression_t anchored;
 		// Выполняем сборку выражения, привязанного к позиции начала поиска
@@ -1591,7 +1591,7 @@ TEST(Regex, EngineProbing) {
 		// Создаём объект детерминированного исполнения
 		regex::dfa_t dfa;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем проверку отсутствия совпадения в тексте
 		 *
@@ -1603,7 +1603,7 @@ TEST(Regex, EngineProbing) {
 		 */
 		EXPECT_FALSE(dfa.test(anchored.forward, (string("Header") + string(1000, ' ')), 0));
 		// Выполняем проверку остановки автомата привязкой к позиции начала поиска
-		EXPECT_GT(regex::probe_t::count(regex::path_t::HALTING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::HALTING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку переиспользования итога детерминированного исполнения
@@ -1626,7 +1626,7 @@ TEST(Regex, EngineProbing) {
 		// Создаём объект исполнения без возврата
 		regex::pike_t pike;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление с извещением о снятом наличии совпадения
 		 *
@@ -1640,7 +1640,7 @@ TEST(Regex, EngineProbing) {
 		 */
 		ASSERT_TRUE(pike.exec(expression.forward, text, 0, captures, regex::mode_t::VERIFIED));
 		// Выполняем проверку переиспользования итога детерминированного исполнения
-		EXPECT_GT(regex::probe_t::count(regex::path_t::REUSING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::REUSING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку отказа построения по разбору дерева
@@ -1655,7 +1655,7 @@ TEST(Regex, EngineProbing) {
 		// Создаём компилируемую программу регулярного выражения
 		regex::program_t program;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку отказа построения выражения
 		EXPECT_FALSE(compiler.compile(parser, program));
 		// Выполняем проверку установления причины отказа
@@ -1668,7 +1668,7 @@ TEST(Regex, EngineProbing) {
 		 *          недоступном, - вердикт тот же, работа лишняя.
 		 *
 		 */
-		EXPECT_GT(regex::probe_t::count(regex::path_t::SUBSETTING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::SUBSETTING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения кэша состояний автомата
@@ -1683,11 +1683,11 @@ TEST(Regex, EngineProbing) {
 		// Выполняем сопоставление первое, кэш состояний наполняющее
 		EXPECT_TRUE(dfa.test(expression.forward, "abc123", 0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление повторное, состояния из кэша берущее
 		EXPECT_TRUE(dfa.test(expression.forward, "abc123", 0));
 		// Выполняем проверку обращения к кэшу состояний автомата
-		EXPECT_GT(regex::probe_t::count(regex::path_t::CACHING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::CACHING), static_cast <uint64_t> (0));
 	}
 }
 
@@ -2071,6 +2071,7 @@ TEST(Regex, MatchingLimit) {
 	 *
 	 * @note Текст подобран так, чтобы совпадения не было вовсе: перебор проходится
 	 *       тогда до конца, а не обрывается первым же найденным совпадением
+	 *
 	 */
 	ASSERT_TRUE(engine.build("(a+)+b", 0, expression));
 	/**
@@ -2079,6 +2080,7 @@ TEST(Regex, MatchingLimit) {
 	 * @note Длина подобрана так, чтобы пределу умолчания её достало: обрывался бы
 	 *       перебор и без настройки - проверка проходила бы и при потолке, вовсе
 	 *       не действующем, ничего о нём не утверждая
+	 *
 	 */
 	const string text(19, 'a');
 	// Создаём набор границ совпадения и захваченных групп
@@ -2099,6 +2101,7 @@ TEST(Regex, MatchingLimit) {
 	 * Выполняем снятие предела допустимого объёма работы сопоставления
 	 *
 	 * @note Нуль предел снимает вовсе, и то же самое сопоставление доходит до конца
+	 *
 	 */
 	backtrack.ceiling(0);
 	// Выполняем проверку отсутствия совпадения в тексте
@@ -2549,7 +2552,7 @@ TEST(Regex, EngineAnchoredLong) {
 	 *
 	 */
 	// Проверяем доступность учёта путей исполнения
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Текст сопоставления
@@ -2590,12 +2593,12 @@ TEST(Regex, EngineAnchoredLong) {
 		// Набор границ, движком установленных
 		vector <pair <size_t, size_t>> received;
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку обнаружения совпадения
 		ASSERT_TRUE(engine.exec(expression, text, 0, received)) << pattern;
 		// Выполняем проверку исполнения с возвратом, границы установившего
 		// Получаем счёт шагов сопоставления
-		EXPECT_GT(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (0)) << pattern;
+		EXPECT_GT(regex::amount(regex::work_t::STEPS), static_cast <uint64_t> (0)) << pattern;
 		// Выполняем проверку границ совпадения
 		ASSERT_FALSE(received.empty()) << pattern;
 		// Проверяем начало совпадения, порождённым кодом найденного
@@ -3408,7 +3411,7 @@ TEST(Regex, EngineDirectBacktrack) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём собираемое регулярное выражение
@@ -3431,7 +3434,7 @@ TEST(Regex, EngineDirectBacktrack) {
 	 */
 	{
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с коротким текстом
 		ASSERT_TRUE(engine.exec(expression, tail, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3450,7 +3453,7 @@ TEST(Regex, EngineDirectBacktrack) {
 		 *          проходила и при отменённой пробе.
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку прохода детерминированного исполнения на длинном тексте
@@ -3461,7 +3464,7 @@ TEST(Regex, EngineDirectBacktrack) {
 		// Получаем длинный текст сопоставления
 		const string text = (filler + "\r\n" + tail);
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с длинным текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3477,7 +3480,7 @@ TEST(Regex, EngineDirectBacktrack) {
 		 *          проход автомата с доигрыванием.
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку пробы на длинном тексте с совпадением у начала
@@ -3495,7 +3498,7 @@ TEST(Regex, EngineDirectBacktrack) {
 		// Получаем длинный текст сопоставления с совпадением у начала
 		const string text = (tail + filler);
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с длинным текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3504,7 +3507,7 @@ TEST(Regex, EngineDirectBacktrack) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (26));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (35));
 		// Выполняем проверку снятия прохода детерминированного исполнения пробой
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
 	}
 }
 
@@ -3530,7 +3533,7 @@ TEST(Regex, EngineStartLine) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём набор границ совпадения
@@ -3546,7 +3549,7 @@ TEST(Regex, EngineStartLine) {
 		// Получаем текст сопоставления, с обмена по протоколу HTTP снятый
 		const string text = "GET /index.html HTTP/1.1\r\nHost: 192.168.001.100\r\n";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3572,7 +3575,7 @@ TEST(Regex, EngineStartLine) {
 		 *          попытку в середине строки между ними.
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::LINING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::LINING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку выражения, привязанного к позиции начала попытки
@@ -3585,7 +3588,7 @@ TEST(Regex, EngineStartLine) {
 		// Получаем текст сопоставления, совпадение в середине строки несущий
 		const string text = "xb\na";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление выражения с позиции середины строки
 		 *
@@ -3600,7 +3603,7 @@ TEST(Regex, EngineStartLine) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (1));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (2));
 		// Выполняем проверку отсутствия пропуска позиций
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::LINING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::LINING), static_cast <uint64_t> (0));
 	}
 }
 
@@ -3624,7 +3627,7 @@ TEST(Regex, EngineSolidRun) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём набор границ совпадения
@@ -3640,7 +3643,7 @@ TEST(Regex, EngineSolidRun) {
 		// Получаем текст сопоставления
 		const string text = "abc@def";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3660,7 +3663,7 @@ TEST(Regex, EngineSolidRun) {
 		 *          не нужны вовсе.
 		 *
 		 */
-		EXPECT_GE(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (1));
+		EXPECT_GE(regex::count(regex::path_t::SOLIDING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку сохранения точек возврата ряда, продолжению родственного
@@ -3673,7 +3676,7 @@ TEST(Regex, EngineSolidRun) {
 		// Получаем текст сопоставления
 		const string text = "aaab";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление выражения с текстом
 		 *
@@ -3692,7 +3695,7 @@ TEST(Regex, EngineSolidRun) {
 		// Проверяем конец извлечённой группы
 		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
 		// Выполняем проверку отсутствия пропуска точек возврата
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку родства по свёртке регистра
@@ -3705,7 +3708,7 @@ TEST(Regex, EngineSolidRun) {
 		// Получаем текст сопоставления
 		const string text = "abcX";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление выражения с текстом
 		 *
@@ -3726,7 +3729,7 @@ TEST(Regex, EngineSolidRun) {
 		// Проверяем конец извлечённой группы
 		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
 		// Выполняем проверку отсутствия пропуска точек возврата
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
 	}
 }
 
@@ -3750,7 +3753,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём набор границ совпадения
@@ -3766,11 +3769,11 @@ TEST(Regex, EngineAnchoredBarrier) {
 		// Получаем текст сопоставления, цифрой не начинающийся
 		const string text = "GET /index.html HTTP/1.1";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		EXPECT_FALSE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку выполнения отказа по набору начальных байтов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку отсутствия отказа при байте, набору принадлежащем
@@ -3783,7 +3786,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		// Получаем текст сопоставления, цифрой начинающийся
 		const string text = "192.168.001.100";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3792,7 +3795,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (7));
 		// Выполняем проверку отсутствия отказа по набору начальных байтов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку выражения, способного не поглотить ни байта
@@ -3805,7 +3808,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		// Получаем текст сопоставления, цифрой не начинающийся
 		const string text = "GET /index.html";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление выражения с текстом
 		 *
@@ -3821,7 +3824,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (0));
 		// Выполняем проверку отсутствия отказа по набору начальных байтов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку позиции поиска за концом текста
@@ -3841,7 +3844,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		// Получаем текст сопоставления
 		const string text = "abc";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Выполняем сопоставление выражения с позиции конца текста
 		 *
@@ -3851,7 +3854,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		 */
 		EXPECT_FALSE(engine.exec(expression, text, text.size(), captures));
 		// Выполняем проверку выполнения отказа по набору начальных байтов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку отказа у выражения с порождённым машинным кодом
@@ -3873,7 +3876,7 @@ TEST(Regex, EngineAnchoredBarrier) {
 		// Получаем текст сопоставления, цифрой не начинающийся
 		const string text = "GET /index.html HTTP/1.1";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		EXPECT_FALSE(engine.exec(expression, text, 0, captures));
 		/**
@@ -3887,9 +3890,9 @@ TEST(Regex, EngineAnchoredBarrier) {
 		 *          ниже выбора пути прошёл бы вердиктом молча.
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
 		// Выполняем проверку отсутствия сопоставления порождённым машинным кодом
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
 	}
 }
 
@@ -3912,6 +3915,7 @@ TEST(Regex, EngineAnchoredBarrier) {
  *          "SLIDING" path count: the advance does not change the verdict, so
  *          its removal would pass silently and show up only in a benchmark.
  *
+ * \~
  */
 TEST(Regex, EngineLazySlide) {
 	/**
@@ -3921,7 +3925,7 @@ TEST(Regex, EngineLazySlide) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём набор границ совпадения
@@ -3937,7 +3941,7 @@ TEST(Regex, EngineLazySlide) {
 		// Получаем текст сопоставления
 		const string text = "haystack haystack needle here";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3946,7 +3950,7 @@ TEST(Regex, EngineLazySlide) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
 		EXPECT_EQ(captures.front().second, text.find("needle") + 6);
 		// Выполняем проверку выполнения продвижения ленивого ряда
-		EXPECT_GE(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
+		EXPECT_GE(regex::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку остановки продвижения символом, телу чуждым
@@ -3967,7 +3971,7 @@ TEST(Regex, EngineLazySlide) {
 		 */
 		const string text = "abcxd";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -3976,7 +3980,7 @@ TEST(Regex, EngineLazySlide) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (4));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (5));
 		// Выполняем проверку выполнения продвижения ленивого ряда
-		EXPECT_GE(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
+		EXPECT_GE(regex::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку неприменимости продвижения при безразличии к написанию
@@ -3989,7 +3993,7 @@ TEST(Regex, EngineLazySlide) {
 		// Получаем текст сопоставления в написании прописном
 		const string text = "ABCX";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -4006,7 +4010,7 @@ TEST(Regex, EngineLazySlide) {
 		 *          дало бы совпадения разные у разбора и у машинного кода.
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку неприменимости продвижения при продолжении классом
@@ -4019,7 +4023,7 @@ TEST(Regex, EngineLazySlide) {
 		// Получаем текст сопоставления
 		const string text = "abc7";
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -4028,7 +4032,7 @@ TEST(Regex, EngineLazySlide) {
 		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
 		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
 		// Выполняем проверку отсутствия продвижения ленивого ряда
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
 	}
 }
 
@@ -4053,7 +4057,7 @@ TEST(Regex, EngineWorkCounters) {
 	 *          стережёт, поэтому набор отвечает отказом
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled());
+	ASSERT_TRUE(regex::enabled());
 	// Создаём движок сопоставления
 	regex::engine_t engine;
 	// Создаём набор границ обнаруженного совпадения
@@ -4069,11 +4073,11 @@ TEST(Regex, EngineWorkCounters) {
 		// Получаем текст сопоставления
 		const string text = "forman@anyks.com";
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проверку обнуления счётчиков сбросом
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
 		// Получаем счёт сохранений ячеек захвата
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку обнаружения всех групп захвата
@@ -4086,7 +4090,7 @@ TEST(Regex, EngineWorkCounters) {
 		 *          заведомо больше числа групп захвата
 		 *
 		 */
-		EXPECT_GT(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (4));
+		EXPECT_GT(regex::amount(regex::work_t::STEPS), static_cast <uint64_t> (4));
 		/**
 		 * Выполняем проверку учёта записей границ ячеек захвата
 		 *
@@ -4094,9 +4098,9 @@ TEST(Regex, EngineWorkCounters) {
 		 *          самого совпадения: записей не менее восьми
 		 *
 		 */
-		EXPECT_GE(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (8));
+		EXPECT_GE(regex::amount(regex::work_t::SAVES), static_cast <uint64_t> (8));
 		// Выполняем проверку учёта проверок принадлежности байта классу
-		EXPECT_GT(regex::probe_t::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку независимости мер работы от загрузки машины
@@ -4114,32 +4118,32 @@ TEST(Regex, EngineWorkCounters) {
 		// Получаем текст сопоставления
 		const string text = "alpha bravo charlie forman";
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Получаем снятые меры работы первого сопоставления
-		const uint64_t steps = regex::probe_t::amount(regex::work_t::STEPS);
+		const uint64_t steps = regex::amount(regex::work_t::STEPS);
 		// Получаем счёт сохранений ячеек захвата
-		const uint64_t saves = regex::probe_t::amount(regex::work_t::SAVES);
+		const uint64_t saves = regex::amount(regex::work_t::SAVES);
 		// Получаем счёт проверок принадлежности байта классу
-		const uint64_t checks = regex::probe_t::amount(regex::work_t::CHECKS);
+		const uint64_t checks = regex::amount(regex::work_t::CHECKS);
 		// Получаем счёт размещённых точек возврата
-		const uint64_t points = regex::probe_t::amount(regex::work_t::POINTS);
+		const uint64_t points = regex::amount(regex::work_t::POINTS);
 		// Выполняем проверку непустоты снятых мер работы
 		ASSERT_GT(steps, static_cast <uint64_t> (0));
 		ASSERT_GT(points, static_cast <uint64_t> (0));
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем повторное сопоставление того же выражения с тем же текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку совпадения мер работы обоих сопоставлений
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), steps);
+		EXPECT_EQ(regex::amount(regex::work_t::STEPS), steps);
 		// Получаем счёт сохранений ячеек захвата
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), saves);
+		EXPECT_EQ(regex::amount(regex::work_t::SAVES), saves);
 		// Получаем счёт проверок принадлежности байта классу
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::CHECKS), checks);
+		EXPECT_EQ(regex::amount(regex::work_t::CHECKS), checks);
 		// Получаем счёт размещённых точек возврата
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::POINTS), points);
+		EXPECT_EQ(regex::amount(regex::work_t::POINTS), points);
 	}
 	/**
 	 * Выполняем проверку молчания мер работы у пути, возврата не берущего
@@ -4157,19 +4161,19 @@ TEST(Regex, EngineWorkCounters) {
 		// Получаем текст сопоставления
 		const string text = "GET / HTTP/1.1\r\nContent-Length: 42\r\n\r\n";
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку прохождения пути поиска литерала
-		ASSERT_GT(regex::probe_t::count(regex::path_t::PLAIN), static_cast <uint64_t> (0));
+		ASSERT_GT(regex::count(regex::path_t::PLAIN), static_cast <uint64_t> (0));
 		// Выполняем проверку молчания мер работы исполнения с возвратом
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
 		// Получаем счёт сохранений ячеек захвата
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
 		// Получаем счёт проверок принадлежности байта классу
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
 		// Получаем счёт размещённых точек возврата
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::POINTS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::amount(regex::work_t::POINTS), static_cast <uint64_t> (0));
 	}
 }
 
@@ -4325,7 +4329,7 @@ TEST(Regex, EngineClassRecall) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Создаём движок сопоставления
 	regex::engine_t engine;
 	/**
@@ -4340,13 +4344,13 @@ TEST(Regex, EngineClassRecall) {
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сборку выражения счётного повторения класса
 		ASSERT_TRUE(engine.build("[0-9]{3,5}", 0, expression));
 		// Выполняем проверку наличия развёрнутой программы: счёт копий ведётся по обеим
 		ASSERT_TRUE(expression.reversible);
 		// Выполняем проверку размещения четырёх копий из пяти номером запомненным
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::RECALLING), static_cast <uint64_t> (8));
+		EXPECT_EQ(regex::count(regex::path_t::RECALLING), static_cast <uint64_t> (8));
 		// Выполняем проверку единственности записи класса
 		EXPECT_EQ(static_cast <size_t> (expression.forward.classes.size()), static_cast <size_t> (1));
 	}
@@ -4363,13 +4367,13 @@ TEST(Regex, EngineClassRecall) {
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сборку выражения с двумя узлами одного класса
 		ASSERT_TRUE(engine.build("[0-9]{2}\\.[0-9]{2}", 0, expression));
 		// Выполняем проверку наличия развёрнутой программы
 		ASSERT_TRUE(expression.reversible);
 		// Выполняем проверку размещения копий вторых номером запомненным
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::RECALLING), static_cast <uint64_t> (4));
+		EXPECT_EQ(regex::count(regex::path_t::RECALLING), static_cast <uint64_t> (4));
 		// Выполняем проверку сведения узлов в запись одну
 		EXPECT_EQ(static_cast <size_t> (expression.forward.classes.size()), static_cast <size_t> (1));
 	}
@@ -4387,13 +4391,13 @@ TEST(Regex, EngineClassRecall) {
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сборку выражения с классом под режимами различными
 		ASSERT_TRUE(engine.build("(?i:[a-z]{3})[a-z]{3}", 0, expression));
 		// Выполняем проверку наличия развёрнутой программы
 		ASSERT_TRUE(expression.reversible);
 		// Выполняем проверку размещения копий номером запомненным
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::RECALLING), static_cast <uint64_t> (8));
+		EXPECT_EQ(regex::count(regex::path_t::RECALLING), static_cast <uint64_t> (8));
 		// Выполняем проверку сохранения обеих записей класса
 		EXPECT_EQ(static_cast <size_t> (expression.forward.classes.size()), static_cast <size_t> (2));
 		// Номера записей у копий класса без учёта регистра
@@ -4469,7 +4473,7 @@ TEST(Regex, EngineVerbWaiving) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Заводим маску глагола пропуска
 	const uint32_t skip = (1u << static_cast <uint8_t> (regex::control_t::SKIP));
 	// Заводим маску глагола продолжения
@@ -4541,11 +4545,11 @@ TEST(Regex, EngineVerbWaiving) {
 		// Выполняем разбор выражения без глаголов
 		ASSERT_TRUE(parser.parse("(?:ab|cd)x(?:ef|gh)", 0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию выражения
 		ASSERT_TRUE(compiler.compile(parser, program));
 		// Выполняем проверку отказа от всех четырёх обходов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::WAIVING), static_cast <uint64_t> (4));
+		EXPECT_EQ(regex::count(regex::path_t::WAIVING), static_cast <uint64_t> (4));
 	}
 	/**
 	 * Выполняем проверку отказа от обходов у выражения с глаголом отметки
@@ -4559,11 +4563,11 @@ TEST(Regex, EngineVerbWaiving) {
 		// Выполняем разбор выражения с глаголом отметки
 		ASSERT_TRUE(parser.parse("(*MARK:A)(?:ab|cd)x(?:ef|gh)", 0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию выражения целиком
 		ASSERT_TRUE(compiler.compileFull(parser, program));
 		// Выполняем проверку отказа от всех четырёх обходов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::WAIVING), static_cast <uint64_t> (4));
+		EXPECT_EQ(regex::count(regex::path_t::WAIVING), static_cast <uint64_t> (4));
 	}
 	/**
 	 * Выполняем проверку обходов у выражения с глаголом перехода
@@ -4577,11 +4581,11 @@ TEST(Regex, EngineVerbWaiving) {
 		// Выполняем разбор выражения с глаголом перехода
 		ASSERT_TRUE(parser.parse("(?:ab|c(*THEN)d)x(?:ef|gh)", 0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию выражения целиком
 		ASSERT_TRUE(compiler.compileFull(parser, program));
 		// Выполняем проверку отказа от одного лишь обхода глагола завершения
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::WAIVING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::WAIVING), static_cast <uint64_t> (1));
 	}
 	/**
 	 * Выполняем проверку обходов у выражения с глаголом завершения
@@ -4595,11 +4599,11 @@ TEST(Regex, EngineVerbWaiving) {
 		// Выполняем разбор выражения с глаголом завершения
 		ASSERT_TRUE(parser.parse("(?:ab|cd)(*ACCEPT)x(?:ef|gh)", 0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию выражения целиком
 		ASSERT_TRUE(compiler.compileFull(parser, program));
 		// Выполняем проверку отказа от обходов поиска глагола перехода
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::WAIVING), static_cast <uint64_t> (2));
+		EXPECT_EQ(regex::count(regex::path_t::WAIVING), static_cast <uint64_t> (2));
 	}
 	/**
 	 * Выполняем проверку сброса набора видов разбором новым
@@ -4615,11 +4619,11 @@ TEST(Regex, EngineVerbWaiving) {
 		// Выполняем проверку сброса набора видов глаголов
 		EXPECT_EQ(parser.verbs(), static_cast <uint32_t> (0));
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию выражения
 		ASSERT_TRUE(compiler.compile(parser, program));
 		// Выполняем проверку отказа от всех трёх обходов
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::WAIVING), static_cast <uint64_t> (3));
+		EXPECT_EQ(regex::count(regex::path_t::WAIVING), static_cast <uint64_t> (3));
 	}
 	/**
 	 * Выполняем проверку исходов, отбором позиций решаемых
@@ -4804,7 +4808,7 @@ TEST(Regex, EngineSpanningOnce) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Получаем режим разбора текста как последовательности UTF-8
 	const uint32_t utf = static_cast <uint32_t> (regex::flag_t::UTF);
 	// Получаем удаление неограниченное
@@ -4863,7 +4867,7 @@ TEST(Regex, EngineSpanningOnce) {
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Если выражение вне подмножества исполнения без возврата
 		 *
@@ -4873,12 +4877,12 @@ TEST(Regex, EngineSpanningOnce) {
 		 */
 		if(!compiler.compile(parser, program)){
 			// Выполняем сброс счётчиков путей исполнения
-			regex::probe_t::reset();
+			regex::reset();
 			// Выполняем компиляцию выражения целиком
 			ASSERT_TRUE(compiler.compileFull(parser, program)) << sample.pattern;
 		}
 		// Получаем число узлов, обходом посещённых
-		const uint64_t visited = regex::probe_t::count(regex::path_t::SPANNING);
+		const uint64_t visited = regex::count(regex::path_t::SPANNING);
 		// Выполняем проверку посещения узлов не более одного раза
 		EXPECT_LE(visited, static_cast <uint64_t> (parser.nodes().size())) << sample.pattern;
 		// Выполняем накопление числа посещённых узлов
@@ -4929,7 +4933,7 @@ TEST(Regex, EngineLiteralSpelling) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Получаем режим разбора текста как последовательности UTF-8
 	const uint32_t utf = static_cast <uint32_t> (regex::flag_t::UTF);
 	// Получаем удаление неограниченное
@@ -4995,7 +4999,7 @@ TEST(Regex, EngineLiteralSpelling) {
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Если выражение вне подмножества исполнения без возврата
 		 *
@@ -5005,7 +5009,7 @@ TEST(Regex, EngineLiteralSpelling) {
 		 */
 		if(!compiler.compile(parser, program)){
 			// Выполняем сброс счётчиков путей исполнения
-			regex::probe_t::reset();
+			regex::reset();
 			// Выполняем компиляцию выражения целиком
 			ASSERT_TRUE(compiler.compileFull(parser, program)) << sample.pattern;
 		}
@@ -5014,7 +5018,7 @@ TEST(Regex, EngineLiteralSpelling) {
 		// Выполняем проверку удаления литерала от начала совпадения
 		EXPECT_EQ(program.prefilter.distance, sample.distance) << sample.pattern;
 		// Выполняем проверку числа узлов, переведённых в строку литерала
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SPELLING), sample.spelled) << sample.pattern;
+		EXPECT_EQ(regex::count(regex::path_t::SPELLING), sample.spelled) << sample.pattern;
 	}
 }
 
@@ -5203,7 +5207,7 @@ TEST(Regex, EngineAnchoredLiteral) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	// Получаем режим сопоставления только с позиции начала поиска
 	const uint32_t anchored = static_cast <uint32_t> (regex::flag_t::ANCHORED);
 	// Выражение сценария сборки стенда без привязки к началу
@@ -5254,7 +5258,7 @@ TEST(Regex, EngineAnchoredLiteral) {
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем компиляцию регулярного выражения
 		ASSERT_TRUE(compiler.compile(parser, program)) << sample.pattern;
 		// Выполняем проверку признака привязки к позиции начала поиска
@@ -5264,7 +5268,7 @@ TEST(Regex, EngineAnchoredLiteral) {
 		// Выполняем проверку удаления литерала от начала совпадения
 		EXPECT_EQ(program.prefilter.distance, sample.distance) << sample.pattern;
 		// Выполняем проверку числа узлов, переведённых в строку литерала
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::SPELLING), sample.spelled) << sample.pattern;
+		EXPECT_EQ(regex::count(regex::path_t::SPELLING), sample.spelled) << sample.pattern;
 		// Выполняем проверку применимости набора допустимых начальных байтов
 		EXPECT_TRUE(program.prefilter.active) << sample.pattern;
 		// Выполняем проверку допустимости начального байта совпадения
@@ -5419,7 +5423,7 @@ TEST(Regex, EngineSeriesRun) {
 	/**
 	 * Если учёт при сборке не заведён
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled());
+	ASSERT_TRUE(regex::enabled());
 	// Создаём движок сопоставления
 	regex::engine_t engine;
 	// Создаём набор границ обнаруженного совпадения
@@ -5448,7 +5452,7 @@ TEST(Regex, EngineSeriesRun) {
 		// Получаем текст сопоставления
 		const string text = "abc1234xyz";
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку границ обнаруженного совпадения
@@ -5465,9 +5469,9 @@ TEST(Regex, EngineSeriesRun) {
 		 *          не ведётся вовсе
 		 *
 		 */
-		EXPECT_LT(regex::probe_t::amount(regex::work_t::ROUNDS),
+		EXPECT_LT(regex::amount(regex::work_t::ROUNDS),
 		// Получаем счёт шагов сопоставления
-		regex::probe_t::amount(regex::work_t::STEPS));
+		regex::amount(regex::work_t::STEPS));
 	}
 	/**
 	 * Выполняем проверку прохода ряда у повторения литерала
@@ -5837,7 +5841,7 @@ TEST(Regex, EngineBoundedChain) {
 	/**
 	 * Если учёт при сборке не заведён
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled());
+	ASSERT_TRUE(regex::enabled());
 	// Создаём движок сопоставления
 	regex::engine_t engine;
 	// Создаём набор границ обнаруженного совпадения
@@ -6091,11 +6095,11 @@ TEST(Regex, EngineBoundedChain) {
 		// Выполняем сборку выражения ограниченного повторения с продолжением
 		ASSERT_TRUE(engine.build("^([0-9]{1,3})5$", 0, expression));
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, "1235", 0, captures));
 		// Выполняем проверку прохождения цепочки быстрым путём
-		EXPECT_GE(regex::probe_t::count(regex::path_t::CHAINING), static_cast <uint64_t> (1));
+		EXPECT_GE(regex::count(regex::path_t::CHAINING), static_cast <uint64_t> (1));
 	}
 }
 
@@ -6128,7 +6132,7 @@ TEST(Regex, EngineProbeFrontier) {
 	 *          стережёт, поэтому набор отвечает отказом
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled());
+	ASSERT_TRUE(regex::enabled());
 	// Создаём движок сопоставления
 	regex::engine_t engine;
 	// Создаём набор границ обнаруженного совпадения
@@ -6151,7 +6155,7 @@ TEST(Regex, EngineProbeFrontier) {
 	 */
 	{
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом
 		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
 		// Выполняем проверку обнаружения совпадения
@@ -6161,11 +6165,11 @@ TEST(Regex, EngineProbeFrontier) {
 		// Выполняем проверку конца совпадения
 		EXPECT_EQ(captures.at(0).second, static_cast <size_t> (307));
 		// Выполняем проверку учёта пробы, пределом прерванной
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::YIELDING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::YIELDING), static_cast <uint64_t> (1));
 		// Выполняем проверку отсутствия учёта пробы удавшейся
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
 		// Получаем число шагов пробы и прохода повторного вместе
-		const uint64_t steps = regex::probe_t::amount(regex::work_t::STEPS);
+		const uint64_t steps = regex::amount(regex::work_t::STEPS);
 		/**
 		 * Выполняем проверку числа попыток пробы и прохода повторного вместе
 		 *
@@ -6174,18 +6178,18 @@ TEST(Regex, EngineProbeFrontier) {
 		 *          проход повторный - остальные, и ни одна не повторяется
 		 *
 		 */
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::ATTEMPTS), static_cast <uint64_t> (301));
+		EXPECT_EQ(regex::amount(regex::work_t::ATTEMPTS), static_cast <uint64_t> (301));
 		// Создаём объект исполнения с возвратом
 		regex::backtrack_t backtrack;
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем проход единственный с начала поиска
 		ASSERT_TRUE(backtrack.exec(expression.forward, text, 0, captures));
 		// Выполняем проверку начала совпадения прохода единственного
 		// Проверяем начало извлечённого совпадения
 		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (300));
 		// Выполняем проверку числа попыток прохода единственного
-		EXPECT_EQ(regex::probe_t::amount(regex::work_t::ATTEMPTS), static_cast <uint64_t> (301));
+		EXPECT_EQ(regex::amount(regex::work_t::ATTEMPTS), static_cast <uint64_t> (301));
 		/**
 		 * Выполняем проверку неповторения попыток пробы
 		 *
@@ -6194,20 +6198,20 @@ TEST(Regex, EngineProbeFrontier) {
 		 *          ровно те же
 		 *
 		 */
-		EXPECT_EQ(steps, regex::probe_t::amount(regex::work_t::STEPS));
+		EXPECT_EQ(steps, regex::amount(regex::work_t::STEPS));
 	}
 	/**
 	 * Выполняем проверку пробы удавшейся
 	 */
 	{
 		// Выполняем сброс счётчиков
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление выражения с текстом, совпадение у начала несущим
 		ASSERT_TRUE(engine.exec(expression, "xx alpha", 0, captures));
 		// Выполняем проверку учёта пробы удавшейся
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
+		EXPECT_EQ(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (1));
 		// Выполняем проверку отсутствия учёта пробы, пределом прерванной
-		EXPECT_EQ(regex::probe_t::count(regex::path_t::YIELDING), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::count(regex::path_t::YIELDING), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку позиции прекращения сопоставления пределом
@@ -6371,7 +6375,7 @@ TEST(Regex, EngineStaleCaptures) {
  */
 TEST(Regex, EngineLocatedHandoff) {
 	// Проверяем доступность учёта путей исполнения
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	/**
 	 * @brief Набор выражений и текстов сопоставления
 	 *
@@ -6466,11 +6470,11 @@ TEST(Regex, EngineLocatedHandoff) {
 		// Выполняем проверку ограниченности удаления литерала от начала совпадения
 		ASSERT_NE(expression.forward.prefilter.distance, string_view::npos);
 		// Выполняем сброс учёта путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление, где первое вхождение литерала входит в совпадение
 		ASSERT_TRUE(engine.exec(expression, "dogtrot", 0, captures));
 		// Выполняем проверку пути: сопоставление обязано вестись исполнением с возвратом
-		EXPECT_GT(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
 		// Выполняем проверку начала совпадения
 		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (0));
 		// Выполняем проверку конца совпадения
@@ -6512,11 +6516,11 @@ TEST(Regex, EngineLocatedHandoff) {
 		// Выполняем проверку ограниченности удаления литерала у второго выражения
 		ASSERT_NE(tracked.forward.prefilter.distance, string_view::npos);
 		// Выполняем сброс учёта путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		// Выполняем сопоставление первого выражения с литералом далеко от начала
 		ASSERT_TRUE(engine.exec(piked, "xxxxxxxxxxxxxxxxxxxxfoxtrot", 0, captures));
 		// Выполняем проверку пути: первое выражение обязано уйти к исполнению без возврата
-		EXPECT_GT(regex::probe_t::count(regex::path_t::PIKING), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::count(regex::path_t::PIKING), static_cast <uint64_t> (0));
 		// Выполняем проверку начала совпадения первого выражения
 		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (20));
 		// Выполняем сопоставление второго выражения с совпадением в самом начале
@@ -7151,7 +7155,7 @@ TEST(Regex, EngineStackPage) {
 	 *          молчаливому отключению того, что она стережёт.
 	 *
 	 */
-	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	ASSERT_TRUE(regex::enabled()) << "набор собран без учёта путей исполнения";
 	/**
 	 * Если сборка ведётся собирателем GCC либо Clang под ARM64 систем Apple
 	 *
@@ -7201,7 +7205,7 @@ TEST(Regex, EngineStackPage) {
 	 */
 	for(size_t shift = 0; shift < page; shift += step){
 		// Выполняем сброс счётчиков путей исполнения
-		regex::probe_t::reset();
+		regex::reset();
 		/**
 		 * Если сопоставление при сдвинутом стеке выполнено
 		 */
@@ -7211,11 +7215,11 @@ TEST(Regex, EngineStackPage) {
 		/**
 		 * Если кадры исполнения отведены за границу страницы
 		 */
-		if(regex::probe_t::count(regex::path_t::PADDING) > 0)
+		if(regex::count(regex::path_t::PADDING) > 0)
 			// Выполняем учёт положения с отводом
 			padded++;
 		// Выполняем учёт входов в тело сопоставления без запаса
-		crowded += regex::probe_t::count(regex::path_t::CROWDING);
+		crowded += regex::count(regex::path_t::CROWDING);
 	}
 	// Выполняем проверку совпадения при всяком положении стека
 	EXPECT_EQ(matched, (page / step));

@@ -80,12 +80,12 @@ static double measure(awh::regex::engine_t & engine, const string & pattern,
 		// Выполняем сопоставление выражения с текстом
 		engine.exec(expression, text, 0, captures);
 	// Выполняем сброс счётчиков мер работы
-	awh::regex::probe_t::reset();
+	awh::regex::reset();
 	// Выполняем сопоставление выражения с текстом
 	engine.exec(expression, text, 0, captures);
 	// Получаем снятые меры работы сопоставления
-	rounds = awh::regex::probe_t::amount(awh::regex::work_t::ROUNDS);
-	steps = awh::regex::probe_t::amount(awh::regex::work_t::STEPS);
+	rounds = awh::regex::amount(awh::regex::work_t::ROUNDS);
+	steps = awh::regex::amount(awh::regex::work_t::STEPS);
 	// Количество проходов замера
 	constexpr uint16_t PASSES = 200;
 	// Получаем отметку времени начала замера
@@ -112,7 +112,7 @@ int main() noexcept {
 	/**
 	 * Если учёт путей сопоставления при сборке не включён
 	 */
-	if(!awh::regex::probe_t::enabled()){
+	if(!awh::regex::enabled()){
 		// Выводим сообщение об отсутствии учёта путей
 		::printf("Щуп собран без признака PROBING: счётчики молчат\n");
 		// Выводим результат отказа

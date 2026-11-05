@@ -100,7 +100,7 @@ int main() noexcept {
 	 *          не давая, и путь исполнения остался бы неустановленным
 	 *
 	 */
-	if(!awh::regex::probe_t::enabled()){
+	if(!awh::regex::enabled()){
 		// Выводим сообщение об отказе
 		::printf("щуп собран без признака «AWH_REGEX_PROBING», путь исполнения неустановим\n");
 		// Выводим результат отказа
@@ -152,13 +152,13 @@ int main() noexcept {
 			return 1;
 		}
 		// Выполняем сброс счётчиков путей исполнения
-		awh::regex::probe_t::reset();
+		awh::regex::reset();
 		// Выполняем сопоставление единожды под снятие счётчиков путей
 		engine.exec(expression, text, 0, captures);
 		// Получаем количество сопоставлений порождённым машинным кодом
-		const uint64_t jitted = awh::regex::probe_t::count(awh::regex::path_t::JITTED);
+		const uint64_t jitted = awh::regex::count(awh::regex::path_t::JITTED);
 		// Получаем количество отказов по набору начальных байтов
-		const uint64_t barring = awh::regex::probe_t::count(awh::regex::path_t::BARRING);
+		const uint64_t barring = awh::regex::count(awh::regex::path_t::BARRING);
 		/**
 		 * Выполняем замер пропускной способности сопоставления
 		 *

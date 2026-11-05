@@ -101,11 +101,11 @@ static double measure(awh::regex::engine_t & engine, const char * pattern,
 		// Выполняем сопоставление выражения с текстом
 		engine.exec(expression, text, 0, captures);
 	// Выполняем сброс счётчиков путей сопоставления
-	awh::regex::probe_t::reset();
+	awh::regex::reset();
 	// Выполняем сопоставление выражения с текстом
 	engine.exec(expression, text, 0, captures);
 	// Получаем количество пропусков точек возврата ряда повторения
-	solids = awh::regex::probe_t::count(awh::regex::path_t::SOLIDING);
+	solids = awh::regex::count(awh::regex::path_t::SOLIDING);
 	// Количество проходов замера
 	constexpr uint16_t ROUNDS = 50;
 	// Получаем отметку времени начала замера
@@ -132,7 +132,7 @@ int main() noexcept {
 	/**
 	 * Если учёт путей сопоставления при сборке не включён
 	 */
-	if(!awh::regex::probe_t::enabled()){
+	if(!awh::regex::enabled()){
 		// Выводим сообщение об отсутствии учёта путей
 		::printf("Щуп собран без признака PROBING: счётчики молчат\n");
 		// Выводим результат отказа

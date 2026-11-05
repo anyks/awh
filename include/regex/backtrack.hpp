@@ -1625,7 +1625,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Счётчики мер работы сопоставления, разысканием ведомые
 				 *
-				 * @details Счётчики ведутся полями, а не общим учётом «probe_t»:
+				 * @details Счётчики ведутся полями, а не общим учётом путей исполнения:
 				 *          приращение разделяемого счётчика внутри проверки
 				 *          принадлежности классу раздуло бы её собственное время
 				 *          в образце стека - том самом орудии, каким разыскание
@@ -1641,8 +1641,8 @@ namespace awh {
 				 * \~english
 				 * @brief Counters of the measures of the work of matching, kept for the investigation
 				 *
-				 * @details The counters are kept as fields rather than in the shared "probe_t"
-				 *          accounting: incrementing a shared counter inside the check of
+				 * @details The counters are kept as fields rather than in the shared
+				 *          accounting of the execution paths: incrementing a shared counter inside the check of
 				 *          membership in a character class would inflate that check's own time
 				 *          in the stack sample — the very instrument by which the investigation
 				 *          is carried out. Fields add cheaply, and are contributed to the shared
