@@ -2841,7 +2841,7 @@ namespace {
 			// Выводим отсутствие накопленного кода отказа
 			return 0;
 		// Выводим код отказа, накопленный сокетом
-		return socket::getError(sock);
+		return eth::socket::getError(sock);
 	}
 
 	/**
@@ -28657,8 +28657,12 @@ namespace io {
 							else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
 							if(bytes > 0){
-								// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
-								result = size;
+								// Сохраняем количество отправленных байт
+								result = static_cast <size_t> (bytes);
+								// Если данные отправлены не полностью
+								if(static_cast <size_t> (bytes) < size)
+									// Помещаем остаток в очередь до возвратного захода из обратного вызова
+									result += ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes));
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
@@ -28670,8 +28674,8 @@ namespace io {
 								}
 								// Если данные отправлены не полностью
 								if(static_cast <size_t> (bytes) < size){
-									// Сохраняем оставшиеся данные для последующей отправки
-									if((result = ipc->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - static_cast <size_t> (bytes))) == 0){
+									// Если остаток данных не удалось добавить в очередь
+									if(result == static_cast <size_t> (bytes)){
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -28681,8 +28685,6 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
 									}
-									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-									result += static_cast <size_t> (bytes);
 									// Если в очереди событий появились данные для отправки
 									if(!ipc->transfer.queue.empty())
 										// Активируем событие на запись данных в сокет
@@ -28706,9 +28708,9 @@ namespace io {
 										case 0: break;
 										// Если нам нужно попытаться отправить позже
 										case EINTR:
-										case ENOBUFS:
 										case ENOMEM:
-										case EAGAIN: {
+										case EAGAIN:
+										case ENOBUFS: {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -29829,8 +29831,21 @@ namespace io {
 						}
 					// Если событие является полублокирующим
 					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
-						// Переводим сокет в блокирующий режим
-						if(eth::socket::switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
+						// Если очередь передачи данных не пуста
+						if(!peer->transfer.queue.empty()){
+							// Если данные не удалось добавить в очередь
+							if((result = peer->transfer.queue.push(buffer, size)) == 0){
+								// Если установлена функция обратного вызова
+								if(peer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об переполнении очереди
+									peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+								// Если функция обратного вызова для вывода доступных данных установлена
+								if(peer->callbacks.available != nullptr)
+									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+									peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
+							}
+						// Если очередь пуста, переводим сокет в блокирующий режим
+						} else if(eth::socket::switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)) {
 							// Если необходимо активировать таймаут на запись данных в сокет
 							if(peer->timeouts.write.delay > 0)
 								// Устанавливаем таймаут на запись данных в сокет
@@ -29972,8 +29987,12 @@ namespace io {
 									const size_t bytes = send(buffer, static_cast <size_t> (tokens));
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
-										result = size;
+										// Сохраняем количество отправленных байт
+										result = bytes;
+										// Если данные отправлены не полностью
+										if(bytes < size)
+											// Помещаем остаток в очередь до возвратного захода из обратного вызова
+											result += peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes);
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -29983,21 +30002,16 @@ namespace io {
 												// Выводим результат
 												return bytes;
 										}
-										// Если данные отправлены не полностью
-										if(bytes < size){
-											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
-												// Если установлена функция обратного вызова
-												if(peer->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об переполнении очереди
-													peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
-												// Если функция обратного вызова для вывода доступных данных установлена
-												if(peer->callbacks.available != nullptr)
-													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-													peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
-											}
-											// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
-											result += bytes;
+										// Если остаток данных не удалось добавить в очередь
+										if((bytes < size) && (result == bytes)){
+											// Если установлена функция обратного вызова
+											if(peer->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об переполнении очереди
+												peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+											// Если функция обратного вызова для вывода доступных данных установлена
+											if(peer->callbacks.available != nullptr)
+												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
+												peer->callbacks.available(peer->id, event::status_t::QUEUE_OVERFLOW, peer->transfer.queue.available());
 										}
 										// Уменьшаем количество используемых токенов
 										peer->bandwidthUse().write.tokens -= static_cast <double> (bytes);

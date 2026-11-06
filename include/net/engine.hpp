@@ -968,7 +968,9 @@ namespace awh {
 			 *          а не в общую поверхность, оттого что AF_XDP есть только у Linux,
 			 *          и общая функция была бы нерабочей у прочих систем. Спутник
 			 *          необязателен и включается сборкой; умолчанием он выключен, ибо
-			 *          датапуть AF_XDP не условие боя и требует libbpf/libxdp.
+			 *          датапуть AF_XDP не условие боя и требует libbpf/libxdp. Спутник работает
+			 *          лишь с идентификаторами узлов event::id_t: сокет и кольца заводятся внутри
+			 *          узла, дескриптор наружу не выдаётся и остаётся уровнем eth.
 			 *
 			 * @note Режим первым берётся обобщённый (generic SKB): он работает на всяком
 			 *       устройстве, включая виртуальные, без поддержки драйвера. Нативный
@@ -984,6 +986,9 @@ namespace awh {
 			 *          on Linux, and a common function would be inoperative on the other systems.
 			 *          The satellite is optional and is enabled by the build; by default it is off,
 			 *          since the AF_XDP datapath is not a condition of the battle and requires libbpf/libxdp.
+			 *          The satellite works only with the identifiers of the nodes event::id_t: the socket
+			 *          and the rings are created inside the node, the descriptor is not given out and remains
+			 *          at the eth level.
 			 *
 			 * @note The mode is first taken generic (generic SKB): it works on any device,
 			 *       including the virtual ones, without the driver support. The native mode with
@@ -1023,50 +1028,26 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ bool supported() noexcept;
 				/**
 				 * \~russian
-				 * @brief Функция получения описателя сокета AF_XDP
-				 *
-				 * @details Описатель сокета пригоден для опроса готовности (poll/epoll):
-				 *          по нему движок узнаёт о приходе кадров, не обращаясь к кольцам
-				 *          на всякой итерации.
-				 *
-				 * @param handle опознаватель сокета
-				 * @return       описатель сокета, либо минус единица при отказе
-				 *
-				 * \~english
-				 * @brief Function of getting the descriptor of an AF_XDP socket
-				 *
-				 * @details The socket descriptor is suitable for the readiness polling (poll/epoll):
-				 *          by it the engine learns of the arrival of the frames without touching
-				 *          the rings on every iteration.
-				 *
-				 * @param handle identifier of the socket
-				 * @return       descriptor of the socket, or minus one on refusal
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ int32_t fd(const uint32_t handle) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция уничтожения сокета AF_XDP
+				 * @brief Функция уничтожения узла AF_XDP
 				 *
 				 * @details Освобождает сокет, кольца и область UMEM, заведённые create(),
-				 *          и снимает опознаватель с учёта.
+				 *          и уничтожает узел движка, снимая его с учёта.
 				 *
-				 * @param handle опознаватель сокета
-				 * @return       признак успешного уничтожения
+				 * @param id идентификатор узла
+				 * @return   признак успешного уничтожения
 				 *
 				 * \~english
-				 * @brief Function of destroying an AF_XDP socket
+				 * @brief Function of destroying an AF_XDP node
 				 *
 				 * @details Frees the socket, the rings and the UMEM region created by create(),
-				 *          and removes the identifier from the accounting.
+				 *          and destroys the engine node, removing it from the accounting.
 				 *
-				 * @param handle identifier of the socket
-				 * @return       sign of the successful destruction
+				 * @param id identifier of the node
+				 * @return   sign of the successful destruction
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ bool destroy(const uint32_t handle) noexcept;
+				__AWH_SHARED_EXPORT__ bool destroy(const event::id_t id) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция отправки одной датаграммы через кольцо TX
@@ -1075,10 +1056,10 @@ namespace awh {
 				 *          дескриптор в кольцо отправки и побуждает ядро к отправке; завершённые
 				 *          кадры возвращаются в пул по кольцу завершения.
 				 *
-				 * @param handle опознаватель сокета
-				 * @param data   данные датаграммы
-				 * @param size   размер датаграммы в байтах
-				 * @return       признак успешной отправки
+				 * @param id   идентификатор узла
+				 * @param data данные датаграммы
+				 * @param size размер датаграммы в байтах
+				 * @return     признак успешной отправки
 				 *
 				 * \~english
 				 * @brief Function of sending one datagram through the TX ring
@@ -1087,23 +1068,25 @@ namespace awh {
 				 *          descriptor into the sending ring and prompts the kernel to send; the
 				 *          completed frames are returned to the pool by the completion ring.
 				 *
-				 * @param handle identifier of the socket
-				 * @param data   data of the datagram
-				 * @param size   size of the datagram in bytes
-				 * @return       sign of the successful sending
+				 * @param id   identifier of the node
+				 * @param data data of the datagram
+				 * @param size size of the datagram in bytes
+				 * @return     sign of the successful sending
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ bool send(const uint32_t handle, const uint8_t * data, const uint32_t size) noexcept;
+				__AWH_SHARED_EXPORT__ bool send(const event::id_t id, const uint8_t * data, const uint32_t size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция приёма одной датаграммы из кольца RX
 				 *
-				 * @details Снимает готовые кадры с кольца приёма, копирует первую датаграмму
-				 *          в поданный буфер, возвращает кадры в пул свободных и дочитывает
-				 *          кольцо наполнения, чтобы ядро могло класть новые кадры.
+				 * @details Снимает с кольца приёма одну готовую датаграмму, копирует её в
+				 *          поданный буфер, возвращает кадр в пул свободных и дочитывает кольцо
+				 *          наполнения. Прочие готовые кадры остаются в кольце и дозываются
+				 *          следующими вызовами. В цикле событий кадры приходят сами через
+				 *          подписку engine::on(id, callback::read_t).
 				 *
-				 * @param handle опознаватель сокета
+				 * @param id     идентификатор узла
 				 * @param buffer буфер под принятую датаграмму
 				 * @param size   размер буфера в байтах
 				 * @return       число принятых байт, ноль если датаграмм нет, минус единица при отказе
@@ -1111,107 +1094,58 @@ namespace awh {
 				 * \~english
 				 * @brief Function of receiving one datagram from the RX ring
 				 *
-				 * @details Takes the ready frames off the reception ring, copies the first datagram
-				 *          into the given buffer, returns the frames to the free pool and refills
-				 *          the filling ring so that the kernel could lay new frames.
+				 * @details Takes one ready datagram off the reception ring, copies it into the given
+				 *          buffer, returns the frame to the free pool and refills the filling ring.
+				 *          The other ready frames remain in the ring and are received by the following
+				 *          calls. In the event loop the frames arrive by themselves through the
+				 *          subscription engine::on(id, callback::read_t).
 				 *
-				 * @param handle identifier of the socket
+				 * @param id     identifier of the node
 				 * @param buffer buffer for the received datagram
 				 * @param size   size of the buffer in bytes
 				 * @return       number of the received bytes, zero if there are no datagrams, minus one on refusal
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ int32_t receive(const uint32_t handle, uint8_t * buffer, const uint32_t size) noexcept;
+				__AWH_SHARED_EXPORT__ int32_t receive(const event::id_t id, uint8_t * buffer, const uint32_t size) noexcept;
 				/**
 				 * \~russian
-				 * @brief Функция заведения сокета AF_XDP
+				 * @brief Функция заведения узла AF_XDP
 				 *
-				 * @details Выделяет область UMEM (кадры памяти), заводит кольца приёма,
-				 *          отправки, наполнения и завершения и привязывает сокет AF_XDP к
-				 *          устройству и очереди. Умолчанием программа BPF НЕ крепится (признак
-				 *          inhibit): заведение не перенаправляет трафик и потому безопасно;
-				 *          признак redirect крепит программу перенаправления трафика в сокет.
-				 *          Режим обобщённый (generic SKB). Требует привилегии CAP_NET_ADMIN.
+				 * @details Заводит узел движка и выделяет область UMEM (кадры памяти), заводит
+				 *          кольца приёма, отправки, наполнения и завершения и привязывает сокет
+				 *          AF_XDP к устройству и очереди. Состояние сокета и колец принадлежит
+				 *          узлу, дескриптор наружу не выдаётся. Умолчанием программа BPF НЕ
+				 *          крепится (признак inhibit): заведение не перенаправляет трафик и потому
+				 *          безопасно; признак redirect крепит программу перенаправления трафика в
+				 *          сокет. Режим обобщённый (generic SKB). Требует привилегии CAP_NET_ADMIN.
 				 *
 				 * @param iface    название сетевого устройства
 				 * @param queue    номер очереди устройства
 				 * @param redirect крепить ли программу BPF-редиректа трафика в сокет
-				 * @return         опознаватель сокета, либо ноль при отказе
+				 * @return         идентификатор узла, либо ноль при отказе
 				 *
 				 * \~english
-				 * @brief Function of creating an AF_XDP socket
+				 * @brief Function of creating an AF_XDP node
 				 *
-				 * @details Allocates the UMEM region (the memory frames), creates the rings of
-				 *          the reception, sending, filling and completion and binds the AF_XDP
-				 *          socket to the device and the queue. By default the BPF program is NOT
-				 *          attached (the inhibit flag): the creation does not redirect the traffic
-				 *          and therefore is safe; the redirect flag attaches the program of the
+				 * @details Creates an engine node and allocates the UMEM region (the memory frames),
+				 *          creates the rings of the reception, sending, filling and completion and binds
+				 *          the AF_XDP socket to the device and the queue. The state of the socket and the
+				 *          rings belongs to the node, the descriptor is not given out. By default the BPF
+				 *          program is NOT attached (the inhibit flag): the creation does not redirect the
+				 *          traffic and therefore is safe; the redirect flag attaches the program of the
 				 *          traffic redirection into the socket. The mode is generic (generic SKB).
 				 *          Requires the CAP_NET_ADMIN privilege.
 				 *
 				 * @param iface    name of the network device
 				 * @param queue    number of the device queue
 				 * @param redirect whether to attach the BPF program of the traffic redirection
-				 * @return         identifier of the socket, or zero on refusal
+				 * @return         identifier of the node, or zero on refusal
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ uint32_t create(const string & iface, const uint32_t queue = 0, const bool redirect = false) noexcept;
+				__AWH_SHARED_EXPORT__ event::id_t create(const string & iface, const uint32_t queue = 0, const bool redirect = false) noexcept;
 			};
-		#endif
-		/**
-		 * Для операционных систем с поддержкой внешних подписок цикла событий: Linux
-		 */
-		#if defined(__linux__) || defined(DOXYGEN)
-			/**
-			 * \~russian
-			 * @brief Функция снятия подписки внешнего дескриптора
-			 *
-			 * @details Снимает дескриптор с цикла событий и убирает его колбэк.
-			 *
-			 * @param fd внешний дескриптор
-			 * @return   признак успешного снятия
-			 *
-			 * \~english
-			 * @brief Function of removing the subscription of an external descriptor
-			 *
-			 * @details Removes the descriptor from the event loop and removes its callback.
-			 *
-			 * @param fd external descriptor
-			 * @return   sign of the successful removal
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool unwatch(const int32_t fd) noexcept;
-			/**
-			 * \~russian
-			 * @brief Функция подписки внешнего дескриптора на чтение в цикле событий
-			 *
-			 * @details Внешний дескриптор (сокет AF_XDP спутника и подобный) подписывается
-			 *          на чтение наравне с сокетами движка; по готовности цикл зовёт
-			 *          колбэк, не обращаясь к узлу. Так датапуть спутника обслуживается
-			 *          общим циклом событий, а не отдельным опросом.
-			 *
-			 * @param fd       внешний дескриптор
-			 * @param callback колбэк готовности к чтению
-			 * @return         признак успешной подписки
-			 *
-			 * \~english
-			 * @brief Function of subscribing an external descriptor to reading in the event loop
-			 *
-			 * @details An external descriptor (the AF_XDP socket of the satellite and the like) is
-			 *          subscribed to reading on a par with the engine sockets; on readiness the loop
-			 *          calls the callback without touching a node. Thus the datapath of the satellite
-			 *          is served by the common event loop, not by a separate polling.
-			 *
-			 * @param fd       external descriptor
-			 * @param callback callback of the readiness to reading
-			 * @return         sign of the successful subscription
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool watch(const int32_t fd, function <void()> callback) noexcept;
 		#endif
 		/**
 		 * \~russian

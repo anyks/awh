@@ -334,6 +334,7 @@
 #include <net/queue.hpp>
 #include <net/engine.hpp>
 #include <net/eth/eth.hpp>
+#include <net/eth/xdp.hpp>
 
 /**
  * Подключаем внутренний заголовочный файл
@@ -1114,6 +1115,86 @@ namespace io {
 	} raw_endpoint_t;
 
 	/**
+	 * Для операционных систем с поддержкой AF_XDP: лишь когда
+	 * спутник включён сборкой (-DCMAKE_BUILD_XDP=ON)
+	 */
+	#if defined(AWH_XDP)
+		/**
+		 * @brief Класс передачи данных датапути AF_XDP
+		 *
+		 * @details Состояние сокета AF_XDP (кольца и область UMEM) принадлежит узлу и
+		 *          живёт на низком уровне eth::xdp; здесь хранится лишь непрозрачный
+		 *          указатель на него. Дескриптор сокета закрывает eth::xdp::destroy при
+		 *          освобождении состояния, потому свой transfer.fd узел для XDP не
+		 *          закрывает: дескриптор обнуляется при уничтожении узла
+		 *
+		 */
+		typedef class XDP_Transfer {
+			private:
+				// Непрозрачное состояние сокета AF_XDP уровня eth::xdp
+				net::xdp::socket_t * _xdp;
+			public:
+				/**
+				 * @brief Метод сброса состояния датапути AF_XDP
+				 *
+				 */
+				void reset() noexcept {
+					// Если состояние заведено
+					if(this->_xdp != nullptr){
+						// Освобождаем состояние и дескриптор сокета низким уровнем
+						eth::xdp::destroy(this->_xdp);
+						// Сбрасываем указатель на состояние
+						this->_xdp = nullptr;
+					}
+				}
+				/**
+				 * @brief Метод проверки, заведено ли состояние датапути AF_XDP
+				 *
+				 * @return результат проверки
+				 *
+				 */
+				bool has() const noexcept {
+					// Состояние заведено, если указатель на него не пуст
+					return (this->_xdp != nullptr);
+				}
+				/**
+				 * @brief Метод получения состояния датапути AF_XDP
+				 *
+				 * @return состояние сокета AF_XDP
+				 *
+				 */
+				net::xdp::socket_t * use() noexcept {
+					// Возвращаем указатель на состояние
+					return this->_xdp;
+				}
+				/**
+				 * @brief Метод установки состояния датапути AF_XDP
+				 *
+				 * @param state состояние сокета AF_XDP
+				 *
+				 */
+				void set(net::xdp::socket_t * state) noexcept {
+					// Запоминаем указатель на состояние
+					this->_xdp = state;
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit XDP_Transfer() noexcept : _xdp(nullptr) {}
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~XDP_Transfer() noexcept {
+					// Освобождаем состояние датапути при сносе узла
+					this->reset();
+				}
+		} xdp_transfer_t;
+	#endif
+
+	/**
 	 * @brief Структура передачи данных
 	 *
 	 */
@@ -1139,6 +1220,14 @@ namespace io {
 		net_queue_t queue;
 		// Набор параметров SCTP-протокола
 		sctp_transfer_t sctp;
+		/**
+		 * Для операционных систем с поддержкой AF_XDP: лишь когда
+		 * спутник включён сборкой (-DCMAKE_BUILD_XDP=ON)
+		 */
+		#if defined(AWH_XDP)
+			// Состояние датапути AF_XDP
+			xdp_transfer_t xdp;
+		#endif
 		/**
 		 * @brief Конструктор
 		 *
@@ -4370,17 +4459,6 @@ namespace kernel {
 	 */
 	static void * const watcher = reinterpret_cast <void *> (2);
 	/**
-	 * @brief Метка внешнего дескриптора наблюдения в поле пользовательских данных события
-	 *
-	 * @details Старший бит тега отличает внешние подписки (сокет AF_XDP спутника и
-	 *          подобные) от узлов и внутренних меток: указатели узлов и метки
-	 *          waker/watcher старшего бита не несут, потому разбор узнаёт внешнюю
-	 *          подписку прежде приведения к узлу.
-	 *
-	 */
-	static constexpr uint64_t extWatchTag = (static_cast <uint64_t> (1) << 63);
-
-	/**
 	 * @brief Дескрипторы, чей учёт разошёлся с очередью опроса и ждёт согласования
 	 *
 	 * @details Правки подписок накапливаются здесь между двумя ожиданиями и уходят к
@@ -4425,16 +4503,6 @@ namespace kernel {
 	 *
 	 */
 	static unordered_map <net::socket_t, registry_t> registry;
-	/**
-	 * @brief Колбэки внешних дескрипторов наблюдения по дескриптору
-	 *
-	 * @details Внешний дескриптор подписан на чтение наравне с сокетами, и по
-	 *          готовности цикл зовёт его колбэк, не обращаясь к узлу: узла за
-	 *          внешним дескриптором нет.
-	 *
-	 */
-	static unordered_map <int32_t, std::function <void()>> extWatches;
-
 	/**
 	 * @brief Упреждающее объявление снятия записей изменений по дескриптору
 	 *
@@ -5743,8 +5811,6 @@ namespace kernel {
 		::kernel::watches.clear();
 		// Очищаем узлы наблюдения за файлами
 		::kernel::watchers.clear();
-		// Очищаем колбэки внешних дескрипторов наблюдения
-		::kernel::extWatches.clear();
 		// Очищаем включённые пользовательские события
 		::kernel::notifiers.clear();
 		// Очищаем заведённые пользовательские события
@@ -30062,6 +30128,15 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+						/**
+						 * Спутник датапути AF_XDP включён сборкой (-DCMAKE_BUILD_XDP=ON)
+						 */
+						#if defined(AWH_XDP)
+							// Если узел является датапутем AF_XDP
+							if(peer->state.protocol == event::protocol_t::XDP)
+								// Обнуляем дескриптор: его закрывает eth::xdp::destroy деструктора XDP_Transfer
+								peer->transfer.fd = net::invalid_socket_t;
+						#endif
 						// Сбрасываем очередь передачи данных события
 						peer->transfer.queue.clear();
 						// Выполняем сброс обрамления записи очереди
@@ -33980,6 +34055,47 @@ namespace io {
 		return result;
 	}
 	/**
+	 * Спутник датапути AF_XDP включается сборкой (-DCMAKE_BUILD_XDP=ON), умолчанием выключен
+	 */
+	#if defined(AWH_XDP)
+		/**
+		 * @brief Функция чтения кадров датапути AF_XDP
+		 *
+		 * @details Дренирует кольцо приёма покадрово и выдаёт каждый кадр потребителю
+		 *          через подписку чтения узла. Подписка на дескриптор постоянная,
+		 *          потому перевзведение после дренажа не требуется
+		 *
+		 * @param peer одноранговый узел датапути AF_XDP
+		 * @return     результат выполнения обработки
+		 *
+		 */
+		static bool readXdp(::io::peer_t * peer) noexcept {
+			// Получаем состояние датапути узла
+			net::xdp::socket_t * state = peer->transfer.xdp.use();
+			// Если состояние не заведено
+			if(state == nullptr)
+				// Возвращаем отказ обработки
+				return false;
+			/**
+			 * Дренируем кольцо приёма пока есть готовые кадры
+			 */
+			while(true){
+				// Принимаем одну датаграмму низким уровнем
+				const int32_t bytes = eth::xdp::receive(state, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE);
+				// Если датаграмм больше нет либо приём ответил отказом
+				if(bytes <= 0)
+					// Прекращаем дренаж кольца
+					break;
+				// Если установлена функция обратного вызова чтения
+				if(peer->callbacks.read != nullptr)
+					// Выдаём принятый кадр потребителю
+					peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+			}
+			// Возвращаем успешный результат обработки
+			return true;
+		}
+	#endif
+	/**
 	 * @brief Функция обработки события чтения
 	 *
 	 * @param node   узел в котором произошло событие
@@ -34030,9 +34146,19 @@ namespace io {
 					// Если событие чтения разрешено
 					if(peer->transfer.actions & ::action::READ){
 						// Если событие находится не в состоянии паузы
-						if(peer->state.status != event::status_t::PAUSED)
+						if(peer->state.status != event::status_t::PAUSED){
+							/**
+							 * Спутник датапути AF_XDP включён сборкой (-DCMAKE_BUILD_XDP=ON)
+							 */
+							#if defined(AWH_XDP)
+								// Если узел является датапутем AF_XDP
+								if(peer->state.protocol == event::protocol_t::XDP)
+									// Выполняем чтение кадров датапути
+									return ::io::readXdp(peer);
+							#endif
 							// Выполняем чтение данных из однорангового узла
 							return ::io::read(peer, volume);
+						}
 					}
 				} break;
 				// Если узел является туннелем
@@ -39359,6 +39485,207 @@ void awh::engine::sctp::on(const event::id_t id, engine::callback::sctp::message
 		#endif
 	}
 }
+
+/**
+ * Спутник датапути AF_XDP включается сборкой (-DCMAKE_BUILD_XDP=ON), умолчанием выключен
+ */
+#if defined(AWH_XDP)
+	/**
+	 * @brief Функция проверки поддержки AF_XDP ядром
+	 *
+	 * @return признак поддержки AF_XDP ядром
+	 *
+	 */
+	bool awh::engine::xdp::supported() noexcept {
+		// Возвращаем признак поддержки датапути ядром
+		return eth::xdp::supported();
+	}
+	/**
+	 * @brief Функция уничтожения узла AF_XDP
+	 *
+	 * @param id идентификатор узла
+	 * @return   признак успешного уничтожения
+	 *
+	 */
+	bool awh::engine::xdp::destroy(const event::id_t id) noexcept {
+		// Уничтожаем узел штатным механизмом (очистка датапути — деструктор XDP_Transfer)
+		return engine::destroy(id);
+	}
+	/**
+	 * @brief Функция отправки одной датаграммы через кольцо TX
+	 *
+	 * @param id   идентификатор узла
+	 * @param data данные датаграммы
+	 * @param size размер датаграммы в байтах
+	 * @return     признак успешной отправки
+	 *
+	 */
+	bool awh::engine::xdp::send(const event::id_t id, const uint8_t * data, const uint32_t size) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				// Получаем текущее значение объекта однорангового узла
+				::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+				// Если узел является датапутем AF_XDP
+				if((peer->state.node == event::node_t::PEER) && (peer->state.protocol == event::protocol_t::XDP))
+					// Выполняем отправку датаграммы низким уровнем
+					return eth::xdp::send(peer->transfer.xdp.use(), data, size);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {id, data, size}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Возвращаем отказ отправки
+		return false;
+	}
+	/**
+	 * @brief Функция приёма одной датаграммы из кольца RX
+	 *
+	 * @param id     идентификатор узла
+	 * @param buffer буфер под принятую датаграмму
+	 * @param size   размер буфера в байтах
+	 * @return       число принятых байт, ноль если датаграмм нет, минус единица при отказе
+	 *
+	 */
+	int32_t awh::engine::xdp::receive(const event::id_t id, uint8_t * buffer, const uint32_t size) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				// Получаем текущее значение объекта однорангового узла
+				::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+				// Если узел является датапутем AF_XDP
+				if((peer->state.node == event::node_t::PEER) && (peer->state.protocol == event::protocol_t::XDP))
+					// Выполняем приём датаграммы низким уровнем
+					return eth::xdp::receive(peer->transfer.xdp.use(), buffer, size);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Возвращаем отказ приёма
+		return -1;
+	}
+	/**
+	 * @brief Функция заведения узла AF_XDP
+	 *
+	 * @param iface    название сетевого устройства
+	 * @param queue    номер очереди устройства
+	 * @param redirect крепить ли программу BPF-редиректа трафика в сокет
+	 * @return         идентификатор узла, либо ноль при отказе
+	 *
+	 */
+	awh::event::id_t awh::engine::xdp::create(const string & iface, const uint32_t queue, const bool redirect) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Заводим одноранговый узел датапути AF_XDP
+			auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::peer_t> (0));
+			// Если узел завести не удалось
+			if(!ret.second)
+				// Возвращаем пустой идентификатор
+				return 0;
+			// Получаем объект однорангового узла
+			::io::peer_t * peer = awh_cast <::io::peer_t *> (ret.first->second.get());
+			// Устанавливаем идентификатор события
+			peer->id = ret.first->first;
+			// Устанавливаем вид узла
+			peer->state.node = event::node_t::PEER;
+			// Устанавливаем тип сокета
+			peer->state.type = event::type_t::DATAGRAM;
+			// Устанавливаем семейство адресов номинально (адрес датапутем не используется)
+			peer->state.family = event::family_t::IPV4;
+			// Устанавливаем протокол датапути
+			peer->state.protocol = event::protocol_t::XDP;
+			// Заводим сокет AF_XDP низким уровнем
+			net::xdp::socket_t * state = eth::xdp::create(iface, queue, redirect);
+			// Если сокет заведён
+			if(state != nullptr){
+				// Сохраняем состояние сокета в узле
+				peer->transfer.xdp.set(state);
+				// Запоминаем дескриптор сокета для опроса готовности
+				peer->transfer.fd = eth::xdp::fd(state);
+				// Устанавливаем статус успешного заведения
+				peer->state.status = event::status_t::SUCCESS;
+				// Разрешаем чтение данных узла
+				peer->transfer.actions |= ::action::READ;
+				// Отмечаем активность чтения данных
+				peer->activity |= ::activity::READ;
+				// Запись постоянной подписки на чтение
+				::change::record_t record{};
+				// Подписка на чтение без однократности (перевзведение не нужно)
+				record = ::change::make(peer->transfer.fd, ::change::filter_t::READ, ::change::ADD, 0, 0, peer);
+				// Добавляем подписку в список изменений
+				::events::add(::move(record));
+				// Возвращаем идентификатор заведённого узла
+				return peer->id;
+			}
+			// Сносим узел при отказе заведения сокета
+			::__awh_nodes__.erase(ret.first);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {iface, queue, redirect}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Возвращаем пустой идентификатор при отказе
+		return 0;
+	}
+#endif
 
 /**
  * @brief Функция очистки контрольного списка события
@@ -74114,108 +74441,6 @@ awh::event::protocol_t awh::engine::protocol(const event::id_t id) noexcept {
 	return event::protocol_t::NONE;
 }
 /**
- * @brief Функция подписки внешнего дескриптора на чтение в цикле событий
- *
- * @details Внешний дескриптор (сокет AF_XDP спутника и подобный) подписывается на
- *          чтение наравне с сокетами движка; по готовности цикл зовёт колбэк, не
- *          обращаясь к узлу. Метка старшего бита отличает такую подписку от узлов.
- *
- * @param fd       внешний дескриптор
- * @param callback колбэк готовности к чтению
- * @return         признак успешной подписки
- *
- */
-bool awh::engine::watch(const int32_t fd, std::function <void()> callback) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если очередь опроса не заведена
-		if(::__awh_ep__ == net::invalid_socket_t)
-			// Возвращаем отказ подписки
-			return false;
-		// Заносим колбэк внешней подписки в реестр
-		::kernel::extWatches[fd] = std::move(callback);
-		// Запись подписки ядра
-		struct epoll_event event{};
-		// Готовность к чтению
-		event.events = EPOLLIN;
-		// Метка внешнего дескриптора с номером дескриптора в младших битах
-		event.data.u64 = (::kernel::extWatchTag | static_cast <uint64_t> (static_cast <uint32_t> (fd)));
-		// Подписываем дескриптор в очереди опроса
-		if(::gnu::epollCtl(::__awh_ep__, EPOLL_CTL_ADD, fd, &event) != 0){
-			// Снимаем колбэк из реестра при отказе подписки
-			::kernel::extWatches.erase(fd);
-			// Возвращаем отказ подписки
-			return false;
-		}
-		// Возвращаем успешный результат подписки
-		return true;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("%s", log::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем отказ подписки
-	return false;
-}
-/**
- * @brief Функция снятия подписки внешнего дескриптора
- *
- * @details Снимает дескриптор с очереди опроса и убирает его колбэк из реестра
- *
- * @param fd внешний дескриптор
- * @return   признак успешного снятия
- *
- */
-bool awh::engine::unwatch(const int32_t fd) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если очередь опроса заведена
-		if(::__awh_ep__ != net::invalid_socket_t)
-			// Снимаем дескриптор с очереди опроса
-			::gnu::epollCtl(::__awh_ep__, EPOLL_CTL_DEL, fd, nullptr);
-		// Убираем колбэк из реестра внешних подписок
-		::kernel::extWatches.erase(fd);
-		// Возвращаем успешный результат снятия
-		return true;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("%s", __PRETTY_FUNCTION__, {fd}, log::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("%s", log::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Возвращаем отказ снятия
-	return false;
-}
-/**
  * @brief Функция опроса событий
  *
  * @param timeout таймаут опроса в миллисекундах
@@ -74452,19 +74677,6 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 					if(signal.data.ptr == ::kernel::watcher){
 						// Выполняем разбор пришедших оповещений наблюдения
 						events += ::kernel::harvest(::__awh_events__.get(), (::__awh_events_size__ * 2), static_cast <size_t> (events));
-						// Переходим к событию следующему
-						continue;
-					}
-					// Если событие пришло от внешнего дескриптора наблюдения
-					if(signal.data.u64 & ::kernel::extWatchTag){
-						// Дескриптор внешней подписки (младшие биты тега)
-						const int32_t extfd = static_cast <int32_t> (signal.data.u64 & ~::kernel::extWatchTag);
-						// Ищем колбэк внешней подписки
-						auto ext = ::kernel::extWatches.find(extfd);
-						// Если колбэк заведён
-						if(ext != ::kernel::extWatches.end())
-							// Выполняем вызов колбэк внешней подписки
-							ext->second();
 						// Переходим к событию следующему
 						continue;
 					}
