@@ -1095,6 +1095,523 @@ namespace awh {
 				 */
 				explicit Comment() noexcept;
 			} comment_t;
+			/**
+			 * \~russian
+			 * @brief Указатель разделов, открытой пробой держимый
+			 *
+			 * @details Ключ склеен из двух частей — имени раздела и имени подраздела —
+			 *          нулевым байтом между ними, приведение регистра частей учитывает
+			 *          по своему флагу каждая. Тело ключа до 40 знаков лежит в самом
+			 *          слоте, рядом со значением, и сличение при поиске не ходит в чужую
+			 *          память; свыше того ключ переносится хранилищем слота. Разыскиваемые
+			 *          части не склеиваются в строку: смешивание и сличение идут по частям,
+			 *          с приведением регистра на лету.
+			 *
+			 * \~english
+			 * @brief The index of sections, held by an open probing
+			 *
+			 * @details The key is glued of two parts — the section name and the subsection
+			 *          name — with a null byte between them, and the case folding of the parts
+			 *          is governed by a flag of its own for each. The body of the key up to 40
+			 *          characters lies in the very slot, next to the value, and the comparison
+			 *          at a search does not walk into foreign memory; beyond that the key is
+			 *          transferred by the storage of the slot. The parts being searched are not
+			 *          glued into a string: the mixing and the comparison go part by part, with
+			 *          the case folding on the fly.
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Index {
+				public:
+					// Количество слотов указателя разделов
+					size_t capacity;
+					// Количество занятых слотов указателя разделов
+					size_t occupied;
+				public:
+					// Слот указателя разделов
+					struct Slot;
+					// Слоты указателя разделов
+					struct Slot * slots;
+				public:
+					/**
+					 * \~russian
+					 * @brief Очистка указателя разделов
+					 *
+					 * @details Слоты таблицы не освобождаются: пересборка указателей пишет
+					 *          ключи на место прежних, и таблица переживает правку дерева
+					 *          без нового выделения памяти.
+					 *
+					 * \~english
+					 * @brief Clearing of the index of sections
+					 *
+					 * @details The slots of the table are not freed: the rebuilding of the indexes writes
+					 *          the keys onto the place of the previous ones, and the table survives an editing
+					 *          of the tree without a new allocation of the memory.
+					 *
+					 * \~
+					 */
+					void clear() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод пересборки таблицы слотов указателя разделов
+					 *
+					 * @param wanted требуемое количество слотов
+					 *
+					 * \~english
+					 * @brief Method of the rebuilding of the table of the slots of the index of sections
+					 *
+					 * @param wanted the required number of the slots
+					 *
+					 * \~
+					 */
+					void rehash(const size_t wanted) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод розыска раздела по частям имени
+					 *
+					 * @param first  имя разыскиваемого раздела
+					 * @param lowerF признак приведения имени раздела к нижнему регистру
+					 * @param second имя разыскиваемого подраздела
+					 * @param lowerS признак приведения имени подраздела к нижнему регистру
+					 * @return       порядковый номер найденного раздела либо обозначение отсутствующего
+					 *
+					 * \~english
+					 * @brief Method of the search of a section by the parts of the name
+					 *
+					 * @param first  name of the section being searched
+					 * @param lowerF flag of folding the section name to the lower case
+					 * @param second name of the subsection being searched
+					 * @param lowerS flag of folding the subsection name to the lower case
+					 * @return       ordinal number of the section found or the designation of an absent one
+					 *
+					 * \~
+					 */
+					uint32_t locate(const string_view first, const bool lowerF, const string_view second, const bool lowerS) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки раздела частями имени
+					 *
+					 * @param first  имя устанавливаемого раздела
+					 * @param lowerF признак приведения имени раздела к нижнему регистру
+					 * @param second имя устанавливаемого подраздела
+					 * @param lowerS признак приведения имени подраздела к нижнему регистру
+					 * @param value  порядковый номер устанавливаемого раздела
+					 * @return       признак того, что раздел установлен этой установкой
+					 *
+					 * \~english
+					 * @brief Method of setting a section by the parts of the name
+					 *
+					 * @param first  name of the section being set
+					 * @param lowerF flag of folding the section name to the lower case
+					 * @param second name of the subsection being set
+					 * @param lowerS flag of folding the subsection name to the lower case
+					 * @param value  ordinal number of the section being set
+					 * @return       flag of the section having been set by this very setting
+					 *
+					 * \~
+					 */
+					bool emplace(const string_view first, const bool lowerF, const string_view second, const bool lowerS, const uint32_t value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Оператор присваивания перемещением
+					 *
+					 * @param index перемещаемый указатель разделов
+					 * @return      приёмник присваивания
+					 *
+					 * \~english
+					 * @brief Move assignment operator
+					 *
+					 * @param index the index of sections being moved
+					 * @return      the receiver of the assignment
+					 *
+					 * \~
+					 */
+					Index & operator = (Index && index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор присваивания копированием
+					 *
+					 * @param index копируемый указатель разделов
+					 * @return      приёмник присваивания
+					 *
+					 * \~english
+					 * @brief Copy assignment operator
+					 *
+					 * @param index the index of sections being copied
+					 * @return      the receiver of the assignment
+					 *
+					 * \~
+					 */
+					Index & operator = (const Index & index) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Index() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор перемещения
+					 *
+					 * @param index перемещаемый указатель разделов
+					 *
+					 * \~english
+					 * @brief Move constructor
+					 *
+					 * @param index the index of sections being moved
+					 *
+					 * \~
+					 */
+					explicit Index(Index && index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор копирования
+					 *
+					 * @param index копируемый указатель разделов
+					 *
+					 * \~english
+					 * @brief Copy constructor
+					 *
+					 * @param index the index of sections being copied
+					 *
+					 * \~
+					 */
+					explicit Index(const Index & index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Index() noexcept;
+			} index_t;
+			/**
+			 * \~russian
+			 * @brief Перечень объявлений свойства, слотом держимый
+			 *
+			 * @details Перечень мал — свойство в одном разделе объявляется единожды или
+			 *          изредка повтором, — и порядковые номера записей лежат в самом слоте
+			 *          числом до четырёх, без отдельного выделения; свыше того перечень
+			 *          переносится хранилищем слота. Вид на перечень выдаётся поверх
+			 *          слота и владельца не имеет.
+			 *
+			 * \~english
+			 * @brief The list of the declarations of a property, held by the slot
+			 *
+			 * @details The list is small — a property within one section is declared once or
+			 *          rarely by a repetition, — and the ordinal numbers of the records lie in
+			 *          the very slot, up to four of them, without a separate allocation; beyond
+			 *          that the list is transferred by the storage of the slot. The view onto
+			 *          the list is issued over the slot and owns nothing.
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Records {
+				public:
+					/**
+					 * \~russian
+					 * @brief Вид на перечень объявлений свойства
+					 *
+					 * @details Вид не владеет данными: покуда слот жив, перечень читаем, при
+					 *          перестроении указателей прежние виды теряют силу.
+					 *
+					 * \~english
+					 * @brief The view onto the list of the declarations of a property
+					 *
+					 * @details The view does not own the data: while the slot lives, the list is
+					 *          readable, and at the rebuilding of the indexes the former views
+					 *          lose their force.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Group {
+						// Порядковые номера записей перечня объявлений
+						const uint32_t * items;
+						// Количество записей перечня объявлений
+						size_t count;
+						/**
+						 * \~russian
+						 * @brief Метод получения количества записей перечня
+						 *
+						 * @return количество записей перечня объявлений
+						 *
+						 * \~english
+						 * @brief Method of getting the number of the records of the list
+						 *
+						 * @return the number of the records of the list of declarations
+						 *
+						 * \~
+						 */
+						size_t size() const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод проверки перечня объявлений на пустоту
+						 *
+						 * @return признак пустого перечня объявлений
+						 *
+						 * \~english
+						 * @brief Method of checking the list of declarations for emptiness
+						 *
+						 * @return flag of the list of declarations being empty
+						 *
+						 * \~
+						 */
+						bool empty() const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод получения порядкового номера записи перечня
+						 *
+						 * @param index порядковый номер записи перечня объявлений
+						 * @return      порядковый номер записи дерева настроек
+						 *
+						 * \~english
+						 * @brief Method of getting the ordinal number of a record of the list
+						 *
+						 * @param index ordinal number of the record of the list of declarations
+						 * @return      ordinal number of the record of the settings tree
+						 *
+						 * \~
+						 */
+						uint32_t operator [] (const size_t index) const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод получения начала перечня объявлений
+						 *
+						 * @return адрес первой записи перечня объявлений
+						 *
+						 * \~english
+						 * @brief Method of getting the beginning of the list of declarations
+						 *
+						 * @return address of the first record of the list of declarations
+						 *
+						 * \~
+						 */
+						const uint32_t * begin() const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод получения конца перечня объявлений
+						 *
+						 * @return адрес за последней записью перечня объявлений
+						 *
+						 * \~english
+						 * @brief Method of getting the end of the list of declarations
+						 *
+						 * @return address past the last record of the list of declarations
+						 *
+						 * \~
+						 */
+						const uint32_t * end() const noexcept;
+					} group_t;
+				public:
+					// Количество слотов указателя свойств
+					size_t capacity;
+					// Количество занятых слотов указателя свойств
+					size_t occupied;
+					// Количество слотов снятых свойств указателя
+					size_t buried;
+				public:
+					// Слот указателя свойств
+					struct Slot;
+					// Слоты указателя свойств
+					struct Slot * slots;
+				public:
+					/**
+					 * \~russian
+					 * @brief Очистка указателя свойств
+					 *
+					 * @details Слоты таблицы не освобождаются: пересборка указателей пишет
+					 *          ключи и перечни на место прежних, и таблица переживает правку
+					 *          дерева без нового выделения памяти.
+					 *
+					 * \~english
+					 * @brief Clearing of the index of properties
+					 *
+					 * @details The slots of the table are not freed: the rebuilding of the indexes writes
+					 *          the keys and the lists onto the place of the previous ones, and the table
+					 *          survives an editing of the tree without a new allocation of the memory.
+					 *
+					 * \~
+					 */
+					void clear() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод пересборки таблицы слотов указателя свойств
+					 *
+					 * @param wanted требуемое количество слотов
+					 *
+					 * \~english
+					 * @brief Method of the rebuilding of the table of the slots of the index of properties
+					 *
+					 * @param wanted the required number of the slots
+					 *
+					 * \~
+					 */
+					void rehash(const size_t wanted) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод розыска перечня объявлений свойства
+					 *
+					 * @param section порядковый номер раздела, которому свойство принадлежит
+					 * @param key     имя разыскиваемого свойства
+					 * @param lower   признак приведения имени свойства к нижнему регистру
+					 * @param result  вид на перечень объявлений при успехе розыска
+					 * @return        признак того, что перечень объявлений разыскан
+					 *
+					 * \~english
+					 * @brief Method of the search of the list of the declarations of a property
+					 *
+					 * @param section ordinal number of the section the property belongs to
+					 * @param key     name of the property being searched
+					 * @param lower   flag of folding the property name to the lower case
+					 * @param result  view onto the list of declarations at the success of the search
+					 * @return        flag of the list of declarations having been found
+					 *
+					 * \~
+					 */
+					bool locate(const uint32_t section, const string_view key, const bool lower, group_t & result) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод добавления записи к перечню объявлений свойства
+					 *
+					 * @param section порядковый номер раздела, которому свойство принадлежит
+					 * @param key     имя свойства
+					 * @param lower   признак приведения имени свойства к нижнему регистру
+					 * @param record  добавляемый порядковый номер записи дерева настроек
+					 * @return        вид на перечень объявлений свойства после добавления
+					 *
+					 * \~english
+					 * @brief Method of adding a record to the list of the declarations of a property
+					 *
+					 * @param section ordinal number of the section the property belongs to
+					 * @param key     name of the property
+					 * @param lower   flag of folding the property name to the lower case
+					 * @param record  ordinal number of the record of the settings tree being added
+					 * @return        view onto the list of the declarations of the property after the adding
+					 *
+					 * \~
+					 */
+					group_t append(const uint32_t section, const string_view key, const bool lower, const uint32_t record) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия свойства из указателя свойств
+					 *
+					 * @details Снятый слот помечается могильником, а не освобождается: проба
+					 *          линейная, и выброшенный слот оборвал бы цепочку розыска
+					 *          стоящих за ним. Могильники снимаются пересборкой таблицы.
+					 *
+					 * @param section порядковый номер раздела, которому свойство принадлежит
+					 * @param key     имя снимаемого свойства
+					 * @param lower   признак приведения имени свойства к нижнему регистру
+					 * @return        признак того, что свойство снято этим снятием
+					 *
+					 * \~english
+					 * @brief Method of dropping a property out of the index of properties
+					 *
+					 * @details The dropped slot is marked by a tombstone, and is not freed: the probe
+					 *          is linear, and a slot thrown out would break the chain of the search of
+					 *          those standing behind it. The tombstones are dropped by the rebuilding
+					 *          of the table.
+					 *
+					 * @param section ordinal number of the section the property belongs to
+					 * @param key     name of the property being dropped
+					 * @param lower   flag of folding the property name to the lower case
+					 * @return        flag of the property having been dropped by this very dropping
+					 *
+					 * \~
+					 */
+					bool remove(const uint32_t section, const string_view key, const bool lower) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Оператор присваивания перемещением
+					 *
+					 * @param records перемещаемый указатель свойств
+					 * @return        приёмник присваивания
+					 *
+					 * \~english
+					 * @brief Move assignment operator
+					 *
+					 * @param records the index of properties being moved
+					 * @return        the receiver of the assignment
+					 *
+					 * \~
+					 */
+					Records & operator = (Records && records) noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор присваивания копированием
+					 *
+					 * @param records копируемый указатель свойств
+					 * @return        приёмник присваивания
+					 *
+					 * \~english
+					 * @brief Copy assignment operator
+					 *
+					 * @param records the index of properties being copied
+					 * @return        the receiver of the assignment
+					 *
+					 * \~
+					 */
+					Records & operator = (const Records & records) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Records() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор перемещения
+					 *
+					 * @param records перемещаемый указатель свойств
+					 *
+					 * \~english
+					 * @brief Move constructor
+					 *
+					 * @param records the index of properties being moved
+					 *
+					 * \~
+					 */
+					explicit Records(Records && records) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор копирования
+					 *
+					 * @param records копируемый указатель свойств
+					 *
+					 * \~english
+					 * @brief Copy constructor
+					 *
+					 * @param records the index of properties being copied
+					 *
+					 * \~
+					 */
+					explicit Records(const Records & records) noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Records() noexcept;
+			} records_t;
 
 			/**
 			 * \~russian

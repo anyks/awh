@@ -37,7 +37,7 @@
  * Наши модули
  */
 #include "../net.hpp"
-#include "../sys/macro/global.hpp"
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian

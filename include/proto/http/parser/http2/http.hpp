@@ -1409,7 +1409,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reset() noexcept : id(0), local(false) {}
+					explicit Reset() noexcept;
 				} reset_t;
 				/**
 				 * \~russian
@@ -1421,6 +1421,60 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
+					/**
+					 * \~russian
+					 * @brief Структура ячейки снимка планировщика отправки
+					 *
+					 * \~english
+					 * @brief Structure of a cell of the snapshot of the scheduler of the sending
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Slot {
+						// Срочность потока (RFC 9218 §4.1)
+						uint8_t urgency;
+						// Признак инкрементальной доставки потока
+						bool incremental;
+						// Идентификатор потока
+						uint32_t id;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Slot() noexcept;
+					} slot_t;
+					/**
+					 * \~russian
+					 * @brief Структура отложенного приоритета ещё не открытого потока
+					 *
+					 * \~english
+					 * @brief Structure of a postponed priority of a not yet opened stream
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Pending {
+						// Срочность потока (RFC 9218 §4.1)
+						uint8_t urgency;
+						// Признак инкрементальной доставки потока
+						bool incremental;
+						// Идентификатор приоритизируемого потока
+						uint32_t id;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Pending() noexcept;
+					} pending_t;
 					// Наибольший принятый идентификатор потока (для GOAWAY)
 					uint32_t lastStreamId;
 					/**
@@ -1487,33 +1541,6 @@ namespace awh {
 					size_t outputHighWater;
 					/**
 					 * \~russian
-					 * @brief Структура ячейки снимка планировщика отправки
-					 *
-					 * \~english
-					 * @brief Structure of a cell of the snapshot of the scheduler of the sending
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Slot {
-						// Срочность потока (RFC 9218 §4.1)
-						uint8_t urgency;
-						// Признак инкрементальной доставки потока
-						bool incremental;
-						// Идентификатор потока
-						uint32_t id;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Slot() noexcept : urgency(0), incremental(false), id(0) {}
-					} slot_t;
-					/**
-					 * \~russian
 					 * @brief Переиспользуемый снимок планировщика отправки (без аллокаций на вызов)
 					 *
 					 * @details Признаки приоритета снимаются вместе с идентификатором, а не
@@ -1560,33 +1587,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint32_t> readyIds;
-					/**
-					 * \~russian
-					 * @brief Структура отложенного приоритета ещё не открытого потока
-					 *
-					 * \~english
-					 * @brief Structure of a postponed priority of a not yet opened stream
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Pending {
-						// Срочность потока (RFC 9218 §4.1)
-						uint8_t urgency;
-						// Признак инкрементальной доставки потока
-						bool incremental;
-						// Идентификатор приоритизируемого потока
-						uint32_t id;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Pending() noexcept : urgency(0), incremental(false), id(0) {}
-					} pending_t;
 					/**
 					 * \~russian
 					 * @brief Кольцо приоритетов, объявленных до открытия потока (RFC 9218 §7.1)

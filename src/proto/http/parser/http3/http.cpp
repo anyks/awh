@@ -139,6 +139,7 @@ namespace {
 		 * @note Прописные буквы в таблице отсутствуют намеренно: названия полей
 		 *       в HTTP/3 обязаны быть в нижнем регистре (RFC 9114 §4.2), и
 		 *       отдельной проверки регистра не требуется
+		 *
 		 */
 		static const array <bool, 256> TABLE = [](){
 			// Собираемая таблица допустимых символов
@@ -781,6 +782,20 @@ bool awh::http::Parser_HTTP3::Ratelim::drain(const uint64_t value) noexcept {
 	// Выводим признак успешного списания
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP3::Signal::Signal() noexcept :
+ urgency(0), incremental(false), id(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP3::Promise::Promise() noexcept :
+ id(UINT64_MAX), digest(0) {}
+
 /**
  * @brief Конструктор
  *

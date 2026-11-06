@@ -31,6 +31,11 @@
 #include <proto/http/parser/http3/qpack.hpp>
 
 /**
+ * Подключаем внутренние помощники модуля
+ */
+#include "../internal/helpers.inc"
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;

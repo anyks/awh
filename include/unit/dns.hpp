@@ -1697,7 +1697,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit DNS & operator = (const DNS &) = delete;
+				DNS & operator = (const DNS &) = delete;
 			public:
 				/**
 				 * \~russian

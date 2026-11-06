@@ -299,6 +299,17 @@ namespace awh {
 					 * \~
 					 */
 					friend class Value;
+				private:
+					/**
+					 * \~russian
+					 * @brief Вид на перечень объявлений свойства
+					 *
+					 * \~english
+					 * @brief The view onto the list of the declarations of a property
+					 *
+					 * \~
+					 */
+					typedef records_t::group_t group_t;
 				public:
 					/**
 					 * \~russian
@@ -642,9 +653,9 @@ namespace awh {
 					vector <vector <uint32_t>> _order;
 				private:
 					// Указатель разделов по имени, приведённому к виду для сличения
-					unordered_map <string, uint32_t> _index;
-					// Указатель свойств по разделу и имени, приведённым к виду для сличения
-					unordered_map <string, vector <uint32_t>> _properties;
+					index_t _index;
+					// Указатель свойств по разделу и имени, приведённому к виду для сличения
+					records_t _properties;
 				private:
 					/**
 					 * \~russian
@@ -786,24 +797,6 @@ namespace awh {
 					bool acceptable(const string_view name, const bool section, const bool primary = true) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод сборки ключа указателя разделов
-					 *
-					 * @param section    имя раздела
-					 * @param subsection имя подраздела
-					 * @return           ключ указателя разделов
-					 *
-					 * \~english
-					 * @brief Method of assembling the key of the index of the sections
-					 *
-					 * @param section    name of the section
-					 * @param subsection name of the subsection
-					 * @return           key of the index of the sections
-					 *
-					 * \~
-					 */
-					string label(const string_view section, const string_view subsection) const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод сборки ключа указателя свойств
 					 *
 					 * @param section порядковый номер раздела
@@ -822,76 +815,6 @@ namespace awh {
 					string label(const uint32_t section, const string_view key) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод сборки ключа указателя разделов в переданный буфер
-					 *
-					 * @details Ключ собирается в переданный буфер, а не выдаётся новой
-					 *          строкой: буфер вызывающий заводит однажды и переиспользует, отчего
-					 *          на обращение к дереву не приходится ни одного построения строки.
-					 *          Приведение имени к нижнему регистру выполняется по ходу дозаписи, а
-					 *          не отдельным проходом.
-					 *
-					 * @param buffer     буфер, куда собирается ключ
-					 * @param section    имя раздела
-					 * @param subsection имя подраздела
-					 *
-					 * \~english
-					 * @brief Method of assembling the key of the index of the sections into a passed buffer
-					 *
-					 * @details The key is assembled into the passed buffer rather than being issued as a new
-					 *          string: the buffer is created by the caller once and reused, from which
-					 *          not a single construction of a string falls on a call to the tree.
-					 *          The bringing of the name to the lower case is performed in the course of the appending rather than
-					 *          by a separate pass.
-					 *
-					 * @param buffer     buffer into which the key is assembled
-					 * @param section    name of the section
-					 * @param subsection name of the subsection
-					 *
-					 * \~
-					 */
-					void labelled(string & buffer, const string_view section, const string_view subsection) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод сборки ключа указателя свойств в переданный буфер
-					 *
-					 * @param buffer  буфер, куда собирается ключ
-					 * @param section порядковый номер раздела
-					 * @param key     имя свойства
-					 *
-					 * \~english
-					 * @brief Method of assembling the key of the index of the properties into a passed buffer
-					 *
-					 * @param buffer  buffer into which the key is assembled
-					 * @param section ordinal number of the section
-					 * @param key     name of the property
-					 *
-					 * \~
-					 */
-					void labelled(string & buffer, const uint32_t section, const string_view key) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод поиска раздела по имени с переиспользуемым буфером
-					 *
-					 * @param buffer     буфер сборки ключа указателя разделов
-					 * @param section    имя искомого раздела
-					 * @param subsection имя искомого подраздела
-					 * @param result     порядковый номер найденного раздела
-					 * @return           признак того, что раздел найден
-					 *
-					 * \~english
-					 * @brief Method of searching for a section by a name with a reusable buffer
-					 *
-					 * @param buffer     buffer of the assembly of the key of the index of the sections
-					 * @param section    name of the section being sought
-					 * @param subsection name of the subsection being sought
-					 * @param result     ordinal number of the found section
-					 * @return           flag of the section having been found
-					 *
-					 * \~
-					 */
-					bool search(string & buffer, const string_view section, const string_view subsection, uint32_t & result) const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод поиска объявлений свойства по имени
 					 *
 					 * @details Поиск выполняется однажды на все обращения к значению
@@ -901,7 +824,8 @@ namespace awh {
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
 					 * @param subsection имя подраздела
-					 * @return           перечень объявлений свойства либо пустой указатель
+					 * @param result     вид на перечень объявлений свойства при успехе розыска
+					 * @return           признак того, что объявления свойства разысканы
 					 *
 					 * \~english
 					 * @brief Method of searching for the declarations of a property by a name
@@ -913,11 +837,12 @@ namespace awh {
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
-					 * @return           list of the declarations of the property or an empty pointer
+					 * @param result     view onto the list of the declarations of the property at the success of the search
+					 * @return           flag of the declarations of the property having been found
 					 *
 					 * \~
 					 */
-					const vector <uint32_t> * locate(const string_view key, const string_view section, const string_view subsection) const noexcept;
+					bool locate(const string_view key, const string_view section, const string_view subsection, records_t::group_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод поиска раздела по имени

@@ -1399,6 +1399,7 @@ namespace iface {
 	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
 	 *
 	 * @tparam MutexType тип активного мьютекса
+	 *
 	 */
 	template <typename MutexType>
 	/**

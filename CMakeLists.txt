@@ -457,6 +457,25 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
+    ##
+     # Спутник AF_XDP (engine::xdp) — необязательный, только Linux
+     #
+     # Выключен умолчанием: датапуть AF_XDP не условие боя и требует libbpf/libxdp,
+     # каких нет у всякого дистрибутива. Включается -DCMAKE_BUILD_XDP=ON; наличие
+     # библиотек проверяется pkg-config, системными пакетами, без вендоринга.
+     # Порядок --no-as-needed ПЕРЕД библиотеками значим так же, как у SCTP выше
+     ##
+    option(CMAKE_BUILD_XDP "Build AF_XDP datagram satellite engine::xdp (Linux, libbpf/libxdp)" OFF)
+    # Если собран спутник AF_XDP, подключаем его реализацию
+    if(CMAKE_BUILD_XDP)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LIBBPF REQUIRED libbpf)
+        pkg_check_modules(LIBXDP REQUIRED libxdp)
+        ADD_DEFINITIONS(-DAWH_XDP)
+        INCLUDE_DIRECTORIES(${LIBBPF_INCLUDE_DIRS} ${LIBXDP_INCLUDE_DIRS})
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -lbpf -lxdp")
+        message(STATUS "XDP satellite: ON (libbpf ${LIBBPF_VERSION}, libxdp ${LIBXDP_VERSION})")
+    endif()
 # Если сборка производится под операционную систему Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     # Если версию получить не удалось
@@ -1011,6 +1030,14 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/netlink.cpp"
     )
 
+    # Если собран спутник AF_XDP, подключаем его реализацию
+    if(CMAKE_BUILD_XDP)
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/xdp.cpp"
+        )
+    endif()
+
     ##
      # Механизм ожидания событий под Linux
      #
@@ -1095,14 +1122,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     )
 endif()
 
-##
- # Выполняем подключение захвата выделения памяти процесса
- #
- # Цепочка своя, а не общая с движком ввода-вывода: тот делит системы по механизму
- # ожидания и держит macOS вместе с BSD в одной ветви, а захват делится ИНАЧЕ - по
- # приёму подмены. Уложи мы захват в ту же цепочку, ветвь macOS оказалась бы за уже
- # выбранной ветвью BSD и не срабатывала бы вовсе
- ##
 ##
  # Если сборка производится под операционную систему MS Windows
  #
@@ -1445,6 +1464,8 @@ if (NOT MSVC)
 endif()
 
 ##
+ # Если сборка проверок под санитайзерами активирована
+ #
  # Снимаем надзор санитайзеров с самого распределителя
  #
  # Вопрос этот НЕ о том, кто раздаёт память, а о том, какие файлы собираются с
@@ -1466,7 +1487,6 @@ endif()
  # Замерено 15.09.2026 на Debian 12: выдача под ASan даёт ALLOCATED=73872 против 73728
  # без него, то есть обслуживает её распределитель, а не подмена надзирателя.
  ##
-# Если сборка проверок под санитайзерами активирована
 if (CMAKE_BUILD_SANITIZE AND NOT MSVC)
     # Перечень исходников распределителя, какие надзору не подлежат
     SET(AWH_ALLOC_SOURCES
@@ -1566,6 +1586,8 @@ if (CMAKE_BUILD_TESTS)
     endif()
 
     ##
+     # Если сборка проверок под санитайзерами активирована
+     #
      # Сборка проверок под санитайзерами.
      #
      # Санитайзеры включаются одним ключом на весь набор проверок: библиотека проверок
@@ -1620,7 +1642,6 @@ if (CMAKE_BUILD_TESTS)
      # Находки от этого не теряются: сообщения санитайзер печатает по-прежнему, и
      # считать их следует по ним, а не по коду выхода набора.
      ##
-    # Если сборка проверок под санитайзерами активирована
     if (CMAKE_BUILD_SANITIZE)
         ##
          # Дополняем флаги компиляции проверок флагами санитайзеров
@@ -1633,19 +1654,6 @@ if (CMAKE_BUILD_TESTS)
         # Дополняем зависимости линковки проверок рантаймом санитайзеров
         SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST})
 
-        ##
-         # Среду надзирателя просим ДИНАМИЧЕСКУЮ
-         #
-         # Статическая среда определяет malloc и родню В АРХИВЕ, и связыватель видит два
-         # определения одного имени в двух объектных файлах: наше и её. Спор неразрешим
-         # по устройству связывания, и снятие инструментации от него не спасает - оно
-         # про проверки, а не про имена. Замерено на FreeBSD 14 (clang 19):
-         # «ld: error: duplicate symbol: malloc», и так по всем шести именам выдачи.
-         #
-         # У GNU/Linux с gcc среда динамическая умолчанием, и беды не возникает вовсе;
-         # у clang она статическая - оттого ключ и просится явно. Путь к среде вписываем
-         # в двоичный файл: иначе запуск требует переменной окружения, а её забудут
-         ##
         ##
          # Ключ этот знает лишь clang
          #
@@ -2282,8 +2290,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      # definition of std::__throw_logic_error". Упоминание распространялось на всякую цель,
      # связанную с библиотекой, и отбор его в наборе замеров не спасал. Обнаружено на стенде
      # MSYS2 MinGW64 (14.08.2026)
-     ##
-    ##
+     #
      # Написание перечня зависит от оснастки
      #
      # Оснастка MSVC записи «-lws2_32» не понимает вовсе, а неизвестный ключ принимает
@@ -2296,6 +2303,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      ##
     if (MSVC)
         SET(AWH_FLAGS ws2_32.lib Iphlpapi.lib psapi.lib dbghelp.lib crypt32.lib bcrypt.lib gdi32.lib Normaliz.lib)
+    # Если сборка выполняется под MinGW
     else (MSVC)
         SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
     endif (MSVC)
@@ -2339,7 +2347,6 @@ else()
     if (APPLE AND AWH_TARGET_MACOS AND NOT CMAKE_NO_MACOS_ALIAS)
         SET(AWH_FLAGS "-framework Foundation")
     endif()
-
 
     # Если необходимо собрать семплы
     if (${CMAKE_BUILD_SAMPLES})
@@ -7786,11 +7793,12 @@ if (MSVC)
     add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
         COMMAND "${CMAKE_SOURCE_DIR}/bat/build_cmake.bat" "${CMAKE_INSTALL_PREFIX}"
     VERBATIM)
-else()
+# Если сборка выполняется под clang, gcc или MinGW
+else(MSVC)
     add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
     VERBATIM)
-endif()
+endif(MSVC)
 
 # Устанавливаем сгенерированный CMAKE-файл
 install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")

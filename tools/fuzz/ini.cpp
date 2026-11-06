@@ -2120,15 +2120,47 @@ namespace {
 				/**
 				 * Выполняем перебор всех разделов переведённого дерева настроек
 				 */
-				for(const auto & section : document.sections()){
+				/**
+				 * Имена разделов снимаются копиями до обращений к дереву
+				 *
+				 * @note Договор дерева прямо оговаривает: выданные виды живут лишь до
+				 *       следующего обращения к дереву, а пересчёт подстановок обращений
+				 *       хранилище знаков перемещает. Обращение `get` пересчёт выполняет,
+				 *       и вид, взятый до него, повисает - в том числе внутри перечня,
+				 *       выданного `sections` или `keys`, и на следующей итерации перебора
+				 *
+				 */
+				vector <pair <string, string>> names;
+				/**
+				 * Выполняем снятие копий имён всех объявленных разделов
+				 */
+				for(const auto & section : document.sections())
+					// Выполняем добавление копии имён очередного раздела
+					names.emplace_back(string(section.section), string(section.subsection));
+				/**
+				 * Выполняем перебор всех разделов исходного дерева настроек
+				 */
+				for(const auto & name : names){
+					// Имя раздела, копией снятое
+					const string & sectionName = name.first;
+					// Имя подраздела, копией снятое
+					const string & subsectionName = name.second;
+					// Имена свойств раздела
+					vector <string> keys;
+					/**
+					 * Выполняем снятие копий имён всех свойств раздела
+					 */
+					for(const auto & key : document.keys(sectionName, subsectionName))
+						// Выполняем добавление копии имени очередного свойства
+						keys.emplace_back(key);
 					/**
 					 * Выполняем перебор всех свойств очередного раздела
 					 */
-					for(const auto & key : document.keys(section.section, section.subsection)){
+					for(const auto & keyName : keys){
 						// Получаем значение свойства из исходного дерева настроек
-						const string before(document.get(key, section.section, section.subsection));
+						const string before(document.get(keyName, sectionName, subsectionName));
 						// Получаем значение свойства из дерева, собранного разбором перевода
-						const string after(back.get(key, section.section, section.subsection));
+						const string after(back.get(keyName, sectionName, subsectionName));
 						// Выполняем учёт свойства исходного дерева настроек
 						offered++;
 
@@ -2142,7 +2174,7 @@ namespace {
 						if(!after.empty() && (before != after)){
 							// Выводим сообщение о расхождении значения после перевода
 							::fprintf(stderr, "ini fuzz: translation differs, dialect=%u, key=[%s]\n  source      [%s]\n  translation [%s]\n",
-								index, string(key).c_str(), before.c_str(), after.c_str());
+								index, keyName.c_str(), before.c_str(), after.c_str());
 							// Выводим настройки разбора исходного текста настроек
 							dump(settings.reader);
 							/**

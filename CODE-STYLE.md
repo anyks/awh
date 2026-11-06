@@ -116,7 +116,19 @@
     camelCase (`initmsg`, `peer`, `bytesRead`). snake_case запрещён (§4.2).
     Имена в директивах препроцессора объявлениями не считаются: аргумент
     `#pragma push_macro("ERROR")` зовёт сохранение макроса, а не переменную
-    `push_macro`, потому строки `#pragma` в §4.2 и §4.3 не проверяются.
+    `push_macro`, а `#define gmtime_r(T, Tm)` подменяет системное имя POSIX
+    на `gmtime_s` в сборке под Windows, а не объявляет переменную `gmtime_r`.
+    Потому строки любых директив (`#pragma`, `#define`, `#include`, `#if` и
+    прочих) в §4.2 и §4.3 не проверяются.
+    Словарь стандартной библиотеки — не snake_case-нарушение: `const_iterator`,
+    `iterator_category` и родственные имена (`value_type`, `size_type`,
+    `difference_type`, `pointer`, `reference`) заданы соглашением C++, их
+    переименование в camelCase ломает совместимость с обобщённым кодом и
+    `std::iterator_traits`. Они внесены в `SNAKE_STOP` чекера и освобождены
+    от §4.2 и §4.3 разом (образцы: `include/proto/http/headers.hpp` —
+    `using const_iterator = fields_t::const_iterator;`,
+    `include/container/binbox.hpp` — `using iterator_category =
+    std::bidirectional_iterator_tag;`).
 4.4. **Члены класса** — snake_case с **нижним подчёркиванием на конце**
     (`_eth`, `_slot`, `_chunk`, `_owner`, `_state`) и обращение к ним из методов
     **только через `this->`** (§6.1). Публичные поля POD-структур (ключи,
@@ -248,6 +260,13 @@
     `__AWH_INLINE__ ssize_t read(…)`, `__AWH_SHARED_EXPORT__ size_t write(…)`),
     вызовом не считается и не флажится — чекер отличает такой заголовок по
     префиксу из модификаторов и типа без операторов и без управляющего слова.
+    Местная лямбда — тоже не системная функция: `auto open = [this](uint64_t & …)`
+    связывает вызываемый объект, и `open(…)` ниже в том же теле относится к нему,
+    а не к `::open`. Чекер собирает такие имена по телу определения и очищает
+    набор при выходе из него, чтобы лямбда одного тела не укрывала голый
+    системный вызов в следующем (образцы: `src/proto/http/parser/http3/http.cpp`
+    — `open`, `src/codec/toml/reader.cpp` и `src/cryptography/tls/fingerprint.cpp`
+    — `read`, `src/codec/abc/value.cpp` — `open`).
     Голый вызов остаётся ошибкой в любой форме: `free(p);`, `return read(fd, …)`,
     `if(munmap(…) != 0)`.
 6.3. Приведения — **не Си-каст, не компактный static_cast**:

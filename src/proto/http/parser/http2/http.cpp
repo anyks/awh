@@ -1136,6 +1136,13 @@ awh::http::Parser_HTTP2::Flags::Flags() noexcept :
  * @brief Конструктор
  *
  */
+awh::http::Parser_HTTP2::Reset::Reset() noexcept :
+ id(0), local(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  lastStreamId(0),
  resetStreams(RESET_STREAMS_CACHE),
@@ -1149,6 +1156,20 @@ awh::http::Parser_HTTP2::Transfer::Transfer() noexcept :
  sendLowWater(SEND_LOW_WATER),
  sendHighWater(SEND_HIGH_WATER),
  outputHighWater(OUTPUT_HIGH_WATER) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP2::Transfer::Slot::Slot() noexcept :
+ urgency(0), incremental(false), id(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP2::Transfer::Pending::Pending() noexcept :
+ urgency(0), incremental(false), id(0) {}
 
 /**
  * @brief Конструктор

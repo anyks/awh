@@ -56,8 +56,7 @@ LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
 	 *          прочесть его наполовину заполненным - и уйти вызывать по мусорному
 	 *          адресу. Ответ берётся теперь в свой переменной, а в тайник кладётся
 	 *          уже целым и разом
-	 */
-	/**
+	 *
 	 * @note Тайник ОДИН на все сокеты, и это проверено, а не предположено. Система
 	 *       выдаёт адрес расширенного вызова для поставщика того сокета, у какого
 	 *       спросили, - формально он вправе разниться. Щуп на стенде спросил адрес
@@ -68,6 +67,7 @@ LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
 	 *       сокетов (LSP). Появись такая надстройка, обслуживающая часть семейств, -
 	 *       адреса вправе разойтись, и тайник придётся разводить по семействам. Пока
 	 *       же довода менять устройство нет: замер расхождения не показал
+	 *
 	 */
 	static std::atomic <LPFN_WSARECVMSG> cache{nullptr};
 	// Получаем запомненный адрес расширенного вызова
@@ -167,7 +167,7 @@ int64_t awh::win::message::receive(const net::socket_t sock, msghdr_t * msg, con
 	// Устанавливаем адрес собеседника
 	message.name = reinterpret_cast <LPSOCKADDR> (msg->name);
 	// Устанавливаем размер адреса собеседника
-	message.nameSize = static_cast <INT> (msg->nameSize);
+	message.namelen = static_cast <INT> (msg->nameSize);
 	// Устанавливаем набор буферов приёма
 	message.lpBuffers = buffers.data();
 	// Устанавливаем число буферов приёма
@@ -180,6 +180,7 @@ int64_t awh::win::message::receive(const net::socket_t sock, msghdr_t * msg, con
 	 * Устанавливаем признаки приёма
 	 *
 	 * @note Ненулевым сюда доходит лишь `MSG_PEEK` - прочие отвергнуты выше
+	 *
 	 */
 	message.dwFlags = static_cast <DWORD> (flags);
 	// Число принятых октетов
@@ -194,7 +195,7 @@ int64_t awh::win::message::receive(const net::socket_t sock, msghdr_t * msg, con
 		return -1;
 	}
 	// Запоминаем размер принятого адреса собеседника
-	msg->nameSize = static_cast <socklen_t> (message.nameSize);
+	msg->nameSize = static_cast <socklen_t> (message.namelen);
 	// Запоминаем размер принятых служебных метаданных
 	msg->controlSize = static_cast <size_t> (message.Control.len);
 	// Запоминаем признаки принятого сообщения

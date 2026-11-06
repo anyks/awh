@@ -483,7 +483,9 @@ size_t awh::quic::Chunked_FIFO::size() const noexcept {
  *
  */
 void awh::quic::Chunked_FIFO::append(vector <string> & pool, string_view data) noexcept {
-	// Пока есть данные для записи
+	/**
+	 * Пока есть данные для записи
+	 */
 	while(!data.empty()){
 		// Если хвостового блока нет либо он заполнен
 		if(this->_blocks.empty() || (this->_blocks.back().size() >= BLOCK))
@@ -511,7 +513,9 @@ void awh::quic::Chunked_FIFO::append(vector <string> & pool, string_view data) n
  *
  */
 void awh::quic::Chunked_FIFO::drain(vector <string> & pool, string & output) noexcept {
-	// Перебираем накопленные блоки в порядке записи
+	/**
+	 * Перебираем накопленные блоки в порядке записи
+	 */
 	for(auto & block : this->_blocks){
 		// Дописываем данные блока в выходной буфер
 		output.append(block);
@@ -530,7 +534,9 @@ void awh::quic::Chunked_FIFO::drain(vector <string> & pool, string & output) noe
  *
  */
 void awh::quic::Chunked_FIFO::clear(vector <string> & pool) noexcept {
-	// Перебираем накопленные блоки
+	/**
+	 * Перебираем накопленные блоки
+	 */
 	for(auto & block : this->_blocks)
 		// Возвращаем блок в пул
 		release(pool, std::move(block));
@@ -1349,7 +1355,9 @@ void awh::quic::Connection::settle(const chunk_t & chunk) noexcept {
 	 * сегментации ретрансмиссии), отбрасываются, не оставляя осиротевших записей
 	 */
 	auto next = stream.txPending.begin();
-	// Пока в очереди есть диапазон, начинающийся на границе префикса либо под ней
+	/**
+	 * Пока в очереди есть диапазон, начинающийся на границе префикса либо под ней
+	 */
 	while((next != stream.txPending.end()) && (next->first <= stream.txAcked)){
 		// Если конец диапазона выходит за префикс - продвигаем префикс до него
 		if(next->second > stream.txAcked)
@@ -3315,7 +3323,9 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					 * Перебираем список отправленных пакетов
 					 */
 					for(auto i = item.sent.begin(); i != item.sent.end(); ++i){
-						// Пропускаем диапазоны, целиком лежащие ниже номера пакета
+						/**
+						 * Пропускаем диапазоны, целиком лежащие ниже номера пакета
+						 */
 						while((index > 0) && (frame.ranges[index - 1].high < i->pn))
 							// Переходим к следующему диапазону в порядке возрастания
 							index--;
@@ -3857,7 +3867,9 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					if(frame.seq < this->_cids.routing.retirePrior){
 						// Флаг наличия порядкового номера в очереди вывода из обращения
 						bool queued = false;
-						// Перебираем очередь отправки фреймов RETIRE_CONNECTION_ID
+						/**
+						 * Перебираем очередь отправки фреймов RETIRE_CONNECTION_ID
+						 */
 						for(const uint64_t seq : this->_cids.routing.retireQueue){
 							// Если порядковый номер уже поставлен в очередь
 							if(seq == frame.seq){
@@ -6817,7 +6829,9 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 		if((expired == space_t::APPLICATION) && (this->_pmtu.size > MAX_DATAGRAM_SIZE)){
 			// Флаг наличия неподтверждённого полноразмерного пакета в полёте
 			bool oversized = false;
-			// Перебираем отправленные пакеты пространства приложения
+			/**
+			 * Перебираем отправленные пакеты пространства приложения
+			 */
 			for(const auto & sent : this->_spaces[static_cast <size_t> (space_t::APPLICATION)].sent){
 				// Если пакет крупнее минимума, не является зондом размера пути и не относится к прежнему пути
 				if(!sent.stale && !sent.pmtu && (sent.size > MAX_DATAGRAM_SIZE)){
@@ -7573,7 +7587,9 @@ string awh::quic::Connection::session() const noexcept {
 	string result = "";
 	// Резервируем память под билет возобновления
 	result.reserve(4 + params.size() + ticket.size());
-	// Дописываем размер транспортных параметров в сетевом порядке октетов
+	/**
+	 * Дописываем размер транспортных параметров в сетевом порядке октетов
+	 */
 	for(uint8_t i = 0; i < 4; i++)
 		// Дописываем очередной октет размера транспортных параметров
 		result.push_back(static_cast <char> ((params.size() >> ((3 - i) * 8)) & 0xFF));
@@ -7602,7 +7618,9 @@ bool awh::quic::Connection::session(string_view session) noexcept {
 		return false;
 	// Извлекаем размер транспортных параметров удалённого узла
 	size_t size = 0;
-	// Собираем размер транспортных параметров из сетевого порядка октетов
+	/**
+	 * Собираем размер транспортных параметров из сетевого порядка октетов
+	 */
 	for(uint8_t i = 0; i < 4; i++)
 		// Дописываем очередной октет размера транспортных параметров
 		size = ((size << 8) | static_cast <uint8_t> (session[i]));

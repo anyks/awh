@@ -1088,7 +1088,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Signal() noexcept : urgency(0), incremental(false), id(0) {}
+					explicit Signal() noexcept;
 				} signal_t;
 				/**
 				 * \~russian
@@ -1125,7 +1125,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Promise() noexcept : id(UINT64_MAX), digest(0) {}
+					explicit Promise() noexcept;
 				} promise_t;
 				/**
 				 * \~russian

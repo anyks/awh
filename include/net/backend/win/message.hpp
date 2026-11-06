@@ -122,13 +122,13 @@
 /**
  * Подключаем единую точку подключения системных заголовков MS Windows
  */
-#include "../sys/macro/win32.hpp"
+#include "../../../sys/macro/win32.hpp"
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../net/net.hpp"
-#include "../sys/macro/global.hpp"
+#include "../../net.hpp"
+#include "../../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -452,8 +452,54 @@ namespace awh {
 #undef CMSG_DATA
 #undef CMSG_LEN
 #undef CMSG_SPACE
-#define CMSG_FIRSTHDR(msg) win::message::first(msg)
-#define CMSG_NXTHDR(msg, cmsg) win::message::next(msg, cmsg)
+
+/**
+ * \~russian
+ * @brief Получаем данные управляющего сообщения
+ *
+ * \~english
+ * @brief Get the control message data
+ *
+ * \~
+ */
 #define CMSG_DATA(cmsg) win::message::data(cmsg)
+/**
+ * \~russian
+ * @brief Получаем первый заголовок управляющих данных
+ *
+ * \~english
+ * @brief Get the first control message header
+ *
+ * \~
+ */
+#define CMSG_FIRSTHDR(msg) win::message::first(msg)
+/**
+ * \~russian
+ * @brief Получаем следующий заголовок управляющих данных
+ *
+ * \~english
+ * @brief Get the next control message header
+ *
+ * \~
+ */
+#define CMSG_NXTHDR(msg, cmsg) win::message::next(msg, cmsg)
+/**
+ * \~russian
+ * @brief Вычисляем длину управляющего сообщения
+ *
+ * \~english
+ * @brief Compute the control message length
+ *
+ * \~
+ */
 #define CMSG_LEN(size) (win::message::align(sizeof(cmsghdr_t)) + (size))
+/**
+ * \~russian
+ * @brief Вычисляем размер буфера управляющего сообщения
+ *
+ * \~english
+ * @brief Compute the control message buffer size
+ *
+ * \~
+ */
 #define CMSG_SPACE(size) (win::message::align(sizeof(cmsghdr_t)) + win::message::align(size))

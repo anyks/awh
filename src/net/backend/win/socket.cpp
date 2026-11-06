@@ -3465,7 +3465,7 @@ ssize_t awh::eth::socket::datagram(const net::socket_t sock, const void * buffer
 	// Устанавливаем адрес удалённого узла
 	message.name = const_cast <LPSOCKADDR> (addr);
 	// Устанавливаем размер адреса удалённого узла
-	message.nameSize = static_cast <INT> (length);
+	message.namelen = static_cast <INT> (length);
 	// Устанавливаем буфер отправляемых данных
 	message.lpBuffers = &data;
 	// Устанавливаем количество буферов отправляемых данных

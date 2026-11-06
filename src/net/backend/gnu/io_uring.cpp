@@ -8187,6 +8187,34 @@ namespace kernel {
 	static void * const watcher = reinterpret_cast <void *> (2);
 
 	/**
+	 * @brief Метка внешнего дескриптора наблюдения в поле пользовательских данных события
+	 *
+	 * @details Старший бит тега отличает внешние подписки (сокет AF_XDP спутника и
+	 *          подобные) от узлов и внутренних меток: указатели узлов и метки
+	 *          waker/watcher старшего бита не несут, потому разбор узнаёт внешнюю
+	 *          подписку прежде приведения к узлу
+	 *
+	 */
+	static constexpr uint64_t extWatchTag = (static_cast <uint64_t> (1) << 63);
+	/**
+	 * @brief Колбэки внешних дескрипторов наблюдения по дескриптору
+	 *
+	 * @details Внешний дескриптор подписан на чтение наравне с сокетами, и по
+	 *          готовности цикл зовёт его колбэк, не обращаясь к узлу: узла за
+	 *          внешним дескриптором нет
+	 *
+	 */
+	static unordered_map <int32_t, std::function <void()>> extWatches;
+	/**
+	 * @brief Токены операций ожидания внешних дескрипторов по дескриптору
+	 *
+	 * @details Токен нужен для отмены многократного ожидания готовности при снятии
+	 *          внешней подписки
+	 *
+	 */
+	static unordered_map <int32_t, uint64_t> extWatchTokens;
+
+	/**
 	 * @brief Дескрипторы, чей учёт разошёлся с очередью опроса и ждёт согласования
 	 *
 	 * @details Правки подписок накапливаются здесь между двумя ожиданиями и уходят к
@@ -78384,6 +78412,16 @@ bool awh::engine::deinitialize() noexcept {
 		::kernel::watches.clear();
 		// Очищаем узлы наблюдения за файлами
 		::kernel::watchers.clear();
+		/**
+		 * Отменяем ожидания готовности внешних дескрипторов
+		 */
+		for(auto & ext : ::kernel::extWatchTokens)
+			// Отменяем многократное ожидание готовности
+			::post::cancel(ext.second);
+		// Очищаем токены внешних подписок
+		::kernel::extWatchTokens.clear();
+		// Очищаем колбэки внешних дескрипторов наблюдения
+		::kernel::extWatches.clear();
 		// Выполняем очистку записей потокового чтения файлов
 		::fileio::clear();
 		// Сбрасываем признак заведённого механизма ожидания
@@ -78967,6 +79005,82 @@ awh::event::protocol_t awh::engine::protocol(const event::id_t id) noexcept {
  * @return        результат выполнения опроса
  *
  */
+/**
+ * @brief Функция подписки внешнего дескриптора на чтение в цикле событий
+ *
+ * @details Внешний дескриптор (сокет AF_XDP спутника и подобный) подписывается на
+ *          чтение многократным ожиданием готовности наравне с сокетами движка; по
+ *          готовности цикл зовёт колбэк, не обращаясь к узлу. Метка старшего бита
+ *          отличает такую подписку от узлов
+ *
+ * @param fd       внешний дескриптор
+ * @param callback колбэк готовности к чтению
+ * @return         признак успешной подписки
+ *
+ */
+bool awh::engine::watch(const int32_t fd, std::function <void()> callback) noexcept {
+	// Подписка ограждена от исключений
+	try {
+		// Если очередь опроса не заведена
+		if(::__awh_ep__ == net::invalid_socket_t)
+			// Возвращаем отказ подписки
+			return false;
+		// Заносим колбэк внешней подписки в реестр
+		::kernel::extWatches[fd] = std::move(callback);
+		// Метка внешнего дескриптора с номером дескриптора в младших битах
+		void * udata = reinterpret_cast <void *> (::kernel::extWatchTag | static_cast <uint64_t> (static_cast <uint32_t> (fd)));
+		// Подаём многократное ожидание готовности к чтению
+		const uint64_t token = ::post::poll(fd, EPOLLIN, true, udata);
+		// Если ожидание подать не удалось
+		if(token == ::inflight::INVALID){
+			// Снимаем колбэк из реестра при отказе подписки
+			::kernel::extWatches.erase(fd);
+			// Возвращаем отказ подписки
+			return false;
+		}
+		// Запоминаем токен операции для отмены
+		::kernel::extWatchTokens[fd] = token;
+		// Возвращаем успешный результат подписки
+		return true;
+	// Если подписка бросила исключение
+	} catch(...){
+		// Возвращаем отказ подписки
+		return false;
+	}
+}
+
+/**
+ * @brief Функция снятия подписки внешнего дескриптора
+ *
+ * @details Отменяет многократное ожидание готовности и убирает колбэк из реестра
+ *
+ * @param fd внешний дескриптор
+ * @return   признак успешного снятия
+ *
+ */
+bool awh::engine::unwatch(const int32_t fd) noexcept {
+	// Снятие ограждено от исключений
+	try {
+		// Ищем токен операции внешней подписки
+		auto it = ::kernel::extWatchTokens.find(fd);
+		// Если токен заведён
+		if(it != ::kernel::extWatchTokens.end()){
+			// Отменяем многократное ожидание готовности
+			::post::cancel(it->second);
+			// Убираем токен из реестра
+			::kernel::extWatchTokens.erase(it);
+		}
+		// Убираем колбэк из реестра внешних подписок
+		::kernel::extWatches.erase(fd);
+		// Возвращаем успешный результат снятия
+		return true;
+	// Если снятие бросило исключение
+	} catch(...){
+		// Возвращаем отказ снятия
+		return false;
+	}
+}
+
 bool awh::engine::poll(const int32_t timeout) noexcept {
 	// Результат выполнения опроса
 	bool result = false;
@@ -79887,7 +80001,7 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 							// Выполняем повторную подачу ожидания дескриптора наблюдения
 							::kernel::watching = ::post::poll(::kernel::inotify, EPOLLIN, false, ::kernel::watcher);
 						// Если ожидание принадлежало подписке по дескриптору
-						else if(signalData != nullptr) {
+						else if((signalData != nullptr) && ((reinterpret_cast <uint64_t> (signalData) & ::kernel::extWatchTag) == 0)) {
 							// Получаем запись учёта подписки
 							::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
 							// Забываем метку завершения прекращённого ожидания
@@ -79920,6 +80034,19 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 					if(signalData == ::kernel::watcher){
 						// Выполняем разбор пришедших оповещений наблюдения
 						events += ::kernel::harvest(::__awh_events__.get(), (::__awh_events_size__ * 2), static_cast <size_t> (events));
+						// Переходим к событию следующему
+						continue;
+					}
+					// Если событие пришло от внешнего дескриптора наблюдения
+					if(reinterpret_cast <uint64_t> (signalData) & ::kernel::extWatchTag){
+						// Дескриптор внешней подписки (младшие биты тега)
+						const int32_t extfd = static_cast <int32_t> (reinterpret_cast <uint64_t> (signalData) & ~::kernel::extWatchTag);
+						// Ищем колбэк внешней подписки
+						auto ext = ::kernel::extWatches.find(extfd);
+						// Если колбэк заведён
+						if(ext != ::kernel::extWatches.end())
+							// Выполняем вызов колбэк внешней подписки
+							ext->second();
 						// Переходим к событию следующему
 						continue;
 					}

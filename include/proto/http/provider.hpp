@@ -823,5 +823,5 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool splitTarget(const string_view target, string_view & scheme, string_view & authority, string_view & path) noexcept;
-    };
+	};
 };

@@ -496,8 +496,8 @@ namespace awh {
 				 * \~
 				 */
 				virtual ~Parser() noexcept;
-        } parser_t;
-    };
+		} parser_t;
+	};
 };
 
 /**

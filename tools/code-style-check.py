@@ -289,7 +289,8 @@ def check_doc_parity(path, lines, report, fixes=None):
 									report(path, start + le - 1, "WARN", "§7.6", f"английская секция: @{te} объём {ee[3]} знаков против {er[3]} в русской — при двукратном расхождении вероятен не перевод а иной текст")
 				block = []
 
-SNAKE_STOP = {"operator", "no_except", "decltype", "sizeof_", "alignof_", "return_type"}
+SNAKE_STOP = {"operator", "no_except", "decltype", "sizeof_", "alignof_", "return_type",
+    "const_iterator", "iterator_category"}
 STD_CALLS = {"make_pair", "make_tuple", "make_unique", "make_shared", "forward_like", "sleep_for"}
 # слово перед именем в позиции типа означает вызов, а не объявление
 KEYWORD_HEAD = {"return", "throw", "co_return", "co_await", "new", "delete", "case", "else"}
@@ -863,10 +864,20 @@ def check_file(path, lines, members, report, fixes=None):
     blank_ctx = None
     prev_code = ""
     static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
+    # Имена местных лямбд: `auto open = [this](...)` связывает вызываемый объект,
+    # и вызов `open(...)` ниже относится к нему, а не к системной open (§6.2).
+    # Набор живёт в пределах тела определения и очищается при выходе из него.
+    local_callables = set()
     eng_words = re.compile(r"\b(the|with|from|where|which|this value|returns|performs?|we (perform|check|set|get))\b")
     for n, raw in enumerate(lines, 1):
         line = raw.rstrip("\n")
         code, in_block = strip_comments_strings(line, in_block)
+        # Вне тела определения местных лямбд нет: набор прошлого тела не должен
+        # укрывать голый системный вызов в следующем определении.
+        if not bodies[n - 1]:
+            local_callables.clear()
+        for lm in re.finditer(r"\bauto\s*&?\s*(\w+)\s*=\s*\[", code):
+            local_callables.add(lm.group(1))
         if line.strip() == "":
             if bodies[n - 1] and blank_ctx is None:
                 blank_ctx = n
@@ -936,13 +947,13 @@ def check_file(path, lines, members, report, fixes=None):
                 and re.search(r"[A-Za-z_]\w*\s*[*&]*\s*$", head)
                 and re.search(re.escape(name) + r"\s*\($", code[:pos + len(name) + 1]))
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_ERR + r"\s*\(", code):
-            if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
+            if m.group(1) in static_names or m.group(1) in local_callables or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
                 continue
             if not code[:m.start()].strip() and prev_code.rstrip().endswith((":", ",")):
                 continue
             report(path, n, "ERROR", "§6.2", f"обращение '{m.group(1)}(' без :: — системные функции только через ::")
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_WARN + r"\s*\(", code):
-            if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
+            if m.group(1) in static_names or m.group(1) in local_callables or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
                 continue
             if not code[:m.start()].strip() and prev_code.rstrip().endswith((":", ",")):
                 continue
@@ -950,12 +961,14 @@ def check_file(path, lines, members, report, fixes=None):
                 continue
             report(path, n, "WARN", "§6.2", f"возможно голое обращение к системной '{m.group(1)}(' (без ::)")
         # Имена в директивах препроцессора объявлениями не являются: аргумент #pragma
-        # push_macro("ERROR") зовёт сохранение макроса, а не переменную push_macro (§4.2, §4.3)
-        pragma_line = code.lstrip().startswith("#pragma")
+        # push_macro("ERROR") зовёт сохранение макроса, а не переменную push_macro,
+        # а #define gmtime_r(T, Tm) подменяет системное имя POSIX, а не объявляет
+        # переменную (§4.2, §4.3). Освобождение общее для всех директив, не только #pragma.
+        directive_line = code.lstrip().startswith("#")
         # snake_case в именах функций/методов (§4.2), кроме внутренней статики __awh_{name}__ (§4.10)
         fm = re.match(r"^\s*(?:static\s+|inline\s+|constexpr\s+|virtual\s+|explicit\s+)*"
                       r"[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+((?:\w+::)*~?\w+)\s*\(", code)
-        if fm and not pragma_line and "class" not in code and "struct" not in code.split("(")[0]:
+        if fm and not directive_line and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
             call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
@@ -969,7 +982,7 @@ def check_file(path, lines, members, report, fixes=None):
             # Имя typedef-алиаса живёт по §4.1 (*_t, snake_case), а не по §4.3
             if re.match(r"\s*typedef\b", code):
                 continue
-            if pragma_line:
+            if directive_line:
                 continue
             kw = {"if", "for", "while", "switch", "return", "case", "sizeof", "noexcept", "const", "static", "auto", "int", "void", "bool", "value_type", "size_type", "difference_type", "pointer", "const_pointer", "reference", "const_reference", "rebind", "other"} | STD_CALLS
             if name in kw or not is_snake_name(name):
