@@ -62082,6 +62082,14 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 								}
 							}
 						}
+					// Если событие уже работает в неблокирующем режиме
+					} else {
+						// Выбираем логический режим обмена
+						const uint16_t mode = ((options & event::options::SM_IO_BLOCK) ? event::options::SM_IO_BLOCK : event::options::NO_IO_BLOCK);
+						// При смене режима снимаем временную блокировку, в том числе из обратного вызова отправки
+						if((isSetup = (((i->second->state.options & (event::options::NO_IO_BLOCK | event::options::SM_IO_BLOCK)) == mode) || eth::socket::switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))))
+							// Меняем только режим обмена после успешной настройки сокета
+							i->second->state.options = ((i->second->state.options & ~(event::options::NO_IO_BLOCK | event::options::SM_IO_BLOCK)) | mode);
 					}
 				// Если опция не передана как NO_IO_BLOCK
 				} else {

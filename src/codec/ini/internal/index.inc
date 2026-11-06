@@ -32,6 +32,16 @@
 #pragma once
 
 /**
+ * Стандартный заголовочный файл
+ */
+#include <cstring>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <encoding/ascii.hpp>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/ini/common.hpp>

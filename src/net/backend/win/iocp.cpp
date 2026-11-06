@@ -6288,7 +6288,7 @@ namespace fs {
 		 */
 		try {
 			// Выводим полный путь файла либо каталога
-			return fs::fullpath(input);
+			return awh::fs::fullpath(input);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -24635,13 +24635,23 @@ namespace io {
 										// Удаляем данные из очереди
 										if(ipc->transfer.queue.pop(static_cast <size_t> (bytes))){
 											// Если установлена функция обратного вызова
-											if(ipc->callbacks.status != nullptr)
+											if(ipc->callbacks.status != nullptr){
 												// Вызываем функцию обратного вызова об освобождении очереди
 												ipc->callbacks.status(ipc->id, event::status_t::QUEUE_AVAILABLE);
+												// Если узел уничтожен из функции обратного вызова
+												if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+													// Выводим результат
+													return result;
+											}
 											// Если функция обратного вызова для вывода доступных данных установлена
-											if(ipc->callbacks.available != nullptr)
+											if(ipc->callbacks.available != nullptr){
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												ipc->callbacks.available(ipc->id, event::status_t::QUEUE_AVAILABLE, ipc->transfer.queue.available());
+												// Если узел уничтожен из функции обратного вызова
+												if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+													// Выводим результат
+													return result;
+											}
 											/**
 											 * Если очередь опустела, а источник данных установлен
 											 *
@@ -28776,6 +28786,8 @@ namespace io {
 							}
 						// Если очередь передачи данных не пуста
 						} else {
+							// Добавляем данные в очередь до возвратного захода из обратного вызова
+							result = ipc->transfer.queue.push(buffer, size);
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
@@ -28783,14 +28795,19 @@ namespace io {
 								// Если узел уничтожен из функции обратного вызова
 								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
-									return result;
+									return 0;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
+							if(result == 0){
 								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
+								if(ipc->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
+									// Если обработчик уничтожил событие
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+										// Завершаем обработку уничтоженного события
+										return 0;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -28815,6 +28832,10 @@ namespace io {
 									bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, const_cast <void *> (buffer), size, true);
 								// Выполняем отправку данных в TCP/IP сокет
 								else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								// Сохраняем причину отказа до переключения режима и пользовательских обработчиков
+								const int32_t error = errno;
+								// Переводим сокет обратно в неблокирующий режим
+								eth::socket::switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 								// Если данные отправлены успешно
 								if(bytes > 0){
 									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28823,70 +28844,102 @@ namespace io {
 									if(ipc->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-								// Если данные не отправлены
-								} else {
-									// Если функция обратного вызова для вывода записанных данных установлена
-									if(ipc->callbacks.write != nullptr)
-										// Вызываем функцию обратного вызова для вывода записанных данных
+								// Если отправку нужно повторить позже
+								} else if((bytes < 0) && ((error == EAGAIN) || (error == EINTR) || (error == ENOBUFS) || (error == ENOMEM))) {
+									// Помещаем данные в очередь до возвратного захода из обработчика
+									result = ipc->transfer.queue.push(buffer, size);
+									// Если очередь содержит данные
+									if(!ipc->transfer.queue.empty())
+										// Активируем последующую отправку
+										::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+									// Если обработчик подтверждения записи установлен
+									if(ipc->callbacks.write != nullptr){
+										// Вызываем обработчик подтверждения записи
 										ipc->callbacks.write(ipc->id, 0);
-									// Если установлена функция обратного вызова
-									if(ipc->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
+										// Если обработчик уничтожил событие
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+											// Завершаем обработку уничтоженного события
+											return 0;
+									}
+									// Если очередь не приняла данные
+									if(result == 0){
+										// Если обработчик состояния установлен
+										if(ipc->callbacks.status != nullptr){
+											// Вызываем обработчик состояния
+											ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
+											// Если обработчик уничтожил событие
+											if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+												// Завершаем обработку уничтоженного события
+												return 0;
+										}
+										// Если обработчик доступного места установлен
+										if(ipc->callbacks.available != nullptr)
+											// Сообщаем свободный объём очереди
+											ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
+									}
+								// Если соединение закрыто либо отказ не допускает повтора
+								} else {
+									// Если обработчик подтверждения записи установлен
+									if(ipc->callbacks.write != nullptr){
+										// Вызываем обработчик подтверждения записи
+										ipc->callbacks.write(ipc->id, 0);
+										// Если обработчик уничтожил событие
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+											// Завершаем обработку уничтоженного события
+											return 0;
+									}
+									// Если обработчик состояния установлен
+									if(ipc->callbacks.status != nullptr){
+										// Вызываем обработчик состояния
 										ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
-									// Если установлена функция обратного вызова
-									if(ipc->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
-									// Если функция обратного вызова для вывода события не установлена
-									else {
+										// Если обработчик уничтожил событие
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+											// Завершаем обработку уничтоженного события
+											return 0;
+									}
+									// Если обработчик ошибки установлен
+									if(ipc->callbacks.error != nullptr){
+										// Сообщаем сохранённую причину отказа
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(error));
+										// Если обработчик уничтожил событие
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+											// Завершаем обработку уничтоженного события
+											return 0;
+									// Если обработчик ошибки не установлен
+									} else {
 										/**
 										 * Если включён режим отладки
 										 */
 										#if defined(DEBUG_MODE)
-											// Записываем ошибку в лог
-											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::__awh_strerror__(errno));
+											// Записываем сохранённую причину отказа
+											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::__awh_strerror__(error));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Записываем ошибку в лог
-											log::print("%s", log::flag_t::WARNING, ::__awh_strerror__(errno));
+											// Записываем сохранённую причину отказа
+											log::print("%s", log::flag_t::WARNING, ::__awh_strerror__(error));
 										#endif
 									}
-									// Если данные не отправлены и нужно подождать
-									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
-										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = ipc->transfer.queue.push(buffer, size)) == 0){
-											// Если установлена функция обратного вызова
-											if(ipc->callbacks.status != nullptr)
-												// Вызываем функцию обратного вызова об переполнении очереди
-												ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
-											// Если функция обратного вызова для вывода доступных данных установлена
-											if(ipc->callbacks.available != nullptr)
-												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
-												ipc->callbacks.available(ipc->id, event::status_t::QUEUE_OVERFLOW, ipc->transfer.queue.available());
-										}
-										// Если в очереди событий появились данные для отправки
-										if(!ipc->transfer.queue.empty())
-											// Активируем событие на запись данных в сокет
-											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED);
-									// Если сокет повреждён
-									} else {
-										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
-										if(ipc->callbacks.spool != nullptr)
-											// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
-										// Выполняем удаление узла
-										::io::destroy(ipc);
-										// Выводим результат
-										return result;
+									// Если обработчик возврата неотправленных данных установлен
+									if(ipc->callbacks.spool != nullptr){
+										// Вызываем обработчик возврата неотправленных данных
+										ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+										// Если обработчик уничтожил событие
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+											// Завершаем обработку уничтоженного события
+											return 0;
 									}
+									// Уничтожаем событие после возврата неотправленных данных
+									::io::destroy(ipc);
+									// Выводим результат отправки
+									return result;
 								}
-								// Переводим сокет обратно в неблокирующий режим
-								eth::socket::switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK);
 							}
 						// Если очередь передачи данных не пуста
 						} else {
+							// Добавляем данные в очередь до возвратного захода из обратного вызова
+							result = ipc->transfer.queue.push(buffer, size);
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
@@ -28894,14 +28947,19 @@ namespace io {
 								// Если узел уничтожен из функции обратного вызова
 								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
-									return result;
+									return 0;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
+							if(result == 0){
 								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
+								if(ipc->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
+									// Если обработчик уничтожил событие
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+										// Завершаем обработку уничтоженного события
+										return 0;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -29094,9 +29152,14 @@ namespace io {
 							// Если данные не добавлены в очередь событий
 							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
+								if(ipc->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+										// Выводим результат
+										return result;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -29227,9 +29290,14 @@ namespace io {
 							// Если данные не добавлены в очередь событий
 							if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 								// Если установлена функция обратного вызова
-								if(ipc->callbacks.status != nullptr)
+								if(ipc->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									ipc->callbacks.status(ipc->id, event::status_t::QUEUE_OVERFLOW);
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+										// Выводим результат
+										return result;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(ipc->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -29749,6 +29817,8 @@ namespace io {
 							}
 						// Если очередь передачи данных не пуста
 						} else {
+							// Добавляем данные в очередь до возвратного захода из обратного вызова
+							result = peer->transfer.queue.push(buffer, size);
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(peer->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
@@ -29756,18 +29826,19 @@ namespace io {
 								// Если узел уничтожен из функции обратного вызова
 								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Выводим результат
-									return result;
+									return 0;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = peer->transfer.queue.push(buffer, size)) == 0){
-								// Если функция обратного вызова для вывода записанных данных установлена
-								if(peer->callbacks.write != nullptr)
-									// Вызываем функцию обратного вызова для вывода записанных данных
-									peer->callbacks.write(peer->id, 0);
+							if(result == 0){
 								// Если установлена функция обратного вызова
-								if(peer->callbacks.status != nullptr)
+								if(peer->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									peer->callbacks.status(peer->id, event::status_t::QUEUE_OVERFLOW);
+									// Если обработчик уничтожил событие
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+										// Завершаем обработку уничтоженного события
+										return 0;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(peer->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -33442,6 +33513,8 @@ namespace io {
 							}
 						// Если очередь передачи данных не пуста
 						} else {
+							// Добавляем данные в очередь до возвратного захода из обратного вызова
+							result = client->transfer.queue.push(buffer, size);
 							// Если функция обратного вызова для вывода записанных данных установлена
 							if(client->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
@@ -33449,18 +33522,19 @@ namespace io {
 								// Если узел уничтожен из функции обратного вызова
 								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Выводим результат
-									return result;
+									return 0;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = client->transfer.queue.push(buffer, size)) == 0){
-								// Если функция обратного вызова для вывода записанных данных установлена
-								if(client->callbacks.write != nullptr)
-									// Вызываем функцию обратного вызова для вывода записанных данных
-									client->callbacks.write(client->id, 0);
+							if(result == 0){
 								// Если установлена функция обратного вызова
-								if(client->callbacks.status != nullptr)
+								if(client->callbacks.status != nullptr){
 									// Вызываем функцию обратного вызова об переполнении очереди
 									client->callbacks.status(client->id, event::status_t::QUEUE_OVERFLOW);
+									// Если обработчик уничтожил событие
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+										// Завершаем обработку уничтоженного события
+										return 0;
+								}
 								// Если функция обратного вызова для вывода доступных данных установлена
 								if(client->callbacks.available != nullptr)
 									// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
@@ -64798,6 +64872,14 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 								}
 							}
 						}
+					// Если событие уже работает в неблокирующем режиме
+					} else {
+						// Выбираем логический режим обмена
+						const uint16_t mode = ((options & event::options::SM_IO_BLOCK) ? event::options::SM_IO_BLOCK : event::options::NO_IO_BLOCK);
+						// При смене режима снимаем временную блокировку, в том числе из обратного вызова отправки
+						if((isSetup = (((i->second->state.options & (event::options::NO_IO_BLOCK | event::options::SM_IO_BLOCK)) == mode) || eth::socket::switchOption(fd, i->second->state.family, net::socket_mode_t::ENABLED, event::options::NO_IO_BLOCK))))
+							// Меняем только режим обмена после успешной настройки сокета
+							i->second->state.options = ((i->second->state.options & ~(event::options::NO_IO_BLOCK | event::options::SM_IO_BLOCK)) | mode);
 					}
 				// Если опция не передана как NO_IO_BLOCK
 				} else {
