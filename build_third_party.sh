@@ -255,26 +255,21 @@ src="$ROOT/submodules/a-nts"
 if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** A-NTS ******\n"
 	cd "$src" || exit 1
-
-	# Версия A-NTS
-	# VER="1.0.0"
-
-	# Выполняем удаление предыдущей закаченной версии
-	#git tag -d nts-${VER}
-	# Закачиваем все изменения
-	git fetch --all
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Выполняем жесткое переключение на main
-	git reset --hard origin/main
-	# Переключаемся на main
-	git checkout main
-	# Выполняем обновление данных
-	git pull origin main
-	# Удаляем старую ветку
-	#git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	#git checkout -b v${VER}-branch nts-${VER}
+	# Версия A-NTS задаётся записью подмодуля в суперпроекте, а не этим скриптом.
+	# Переключение на head ветви main здесь убрано намеренно: релизная сборка обязана
+	# собираться по закреплённому коммиту, а не по тому, что появилось в наружном
+	# проекте к этому часу. Тегами версия не берётся — она объявлена в самой
+	# библиотеке, в project(nts VERSION ...)
+	recorded=$(git -C "$ROOT" ls-files -s submodules/a-nts | awk '{print $2}')
+	current=$(git rev-parse HEAD)
+	echo "A-NTS commit: $current (закреплён $recorded)"
+	# Расхождение подмодуля и записи суперпроекта — отказ, а не молчаливая сборка
+	# с чужого кода: такая сборка выглядит успешной и при этом не воспроизводится
+	# по коммиту
+	if [ -n "$recorded" ] && [ "$recorded" != "$current" ]; then
+		echo "A-NTS: подмодуль стоит не на закреплённом коммите — выполните git submodule update"
+		exit 1
+	fi
 
 	# Создаём каталог сборки
 	mkdir -p "build" || exit 1

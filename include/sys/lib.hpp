@@ -172,57 +172,59 @@
 #define SERVER_TOTAL_CONNECT 1000
 
 /**
- * Файловые пути хранения SSL CA-файла
- */
-
-/**
  * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
 	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
+	#define SSL_CA_FILE "%ProgramFiles%\\A-NTS\\PEM\\cert.pem"
 /**
  * Для операционной системы MacOS X
  */
 #elif __APPLE__ || __MACH__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/usr/local/etc/ca-certificates/cert.pem"
-/**
- * Для операционной системы Linux
- */
-#elif __linux__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/etc/ssl/certs/certSIGN_ROOT_CA.pem"
+	// Адрес файла корневого сертификата (128 записей, замер на macOS 26.5)
+	#define SSL_CA_FILE "/etc/ssl/cert.pem"
 /**
  * Для операционной системы FreeBSD
  */
 #elif __FreeBSD__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
+	// Адрес файла корневого сертификата (120 записей, замер на FreeBSD 15.1)
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
+/**
+ * Для операционной системы DragonFly BSD
+ */
+#elif __DragonFly__
+	// Адрес файла корневого сертификата (141 запись, замер на DragonFly 6.4)
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
 /**
  * Для операционной системы OpenBSD
  */
 #elif __OpenBSD__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
+	// Адрес файла корневого сертификата (144 записи, замер на OpenBSD 7.9)
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
 /**
  * Для операционной системы NetBSD
  */
 #elif __NetBSD__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/usr/src/crypto/external/bsd/openssl/dist/apps/cert.pem"
+	// Адрес файла корневого сертификата: связки нет, есть каталог /etc/openssl/certs (301 запись)
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
 /**
- * Для операционной системы Sun Solaris
+ * Для операционной системы Sun Solaris и illumos
  */
 #elif __sun__
-	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE "/etc/certs/CA/certSIGN_ROOT_CA.pem"
+	// Адрес файла корневого сертификата: связки нет, есть каталог /etc/certs/CA (186 и 120 записей)
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
+/**
+ * Для операционной системы Linux
+ */
+#elif __linux__
+	// Адрес файла корневого сертификата: связка различается по дистрибутивам, перечень ведёт движок
+	#define SSL_CA_FILE "/etc/ssl/cert.pem"
 /**
  * Для всех остальных Unix-подобных операционных систем
  */
 #elif __unix || __unix__
 	// Адрес файла корневого сертификата
-	#define SSL_CA_FILE ""
+	#define SSL_CA_FILE "/usr/local/etc/ssl/cert.pem"
 /**
  * Для всех остальных операционных систем
  */

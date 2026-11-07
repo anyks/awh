@@ -157,6 +157,122 @@ static const char * suiteName(const nts::protect::suite_t suite) noexcept {
 	return result;
 }
 /**
+ * @brief Функция получения короткого обозначения признака отличительного имени
+ *
+ * A-NTS ведёт набор обозначений строго по разделу 3 RFC 4514 и расширять его не стала:
+ * признаки вне набора библиотека выводит опознавателем, отчего запись владельца
+ * сертификата в сводке рукопожатия читалась как «2.5.4.15=Private Organization,
+ * 1.3.6.1.4.1.311.60.2.1.2=California». Прежний OpenSSL брал обозначения из своей таблицы,
+ * и сводка была читаемой. Перечень собран на стороне AWH тем же написанием, каким его
+ * отдавал OpenSSL: каждая строка снята сличением одной и той же записи на двух движках
+ * 07.11.2026 (стенд nts-engine-probe/run-x509-view.sh)
+ *
+ * @param oid    опознаватель признака имени точечной записью
+ * @param result место, в которое помещается обозначение признака
+ * @return       признак нахождения обозначения (false - оставлен сам опознаватель)
+ *
+ */
+static bool attributeName(const string & oid, string & result) noexcept {
+	/**
+	 * @brief Соответствие опознавателей признаков их коротких обозначений
+	 *
+	 */
+	static const pair <const char *, const char *> names[] = {
+		{"2.5.4.3",                       "CN"},
+		{"2.5.4.5",                       "serialNumber"},
+		{"2.5.4.6",                       "C"},
+		{"2.5.4.7",                       "L"},
+		{"2.5.4.8",                       "ST"},
+		{"2.5.4.9",                       "STREET"},
+		{"2.5.4.10",                      "O"},
+		{"2.5.4.11",                      "OU"},
+		{"2.5.4.12",                      "title"},
+		{"2.5.4.15",                      "businessCategory"},
+		{"2.5.4.16",                      "postalAddress"},
+		{"2.5.4.17",                      "postalCode"},
+		{"2.5.4.42",                      "GN"},
+		{"2.5.4.43",                      "initials"},
+		{"2.5.4.65",                      "pseudonym"},
+		{"2.5.4.97",                      "organizationIdentifier"},
+		{"0.9.2342.19200300.100.1.1",      "UID"},
+		{"0.9.2342.19200300.100.1.25",     "DC"},
+		{"0.9.2342.19200300.100.1.44",     "uid"},
+		{"1.2.840.113549.1.9.1",           "emailAddress"},
+		{"1.3.6.1.4.1.311.60.2.1.1",       "jurisdictionL"},
+		{"1.3.6.1.4.1.311.60.2.1.2",       "jurisdictionST"},
+		{"1.3.6.1.4.1.311.60.2.1.3",       "jurisdictionC"},
+	};
+	/**
+	 * Переход по перечню обозначений
+	 */
+	for(const auto & item : names){
+		// Если опознаватель совпал, выводим его короткое обозначение
+		if(oid == item.first){
+			// Выполняем установку обозначения признака
+			result = item.second;
+			// Выводим признак того, что обозначение найдено
+			return true;
+		}
+	}
+	// Выводим признак того, что обозначения нет: признаки вне перечня выдумывать нечем
+	return false;
+}
+/**
+ * @brief Функция сборки человекочитаемой записи отличительного имени
+ *
+ * Порядок составляющих сохраняется тот, что в сертификате, а значение, несущее разделитель
+ * или знак равенства, берётся в кавычки: без этого сводка читалась бы двусмысленно
+ *
+ * @param name   разбираемое имя владельца либо эмитента
+ * @param result место, в которое помещается собранная запись
+ *
+ */
+static void nameText(const nts::x509::name_t & name, string & result) noexcept {
+	// Выполняем очистку вывода перед сборкой
+	result.clear();
+	/**
+	 * Переход по составляющим имени: одна составляющая несёт один и более признаков
+	 */
+	for(const auto & part : name.parts){
+		/**
+		 * Переход по признакам текущей составляющей
+		 */
+		for(const auto & item : part){
+			// Обозначение признака, найденная в перечне
+			string sign;
+			// Выполняем поиск короткого обозначения признака
+			if(!attributeName(item.oid, sign))
+				// Без обозначения оставляем сам опознаватель
+				sign = item.oid;
+			// Отделяем следующий признак от уже собранного
+			if(!result.empty())
+				// Добавляем разделитель признаков
+				result += ",";
+			// Добавляем обозначение признака и знак равенства
+			result += sign + "=";
+			// Если значение несёт разделитель или знак равенства, его берут в кавычки
+			if(item.value.find_first_of(",=\"") != string::npos){
+				// Добавляем открывающую кавычку
+				result += "\"";
+				/**
+				 * Переход по значения признака с экранированием кавычек
+				 */
+				for(const char symbol : item.value){
+					// Если знак — кавычка, удваиваем её
+					if(symbol == '"')
+						// Добавляем первую из пары кавычек
+						result += "\"";
+					// Добавляем очередной знак значения
+					result += symbol;
+				}
+				// Добавляем закрывающую кавычку
+				result += "\"";
+			// Простое значение добавляется как есть
+			} else result += item.value;
+		}
+	}
+}
+/**
  * @brief Функция разбора названия набора шифрования из списка настроек
  *
  * Принимаются и названия OpenSSL («ECDHE-RSA-AES256-GCM-SHA384»), и правила IANA
@@ -331,6 +447,7 @@ static void serverSuites(vector <nts::protect::suite_t> & result) noexcept {
  * @param ciphers строка настроек списка алгоритмов шифрования
  * @param result  место, в которое помещается разобранный перечень наборов
  * @param log     объект работы с логами
+ *
  */
 static void suitesList(const string & ciphers, vector <nts::protect::suite_t> & result, const awh::log_t * log) noexcept {
 	// Если список настроек не задан, наружный модуль берёт свои наборы по умолчанию
@@ -389,6 +506,7 @@ static void suitesList(const string & ciphers, vector <nts::protect::suite_t> & 
  * Гибридная постквантовая группа X25519MLKEM768 идёт первой, как это делал OpenSSL 3.5
  *
  * @param result место, в которое помещается перечень групп
+ *
  */
 static void groupList(vector <nts::extension::group_t> & result) noexcept {
 	// Выполняем установку перечня групп в порядке предпочтения
@@ -410,6 +528,7 @@ static void groupList(vector <nts::extension::group_t> & result) noexcept {
  * @param bytes  принятые байты канала
  * @param result место, в которое помещается тело сообщения без его обвязки
  * @return       результат сборки (false - байтов пока не хватает)
+ *
  */
 static bool helloBody(const vector <uint8_t> & bytes, vector <uint8_t> & result) noexcept {
 	// Тела записей рукопожатия, собранные в одно сообщение
@@ -460,6 +579,7 @@ static bool helloBody(const vector <uint8_t> & bytes, vector <uint8_t> & result)
  * @param body тело сообщения приветствия клиента без его обвязки
  * @param name место, в которое помещается разобранное имя
  * @return     результат разбора
+ *
  */
 static bool helloHostname(const vector <uint8_t> & body, string & name) noexcept {
 	// Разобранные параметры приветствия клиента
@@ -1949,6 +2069,7 @@ void awh::Engine::Context::drain() noexcept {
  *
  * @param want флаг, что прикладные данные нужны сейчас
  * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+ *
  */
 int32_t awh::Engine::Context::pump(const bool want) noexcept {
 	// Результат работы функции
@@ -2224,12 +2345,12 @@ void awh::Engine::Context::info() const noexcept {
 				printf ("------------------------------------------------------------\n\n");
 				// Выводим заголовок
 				printf("Peer certificates:\n");
-				// Выполняем извлечение названия владельца сертификата
-				nts::x509::text(cert.subjects(), subject);
+				// Выполняем сборку человекочитаемого названия владельца сертификата
+				nameText(cert.subjects(), subject);
 				// Выводим название сертификата
 				printf("Subject: %s\n", subject.c_str());
-				// Выполняем извлечение названия эмитента сертификата
-				nts::x509::text(cert.issuers(), issuer);
+				// Выполняем сборку человекочитаемого названия эмитента сертификата
+				nameText(cert.issuers(), issuer);
 				// Выводим эмитента сертификата
 				printf("Issuer: %s\n", issuer.c_str());
 				// Выводим параметры шифрования
@@ -3115,6 +3236,7 @@ awh::Engine::Context::~Context() noexcept {
  * @param target контекст назначения
  * @param cert   адреса файлов сертификатов
  * @return       результат установки
+ *
  */
 bool awh::Engine::credential(ctx_t & target, const cert_t & cert) noexcept {
 	// Результат работы функции
@@ -3187,6 +3309,7 @@ bool awh::Engine::credential(ctx_t & target, const cert_t & cert) noexcept {
  * @param target контекст назначения
  * @param name   имя, предъявленное клиентом
  * @return       результат выбора
+ *
  */
 bool awh::Engine::sniSelect(ctx_t & target, const string & name) noexcept {
 	// Результат работы функции
@@ -3237,6 +3360,7 @@ bool awh::Engine::sniSelect(ctx_t & target, const string & name) noexcept {
  * @param host  доменное имя
  * @param chain цепочка сертификатов собеседника записями DER
  * @return      результат проверки
+ *
  */
 awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept {
 	// Результат работы функции
@@ -3270,6 +3394,7 @@ awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const
  * @param store  запас доверенных сертификатов
  * @param file   адрес файла сертификатов текстом PEM
  * @return       результат добавления
+ *
  */
 static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & file) noexcept {
 	// Результат работы функции
@@ -3295,6 +3420,36 @@ static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust
 	return result;
 }
 /**
+ * @brief Метод добавления в запас доверенных сертификатов записей из каталога
+ *
+ * Некоторые системы держат корневые сертификаты не одной связкой, а каталогом отдельных
+ * записей: NetBSD — /etc/openssl/certs (301 запись), Solaris и illumos — /etc/certs/CA
+ * (186 и 120 записей), Linux и FreeBSD — /etc/ssl/certs. Снято измерением 07.11.2026
+ * на живых системах
+ *
+ * @param fs    объект работы с файловой системой
+ * @param log   объект работы с логами
+ * @param store запас доверенных сертификатов
+ * @param dir   адрес каталога с файлами сертификатов текстом PEM
+ * @return      результат добавления (false - каталог недоступен либо ни одна запись не разобралась)
+ *
+ */
+static bool storeCADir(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & dir) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Выполняем обход каталога с сертификатами центра сертификации
+	static_cast <void> (fs.walkDir(dir, "", false, [&fs, &log, &store, &result](const string & name) noexcept -> bool {
+		// Если файл сертификатов разобрался и пополнил запас, запоминаем это
+		if(storeCAFile(fs, log, store, name))
+			// Запоминаем, что в запас что-то добавлено
+			result = true;
+		// Продолжаем обход каталога
+		return true;
+	}));
+	// Выводим результат
+	return result;
+}
+/**
  * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
@@ -3305,6 +3460,7 @@ static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust
 	 * @param log   объект работы с логами
 	 * @param name  название разделителя системного хранилища
 	 * @return      результат добавления
+	 *
 	 */
 	static bool storeCAWindows(nts::trust::store_t & store, const awh::log_t * log, const char * name) noexcept {
 		// Результат работы функции
@@ -3362,14 +3518,7 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 			// Если указан каталог с сертификатами центра сертификации, перебираем его содержимое
 			} else if(!this->_cert.path.empty() && this->_fs.isDir(this->_cert.path)){
 				// Выполняем обход каталога с сертификатами центра сертификации
-				static_cast <void> (this->_fs.walkDir(this->_cert.path, "", false, [this, &store, &result](const string & name) noexcept -> bool {
-					// Если файл сертификатов разобрался и пополнил запас, запоминаем это
-					if(storeCAFile(this->_fs, this->_log, store, name))
-						// Запоминаем, что в запас что-то добавлено
-						result = true;
-					// Продолжаем обход каталога
-					return true;
-				}));
+				result = storeCADir(this->_fs, this->_log, store, this->_cert.path);
 			// Если указанный адрес не найден, возвращаемся к расположениям системы
 			} else this->_log->print("CAfile is not found: %s", log_t::flag_t::CRITICAL, (!this->_cert.ca.empty() ? this->_cert.ca.c_str() : this->_cert.path.c_str()));
 		}
@@ -3402,25 +3551,31 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 					// Добавляем адрес файла корневых сертификатов сборки
 					files.push_back(SSL_CA_FILE);
 				/**
-				 * Расположения связки корневых сертификатов, принятые в самих системах
+				 * Расположения связки корневых сертификатов, принятые в самих системах —
+				 * сняты измерением 07.11.2026 на стендах проекта, а не по документации
+				 * наружного модуля
 				 */
 				#if __linux__ || __unix || __unix__
-					// Добавляем связку Debian, Alpine и Gentoo
+					// Добавляем связку Debian, Ubuntu, Astra, Alpine, Fedora и OpenWrt
 					files.push_back("/etc/ssl/certs/ca-certificates.crt");
-					// Добавляем связку Red Hat и Fedora
+					// Добавляем связку Red Hat, Fedora и ALT
 					files.push_back("/etc/pki/tls/certs/ca-bundle.crt");
+					// Добавляем связку openSUSE (замер: 145 записей)
+					files.push_back("/etc/ssl/ca-bundle.pem");
 				#endif
 				/**
-				 * Для операционной системы MacOS X, FreeBSD, OpenBSD или NetBSD
+				 * Для операционной системы MacOS X, FreeBSD, DragonFly, OpenBSD или NetBSD
 				 */
-				#if __APPLE__ || __MACH__ || __FreeBSD__ || __OpenBSD__ || __NetBSD__
+				#if __APPLE__ || __MACH__ || __FreeBSD__ || __DragonFly__ || __OpenBSD__ || __NetBSD__
 					// Добавляем системный файл корневых сертификатов
 					files.push_back("/etc/ssl/cert.pem");
 					// Добавляем связку, устанавливаемую пакетами
 					files.push_back("/usr/local/share/ca-certificates/ca-certificates.crt");
+					// Добавляем связку каталога портов (замер на DragonFly: 141 запись)
+					files.push_back("/usr/local/share/certs/ca-root-nss.crt");
 				#endif
 				/**
-				 * Переход по перечню адресов файлов			
+				 * Переход по перечню адресов файлов
 				 */
 				for(const string & file : files){
 					// Если файл существует и разобрался, останавливаем перебор
@@ -3429,6 +3584,48 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 						result = true;
 						// Выходим из перебора
 						break;
+					}
+				}
+				/**
+				 * Если одиночной связки не нашлось, перебираем каталоги записей: на NetBSD
+				 * и на Solaris с illumos корневые сертификаты лежат только каталогом, и без
+				 * этого шага доверие на этих системах собрать нечем
+				 */
+				if(!result){
+					// Перечень адресов каталогов корневых сертификатов этой системы
+					vector <string> dirs;
+					/**
+					 * Для операционной системы NetBSD
+					 */
+					#if __NetBSD__
+						// Добавляем каталог системных корневых сертификатов (замер: 301 запись)
+						dirs.push_back("/etc/openssl/certs");
+					/**
+					 * Для операционной системы Sun Solaris и illumos
+					 */
+					#elif __sun__
+						// Добавляем каталог системных корневых сертификатов (замер: 186 и 120 записей)
+						dirs.push_back("/etc/certs/CA");
+						// Добавляем каталог OpenSSL-совместимых записей того же содержимого
+						dirs.push_back("/etc/openssl/certs");
+					/**
+					 * Для всех прочих систем, где пакет доверия разворачивает каталог записей
+					 */
+					#else
+						// Добавляем каталог записей, разворачиваемый пакетом системных сертификатов
+						dirs.push_back("/etc/ssl/certs");
+					#endif
+					/**
+					 * Переход по перечню адресов каталогов
+					 */
+					for(const string & dir : dirs){
+						// Если каталог существует и пополнил запас, останавливаем перебор
+						if(this->_fs.isDir(dir) && storeCADir(this->_fs, this->_log, store, dir)){
+							// Запоминаем, что запас собран
+							result = true;
+							// Выходим из перебора
+							break;
+						}
 					}
 				}
 			#endif
