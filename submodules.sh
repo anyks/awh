@@ -31,9 +31,9 @@ $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 $ROOT/submodule.sh remove pcre2
 $ROOT/submodule.sh add pcre2 https://gitflic.ru/project/third_party/pcre2.git
 
-# Выполняем пересборку сабмодуля openssl
-$ROOT/submodule.sh remove openssl
-$ROOT/submodule.sh add openssl https://gitflic.ru/project/third_party/openssl.git
+# Выполняем пересборку сабмодуля A-NTS
+$ROOT/submodule.sh remove a-nts
+$ROOT/submodule.sh add a-nts https://gitflic.ru/project/anyks/nts.git
 
 # Выполняем пересборку сабмодуля nghttp2
 $ROOT/submodule.sh remove nghttp2

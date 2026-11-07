@@ -14,7 +14,12 @@ find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${CMAKE_SOURCE_DIR}/third_party/in
 find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zlib NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
-find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+
+# Внутренние включения самой A-NTS идут без префикса nts/ (например, <sys/global.hpp>),
+# поэтому на путь ставится и каталог заголовков библиотеки, и его родитель:
+# модули AWH обращаются к библиотеке в форме <nts/digest/hash.hpp>
+SET(NTS_INTERNAL_DIR "${NTS_INCLUDE_DIR}/nts")
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
 
@@ -42,7 +47,7 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ZLIB_INCLUDE_DIR
         BROTLI_INCLUDE_ENCODE_DIR
         BROTLI_INCLUDE_DECODE_DIR
-        OPENSSL_INCLUDE_DIR
+        NTS_INCLUDE_DIR
         PCRE_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
         IDN2_INCLUDE_DIR
@@ -58,7 +63,8 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${LZMA_INCLUDE_DIR}
         ${ZLIB_INCLUDE_DIR}
         ${BROTLI_INCLUDE_ENCODE_DIR}
-        ${OPENSSL_INCLUDE_DIR}
+        ${NTS_INCLUDE_DIR}
+        ${NTS_INTERNAL_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
@@ -79,7 +85,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ZLIB_INCLUDE_DIR
         BROTLI_INCLUDE_ENCODE_DIR
         BROTLI_INCLUDE_DECODE_DIR
-        OPENSSL_INCLUDE_DIR
+        NTS_INCLUDE_DIR
         PCRE_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
 
@@ -93,7 +99,8 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${LZMA_INCLUDE_DIR}
         ${ZLIB_INCLUDE_DIR}
         ${BROTLI_INCLUDE_ENCODE_DIR}
-        ${OPENSSL_INCLUDE_DIR}
+        ${NTS_INCLUDE_DIR}
+        ${NTS_INTERNAL_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
@@ -109,7 +116,7 @@ else()
         ZLIB_INCLUDE_DIR
         BROTLI_INCLUDE_ENCODE_DIR
         BROTLI_INCLUDE_DECODE_DIR
-        OPENSSL_INCLUDE_DIR
+        NTS_INCLUDE_DIR
         PCRE_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
 
@@ -123,7 +130,8 @@ else()
         ${LZMA_INCLUDE_DIR}
         ${ZLIB_INCLUDE_DIR}
         ${BROTLI_INCLUDE_ENCODE_DIR}
-        ${OPENSSL_INCLUDE_DIR}
+        ${NTS_INCLUDE_DIR}
+        ${NTS_INTERNAL_DIR}
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
@@ -138,4 +146,4 @@ install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/inc
 install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NTS_INCLUDE_DIR}/nts" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")

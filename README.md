@@ -21,7 +21,7 @@
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
 - [PCRE2](https://www.pcre.org)
-- [OpenSSL](https://www.openssl.org)
+- [A-NTS](https://anyks.com/nts)
 - [CityHash](https://github.com/google/cityhash)
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)

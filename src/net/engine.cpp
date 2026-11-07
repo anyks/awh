@@ -18,6 +18,47 @@
 #define AWH_MAX_PORT 0xFFFF
 
 /**
+ * @brief Устанавливаем наибольшее число частей накопителя за один шаг перекачки в 64
+ *
+ * @note Ограничение от зависания: сокет, принимающий байты без перерыва, не должен
+ *       держать в одном шаге дольше нескольких записей рукопожатия
+ *
+ */
+#define AWH_ENGINE_FLUSH_LIMIT 0x40
+/**
+ * @brief Устанавливаем размер буфера приёма потокового канала в 16384 байта
+ *
+ * @note Наибольшая открытая запись TLS по разделу 5.2 RFC 8446 — 2^14 байт, поэтому
+ *       один приём покрывает любую запись целиком
+ *
+ */
+#define AWH_ENGINE_CHUNK_SIZE 0x4000
+/**
+ * @brief Устанавливаем размер буфера приёма дейтаграммного канала в 65536 байт
+ *
+ * @note 65535 — предельная длина дейтаграммы IPv6 заголовка UDP, байт запаса держим
+ *       на случай обрезки, чтобы приём не разрезал запись рукопожатия
+ *
+ */
+#define AWH_ENGINE_DATAGRAM_SIZE 0x10000
+/**
+ * @brief Устанавливаем наибольший размер накопленного приветствия в 65536 байт
+ *
+ * @note Приветствие клиента с накопленным запасом сертификатов на порядок меньше, а
+ *       за этим пределом ждать продолжения нечего: байты подаём связи как есть
+ *
+ */
+#define AWH_ENGINE_HELLO_LIMIT 0x10000
+/**
+ * @brief Устанавливаем наибольшее число приёмов канала за один шаг перекачки в 64
+ *
+ * @note Событие чтения краевое (EV_CLEAR), поэтому шаг обязан выбрать весь пришедший
+ *       канал; предел держим на случай собеседника, не перестающего слать байты
+ *
+ */
+#define AWH_ENGINE_FEED_LIMIT 0x40
+
+/**
  * Отключаем Deprecated для Apple
  */
 #if __APPLE__ && __clang__
@@ -30,128 +71,479 @@
 #include <net/engine.hpp>
 
 /**
+ * Модули внешнего модуля шифрования A-NTS
+ */
+#include <nts/pem/pem.hpp>
+#include <nts/x509/x509.hpp>
+#include <nts/trust/trust.hpp>
+#include <nts/hello/hello.hpp>
+#include <nts/client/client.hpp>
+#include <nts/server/server.hpp>
+#include <nts/context/context.hpp>
+#include <nts/protect/protect.hpp>
+#include <nts/extension/extension.hpp>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
 
 /**
+ * Код издания протокола TLS 1.2
+ */
+static constexpr uint16_t TLS_VERSION_12 = 0x0303;
+/**
+ * Код издания протокола TLS 1.3
+ */
+static constexpr uint16_t TLS_VERSION_13 = 0x0304;
+/**
+ * Тип записи протокола с сообщениями рукопожатия (раздел 5.1 RFC 8446)
+ */
+static constexpr uint8_t RECORD_TYPE_HANDSHAKE = 0x16;
+/**
+ * Длина обвязки записи протокола: тип, издание и размер
+ */
+static constexpr size_t RECORD_HEADER_SIZE = 5;
+/**
+ * Длина обвязки сообщения рукопожатия: тип и три байта размера
+ */
+static constexpr size_t MESSAGE_HEADER_SIZE = 4;
+
+/**
+ * @brief Функция получения названия набора шифрования для журнала
+ *
+ * Названия приводятся к виду OpenSSL, чтобы журналы прежних и нынешних сборок читались одинаково
+ *
+ * @param suite согласованный набор шифрования
+ * @return        название набора
+ *
+ */
+static const char * suiteName(const nts::protect::suite_t suite) noexcept {
+	// Результат работы функции
+	const char * result = "UNKNOWN";
+	/**
+	 * Определяем согласованный набор
+	 */
+	switch(static_cast <uint16_t> (suite)){
+		case static_cast <uint16_t> (nts::protect::suite_t::AES_128_GCM_SHA256):                 result = "TLS_AES_128_GCM_SHA256";           break;
+		case static_cast <uint16_t> (nts::protect::suite_t::AES_256_GCM_SHA384):                 result = "TLS_AES_256_GCM_SHA384";           break;
+		case static_cast <uint16_t> (nts::protect::suite_t::CHACHA20_POLY1305_SHA256):           result = "TLS_CHACHA20_POLY1305_SHA256";     break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256):     result = "ECDHE-ECDSA-AES128-GCM-SHA256";   break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384):     result = "ECDHE-ECDSA-AES256-GCM-SHA384";   break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256):       result = "ECDHE-RSA-AES128-GCM-SHA256";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384):       result = "ECDHE-RSA-AES256-GCM-SHA384";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256): result = "ECDHE-RSA-CHACHA20-POLY1305";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256):result = "ECDHE-ECDSA-CHACHA20-POLY1305";   break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256):     result = "ECDHE-ECDSA-AES128-CBC-SHA256";   break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256):       result = "ECDHE-RSA-AES128-CBC-SHA256";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA):        result = "ECDHE-ECDSA-AES128-CBC-SHA";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA):        result = "ECDHE-ECDSA-AES256-CBC-SHA";      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA):          result = "ECDHE-RSA-AES128-CBC-SHA";         break;
+		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA):          result = "ECDHE-RSA-AES256-CBC-SHA";         break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_128_GCM_SHA256):             result = "AES128-GCM-SHA256";                break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_256_GCM_SHA384):             result = "AES256-GCM-SHA384";                break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_128_CBC_SHA):                result = "AES128-SHA";                       break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_256_CBC_SHA):                result = "AES256-SHA";                       break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_128_CBC_SHA256):             result = "AES128-SHA256";                    break;
+		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_256_CBC_SHA256):             result = "AES256-SHA256";                    break;
+		case static_cast <uint16_t> (nts::protect::suite_t::KUZNYECHIK_MGM_L):                   result = "KUZNYECHIK-CBC-MAGMA-MGM-L";       break;
+		case static_cast <uint16_t> (nts::protect::suite_t::KUZNYECHIK_MGM_S):                   result = "KUZNYECHIK-CBC-MAGMA-MGM-S";       break;
+		case static_cast <uint16_t> (nts::protect::suite_t::MAGMA_MGM_L):                        result = "MAGMA-CBC-MAGMA-MGM-L";            break;
+		case static_cast <uint16_t> (nts::protect::suite_t::MAGMA_MGM_S):                        result = "MAGMA-CBC-MAGMA-MGM-S";            break;
+		case static_cast <uint16_t> (nts::protect::suite_t::SM4_GCM_SM3):                        result = "SM4-GCM-SM3";                      break;
+		case static_cast <uint16_t> (nts::protect::suite_t::SM4_CCM_SM3):                        result = "SM4-CCM-SM3";                      break;
+	}
+	// Выводим название набора
+	return result;
+}
+/**
+ * @brief Функция разбора названия набора шифрования из списка настроек
+ *
+ * Принимаются и названия OpenSSL («ECDHE-RSA-AES256-GCM-SHA384»), и правила IANA
+ * («TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384»), и шестнадцатеричный код («0xC030»). Названия CBC-
+ * наборов ведутся двумя написаниями: OpenSSL понимает только каноническое
+ * («ECDHE-RSA-AES128-SHA256»), а список настроек прежних сборок держал написание через «CBC»
+ * («ECDHE-RSA-AES128-CBC-SHA256») — без обоих строк из конфигурации набор терялся молча
+ *
+ * @param name  название набора шифрования
+ * @param suite место, в которое помещается разобранный набор
+ * @return      результат разбора
+ *
+ */
+static bool suiteByName(const string & name, nts::protect::suite_t & suite) noexcept {
+	// Набор названий OpenSSL и правил IANA, сопоставленных с наборами A-NTS
+	static const pair <const char *, nts::protect::suite_t> names[] = {
+		{"ECDHE-ECDSA-AES128-GCM-SHA256",   nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256},
+		{"ECDHE-ECDSA-AES256-GCM-SHA384",   nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384},
+		{"ECDHE-RSA-AES128-GCM-SHA256",     nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256},
+		{"ECDHE-RSA-AES256-GCM-SHA384",     nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384},
+		{"ECDHE-RSA-CHACHA20-POLY1305",     nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256},
+		{"ECDHE-ECDSA-CHACHA20-POLY1305",   nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256},
+		{"ECDHE-ECDSA-AES128-CBC-SHA256",   nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256},
+		{"ECDHE-RSA-AES128-CBC-SHA256",     nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256},
+		{"ECDHE-ECDSA-AES128-CBC-SHA",      nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA},
+		{"ECDHE-ECDSA-AES256-CBC-SHA",      nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA},
+		{"ECDHE-RSA-AES128-CBC-SHA",        nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA},
+		{"ECDHE-RSA-AES256-CBC-SHA",        nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA},
+		{"ECDHE-ECDSA-AES128-SHA256",       nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256},
+		{"ECDHE-RSA-AES128-SHA256",         nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256},
+		{"ECDHE-ECDSA-AES128-SHA",          nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA},
+		{"ECDHE-ECDSA-AES256-SHA",          nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA},
+		{"ECDHE-RSA-AES128-SHA",            nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA},
+		{"ECDHE-RSA-AES256-SHA",            nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA},
+		{"AES128-GCM-SHA256",               nts::protect::suite_t::RSA_AES_128_GCM_SHA256},
+		{"AES256-GCM-SHA384",               nts::protect::suite_t::RSA_AES_256_GCM_SHA384},
+		{"AES128-SHA",                      nts::protect::suite_t::RSA_AES_128_CBC_SHA},
+		{"AES256-SHA",                      nts::protect::suite_t::RSA_AES_256_CBC_SHA},
+		{"AES128-SHA256",                   nts::protect::suite_t::RSA_AES_128_CBC_SHA256},
+		{"AES256-SHA256",                   nts::protect::suite_t::RSA_AES_256_CBC_SHA256},
+		{"TLS_AES_128_GCM_SHA256",          nts::protect::suite_t::AES_128_GCM_SHA256},
+		{"TLS_AES_256_GCM_SHA384",          nts::protect::suite_t::AES_256_GCM_SHA384},
+		{"TLS_CHACHA20_POLY1305_SHA256",    nts::protect::suite_t::CHACHA20_POLY1305_SHA256},
+		{"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",   nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256},
+		{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",   nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384},
+		{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",     nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256},
+		{"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",     nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384},
+		{"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256},
+		{"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256", nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256},
+		{"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256", nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256},
+		{"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256", nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256},
+		{"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA", nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA},
+		{"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA", nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA},
+		{"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA},
+		{"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA", nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA},
+	};
+	// Разбираемое название в верхнем регистре
+	string upper = name;
+	// Выполняем перевод названия в верхний регистр
+	transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+	// Набор для разбора шестнадцатеричного кода
+	unsigned long code = 0;
+	// Если название похоже на шестнадцатеричный код набора, разбираем его
+	if((upper.compare(0, 2, "0X") == 0) && (upper.size() > 2)){
+		// Выполняем разбор кода
+		code = ::strtoul(upper.c_str(), nullptr, 0);
+		// Выводим разобранный набор
+		suite = static_cast <nts::protect::suite_t> (code & 0xFFFF);
+		// Сообщаем, что набор разобран
+		return true;
+	}
+	/**
+	 * Переходим по таблице названий
+	 */
+	for(const auto & pair : names){
+		// Если название совпало, запоминаем набор
+		if(upper == pair.first){
+			// Выполняем установку найденного набора
+			suite = pair.second;
+			// Выводим признак того, что набор разобран
+			return true;
+		}
+	}
+	// Выводим признак того, что название набора не разобрано
+	return false;
+}
+/**
+ * @brief Функция разбора перечня прикладных протоколов из проволочного вида
+ *
+ * Прошлый вид перечня оставлен публичным свойством Context::protocols: каждый протокол идёт
+ * своим длиной и байтами. Для наружного модуля нужен перечень строк
+ *
+ * @param wire   перечень протоколов проволочным видом
+ * @param result место, в которое помещается разобранный перечень
+ *
+ */
+static void protocolList(const vector <uint8_t> & wire, vector <string> & result) noexcept {
+	/**
+	 * Переход по всему перечню
+	 */
+	for(size_t offset = 0; offset < wire.size();){
+		// Размер текущего названия протокола
+		const size_t size = static_cast <size_t> (wire[offset]);
+		// Если запись выходит за границы перечня, выходим
+		if((offset + 1 + size) > wire.size())
+			// Выходим из цикла
+			break;
+		// Добавляем разобранные названия протокола
+		result.push_back(string(reinterpret_cast <const char *> (&wire[offset + 1]), size));
+		// Выполняем переход к следующей записи
+		offset += (size + 1);
+	}
+}
+/**
  * @brief Функция разбора IP-адреса, переданного в качестве хоста (IPv4 / IPv6)
  *
- * @param host   хост удалённого сервера
- * @param buffer буфер для бинарного адреса (не менее 16 байт) или nullptr
- * @return       размер бинарного адреса (4 / 16) или 0, если хост не является IP-адресом
+ * @param host хост удалённого сервера
+ * @return       размер бинарного адреса (4 / 16) либо 0, если хост не является IP-адресом
  */
-static size_t ipLiteral(const string & host, uint8_t * buffer = nullptr) noexcept {
+static size_t ipLiteral(const string & host) noexcept {
 	// Буфер бинарного адреса
 	uint8_t addr[16];
-	// Если буфер не передан, используем локальный
-	uint8_t * data = ((buffer != nullptr) ? buffer : addr);
 	// Адрес без квадратных скобок IPv6
 	const string ip = (((host.size() > 2) && (host.front() == '[') && (host.back() == ']')) ? host.substr(1, host.size() - 2) : host);
 	// Если хост является адресом IPv4
-	if(::inet_pton(AF_INET, ip.c_str(), data) == 1)
+	if(::inet_pton(AF_INET, ip.c_str(), addr) == 1)
 		// Выводим размер адреса
 		return 4;
 	// Если хост является адресом IPv6
-	if(::inet_pton(AF_INET6, ip.c_str(), data) == 1)
+	if(::inet_pton(AF_INET6, ip.c_str(), addr) == 1)
 		// Выводим размер адреса
 		return 16;
 	// Хост не является IP-адресом
 	return 0;
 }
 /**
- * @brief Функция установки хоста для проверки сертификата и SNI
+ * @brief Функция установки серверных наборов шифрования по умолчанию
  *
- * Для IP-адреса проверяем запись IP в SAN (X509_VERIFY_PARAM_set1_ip_asc), а не
- * имя DNS (X509_VERIFY_PARAM_set1_host сверяет только имена DNS), и не отправляем
- * SNI: RFC 6066 запрещает передавать IP-адрес в расширении server_name.
+ * Набор Mozilla «intermediate»: только ECDHE с AEAD. Прежний список держал ещё и DHE-RSA,
+ * но наборов TLS 1.2 с простым DHE у наружного модуля нет — механика конечного поля ffdhe
+ * работает лишь как key_share издания 1.3
  *
- * @param ssl  объект SSL
- * @param host хост удалённого сервера
- * @return     результат установки
+ * Наборы издания 1.3 ставят первыми: перечень отдаётся от предпочтительного к запасному,
+ * и без них сервер, отвечая на modern-приветствие, выбрал бы издание 1.2, тогда как
+ * прежний OpenSSL держал 1.3 по умолчанию
+ *
+ * @param result место, в которое помещается перечень наборов
+ *
  */
-static bool verifyHostParam(SSL * ssl, const string & host) noexcept {
-	// Если хост является IP-адресом
-	if(ipLiteral(host) > 0){
-		// Адрес без квадратных скобок IPv6
-		const string ip = (((host.size() > 2) && (host.front() == '[') && (host.back() == ']')) ? host.substr(1, host.size() - 2) : host);
-		// Активируем проверку IP-адреса
-		return (::X509_VERIFY_PARAM_set1_ip_asc(::SSL_get0_param(ssl), ip.c_str()) > 0);
+static void serverSuites(vector <nts::protect::suite_t> & result) noexcept {
+	// Выполняем установку наборов TLS 1.3 как предпочтительных
+	result.assign({
+		nts::protect::suite_t::AES_128_GCM_SHA256,
+		nts::protect::suite_t::AES_256_GCM_SHA384,
+		nts::protect::suite_t::CHACHA20_POLY1305_SHA256,
+		// Выполняем установку наборов TLS 1.2 с ECDHE и AEAD как запасных
+		nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256,
+		nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256,
+		nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384,
+		nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384,
+		nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256,
+		nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256
+	});
+}
+/**
+ * @brief Функция разбора перечня наборов шифрования из строки настроек
+ *
+ * Прежний `SSL_CTX_set_cipher_list()` касался только TLS 1.2, наборы TLS 1.3 задавала сама
+ * библиотека. Чтобы настройка не молча отрезала издание 1.3, наборы TLS 1.3 дополняем, если
+ * в списке не назван ни один из них
+ *
+ * @param ciphers строка настроек списка алгоритмов шифрования
+ * @param result  место, в которое помещается разобранный перечень наборов
+ * @param log     объект работы с логами
+ */
+static void suitesList(const string & ciphers, vector <nts::protect::suite_t> & result, const awh::log_t * log) noexcept {
+	// Если список настроек не задан, наружный модуль берёт свои наборы по умолчанию
+	if(ciphers.empty())
+		// Выходим из функции
+		return;
+	// Разбираемое название набора
+	string name = "";
+	// Признак того, что в списке назван набор TLS 1.3
+	bool modern = false;
+	/**
+	 * Переход по строке настроек, разделяя список двоеточием
+	 */
+	for(size_t begin = 0; begin <= ciphers.size();){
+		// Позиция следующего разделителя
+		const size_t pos = ciphers.find(':', begin);
+		// Выполняем извлечение названия набора
+		name = ciphers.substr(begin, ((pos == string::npos) ? string::npos : pos - begin));
+		// Разобранный набор шифрования
+		nts::protect::suite_t suite = nts::protect::suite_t::NONE;
+		// Если название набора разобрано, добавляем его в перечень
+		if(!name.empty() && suiteByName(name, suite)){
+			// Если набор принадлежит изданию TLS 1.3, запоминаем это
+			if((static_cast <uint16_t> (suite) >= 0x1301) && (static_cast <uint16_t> (suite) <= 0x1303))
+				// Запоминаем, что издание 1.3 в списке назван
+				modern = true;
+			// Добавляем разобранный набор
+			result.push_back(suite);
+		// Если название не разобралось, выводим сообщение: молча терять заказ нельзя
+		} else if(!name.empty()) log->print("Unknown cipher is skipped: %s", awh::log_t::flag_t::WARNING, name.c_str());
+		// Если разделителей больше нет, выходим
+		if(pos == string::npos)
+			// Выходим из цикла
+			break;
+		// Выполняем переход к следующему названию
+		begin = pos + 1;
 	}
 	/**
-	 * Если нужно установить TLS расширение
+	 * Дополняем наборы TLS 1.3, если в списке не назван ни один: прежний OpenSSL список
+	 * cipher_list к изданию 1.3 не применял, и без дополнения связь с modern-клиентом
+	 * перестала бы заводиться
 	 */
-	#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-		// Устанавливаем имя хоста для SNI расширения
-		::SSL_set_tlsext_host_name(ssl, host.c_str());
-	#endif
-	// Активируем верификацию доменного имени
-	return (::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(ssl), host.c_str(), 0) > 0);
+	if(!modern){
+		// Добавляем наборы TLS 1.3 по умолчанию
+		result.push_back(nts::protect::suite_t::AES_128_GCM_SHA256);
+		// Добавляем следующий набор издания 1.3
+		result.push_back(nts::protect::suite_t::AES_256_GCM_SHA384);
+		// Добавляем последний набор издания 1.3
+		result.push_back(nts::protect::suite_t::CHACHA20_POLY1305_SHA256);
+	}
 }
 /**
- * Шифры TLS 1.2 сервера по умолчанию (набор Mozilla «intermediate»): только ECDHE/DHE с шифрованием AEAD.
- * Шифры TLS 1.3 задаёт OpenSSL, список ниже их не касается. Свой список устанавливается методом ciphers()
- */
-#define AWH_TLS_SERVER_CIPHERS "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305"
-/**
- * @brief Функция проверки, что контекст создан для DTLS
+ * @brief Функция получения перечня групп обмена ключами по умолчанию
  *
- * @param ctx контекст OpenSSL
- * @return    результат проверки
+ * X25519 предлагают все современные клиенты, без неё рукопожатие шло только на P-256.
+ * Гибридная постквантовая группа X25519MLKEM768 идёт первой, как это делал OpenSSL 3.5
+ *
+ * @param result место, в которое помещается перечень групп
  */
-static bool sslDatagram(const SSL_CTX * ctx) noexcept {
-	// Получаем метод контекста
-	const SSL_METHOD * method = ::SSL_CTX_get_ssl_method(ctx);
-	// Выводим результат
-	return ((method == ::DTLS_method()) || (method == ::DTLS_server_method()) || (method == ::DTLS_client_method()));
+static void groupList(vector <nts::extension::group_t> & result) noexcept {
+	// Выполняем установку перечня групп в порядке предпочтения
+	result.assign({
+		nts::extension::group_t::X25519MLKEM768,
+		nts::extension::group_t::X25519,
+		nts::extension::group_t::SECP256R1,
+		nts::extension::group_t::SECP384R1,
+		nts::extension::group_t::SECP521R1
+	});
 }
 /**
- * @brief Функция установки диапазона версий протокола
+ * @brief Функция сборки тела сообщения рукопожатия из принятых байтов канала
  *
- * Контекст создаётся гибким методом (TLS_method / DTLS_method), версия ограничивается снизу TLS 1.2 (DTLS 1.2),
- * сверху — наибольшей версией, известной OpenSSL (TLS 1.3). Методы TLSv1_2_*_method фиксировали версию на TLS 1.2,
- * и клиенты, предлагающие только TLS 1.3, получали отказ в рукопожатии
+ * Раздел 5.1 RFC 8446: сообщения рукопожатия лежат внутри записей, а одно сообщение может
+ * занять несколько записей. Собираем тела записей рукопожатия, пока не придёт первое
+ * сообщение целиком
  *
- * @param ctx контекст OpenSSL
- * @return    результат установки
+ * @param bytes  принятые байты канала
+ * @param result место, в которое помещается тело сообщения без его обвязки
+ * @return       результат сборки (false - байтов пока не хватает)
  */
-static bool sslVersions(SSL_CTX * ctx) noexcept {
-	// Выполняем установку диапазона версий протокола
-	return (
-		(::SSL_CTX_set_min_proto_version(ctx, (sslDatagram(ctx) ? DTLS1_2_VERSION : TLS1_2_VERSION)) == 1) &&
-		(::SSL_CTX_set_max_proto_version(ctx, 0) == 1)
-	);
-}
-/**
- * @brief Функция получения списка групп обмена ключами в порядке предпочтения
- *
- * X25519 (RFC 7748) предлагают по умолчанию все современные клиенты, без неё рукопожатие шло только на P-256.
- * С OpenSSL 3.5 первой идёт гибридная постквантовая группа X25519MLKEM768 (только TLS 1.3)
- *
- * @param ctx контекст OpenSSL
- * @return    список групп
- */
-static const char * sslGroups(const SSL_CTX * ctx) noexcept {
+static bool helloBody(const vector <uint8_t> & bytes, vector <uint8_t> & result) noexcept {
+	// Тела записей рукопожатия, собранные в одно сообщение
+	vector <uint8_t> message;
 	/**
-	 * Если версия OpenSSL соответствует или выше версии 3.5.0
+	 * Переход по записям протокола
 	 */
-	#if OPENSSL_VERSION_NUMBER >= 0x30500000L
-		// Если контекст создан не для DTLS, добавляем постквантовую группу
-		if(!sslDatagram(ctx))
-			// Выводим список групп
-			return "X25519MLKEM768:X25519:P-256:P-384:P-521";
-	#endif
-	// Выводим список групп
-	return "X25519:P-256:P-384:P-521";
+	for(size_t offset = 0; (offset + RECORD_HEADER_SIZE) <= bytes.size();){
+		// Размер тела текущей записи протокола
+		const size_t size = ((static_cast <size_t> (bytes[offset + 3]) << 8) | static_cast <size_t> (bytes[offset + 4]));
+		// Если тело записи ещё не пришло целиком, выходим
+		if((offset + RECORD_HEADER_SIZE + size) > bytes.size())
+			// Выводим из цикла
+			break;
+		/**
+		 * Тип записи 0x16 — сообщения рукопожатия (раздел 5.1 RFC 8446); прочие записи
+		 * здесь не встречаются, но и рвать из-за них разбор не станем
+		 */
+		if(bytes[offset] == RECORD_TYPE_HANDSHAKE){
+			// Добавляем тело записи к собираемому сообщению
+			message.insert(message.end(), &bytes[offset + RECORD_HEADER_SIZE], &bytes[offset + RECORD_HEADER_SIZE + size]);
+			// Если обвязки сообщения ещё нет, ждём продолжения
+			if(message.size() >= MESSAGE_HEADER_SIZE){
+				// Размер тела сообщения по его обвязке
+				const size_t total = ((static_cast <size_t> (message[1]) << 16) | (static_cast <size_t> (message[2]) << 8) | static_cast <size_t> (message[3]));
+				// Если тело сообщения собрано, забираем его без обвязки и выходим
+				if(message.size() >= (MESSAGE_HEADER_SIZE + total)){
+					// Выполняем копирование собранного тела сообщения
+					result.assign(message.begin() + MESSAGE_HEADER_SIZE, message.begin() + MESSAGE_HEADER_SIZE + total);
+					// Выходим из цикла
+					break;
+				}
+			}
+		}
+		// Выполняем переход к следующей записи
+		offset += (RECORD_HEADER_SIZE + size);
+	}
+	// Выводим результат сборки
+	return !result.empty();
 }
 /**
- * Буфер секретного слова печенок
+ * @brief Функция разбора имени узла, запрошенного клиентом, из байтов приветствия
+ *
+ * Раздел 3 RFC 6066: имя лежит в расширении 0 приветствия клиента и при TLS 1.2, и при TLS 1.3
+ * открытым текстом. Наружное имя под ECH (раздел 4 RFC 9849) разбирается так же, внутреннее —
+ * только библиотеке
+ *
+ * @param body тело сообщения приветствия клиента без его обвязки
+ * @param name место, в которое помещается разобранное имя
+ * @return     результат разбора
  */
-uint8_t awh::Engine::_cookies[16];
+static bool helloHostname(const vector <uint8_t> & body, string & name) noexcept {
+	// Разобранные параметры приветствия клиента
+	nts::hello::client_t hello;
+	// Если приветствие не разобралось, выходим
+	if(nts::hello::parse(nts::view_t(body.data(), body.size()), hello) != nts::hello::error_t::NONE)
+		// Выводим признак неудачи
+		return false;
+	// Расширение server_name имеет тип 0 (раздел 4.3.1 RFC 6066)
+	const nts::hello::extension_t * ext = nts::hello::extension(hello.extensions, 0);
+	// Если расширение не предъявлено либо оно короткое, выходим
+	if((ext == nullptr) || (ext->data.size < 5))
+		// Выводим признак неудачи
+		return false;
+	// Байты тела расширения
+	const uint8_t * data = ext->data.data;
+	// Если имя предъявлено не как узел (тип имени 0), выходим
+	if(data[2] != 0)
+		// Выводим признак неудачи
+		return false;
+	// Размер имени узла
+	const size_t size = ((static_cast <size_t> (data[3]) << 8) | static_cast <size_t> (data[4]));
+	// Если имя выходит за границы расширения, выходим
+	if((size == 0) || (5 + size) > ext->data.size)
+		// Выводим признак неудачи
+		return false;
+	// Выполняем установку разобранного имени
+	name.assign(reinterpret_cast <const char *> (data + 5), size);
+	// Выводим признак того, что имя разобрано
+	return true;
+}
 /**
- * Флаг инициализации куков
+ * @brief Класс состояния связи внешнего модуля шифрования
+ *
+ * Оба фасада A-NTS живут рядом: роль связи известна лишь при обёртывании сокета, а сами фасады
+ * не копируются и весят по указателю на своё ядро
+ *
  */
-bool awh::Engine::_cookieInit = false;
+class awh::Engine::Context::Tls {
+	public:
+		// Флаг того, что рукопожатие прервано: подлинность по имени клиента не годится
+		bool fatal;
+		// Флаг проверки соответствия сертификата собеседника предъявленному имени
+		bool verify;
+		// Флаг того, что сверка имени сертификата выполнена
+		bool checked;
+		// Флаг отправки приветствия своей стороной связи
+		bool started;
+		// Флаг того, что приветствие клиента разобрано и подлинность выбрана
+		bool sniffed;
+		// Запас доверенных сертификатов
+		nts::trust::store_t store;
+		// Связь стороны клиента
+		nts::client::context_t client;
+		// Связь стороны сервера
+		nts::server::context_t server;
+		// Хост удалённого сервера, за которым пришли (для SNI и сверки имени сертификата)
+		string host;
+		// Непроданные собеседнику байты открытого текста
+		vector <uint8_t> plain;
+		// Байты канала, разобранные до подачи их связи (подбор подлинности по SNI)
+		vector <uint8_t> peek;
+		// Движок, которому принадлежит связь: по нему выбираем подлинность для имени клиента
+		awh::Engine * engine;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Tls() noexcept : 
+		 fatal(false), verify(false), checked(false),
+		 started(false), sniffed(false), engine(nullptr) {}
+};
+/**
+ * @brief Класс запаса подготовленных подлинностей
+ *
+ * Подготовка ключа RSA стоит вдвое дороже самой подписи, а ключа ECDSA — вдвое дороже всего
+ * рукопожатия, поэтому подготовленный ключ разделяют все связи одной подлинности
+ *
+ */
+class awh::Engine::Keys {
+	public:
+		// Подготовленные подлинности, ключом запаса служит адрес файла цепочки вместе с адресом ключа
+		unordered_map <string, nts::context::credential_t> held;
+};
 
 /**
  * @brief Метод закрытия подключения
@@ -291,30 +683,6 @@ bool awh::Engine::Address::list() noexcept {
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
 					this->_socket.events(this->sock);
-					/**
-					 * Создаём BIO, чтобы установить все необходимые параметры для
-					 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
-					 * Не будет использоваться.
-					 */
-					this->_bio = ::BIO_new_dgram_sctp(this->sock, BIO_NOCLOSE);
-					// Если BIO не создано, выходим
-					if(this->_bio == nullptr){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						/**
-						* Если режим отладки не включён
-						*/
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					}
 				}
 			#endif
 		} break;
@@ -332,13 +700,6 @@ bool awh::Engine::Address::list() noexcept {
 bool awh::Engine::Address::clear() noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если BIO создано
-	if(this->_bio != nullptr){
-		// Выполняем очистку BIO
-		::BIO_free(this->_bio);
-		// Зануляем контекст BIO
-		this->_bio = nullptr;
-	}
 	// Сбрасываем флаг инициализации
 	this->_encrypted = false;
 	// Зануляем структуру клиента
@@ -1265,77 +1626,44 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 	// Результат работы функции
 	int32_t result = -1;
 	// Если защищённый режим работы разрешён
-	if(this->_encrypted){
-		// Получаем данные описание ошибки
-		int32_t error = ::SSL_get_error(this->_ssl, status);
+	if(this->_encrypted && (this->_tls != nullptr)){
+		// Отказ, которым связь оборвана
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.error() : this->_tls->client.error());
+		// Состояние связи
+		const nts::context::state_t state = ((this->_type == type_t::SERVER) ? this->_tls->server.state() : this->_tls->client.state());
+		// Извещение, полученное или отправленное связью
+		const nts::alert::alert_t & alert = ((this->_type == type_t::SERVER) ? this->_tls->server.alert() : this->_tls->client.alert());
 		/**
-		 * Определяем тип полученной ошибки
+		 * Состояние CLOSED наступает по любой из сторон, поэтому о том, кончился ли
+		 * приём, говорит не оно, а отсутствие принятых данных после подачи
 		 */
-		switch(error){
-			// Если мы получили ошибку
-			case SSL_ERROR_SSL: {
-				// Устанавливаем результат отключения подключения
-				result = 0;
-				// Запоминаем код ошибки
-				error = ::ERR_get_error();
-				// Получаем текст общего сообщения
-				const string state = ::SSL_state_string(this->_ssl);
-				/**
-				 * Выполняем извлечение остальных ошибок
-				 */
-				do {
-					// Выводим в лог сообщение полученной ошибки
-					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ::ERR_error_string(error, nullptr));
-				/**
-				 * Если ещё есть ошибки
-				 */
-				} while((error = ::ERR_get_error()));
-			} break;
-			// Если мы получили ошибку системного вызова
-			case SSL_ERROR_SYSCALL: {
-				// Устанавливаем результат отключения подключения
-				result = 0;
-				// Запоминаем код ошибки
-				error = ::ERR_get_error();
-				// Получаем текст общего сообщения
-				const string state = ::SSL_state_string(this->_ssl);
-				/**
-				 * Выполняем извлечение остальных ошибок
-				 */
-				do {
-					// Выводим в лог сообщение полученной ошибки
-					this->_log->print("%s: %s", log_t::flag_t::CRITICAL, state.c_str(), ::ERR_error_string(error, nullptr));
-				/**
-				 * Если ещё есть ошибки
-				 */
-				} while((error = ::ERR_get_error()));
-				// Выводим в лог сообщение
-				this->_log->print("Engine: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
-			} break;
-			// Если нам было возвращено значение 0
-			case SSL_ERROR_ZERO_RETURN:
-				// Устанавливаем результат отключения подключения
-				result = 0;
-			break;
-			// Если данные прочитаны не полностью
-			case SSL_ERROR_WANT_READ:
-			// Если данные записаны не полностью
-			case SSL_ERROR_WANT_WRITE:
-			// Если происходит асинхронная обработка
-			case SSL_ERROR_WANT_ASYNC:
-			// Если асинхронное задание небыло выполненно
-			case SSL_ERROR_WANT_ASYNC_JOB:
-			// Если необходимо подождать подключения клиента
-			case SSL_ERROR_WANT_ACCEPT:
-			// Если необходимо подождать подключения к серверу
-			case SSL_ERROR_WANT_CONNECT:
-			// Если обмен сертификатами не выполнен
-			case SSL_ERROR_WANT_X509_LOOKUP:
-			// Если операция не была завершена
-			case SSL_ERROR_WANT_CLIENT_HELLO_CB:
-				// Устанавливаем результат, что нужно попытаться позже
-				result = -1;
-			break;
+		if(error != nts::context::error_t::NONE){
+			// Устанавливаем результат отключения подключения
+			result = 0;
+			// Выводим в лог сообщение об отказе связи
+			this->_log->print("Engine: connection failed: code=%hhu state=%hhu alert=%s", log_t::flag_t::CRITICAL,
+				static_cast <uint8_t> (error), static_cast <uint8_t> (state), nts::alert::name(alert.description));
+		// Если отказа связи нет, решение принимаем по её состоянию
+		} else {
+			/**
+			 * Определяем состояние связи
+			 */
+			switch(static_cast <uint8_t> (state)){
+				// Если связь закрыта одной из сторон
+				case static_cast <uint8_t> (nts::context::state_t::CLOSED): {
+					// Устанавливаем результат отключения подключения
+					result = 0;
+					// Выводим в лог сообщение о закрытии связи собеседником
+					this->_log->print("Engine: connection closed by peer: alert=%s", log_t::flag_t::INFO, nts::alert::name(alert.description));
+				} break;
+				// Если связь оборвана отказом
+				case static_cast <uint8_t> (nts::context::state_t::FAILED): {
+					// Устанавливаем результат отключения подключения
+					result = 0;
+					// Выводим в лог сообщение об отказе рукопожатия
+					this->_log->print("Engine: handshake failed: alert=%s", log_t::flag_t::CRITICAL, nts::alert::name(alert.description));
+				} break;
+			}
 		}
 	// Если произошла ошибка
 	} else if(status < 0) {
@@ -1403,13 +1731,361 @@ bool awh::Engine::Context::retry() const noexcept {
 	#endif
 }
 /**
- * @brief Метод выполнения шага рукопожатия (SSL_accept / SSL_connect)
+ * @brief Метод проверки пройденности рукопожатия обеими сторонами
  *
- * @return результат работы функции OpenSSL
+ * @return результат проверки
+ *
  */
-int32_t awh::Engine::Context::handshake() noexcept {
-	// Выполняем шаг рукопожатия
-	return ((this->_type == type_t::SERVER) ? ::SSL_accept(this->_ssl) : ::SSL_connect(this->_ssl));
+bool awh::Engine::Context::established() const noexcept {
+	// Если связь создана, выводим результат проверки
+	if(this->_tls != nullptr)
+		// Выводим признак пройденного рукопожатия
+		return ((this->_type == type_t::SERVER) ? this->_tls->server.established() : this->_tls->client.established());
+	// Сообщаем, что связь не создана
+	return false;
+}
+/**
+ * @brief Метод проверки наличия байтов, которые связь должна отправить
+ *
+ * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+ *
+ */
+bool awh::Engine::Context::pending() const noexcept {
+	// Если связь не создана, отправлять нечего
+	if(this->_tls == nullptr)
+		// Сообщаем, что неотправленных байтов нет
+		return false;
+	// Байты, накопленные связью для отправки собеседнику
+	const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
+	// Выводим признак наличия неотправленных байтов
+	return (data.size > 0);
+}
+/**
+ * @brief Метод отправки накопленных связи байтов в сокет
+ *
+ * Снятие байтов происходит ровно в том объёме, в котором сокет их принял: связь не знает,
+ * дошло ли до собеседника, и повторной генерации записей не будет
+ *
+ * @return результат работы функции (false - сокет не принял всё, повторить позже)
+ *
+ */
+bool awh::Engine::Context::flush() noexcept {
+	// Результат работы функции
+	bool result = true;
+	// Если связь и сокет инициализированы
+	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
+		/**
+		 * Переход по накопленным связи байтам	
+		 */
+		for(size_t count = 0; count < AWH_ENGINE_FLUSH_LIMIT; count++){
+			// Байты, отправляемые собеседнику
+			const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
+			// Если связи нечего отправить, выходим
+			if(data.size == 0)
+				// Выходим из цикла
+				break;
+			// Количество отправленных байтов
+			ssize_t sent = 0;
+			/**
+			 * Определяем тип сокета
+			 */
+			if(this->_addr->_type == SOCK_DGRAM){
+				// Адрес собеседника, которому предназначена дейтаграмма
+				struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
+				// Выполняем отправку дейтаграммы: накопитель связи отдаёт ровно одну готовую дейтаграмму
+				sent = ::sendto(this->_addr->sock, data.data, data.size, 0, addr, sizeof(struct sockaddr_storage));
+			// Если сокет установлен как потоковый, отправляем байты как есть
+			} else sent = ::send(this->_addr->sock, data.data, data.size, 0);
+			// Если сокет принял байты
+			if(sent > 0){
+				// Снимаем отправленные байты с накопителя связи
+				if(this->_type == type_t::SERVER)
+					// Выполняем снятие байтов у связи сервера
+					this->_tls->server.consume(static_cast <size_t> (sent));
+				else this->_tls->client.consume(static_cast <size_t> (sent));
+				// Если сокет принял не всё, повторяем отправку позже
+				if(static_cast <size_t> (sent) < data.size)
+					// Выводим признак того, что нужно дождаться готовности к записи
+					return false;
+				// Выполняем переход к следующей части накопителя
+				continue;
+			// Если сокет временно не готов принять байты, выводим признак ожидания
+			} else if(this->retry()) return false;
+			// Выводим в лог сообщение об ошибке отправки
+			this->_log->print("Engine: write failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+			// Выходим из цикла
+			break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод приёма байтов из сокета и подачи их связи
+ *
+ * Сервер разбирает приветствие клиента до подачи его байтов связи: подлинность по имени (SNI)
+ * нужно успеть выставить, пока ответ не сложен
+ *
+ * @return количество принятых байт, 0 - собеседник закрылся, -1 - данных нет, -2 - связь отвергла байты
+ *
+ */
+int64_t awh::Engine::Context::feed() noexcept {
+	// Результат работы функции
+	int64_t result = -1;
+	// Если связь и сокет инициализированы
+	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
+		// Буфер принятых байтов канала
+		vector <uint8_t> buffer;
+		// Размер буфера приёма: дейтаграмма либо кусок потока
+		const size_t max = ((this->_addr->_type == SOCK_DGRAM) ? static_cast <size_t> (AWH_ENGINE_DATAGRAM_SIZE) : static_cast <size_t> (AWH_ENGINE_CHUNK_SIZE));
+		// Выполняем выделение памяти под буфер приёма
+		buffer.resize(max);
+		// Количество принятых байтов
+		ssize_t got = 0;
+		/**
+		 * Определяем тип сокета
+		 */
+		if(this->_addr->_type == SOCK_DGRAM){
+			// Адрес собеседника, от которого ждём дейтаграмму
+			struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
+			// Выполняем приём дейтаграммы
+			got = ::recvfrom(this->_addr->sock, buffer.data(), max, 0, addr, &this->_addr->_peer.size);
+		// Если сокет установлен как потоковый, читаем поток байтов
+		} else got = ::recv(this->_addr->sock, buffer.data(), max, 0);
+		// Если байты приняты
+		if(got > 0){
+			// Байты, которые связи ещё не показаны
+			const uint8_t * data = buffer.data();
+			// Размер байтов, которые связи показываются этим шагом
+			size_t size = static_cast <size_t> (got);
+			/**
+			 * Серверу нужно выбрать подлинность по предъявленному имени до того, как
+			 * приветствие будет разобрано связью: окно «разобрано, но не отвечено» у
+			 * наружного модуля отсутствует
+			 */
+			if((this->_type == type_t::SERVER) && !this->_tls->sniffed){
+				// Добавляем принятые байты к накопленному для разбора приветствию
+				this->_tls->peek.insert(this->_tls->peek.end(), data, data + size);
+				// Тело сообщения рукопожатия, собранное из принятых записей
+				vector <uint8_t> body;
+				// Если тело приветствия ещё не собрано
+				if(!helloBody(this->_tls->peek, body)){
+					// Пока байтов не больше разбираемого предела, ждём их продолжения
+					if(this->_tls->peek.size() <= static_cast <size_t> (AWH_ENGINE_HELLO_LIMIT))
+						// Выводим количество принятых байтов, связи их ещё не показаны
+						return static_cast <int64_t> (got);
+					// За пределом ждать нечего: подаём накопленное как есть и перестаём разбирать
+					this->_tls->sniffed = true;
+				// Тело приветствия собрано: подлинность выбираем по предъявленному имени
+				} else {
+					// Имя узла, за которым пришёл клиент
+					string name;
+					// Если имя разобрано и движок доступен, выбираем подлинность по нему
+					if(helloHostname(body, name) && (this->_tls->engine != nullptr)){
+						/**
+						 * Смена подлинности до разбора приветствия связью возможна:
+						 * ответ ещё не сложен
+						 */
+						this->_tls->engine->sniSelect(*this, name);
+					}
+					// Запоминаем, что разбор приветствия сделан
+					this->_tls->sniffed = true;
+				}
+				// Байты, показываемые связи, берутся из накопленного для разбора
+				data = this->_tls->peek.data();
+				// Устанавливаем размер показываемых байтов
+				size = this->_tls->peek.size();
+			}
+			// Байты подаются связи как пришли: границы записей связь восстанавливает сама
+			const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.push(nts::view_t(data, size)) : this->_tls->client.push(nts::view_t(data, size)));
+			// Очистка накопленного для разбора приветствия
+			this->_tls->peek.clear();
+			// Если связь отвергла принятые байты
+			if(error != nts::context::error_t::NONE){
+				// Выводим в лог сообщение об отказе разбора
+				this->_log->print("Engine: received bytes refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+				// Выводим признак отказа связи
+				return -2;
+			}
+			// Выводим количество принятых байтов
+			result = static_cast <int64_t> (got);
+		// Если собеседник закрыл соединение
+		} else if(got == 0) result = 0;
+		// Если приём не выполнен по временной причине, выводим ожидание данных
+		else if(!this->retry()){
+			// Выводим в лог сообщение об ошибке приёма
+			this->_log->print("Engine: read failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+			// Выводим признак отказа связи
+			result = -2;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения прочитанных связью байтов в буфер чтения
+ *
+ * Раздел 5.4 RFC 8446: принятые записи открытым текстом выдаются накопителем целиком,
+ * поэтому неотданный остаток держится в самом буфере чтения
+ *
+ */
+void awh::Engine::Context::drain() noexcept {
+	// Если связь инициализирована
+	if(this->_tls != nullptr){
+		// Принятые связью байты открытого текста
+		vector <uint8_t> data;
+		// Отказ извлечения принятых байтов
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.read(data) : this->_tls->client.read(data));
+		// Если отказ не связан с состоянием связи, выводим сообщение
+		if((error != nts::context::error_t::NONE) && (error != nts::context::error_t::STATE)){
+			// Выводим в лог сообщение об отказе извлечения
+			this->_log->print("Engine: received data refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+		// Если открытые байты получены, добавляем их к неотданному остатку
+		} else if(!data.empty()) this->_tls->plain.insert(this->_tls->plain.end(), data.begin(), data.end());
+	}
+}
+/**
+ * @brief Метод перекачки байтов связи одним шагом
+ *
+ * @param want флаг, что прикладные данные нужны сейчас
+ * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+ */
+int32_t awh::Engine::Context::pump(const bool want) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Если связь не создана, сообщаем об отказе
+	if(this->_tls == nullptr)
+		// Выводим признак того, что рукопожатие не удалось
+		return 0;
+	// Если приветствие своей стороны ещё не отправлено
+	if(!this->_tls->started){
+		// Отказ заведения связи
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.start() : this->_tls->client.start());
+		// Если связь не удалось завести
+		if(error != nts::context::error_t::NONE){
+			// Выводим в лог сообщение об отказе заведения связи
+			this->_log->print("Engine: connection start failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+			// Выводим признак того, что рукопожатие не удалось
+			return 0;
+		}
+		// Запоминаем, что приветствие отправлено
+		this->_tls->started = true;
+	}
+	// Байты, которые связь должна отправить, уходят первыми
+	if(!this->flush())
+		// Сообщаем, что нужно дождаться готовности сокета к записи
+		return -2;
+	/**
+	 * Событие чтения ставится на краевой режим (EV_CLEAR), поэтому за один шаг
+	 * выбираем весь пришедший канал: оставшиеся в сокете байты не дождутся
+	 * следующего изменения состояния, и рукопожатие встанет
+	 */
+	int64_t size = -1;
+	/**
+	 * Переход по принятым байтам канала
+	 */
+	for(size_t count = 0; count < AWH_ENGINE_FEED_LIMIT; count++){
+		// Результат приёма байтов канала
+		size = this->feed();
+		// Если связь отвергла принятые байты
+		if(size == -2)
+			// Сообщаем, что рукопожатие не удалось
+			return 0;
+		// Если читать больше нечего либо собеседник закрыл связь, останавливаемся
+		if(size <= 0)
+			// Выходим из цикла
+			break;
+		// Открытый текст принятых записей забираем в буфер чтения
+		this->drain();
+	}
+	// Если подлинность по предъявленному имени не годится, рукопожатие прерываем
+	if(this->_tls->fatal)
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	/**
+	 * Записи приложения и close_notify могут прийти одним куском: открытый текст уже в
+	 * буфере, поэтому закрытие связи объявляем только когда отдавать нечего. Иначе
+	 * последнее сообщение собеседника пропало бы, не дойдя до вызывающего
+	 */
+	if(size == 0 && this->_tls->plain.empty())
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	/**
+	 * Прежний OpenSSL проверял цепочку доверенных и соответствие сертификата доменному
+	 * имени колбэками внутри рукопожатия. Наружный модуль цепочку собеседника не судит —
+	 * запас доверенных нужен ему лишь для разбора ответа OCSP, — поэтому обе проверки
+	 * делает насос: сразу по завершении рукопожатия и ровно один раз на связь
+	 */
+	if(this->established() && !this->_tls->checked){
+		// Отметка о том, что проверки выполнены
+		this->_tls->checked = true;
+		// Цепочка сертификатов собеседника
+		const vector <vector <uint8_t>> & chain = ((this->_type == type_t::SERVER) ? this->_tls->server.peer() : this->_tls->client.peer());
+		// Если проверка доверия цепочке разрешена и цепочка получена
+		if(this->_tls->verify && !chain.empty()){
+			// Миг проверки соответствия сроков сертификатов
+			const int64_t moment = static_cast <int64_t> (::time(nullptr));
+			// Роль собеседника: у клиента проверяем сервер, у сервера — клиента
+			const nts::trust::role_t role = ((this->_type == type_t::SERVER) ? nts::trust::role_t::CLIENT : nts::trust::role_t::SERVER);
+			// Отказ доверия цепочки сертификатов запасом доверенных
+			const nts::trust::error_t failure = nts::trust::verify(chain, this->_tls->store, moment, role);
+			// Если цепочка запасу не доверена, рукопожатие не удалось
+			if(failure != nts::trust::error_t::NONE){
+				// Выводим в лог сообщение о недоверенной цепочке сертификатов
+				this->_log->print("Certificate chain validation failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (failure));
+				// Сообщаем, что рукопожатие не удалось
+				return 0;
+			}
+			/**
+			 * Раздел 6.4 RFC 6125: имя узла сверяется с именами первого звена цепочки —
+			 * дополнительных имён владельца, а при их отсутствии — с общим именем
+			 */
+			if(!this->_tls->host.empty()){
+				// Отказ сличения имени узла с именами сертификата
+				const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), this->_tls->host);
+				// Если имя узла не отвечает именам сертификата, рукопожатие не удалось
+				if(error != nts::trust::error_t::NONE){
+					// Выводим в лог сообщение о несоответствии имени сертификата
+					this->_log->print("Certificate does not match the host '%s': code=%hhu", log_t::flag_t::CRITICAL, this->_tls->host.c_str(), static_cast <uint8_t> (error));
+					// Сообщаем, что рукопожатие не удалось
+					return 0;
+				}
+			}
+		}
+	}
+	// Если рукопожатие завершено обеими сторонами
+	if(this->established()){
+		/**
+		 * Завершающий полёт рукопожатия (ChangeCipherSpec и Finished у TLS 1.2) связь
+		 * складывает в накопитель тем же шагом, каким признаёт рукопожатие пройденным.
+		 * Собеседник ждёт эти байты, поэтому завершённым рукопожатие объявляем только
+		 * после их отправки: без этого ответ ушёл бы лишь по следующему событию этой
+		 * стороны, а на краевых событиях это ожидание до таймаута подключения
+		 */
+		if(!this->flush())
+			// Сообщаем, что нужно дождаться готовности сокета к записи
+			return -2;
+		// Упреждающие данные и данные конца рукопожатия приходят тем же шагом
+		if(want)
+			// Выполняем повторное извлечение принятых байтов
+			this->drain();
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	}
+	// Ответ на принятые байты отправляем сразу, не дожидаясь следующего события
+	if(!this->flush())
+		// Сообщаем, что нужно дождаться готовности сокета к записи
+		return -2;
+	/**
+	 * Открытые байты, принятые одним куском с закрытием связи, обязана получить
+	 * вызывающая сторона: рукопожатие уже пройдено, и признак наличия данных отдаём
+	 * до того, как отказ будет объявлен на следующем шаге, когда буфер опустеет
+	 */
+	if(!this->_tls->plain.empty())
+		// Сообщаем, что данные приняты
+		return 1;
+	// Выводим результат шага: завершено либо ждём данных
+	return (this->established() ? 1 : result);
 }
 /**
  * @brief Метод выполнения шага рукопожатия без передачи данных
@@ -1417,28 +2093,29 @@ int32_t awh::Engine::Context::handshake() noexcept {
  * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
  */
 int32_t awh::Engine::Context::negotiate() noexcept {
-	// Если шифрование не активно или рукопожатие уже завершено
-	if(!this->_encrypted || (this->_ssl == nullptr) || ::SSL_is_init_finished(this->_ssl))
+	// Если шифрование не активно либо связь не создана
+	if(!this->_encrypted || (this->_tls == nullptr))
 		// Сообщаем, что рукопожатие завершено
 		return 1;
 	// Если сокет не инициализирован
 	if((this->_addr == nullptr) || (this->_addr->sock == INVALID_SOCKET))
 		// Сообщаем, что рукопожатие не удалось
 		return 0;
-	// Выполняем очистку ошибок OpenSSL
-	::ERR_clear_error();
-	// Выполняем шаг рукопожатия
-	const int32_t result = this->handshake();
-	// Если рукопожатие завершено
-	if(result > 0)
+	/**
+	 * Рукопожатие засчитывается пройденным только вместе с отправкой его завершающего
+	 * полёта, поэтому неотправленные байты обязаны пойти шаг за шагом
+	 */
+	if(this->established() && !this->pending())
 		// Сообщаем, что рукопожатие завершено
 		return 1;
-	// Если рукопожатие не удалось
-	if(this->error(result) == 0)
-		// Сообщаем, что рукопожатие не удалось
-		return 0;
-	// Сообщаем, что рукопожатие продолжается (-2 - ждём готовности к записи, -1 - данных для чтения)
-	return (SSL_want_write(this->_ssl) ? -2 : -1);
+	// Выполняем шаг перекачки байтов связи
+	const int32_t result = this->pump(false);
+	// Если рукопожатие не удалось, выводим его причину
+	if(result == 0)
+		// Выводим информацию об ошибке связи
+		static_cast <void> (this->error(0));
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения времени до перепосылки рукопожатия DTLS
@@ -1447,23 +2124,14 @@ int32_t awh::Engine::Context::negotiate() noexcept {
  */
 uint32_t awh::Engine::Context::retransmission() const noexcept {
 	/**
-	 * Потерянные сообщения рукопожатия DTLS на неблокирующем сокете OpenSSL сам не
-	 * перепосылает: таймер перепосылки обслуживает цикл событий (DTLSv1_get_timeout и
-	 * DTLSv1_handle_timeout). Без этого одна потерянная датаграмма рукопожатия (например,
-	 * фрагмент ClientHello, который DTLSv1_listen не разбирает) останавливала его навсегда.
+	 * Потерянные сообщения рукопожатия DTLS перепосылает тот, кто связь ведёт: наружный
+	 * модуль лишь считает срок ожидания, часы у него отсутствуют (раздел 5.8.2 RFC 9147)
 	 */
-	if(this->_encrypted && (this->_ssl != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
-		// Время до срабатывания таймера
-		struct timeval tv;
-		// Выполняем зануление структуры времени
-		::memset(&tv, 0, sizeof(tv));
-		// Если таймер DTLS запущен
-		if(DTLSv1_get_timeout(this->_ssl, &tv) > 0){
-			// Получаем время в миллисекундах
-			const uint64_t msec = ((static_cast <uint64_t> (tv.tv_sec) * 1000) + (static_cast <uint64_t> (tv.tv_usec) / 1000));
-			// Выводим время не меньше одной миллисекунды (таймер уже истёк)
-			return static_cast <uint32_t> (msec > 0 ? std::min(msec, static_cast <uint64_t> (UINT32_MAX)) : 1);
-		}
+	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Время до срабатывания таймера в миллисекундах
+		const uint32_t msec = ((this->_type == type_t::SERVER) ? this->_tls->server.timeout() : this->_tls->client.timeout());
+		// Выводим время ожидания
+		return msec;
 	}
 	// Таймер не запущен
 	return 0;
@@ -1475,22 +2143,22 @@ uint32_t awh::Engine::Context::retransmission() const noexcept {
  */
 bool awh::Engine::Context::retransmit() noexcept {
 	// Если это подключение DTLS
-	if(this->_encrypted && (this->_ssl != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
-		// Выполняем очистку ошибок OpenSSL
-		::ERR_clear_error();
-		// Выполняем перепосылку, если таймер истёк (отрицательный результат - превышено число попыток)
-		if(DTLSv1_handle_timeout(this->_ssl) < 0){
-			// Выводим в лог сообщение
-			this->_log->print("DTLS handshake retransmission failed: %s", log_t::flag_t::WARNING, ::ERR_error_string(::ERR_get_error(), nullptr));
+	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Отказ перепосылки по истечении срока ожидания
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.elapsed() : this->_tls->client.elapsed());
+		// Если попытки перепосылки исчерпаны
+		if(error != nts::context::error_t::NONE){
+			// Выводим в лог сообщение о перепосылке
+			this->_log->print("DTLS handshake retransmission failed: code=%hhu", log_t::flag_t::WARNING, static_cast <uint8_t> (error));
 			// Сообщаем, что рукопожатие не удалось
 			return false;
 		}
-		// Если рукопожатие ещё не завершено, продвигаем его (сообщения могли прийти без события)
-		if(!::SSL_is_init_finished(this->_ssl)){
-			// Выполняем шаг рукопожатия
-			const int32_t result = this->handshake();
+		// Если рукопожатие ещё не завершено либо остались неотправленные байты, продвигаем его: сообщения могли прийти без события
+		if(!this->established() || this->pending()){
+			// Результат шага перекачки байтов связи
+			const int32_t result = this->pump(false);
 			// Если рукопожатие не удалось
-			if((result <= 0) && (this->error(result) == 0))
+			if(result == 0)
 				// Сообщаем, что рукопожатие не удалось
 				return false;
 		}
@@ -1503,44 +2171,21 @@ bool awh::Engine::Context::retransmit() noexcept {
  *
  */
 void awh::Engine::Context::clear() noexcept {
-	// Если объект верификации домена создан
-	if(this->_verify != nullptr)
-		// Зануляем объект верификации
-		this->_verify.reset(nullptr);
-	// Если контекст SSL создан
-	if(this->_ssl != nullptr){
-		// Выключаем получение данных SSL
-		::SSL_shutdown(this->_ssl);
-		// Очищаем объект SSL
-		// ::SSL_clear(this->_ssl);
-		// Освобождаем выделенную память
-		::SSL_free(this->_ssl);
-		// Зануляем контекст сервера
-		this->_ssl = nullptr;
+	// Если связь создана
+	if(this->_tls != nullptr){
+		/**
+		 * Извещение о закрытии передачи складывается в накопитель связи: отправить его
+		 * собеседнику успевает тот, кто связь ведёт, — сокет ещё не закрыт
+		 */
+		if(this->_encrypted && this->established()){
+			// Выполняем закрытие связи
+			static_cast <void> ((this->_type == type_t::SERVER) ? this->_tls->server.close() : this->_tls->client.close());
+			// Выполняем отправку накопленных байтов
+			static_cast <void> (this->flush());
+		}
+		// Выполняем очистку состояния связи
+		this->_tls.reset(nullptr);
 	}
-	// Если контекст SSL сервер был поднят
-	if(this->_ctx != nullptr){
-		// Очищаем контекст сервера
-		::SSL_CTX_free(this->_ctx);
-		// Зануляем контекст сервера
-		this->_ctx = nullptr;
-	}
-	// Если объект CRL-файла сертификата установлен
-	if(this->_crl != nullptr){
-		// Освобождаем захваченную ссылку на CRL
-		::X509_CRL_free(const_cast <X509_CRL *> (this->_crl));
-		// Зануляем объект CRL-файла сертификата
-		this->_crl = nullptr;
-	}
-	/*
-	// Если BIO создано
-	if(this->_bio != nullptr){
-		// Выполняем очистку BIO
-		::BIO_free(this->_bio);
-		// Зануляем контекст BIO
-		this->_bio = nullptr;
-	}
-	*/
 	// Если сокет активен
 	if(this->_addr != nullptr)
 		// Выполняем закрытие подключения
@@ -1555,94 +2200,45 @@ void awh::Engine::Context::clear() noexcept {
  *
  */
 void awh::Engine::Context::info() const noexcept {
-	// Если версия OpenSSL не соответствует указанной при сборке
-	if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
-		// Выводим в лог сообщение
-		this->_log->print(
-			"OpenSSL version mismatch!\r\n"
-			"Compiled against %s\r\n"
-			"Linked against   %s",
-			log_t::flag_t::WARNING,
-			OPENSSL_VERSION_TEXT,
-			::OpenSSL_version(OPENSSL_VERSION)
-		);
-		// Если мажорная и минорная версия OpenSSL не совпадают
-		if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20)){
-			// Выводим в лог сообщение
-			this->_log->print("Major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-	// Если всё хорошо, выводим версию OpenSSL
-	} else this->_log->print("Using %s", log_t::flag_t::INFO, ::OpenSSL_version(OPENSSL_VERSION));
-	// Если версия OpenSSL ниже версии 1.1.1b
-	if(OPENSSL_VERSION_NUMBER < 0x1010102fL){
-		// Выводим в лог сообщение
-		this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
-	// Если объект подключения создан и сертификат передан
-	if(this->_ssl != nullptr){
-		// Выполняем получение сертификата сервера
-		X509 * cert = ::SSL_get_peer_certificate(this->_ssl);
-		// Если сертификат сервера получен
-		if(cert != nullptr){
-			// Буфер данных для получения данных
-			char buffer[256];
-			// Выводим начальный разделитель
-			printf ("------------------------------------------------------------\n\n");
-			// Выводим заголовок
-			printf("Peer certificates:\n");
-			// Получаем название сертификата
-			::X509_NAME_oneline(::X509_get_subject_name(cert), buffer, sizeof(buffer));
-			// Выводим название сертификата
-			printf("Subject: %s\n", buffer);
-			// Получаем эмитента выпустившего сертификат
-			::X509_NAME_oneline(::X509_get_issuer_name(cert), buffer, sizeof(buffer));
-			// Выводим эмитента сертификата
-			printf("Issuer: %s\n", buffer);
-			// Выводим параметры шифрования
-			printf("Cipher: %s\n", ::SSL_CIPHER_get_name(SSL_get_current_cipher(this->_ssl)));
-			// Выводим конечный разделитель
-			printf ("\n------------------------------------------------------------\n\n");
+	// Код издания протокола, согласованного связью
+	const uint16_t version = ((this->_type == type_t::SERVER) ? this->_tls->server.version() : this->_tls->client.version());
+	// Если связь уже что-то согласовала, выводим её параметры
+	if(version > 0)
+		// Выводим в лог информационное сообщение о согласованных параметрах связи
+		this->_log->print("A-NTS: protocol 0x%04X cipher %s", log_t::flag_t::INFO, version, suiteName(((this->_type == type_t::SERVER) ? this->_tls->server.suite() : this->_tls->client.suite())));
+	// Если связь инициализирована
+	if(this->_tls != nullptr){
+		// Цепочка сертификатов собеседника
+		const vector <vector <uint8_t>> & chain = ((this->_type == type_t::SERVER) ? this->_tls->server.peer() : this->_tls->client.peer());
+		// Набор шифрования, согласованный связью
+		const nts::protect::suite_t suite = ((this->_type == type_t::SERVER) ? this->_tls->server.suite() : this->_tls->client.suite());
+		// Буфер данных для получения названий сертификата
+		string subject, issuer;
+		// Если сертификат собеседника получен
+		if(!chain.empty()){
+			// Разбираемый сертификат собеседника
+			nts::x509::certificate_t cert;
+			// Если сертификат разобрался, выводим его названия
+			if(nts::x509::error_t::NONE == cert.parse(nts::view_t(chain.front().data(), chain.front().size()))){
+				// Выводим начальный разделитель
+				printf ("------------------------------------------------------------\n\n");
+				// Выводим заголовок
+				printf("Peer certificates:\n");
+				// Выполняем извлечение названия владельца сертификата
+				nts::x509::text(cert.subjects(), subject);
+				// Выводим название сертификата
+				printf("Subject: %s\n", subject.c_str());
+				// Выполняем извлечение названия эмитента сертификата
+				nts::x509::text(cert.issuers(), issuer);
+				// Выводим эмитента сертификата
+				printf("Issuer: %s\n", issuer.c_str());
+				// Выводим параметры шифрования
+				printf("Cipher: %s\n", suiteName(suite));
+				// Выводим конечный разделитель
+				printf ("\n------------------------------------------------------------\n\n");
+			}
 		}
 	}
-	// Если объект CRL-файла сертификата создан
-	if(this->_crl != nullptr){
-		/**
-		 * Печатаем в стандартный вывод, а не в this->_bio: это BIO сокета,
-		 * и печать в него отправляла текст CRL удалённой стороне в обход шифрования
-		 */
-		BIO * bio = ::BIO_new_fp(stdout, BIO_NOCLOSE);
-		// Если BIO стандартного вывода создан
-		if(bio != nullptr){
-			// Выводим информацию об отозванном сертификате
-			::X509_CRL_print(bio, const_cast <X509_CRL *> (this->_crl));
-			// Выполняем очистку памяти BIO
-			::BIO_free(bio);
-		}
-	}
-}
-/**
- * @brief Метод установки CRL-файла сертификата
- *
- * @param crl CRL-файл сертификат
- */
-void awh::Engine::Context::crl(const X509_CRL * crl) noexcept {
-	// Если объект CRL-файла сертификата уже был установлен
-	if(this->_crl != nullptr)
-		// Освобождаем ранее захваченную ссылку
-		::X509_CRL_free(const_cast <X509_CRL *> (this->_crl));
-	// Зануляем объект CRL-файла сертификата
-	this->_crl = nullptr;
-	/**
-	 * Контекст захватывает собственную ссылку на CRL: движок освобождает свой объект CRL
-	 * при каждом новом подключении клиента, и без ссылки у старых контекстов оставался висячий указатель
-	 */
-	if((crl != nullptr) && (::X509_CRL_up_ref(const_cast <X509_CRL *> (crl)) == 1))
-		// Выполняем установку объекта CRL-файла сертификата
-		this->_crl = crl;
 }
 /**
  * @brief Метод чтения данных из сокета
@@ -1658,62 +2254,50 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
 	   (this->_type != type_t::NONE) && (this->_addr->sock != INVALID_SOCKET)){
 		// Если защищённый режим работы разрешён
-		if(this->_encrypted && (this->_ssl != nullptr)){
-			// Выполняем очистку ошибок OpenSSL
-			::ERR_clear_error();
-			// Если подключение ещё активно
-			if(!(::SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
-				// Если подключение выполнено
-				if((result = this->handshake()) > 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Если подробная информация ещё не выведена
-						if(!this->_verb){
-							// Запоминаем, что подробная информация уже была выведена
-							this->_verb = true;
-							// Выводим информацию об OpenSSL
-							this->info();
-						}
-					#endif
-					/**
-					 * Определяем сокет подключения
-					 */
-					switch(this->_addr->_type){
-						// Если сокет установлен как TCP/IP
-						case SOCK_STREAM:
-							// Выполняем чтение из защищённого сокета
-							result = ::SSL_read(this->_ssl, buffer, size);
-						break;
-						// Если сокет установлен UDP
-						case SOCK_DGRAM:
-							/**
-							 * Читаем через SSL_read, а не BIO_read: this->_bio это сырой
-							 * датаграммный BIO сокета, чтение из него минует расшифровку DTLS
-							 * и отдаёт приложению записи как есть (прикладные данные шли открытым текстом).
-							 * BIO используется только для управляющих вызовов (BIO_ctrl).
-							 */
-							result = ::SSL_read(this->_ssl, buffer, size);
-						break;
-					}
-				}
+		if(this->_encrypted && (this->_tls != nullptr)){
+			// Результат шага перекачки байтов связи
+			const int32_t step = this->pump(true);
+			// Если связь не допустила байтов
+			if(step <= 0){
 				/**
-				 * Если рукопожатие или чтение не выполнены, решение принимаем по коду OpenSSL
-				 * (SSL_get_error от исходного результата вызова), а не по errno: у неблокирующего
-				 * сокета SSL_ERROR_WANT_READ/WANT_WRITE означают «повторить позже» (-1), а errno
-				 * при этом может остаться от предыдущего системного вызова и ошибочно
-				 * трактоваться общим разбором ниже как разрыв подключения (0).
+				 * Связь жива, но байтов нет: ждём следующего события. Решение принимаем
+				 * по шагу перекачки, а не по errno — у неблокирующего сокета errno может
+				 * остаться от прежнего системного вызова
 				 */
-				if(result <= 0){
-					// Если нужно отключиться
-					if((result = this->error(result)) == 0)
-						// Устанавливаем статус отключён
-						this->_addr->status = addr_t::status_t::DISCONNECTED;
-					// Выводим полученный результат
-					return result;
-				}
+				if((step == -1) || (step == -2))
+					// Выполняем пропуск попытки
+					return -1;
+				// Если нужно отключиться
+				if((result = this->error(0)) == 0)
+					// Устанавливаем статус отключён
+					this->_addr->status = addr_t::status_t::DISCONNECTED;
+				// Выводим полученный результат
+				return result;
 			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Если подробная информация ещё не выведена
+				if(!this->_verb){
+					// Запоминаем, что подробная информация уже была выведена
+					this->_verb = true;
+					// Выводим информацию о связи
+					this->info();
+				}
+			#endif
+			// Если неотданных байтов открытого текста нет, отдавать нечего
+			if(this->_tls->plain.empty())
+				// Выполняем пропуск попытки
+				return -1;
+			// Количество байтов, отдаваемых вызывающему
+			result = static_cast <int64_t> ((this->_tls->plain.size() < size) ? this->_tls->plain.size() : size);
+			// Выполняем копирование прочитанных байтов в буфер вызывающего
+			::memcpy(buffer, this->_tls->plain.data(), static_cast <size_t> (result));
+			// Снимаем отданные байты с остатка открытого текста
+			this->_tls->plain.erase(this->_tls->plain.begin(), this->_tls->plain.begin() + static_cast <size_t> (result));
+			// Выводим полученный результат
+			return result;
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
 			// Если сокет установлен как TCP/IP
@@ -1870,57 +2454,31 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если защищённый режим работы разрешён
-					if(this->_encrypted && (this->_ssl != nullptr)){
-						// Получаем данные описание ошибки
-						if(::SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
-							// Выполняем пропуск попытки
-							return -1;
-						// Иначе выводим сообщение об ошибке
-						else result = this->error(result);
 					/**
 					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
-						// Если защищённый режим работы запрещён
-						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+						// Если данные не приняты по временной причине
+						if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 							// Выполняем пропуск попытки
 							return -1;
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
-						// Если защищённый режим работы запрещён
-						} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+						// Если данные не приняты по временной причине
+						if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
 							// Выполняем пропуск попытки
 							return -1;
 					#endif
 					// Иначе выводим сообщение об ошибке
-					else result = this->error(result);
+					result = this->error(result);
 				}
 			}
 			// Если произошло отключение
 			if(result == 0)
 				// Устанавливаем статус отключён
 				this->_addr->status = addr_t::status_t::DISCONNECTED;
-		// Если данные получены удачно
-		} else {
-			/**
-			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
-			 */
-			#if (__linux__ || __FreeBSD__) && DEBUG_MODE
-				// Если протокол интернета установлен как SCTP
-				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
-					// Создаём объект получения информационных событий
-					struct bio_dgram_sctp_rcvinfo info;
-					// Выполняем зануление объекта информационного события
-					::memset(&info, 0, sizeof(info));
-					// Выполняем извлечение события
-					::BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
-					// Выводим в лог информационное сообщение
-					this->_log->print("Read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
-				}
-			#endif
 		}
 	}
 	// Выводим результат
@@ -1940,83 +2498,62 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
 	   (this->_type != type_t::NONE) && (this->_addr->sock != INVALID_SOCKET)){
 		// Если защищённый режим работы разрешён
-		if(this->_encrypted && (this->_ssl != nullptr)){
-			// Выполняем очистку ошибок OpenSSL
-			::ERR_clear_error();
-			// Если подключение ещё активно
-			if(!(::SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
-				// Если подключение выполнено
-				if((result = this->handshake()) > 0){
-					/**
-					 * Для операционной системы Linux или FreeBSD
-					 */
-					#if __linux__ || __FreeBSD__
-						// Если протокол интернета установлен как SCTP
-						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
-							// Создаём объект получения информационных событий
-							struct bio_dgram_sctp_sndinfo info;
-							// Выполняем зануление объекта информационного события
-							::memset(&info, 0, sizeof(info));
-							// Выполняем установку события
-							::BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
-						}
-					#endif
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Если подробная информация ещё не выведена
-						if(!this->_verb){
-							// Запоминаем, что подробная информация уже была выведена
-							this->_verb = true;
-							// Выводим информацию об OpenSSL
-							this->info();
-						}
-					#endif
-					/**
-					 * Определяем сокет подключения
-					 */
-					switch(this->_addr->_type){
-						// Если сокет установлен как TCP/IP
-						case SOCK_STREAM:
-							// Выполняем отправку сообщения через защищённый канал
-							result = ::SSL_write(this->_ssl, buffer, size);
-						break;
-						// Если сокет установлен UDP
-						case SOCK_DGRAM:
-							/**
-							 * Пишем через SSL_write, а не BIO_write: запись в сырой датаграммный
-							 * BIO сокета минует шифрование DTLS и отправляет данные открытым текстом.
-							 */
-							result = ::SSL_write(this->_ssl, buffer, size);
-						break;
-					}
-				}
+		if(this->_encrypted && (this->_tls != nullptr)){
+			// Результат шага перекачки байтов связи
+			const int32_t step = this->pump(false);
+			// Если рукопожатие не выполнено
+			if(step <= 0){
 				/**
-				 * Если рукопожатие или запись не выполнены, решение принимаем по коду OpenSSL
-				 * (SSL_get_error от исходного результата вызова), а не по errno: у неблокирующего
-				 * сокета SSL_ERROR_WANT_WRITE/WANT_READ означают «повторить позже» (-1), и вызывающий
-				 * ставит данные в очередь отправки, а не разрывает подключение.
+				 * Связь жива, но рукопожатие не сошлось: вызывающий ставит данные в
+				 * очередь отправки и повторит попытку по событии, а не рвёт подключение
 				 */
-				if(result <= 0){
-					/**
-					 * Для датаграммного сокета (DTLS) переполнение буфера получателя (ENOBUFS, так
-					 * отвечает unix-сокет датаграмм в macOS) или EAGAIN не разрывают подключение:
-					 * OpenSSL в этом случае отбрасывает запись и сообщает SSL_ERROR_SYSCALL без
-					 * фатального состояния сессии, повторный SSL_write формирует новую запись.
-					 * Возвращаем -1, и вызывающий ставит датаграмму в очередь отправки
-					 */
-					if((this->_addr->_type == SOCK_DGRAM) && (::SSL_get_error(this->_ssl, result) == SSL_ERROR_SYSCALL) && this->retry())
-						// Выполняем пропуск попытки
-						return -1;
-					// Если нужно отключиться
-					if((result = this->error(result)) == 0)
-						// Устанавливаем статус отключён
-						this->_addr->status = addr_t::status_t::DISCONNECTED;
-					// Выводим полученный результат
-					return result;
-				}
+				if((step == -1) || (step == -2))
+					// Выполняем пропуск попытки
+					return -1;
+				// Если нужно отключиться
+				if((result = this->error(0)) == 0)
+					// Устанавливаем статус отключён
+					this->_addr->status = addr_t::status_t::DISCONNECTED;
+				// Выводим полученный результат
+				return result;
 			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Если подробная информация ещё не выведена
+				if(!this->_verb){
+					// Запоминаем, что подробная информация уже была выведена
+					this->_verb = true;
+					// Выводим информацию о связи
+					this->info();
+				}
+			#endif
+			/**
+			 * Пока сокет не принял то, что сложила связь, новые прикладные байты в связь
+			 * не кладём: повтор пойдёт из очереди вызывающего по событии записи, и
+			 * принятые ранее байты не окажутся записаны дважды
+			 */
+			if(!this->flush())
+				// Выполняем пропуск попытки
+				return -1;
+			// Байты прикладных данных, передаваемые связи
+			const nts::view_t data(reinterpret_cast <const uint8_t *> (buffer), size);
+			// Отказ передачи прикладных данных связи
+			const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.write(data) : this->_tls->client.write(data));
+			// Если связь отвергла прикладные байты
+			if(error != nts::context::error_t::NONE){
+				// Выводим в лог сообщение об отказе передачи
+				this->_log->print("Engine: send refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+				// Устанавливаем статус отключён
+				this->_addr->status = addr_t::status_t::DISCONNECTED;
+				// Выводим признак того, что отправка не выполнена
+				return 0;
+			}
+			// Отправляем то, что сложила связь: неотосланное уйдёт следующим шагом
+			static_cast <void> (this->flush());
+			// Выводим количество принятых связью байтов
+			return static_cast <int64_t> (size);
 		// Выполняем отправку сообщения в сокет
 		} else {
 			// Если сокет установлен как TCP/IP
@@ -2201,76 +2738,31 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				} break;
 				// Для остальных ошибок
 				default: {
-					// Если защищённый режим работы разрешён
-					if(this->_encrypted && (this->_ssl != nullptr)){
-						// Получаем данные описание ошибки
-						if(::SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_WRITE)
-							// Выполняем пропуск попытки
-							return -1;
-						// Иначе выводим сообщение об ошибке
-						else result = this->error(result);
 					/**
 					 * Для операционной системы MS Windows
 					 */
 					#if _WIN32 || _WIN64
-						// Если защищённый режим работы запрещён
-						} else if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
+						// Если данные не отправлены по временной причине
+						if((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAEINTR))
 							// Выполняем пропуск попытки
 							return -1;
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
-						// Если защищённый режим работы запрещён
-						} else if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
+						// Если данные не отправлены по временной причине
+						if((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EINTR))
 							// Выполняем пропуск попытки
 							return -1;
 					#endif
 					// Иначе выводим сообщение об ошибке
-					else result = this->error(result);
+					result = this->error(result);
 				}
 			}
 			// Если произошло отключение
 			if(result == 0)
 				// Устанавливаем статус отключён
 				this->_addr->status = addr_t::status_t::DISCONNECTED;
-		// Если данные отправлены удачно
-		} else {
-			/**
-			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
-			 */
-			#if (__linux__ || __FreeBSD__) && DEBUG_MODE
-				// Если протокол интернета установлен как SCTP
-				if((this->_addr->_protocol == IPPROTO_SCTP) && (::SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
-					/**
-					 * Определяем тип подключения
-					 */
-					switch(static_cast <uint8_t> (this->_addr->status)){
-						// Если статус установлен как подключение клиентом
-						case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
-							// Создаём объект получения информационных событий
-							struct bio_dgram_sctp_sndinfo info;
-							// Выполняем зануление объекта информационного события
-							::memset(&info, 0, sizeof(info));
-							// Выполняем извлечение события
-							::BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
-							// Выводим в лог информационное сообщение
-							this->_log->print("Wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.snd_sid, info.snd_ppid);
-						} break;
-						// Если статус установлен как разрешение подключения к серверу
-						case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
-							// Создаём объект получения информационных событий
-							struct bio_dgram_sctp_rcvinfo info;
-							// Выполняем зануление объекта информационного события
-							::memset(&info, 0, sizeof(info));
-							// Выполняем извлечение события
-							::BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
-							// Выводим в лог информационное сообщение
-							this->_log->print("Wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int32_t> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
-						} break;
-					}
-				}
-			#endif
 		}
 	}
 	// Выводим результат
@@ -2298,45 +2790,22 @@ bool awh::Engine::Context::blocking() noexcept {
 bool awh::Engine::Context::blocking(const mode_t mode) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Если защищённый режим работы разрешён
+		// Если сокет инициализирован
 		if(this->_addr->sock != INVALID_SOCKET){
 			/**
 			 * Определяем режим применяемой операции
 			 */
 			switch(static_cast <uint8_t> (mode)){
 				// Если необходимо перевести сокет в блокирующий режим
-				case static_cast <uint8_t> (mode_t::ENABLED): {
+				case static_cast <uint8_t> (mode_t::ENABLED):
 					// Переводим сокет в блокирующий режим
 					this->_addr->_async = !this->_addr->_socket.blocking(this->_addr->sock, socket_t::mode_t::ENABLED);
-					// Если шифрование включено
-					if(this->_encrypted && (this->_ssl != nullptr)){
-						// Устанавливаем блокирующий режим ввода/вывода для сокета
-						::BIO_set_nbio(this->_bio, 0);
-						// Заставляем OpenSSL автоматически повторять попытки отправки, после неудачно записи данных
-						::SSL_set_mode(this->_ssl, SSL_MODE_AUTO_RETRY);
-						/**
-						 * Разрешение передавать при повторной записи буфер по другому адресу не снимается:
-						 * блокирующая запись ограничена таймаутом записи сокета, и у медленного клиента
-						 * SSL_write возвращает SSL_ERROR_WANT_WRITE, а недописанное уходит в очередь
-						 * отправки. Повтор идёт из очереди, то есть по другому адресу, и без этого
-						 * разрешения OpenSSL рвал подключение ошибкой «bad write retry»
-						 */
-					}
-				} break;
+				break;
 				// Если необходимо перевести сокет в неблокирующий режим
-				case static_cast <uint8_t> (mode_t::DISABLED): {
+				case static_cast <uint8_t> (mode_t::DISABLED):
 					// Переводим сокет в не блокирующий режим
 					this->_addr->_async = this->_addr->_socket.blocking(this->_addr->sock, socket_t::mode_t::DISABLED);
-					// Если шифрование включено
-					if(this->_encrypted && (this->_ssl != nullptr)){
-						// Устанавливаем неблокирующий режим ввода/вывода для сокета
-						::BIO_set_nbio(this->_bio, 1);
-						// Запрещаем OpenSSL автоматически повторять попытки отправки, после неудачно записи данных
-						::SSL_clear_mode(this->_ssl, SSL_MODE_AUTO_RETRY);
-						// Разрешаем передавать буфер с тем же содержимым при повторным вызове записи
-						::SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-					}
-				} break;
+				break;
 			}
 		}
 		// Выводим результат
@@ -2356,44 +2825,24 @@ bool awh::Engine::Context::cork(const mode_t mode) noexcept {
 	bool result = false;
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Если защищённый режим работы разрешён
+		// Если сокет инициализирован
 		if(this->_addr->sock != INVALID_SOCKET){
 			// Если сокет установлен TCP/IP
 			if(this->_addr->_type == SOCK_STREAM){
-				// Флаг разрешения активации алгоритма TCP/CORK
-				bool allow = true;
 				/**
-				 * Для операционной системы Linux или FreeBSD
+				 * Определяем режим применяемой операции
 				 */
-				#if __linux__ || __FreeBSD__
-					// Если протокол интернета установлен как SCTP
-					allow = (this->_addr->_protocol != IPPROTO_SCTP);
-				#endif
-				// Если разрешено активировать алгоритм TCP/CORK
-				if(allow){
-					/**
-					 * Определяем режим применяемой операции
-					 */
-					switch(static_cast <uint8_t> (mode)){
-						// Если необходимо активировать алгоритм TCP/CORK
-						case static_cast <uint8_t> (mode_t::ENABLED): {
-							// Выполняем активирование алгоритма TCP/CORK
-							result = this->_addr->_socket.cork(this->_addr->sock, socket_t::mode_t::ENABLED);
-							// Если шифрование включено
-							if(this->_encrypted && (this->_ssl != nullptr))
-								// Запрещаем отправку частичных пакетов в соединение
-								::SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-						} break;
-						// Если необходимо деактивировать алгоритм TCP/CORK
-						case static_cast <uint8_t> (mode_t::DISABLED): {
-							// Выполняем деактивирование алгоритма TCP/CORK
-							result = this->_addr->_socket.cork(this->_addr->sock, socket_t::mode_t::DISABLED);
-							// Если шифрование включено
-							if(this->_encrypted && (this->_ssl != nullptr))
-								// Разрешаем отправку частичных пакетов в соединение
-								::SSL_set_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-						}
-					}
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо активировать алгоритм TCP/CORK
+					case static_cast <uint8_t> (mode_t::ENABLED):
+						// Выполняем активирование алгоритма TCP/CORK
+						result = this->_addr->_socket.cork(this->_addr->sock, socket_t::mode_t::ENABLED);
+					break;
+					// Если необходимо деактивировать алгоритм TCP/CORK
+					case static_cast <uint8_t> (mode_t::DISABLED):
+						// Выполняем деактивирование алгоритма TCP/CORK
+						result = this->_addr->_socket.cork(this->_addr->sock, socket_t::mode_t::DISABLED);
+					break;
 				}
 			}
 		}
@@ -2412,48 +2861,24 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 	bool result = false;
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Если защищённый режим работы разрешён
+		// Если сокет инициализирован
 		if(this->_addr->sock != INVALID_SOCKET){
 			// Если сокет установлен TCP/IP
 			if(this->_addr->_type == SOCK_STREAM){
-				// Флаг разрешения активации алгоритма Найгла
-				bool allow = true;
 				/**
-				 * Для операционной системы Linux или FreeBSD
+				 * Определяем режим применяемой операции
 				 */
-				#if __linux__ || __FreeBSD__
-					// Если протокол интернета установлен как SCTP
-					allow = (this->_addr->_protocol != IPPROTO_SCTP);
-				#endif
-				// Если разрешено активировать алгоритм Найгла
-				if(allow){
-					/**
-					 * Определяем режим применяемой операции
-					 */
-					switch(static_cast <uint8_t> (mode)){
-						// Если необходимо деактивировать алгоритм Нейгла
-						case static_cast <uint8_t> (mode_t::ENABLED): {
-							// Если шифрование включено
-							if(this->_encrypted && (this->_ssl != nullptr)){
-								// Разрешаем отправку частичных пакетов в соединение
-								::SSL_set_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-								// Отключаем алгоритм Нейгла (BIO_set_tcp_ndelay возвращает 1 при успехе)
-								result = static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 1));
-							// Выполняем деактивирование алгоритма Нейгла
-							} else result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::ENABLED);
-						} break;
-						// Если необходимо активировать алгоритм Нейгла
-						case static_cast <uint8_t> (mode_t::DISABLED): {
-							// Если шифрование включено
-							if(this->_encrypted && (this->_ssl != nullptr)){
-								// Запрещаем отправку частичных пакетов в соединение
-								::SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-								// Включаем алгоритм Нейгла (BIO_set_tcp_ndelay возвращает 1 при успехе)
-								result = static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 0));
-							// Выполняем активирование алгоритма Нейгла
-							} else result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::DISABLED);
-						} break;
-					}
+				switch(static_cast <uint8_t> (mode)){
+					// Если необходимо деактивировать алгоритм Нейгла
+					case static_cast <uint8_t> (mode_t::ENABLED):
+						// Выполняем деактивирование алгоритма Нейгла
+						result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::ENABLED);
+					break;
+					// Если необходимо активировать алгоритм Нейгла
+					case static_cast <uint8_t> (mode_t::DISABLED):
+						// Выполняем активирование алгоритма Нейгла
+						result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::DISABLED);
+					break;
 				}
 			}
 		}
@@ -2560,13 +2985,6 @@ bool awh::Engine::Context::buffer(const int32_t read, const int32_t write) noexc
 	if((this->_addr != nullptr) && (read > 0) && (write > 0)){
 		// Если сокет удачно инициализирован
 		if(this->_addr->sock != INVALID_SOCKET){
-			// Если защищённый режим работы разрешён
-			if(this->_encrypted && (this->_ssl != nullptr)){
-				// Устанавливаем размер буфера данных на чтение в BIO SSL
-				::BIO_set_read_buffer_size(this->_bio, static_cast <long> (read));
-				// Устанавливаем размер буфера данных на запись в BIO SSL
-				::BIO_set_write_buffer_size(this->_bio, static_cast <long> (write));
-			}
 			// Выполняем установку буферов сокета на чтение и запись
 			return (
 				this->_addr->_socket.bufferSize(this->_addr->sock, read, socket_t::mode_t::READ) &&
@@ -2588,28 +3006,63 @@ int32_t awh::Engine::Context::availability(const method_t method) const noexcept
 	int32_t result = 0;
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
-		// Если защищённый режим работы разрешён
+		// Если сокет инициализирован
 		if(this->_addr->sock != INVALID_SOCKET){
 			/**
 			 * Определяем метод для работы с буфером
 			 */
 			switch(static_cast <uint8_t> (method)){
 				// Если метод чтения
-				case static_cast <uint8_t> (method_t::READ):
+				case static_cast <uint8_t> (method_t::READ): {
 					// Получаем размер данных в буфере для чтения
-					result = this->_addr->_socket.availability(this->_addr->sock, socket_t::mode_t::READ);
-				break;
+					result = static_cast <int32_t> (this->_addr->_socket.availability(this->_addr->sock, socket_t::mode_t::READ));
+					/**
+					 * Открытый текст, принятый связью и ещё не отданный вызывающему, лежит
+					 * в накопителе контекста: в буфере сокета его уже нет, но читателю он доступен
+					 */
+					if((this->_tls != nullptr) && !this->_tls->plain.empty())
+						// Добавляем неотданный остаток открытого текста
+						result += static_cast <int32_t> (this->_tls->plain.size());
+				} break;
 				// Если метод записи
-				case static_cast <uint8_t> (method_t::WRITE):
+				case static_cast <uint8_t> (method_t::WRITE): {
 					// Получаем размер буфере для записи
-					result = this->_addr->_socket.availability(this->_addr->sock, socket_t::mode_t::WRITE);
-				break;
+					result = static_cast <int32_t> (this->_addr->_socket.availability(this->_addr->sock, socket_t::mode_t::WRITE));
+					// Если связь инициализирована, добавляем байты, которые она ещё не передала
+					if((this->_tls != nullptr) && (this->_type == type_t::SERVER)){
+						// Размер неотправленного накопителя связи
+						const size_t size = this->_tls->server.output().size;
+						// Если накопитель заполнен, учитываем его
+						if(size > 0)
+							// Добавляем неотправленные байты
+							result += static_cast <int32_t> (size);
+					// Если связь клиентская, берём её накопитель
+					} else if(this->_tls != nullptr){
+						// Размер неотправленного накопителя связи
+						const size_t size = this->_tls->client.output().size;
+						// Если накопитель заполнен, учитываем его
+						if(size > 0)
+							// Добавляем неотправленные байты
+							result += static_cast <int32_t> (size);
+					}
+				} break;
 			}
 		}
 	}
 	// Выводим результат
 	return result;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ *
+ */
+awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
+ _verb(false), _encrypted(false), _type(type_t::NONE), _proto(proto_t::RAW),
+ _tls(nullptr), _addr(nullptr), _fmk(fmk), _log(log) {}
+
 /**
  * @brief Метод выполнения выбора следующего протокола
  *
@@ -2654,1103 +3107,336 @@ awh::Engine::Context::~Context() noexcept {
 	this->clear();
 }
 /**
- * @brief Метод проверки на эквивалентность доменных имен
+ * @brief Метод установки подлинности стороны связи по файлам сертификатов
  *
- * @param first  первое доменное имя
- * @param second второе доменное имя
- * @return       результат проверки
+ * Подготовка ключа RSA стоит вдвое дороже самой подписи, а ключа ECDSA — вдвое дороже всего
+ * рукопожатия, поэтому подготовленная подлинность разделяется всеми связями одной пары файлов
+ *
+ * @param target контекст назначения
+ * @param cert   адреса файлов сертификатов
+ * @return       результат установки
  */
-bool awh::Engine::rawEqual(const string & first, const string & second) const noexcept {
+bool awh::Engine::credential(ctx_t & target, const cert_t & cert) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если данные переданы
-	if(!first.empty() && !second.empty())
-		// Проверяем совпадение строки
-		result = (first.compare(second) == 0);
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод проверки на не эквивалентность доменных имен
- *
- * @param first  первое доменное имя
- * @param second второе доменное имя
- * @param max    количество начальных символов для проверки
- * @return       результат проверки
- */
-bool awh::Engine::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если данные переданы
-	if(!first.empty() && !second.empty()){
-		// Получаем новые значения
-		string first1 = first;
-		string second1 = second;
-		// Получаем новые значения переменных
-		const string & first2 = first1.replace(max, first1.length() - max, "");
-		const string & second2 = second1.replace(max, second1.length() - max, "");
-		// Проверяем совпадение строки
-		result = (first2.compare(second2) == 0);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод проверки эквивалентности доменного имени с учетом шаблона
- *
- * @param host доменное имя
- * @param patt шаблон домена
- * @return     результат проверки
- */
-bool awh::Engine::hostmatch(const string & host, const string & patt) const noexcept {
-	// Результат работы функции
-	bool result = true;
-	// Если данные переданы
-	if(!host.empty() && !patt.empty()){
-		// Запоминаем шаблон и хоста
-		string hostLabel = host;
-		string pattLabel = patt;
-		// Позиция звездочки в шаблоне
-		const size_t pattWildcard = patt.find('*');
-		// Ищем звездочку в шаблоне не найдена
-		if(pattWildcard == string::npos)
-			// Выполняем проверку эквивалентности доменных имён
-			return this->rawEqual(patt, host);
-		// Определяем конец шаблона
-		const size_t pattLabelEnd = patt.find('.');
-		// Если это конец тогда запрещаем активацию шаблона
-		if((pattLabelEnd == string::npos) || (pattWildcard > pattLabelEnd) || this->rawNequal(patt, "xn--", 4))
-			// Выполняем проверку эквивалентности доменных имён
-			return this->rawEqual(patt, host);
-		// Выполняем поиск точки в название хоста
-		const size_t hostLabelEnd = host.find('.');
-		// Если хост не найден
-		if((pattLabelEnd != string::npos) && (hostLabelEnd != string::npos)){
-			// Обрезаем строку шаблона
-			const string & p = pattLabel.replace(0, pattLabelEnd, "");
-			// Обрезаем строку хоста
-			const string & h = hostLabel.replace(0, hostLabelEnd, "");
-			// Выполняем сравнение
-			if(!this->rawEqual(p, h))
-				// Выходим из функции
+	// Если связь и адрес файла цепочки сертификатов переданы
+	if((target._tls != nullptr) && !cert.pem.empty()){
+		// Запись запаса подлинностей, ключом которой служит пара адресов файлов
+		const string mark = this->_fmk->format("%s\n%s", cert.pem.c_str(), cert.key.c_str());
+		// Разобранные и подготовленные файлы цепочки и ключа
+		auto i = this->_keys->held.find(mark);
+		// Если подлинность этих файлов ещё не готовилась, разбираем и готовим её
+		if(i == this->_keys->held.end()){
+			// Разбираемая подлинность стороны связи
+			nts::context::credential_t credential;
+			// Прочитанные байты файла цепочки сертификатов
+			const vector <char> pem = this->_fs.read(cert.pem);
+			// Если текст цепочки сертификатов не прочитался либо не разобрался
+			if(pem.empty() || (nts::pem::certificates(string(pem.begin(), pem.end()), credential.chain) != nts::pem::error_t::NONE) || credential.chain.empty()){
+				// Выводим в лог сообщение о нечитаемом сертификате
+				this->_log->print("Certificate cannot be set: %s", log_t::flag_t::CRITICAL, cert.pem.c_str());
+				// Выводим признак того, что подлинность не установлена
 				return false;
-		// Выходим
-		} else return false;
-		// Если диапазоны точки в шаблоне и хосте отличаются тогда выходим
-		if(hostLabelEnd < pattLabelEnd)
-			// Выходим из функции
-			return false;
-		// Получаем размер префикса и суфикса
-		const size_t prefixlen = pattWildcard;
-		const size_t suffixlen = (pattLabelEnd - (pattWildcard + 1));
-		// Обрезаем строку шаблона
-		const string & p = pattLabel.replace(0, pattWildcard + 1, "");
-		// Обрезаем строку хоста
-		const string & h = hostLabel.replace(0, hostLabelEnd - suffixlen, "");
-		// Проверяем эквивалент результата
-		return (this->rawNequal(patt, host, prefixlen) && this->rawNequal(p, h, suffixlen));
+			}
+			// Если приватный ключ сертификата задан
+			if(!cert.key.empty()){
+				// Прочитанные байты файла приватного ключа
+				const vector <char> secret = this->_fs.read(cert.key);
+				// Если текст приватного ключа не прочитался
+				if(secret.empty()){
+					// Выводим в лог сообщение о нечитаемом ключе
+					this->_log->print("Private key cannot be set: %s", log_t::flag_t::CRITICAL, cert.key.c_str());
+					// Выводим признак того, что подлинность не установлена
+					return false;
+				}
+				/**
+				 * Секретный ключ передаётся наружному модулю текстом PEM: разбор обёртки
+				 * и вида ключа делает сама библиотека, а заготовку подписи — prepare()
+				 */
+				credential.secret.assign(secret.begin(), secret.end());
+				// Отказ подготовки секретного ключа
+				const nts::context::error_t error = credential.prepare();
+				// Если ключ не подготовлен, подлинность не годится
+				if(error != nts::context::error_t::NONE){
+					// Выводим в лог сообщение об отказе подготовки ключа
+					this->_log->print("Private key is not valid: %s code=%hhu", log_t::flag_t::CRITICAL, cert.key.c_str(), static_cast <uint8_t> (error));
+					// Выводим признак того, что подлинность не установлена
+					return false;
+				}
+			}
+			// Выполняем установку подготовленной подлинности в запас
+			i = this->_keys->held.emplace(mark, std::move(credential)).first;
+		}
+		// Устанавливаем подлинность в связь активного рода
+		if(target._type == type_t::SERVER)
+			// Выполняем установку подлинности связи сервера
+			target._tls->server.credential(i->second);
+		else target._tls->client.credential(i->second);
+		// Запоминаем, что подлинность установлена
+		result = true;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * @brief Метод проверки доменного имени по шаблону
+ * @brief Метод выбора подлинности сервера по имени, запрошенному клиентом (SNI)
  *
- * @param host доменное имя
- * @param patt шаблон домена
- * @return     результат проверки
+ * Наружный модуль разбирает приветствие и складывает ответ одним шагом, поэтому имя
+ * извлекается из байтов канала до подачи их связи — собранием занимается helloBody()
+ *
+ * @param target контекст назначения
+ * @param name   имя, предъявленное клиентом
+ * @return       результат выбора
  */
-bool awh::Engine::certHostcheck(const string & host, const string & patt) const noexcept {
+bool awh::Engine::sniSelect(ctx_t & target, const string & name) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если данные переданы
-	if(!host.empty() && !patt.empty())
-		// Проверяем эквивалентны ли домен и шаблон
-		result = (this->rawEqual(host, patt) || this->hostmatch(host, patt));
-	// Выводим результат
-	return result;
-}
-/**
- * Для операционной системы Linux или FreeBSD
- */
-#if __linux__ || __FreeBSD__
-	/**
-	 * @brief Функция обработки нотификации SCTP
-	 *
-	 * @param bio    объект подключения BIO
-	 * @param ctx    промежуточный передаваемый контекст
-	 * @param buffer буфер передаваемых данных
-	 */
-	void awh::Engine::notificationsSCTP(BIO * bio, void * ctx, void * buffer) noexcept {
-		// Если данные переданы
-		if((bio != nullptr) && (ctx != nullptr) && (buffer != nullptr)){
-			// Получаем объект модуля подключения
-			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
-			// Создаём объект событий SCTP
-			union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
-			/**
-			 * Определяем тип события
-			 */
-			switch(snp->sn_header.sn_type){
-				// Если произошло событие изменения ассоциации
-				case SCTP_ASSOC_CHANGE: {
-					// Получаем ассоциацию
-					struct sctp_assoc_change * sac = &snp->sn_assoc_change;
-					// Выводим в лог информационное сообщение
-					context->_log->print("Assoc_change: state = %hu, error = %hu, instr = %hu, outstr = %hu", log_t::flag_t::INFO, sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
-				} break;
-				// Если изменился адрес подключения клиента
-				case SCTP_PEER_ADDR_CHANGE: {
-					// Адрес интернет-подключения
-					string ip = "";
-					// Объект данных подключения
-					char buffer[INET6_ADDRSTRLEN];
-					// Выполняем зануление буфера данных
-					::memset(buffer, 0, sizeof(buffer));
-					// Создаём объединение адресов
-					union {
-						struct sockaddr_in s4;      // Объект IPv4
-						struct sockaddr_in6 s6;     // Объект IPv6
-						struct sockaddr_storage ss; // Объект хранилища
-					} peer;
-					// Получаем данные изменившегося адреса
-					struct sctp_paddr_change * spc = &snp->sn_paddr_change;
-					// Устанавливаем новое значение подключения
-					// peer.ss = spc->spc_aaddr;
-					::memcpy(&peer.ss, &spc->spc_aaddr, sizeof(struct sockaddr_storage));
-					/**
-					 * Определяем семейство интернет-протокола
-					 */
-					switch(peer.ss.ss_family){
-						// Если подключение производится по IPv4
-						case AF_INET:
-							// Получаем IP-адрес IPv4
-							ip = ::inet_ntop(AF_INET, &peer.s4.sin_addr, buffer, sizeof(buffer));
-						break;
-						// Если подключение производится по IPv6
-						case AF_INET6:
-							// Получаем IP-адрес IPv6
-							ip = ::inet_ntop(AF_INET6, &peer.s6.sin6_addr, buffer, sizeof(buffer));
-						break;
-					}
-					// Выводим в лог информационное сообщение
-					context->_log->print("Intf_change: ip = %s, state = %d, error = %d", log_t::flag_t::INFO, ip.c_str(), spc->spc_state, spc->spc_error);
-				} break;
-				// Если произошла ошибка удалённого подключения
-				case SCTP_REMOTE_ERROR: {
-					// Получаем данные ошибки удалённого подключения
-					struct sctp_remote_error * sre = &snp->sn_remote_error;
-					// Выводим в лог информационное сообщение
-					context->_log->print("Remote_error: err = %hu, len = %hu", log_t::flag_t::INFO, ntohs(sre->sre_error), ntohs(sre->sre_length));
-				} break;
-				// Если произошло событие неудачной отправки
-				case SCTP_SEND_FAILED: {
-					// Получаем объект ошибки
-					struct sctp_send_failed * ssf = &snp->sn_send_failed;
-					// Выводим в лог информационное сообщение
-					context->_log->print("Sendfailed: err = %d, len = %u", log_t::flag_t::INFO, ssf->ssf_error, ssf->ssf_length);
-				} break;
-				// Если произошло событие отключения подключения
-				case SCTP_SHUTDOWN_EVENT:
-					// Выводим в лог информационное сообщение
-					context->_log->print("Shutdown event", log_t::flag_t::INFO);
-				break;
-				// Если произошло событие адаптации
-				case SCTP_ADAPTATION_INDICATION:
-					// Выводим в лог информационное сообщение
-					context->_log->print("Adaptation event", log_t::flag_t::INFO);
-				break;
-				// Если произошло сообщение частичной передачи данных
-				case SCTP_PARTIAL_DELIVERY_EVENT:
-					// Выводим в лог информационное сообщение
-					context->_log->print("Partial delivery", log_t::flag_t::INFO);
-				break;
-				/**
-				 * Если требуется аутентификация
-				 */
-				#ifdef SCTP_AUTHENTICATION_EVENT
-					// Если произошло событие аутентификации
-					case SCTP_AUTHENTICATION_EVENT:
-						// Выводим в лог информационное сообщение
-						context->_log->print("Authentication event", log_t::flag_t::INFO);
-					break;
-				#endif
-				/**
-				 * Если требуется отображение сухих событий
-				 */
-				#ifdef SCTP_SENDER_DRY_EVENT
-					// Отправитель прислал сухое событие
-					case SCTP_SENDER_DRY_EVENT:
-						// Выводим в лог информационное сообщение
-						context->_log->print("Sender dry event", log_t::flag_t::INFO);
-					break;
-				#endif
-				// Если произошло неизвестное событие
-				default:
-					// Выводим в лог информационное сообщение
-					context->_log->print("Unknown type: %hu", log_t::flag_t::INFO, snp->sn_header.sn_type);
+	// Если сертификаты по доменным именам заданы и имя предъявлено
+	if((target._tls != nullptr) && !this->_sni.empty() && !name.empty()){
+		// Доменное имя в нижнем регистре
+		string host = name;
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(host, fmk_t::transform_t::LOWER);
+		// Выполняем поиск подлинности по точному имени
+		auto i = this->_sni.find(host);
+		// Если по точному имени подлинность не найдена
+		if(i == this->_sni.end()){
+			// Позиция первой точки в доменном имени
+			const size_t pos = host.find('.');
+			// Если домен содержит поддомен
+			if(pos != string::npos)
+				// Выполняем поиск подлинности по маске домена
+				i = this->_sni.find(this->_fmk->format("*%s", host.substr(pos).c_str()));
+		}
+		/**
+		 * Для неизвестного домена остаётся подлинность по умолчанию: рукопожатие
+		 * продолжается ею, как это делал OpenSSL, не предъявляя фатального извещения
+		 */
+		if(i != this->_sni.end()){
+			// Выполняем установку подлинности по найденным файлам
+			result = this->credential(target, i->second);
+			// Если подлинность установить не удалось, рукопожатие прерываем
+			if(!result){
+				// Выводим в лог сообщение о невозможности выбрать подлинность
+				this->_log->print("Certificate for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
+				// Запоминаем, что связь дальше вести нельзя
+				target._tls->fatal = true;
 			}
 		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
+ *
+ * Раздел 6.4 RFC 6125: имя разыскивается среди дополнительных имён владельца, а общее имя
+ * берётся лишь тогда, когда дополнительных имён нет вовсе; звёздочка дозволена лишь самой
+ * левой частью и лишь целой частью — это и делает nts::trust::belongs()
+ *
+ * @param host  доменное имя
+ * @param chain цепочка сертификатов собеседника записями DER
+ * @return      результат проверки
+ */
+awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept {
+	// Результат работы функции
+	validate_t result = validate_t::Error;
+	// Если хост передан и цепочка сертификатов получена
+	if(!host.empty() && !chain.empty()){
+		// Отказ сличения имени узла с именами сертификата
+		const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), host);
+		/**
+		 * Определяем полученный отказ
+		 */
+		switch(static_cast <uint8_t> (error)){
+			// Если имя узла отвечает имени сертификата
+			case static_cast <uint8_t> (nts::trust::error_t::NONE): result = validate_t::MatchFound; break;
+			// Если имя узла ни одному имени сертификата не отвечает
+			case static_cast <uint8_t> (nts::trust::error_t::NAME): result = validate_t::MatchNotFound; break;
+			// Если сертификат цепочки разобрать не удалось
+			case static_cast <uint8_t> (nts::trust::error_t::PARSE): result = validate_t::MalformedCertificate; break;
+			// Для остальных отказов
+			default: result = validate_t::Error; break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод добавления в запас доверенных сертификатов записей из файла
+ *
+ * @param fs     объект работы с файловой системой
+ * @param log    объект работы с логами
+ * @param store  запас доверенных сертификатов
+ * @param file   адрес файла сертификатов текстом PEM
+ * @return       результат добавления
+ */
+static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & file) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Прочитанные байты файла сертификатов
+	const vector <char> pem = fs.read(file);
+	// Разобранные записи сертификатов
+	vector <vector <uint8_t>> chain;
+	// Если текст файла прочитался и разобрался
+	if(!pem.empty() && (nts::pem::certificates(string(pem.begin(), pem.end()), chain) == nts::pem::error_t::NONE)){
+		/**
+		 * Переход по разобранным записям	
+		 */
+		for(auto & item : chain){
+			// Если запись добавлена в запас, запоминаем успех
+			if(store.add(nts::view_t(item.data(), item.size())))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+	// Если файл читается, но сертификатов в нём не оказалось, выводим сообщение
+	} else if(!pem.empty()) log->print("CAfile is invalid: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
+	// Выводим результат
+	return result;
+}
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Метод добавления в запас доверенных сертификатов системного хранилища
+	 *
+	 * @param store запас доверенных сертификатов
+	 * @param log   объект работы с логами
+	 * @param name  название разделителя системного хранилища
+	 * @return      результат добавления
+	 */
+	static bool storeCAWindows(nts::trust::store_t & store, const awh::log_t * log, const char * name) noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Открываем системное хранилище сертификатов
+		HCERTSTORE sys = ::CertOpenSystemStore(0, name);
+		// Если системное хранилище не открыто
+		if(sys == nullptr){
+			// Выводим в лог сообщение о недоступном хранилище
+			log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+			// Выводим признак того, что запас не пополнен
+			return false;
+		}
+		/**
+		 * Перебираем все сертификаты системного хранилища	
+		 */
+		for(PCCERT_CONTEXT ctx = nullptr; (ctx = ::CertEnumCertificatesInStore(sys, ctx)) != nullptr;){
+			// Если запись сертификата добавлена в запас, запоминаем успех
+			if(store.add(nts::view_t(ctx->pbCertEncoded, static_cast <size_t> (ctx->cbCertEncoded))))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+		// Закрываем системное хранилище
+		::CertCloseStore(sys, 0);
+		// Выводим результат
+		return result;
 	}
 #endif
 /**
- * @brief Функция обратного вызова для проверки валидности сертификата
+ * @brief Метод инициализации запаса доверенных сертификатов
  *
- * @param ok   результат получения сертификата
- * @param x509 данные сертификата
- * @return     результат проверки
- */
-int32_t awh::Engine::verifyCert(const int32_t ok, X509_STORE_CTX * x509) noexcept {
-	// Буфер данных для получения данных
-	char buffer[256];
-	// Если проверка не выполнена
-	if(!ok){
-		// Получаем данные ошибки
-		int32_t error = ::X509_STORE_CTX_get_error(x509);
-		// Получаем глубину ошибки
-		int32_t depth = ::X509_STORE_CTX_get_error_depth(x509);
-		// Выполняем извлечение сертификата
-		X509 * cert = ::X509_STORE_CTX_get_current_cert(x509);
-		// Выводим начальный разделитель
-		printf ("------------------------------------------------------------\n\n");
-		// Выводим заголовок
-		printf("Current certificate verification:\n");
-		// Получаем название сертификата
-		::X509_NAME_oneline(::X509_get_subject_name(cert), buffer, sizeof(buffer));
-		// Выводим название сертификата
-		printf("Subject: %s\n", buffer);
-		// Получаем эмитента выпустившего сертификат
-		::X509_NAME_oneline(::X509_get_issuer_name(cert), buffer, sizeof(buffer));
-		// Выводим эмитента сертификата
-		printf("Issuer: %s\n", buffer);
-		// Выводим информацию о ошибке
-		printf("Error: %s\n", ::X509_verify_cert_error_string(error));
-		// Выводим конечный разделитель
-		printf ("\n------------------------------------------------------------\n\n");
-		// Очищаем объект сертификата
-		// ::X509_free(cert);
-	}
-	// Выводим результат
-	return ok;
-}
-/**
- * @brief Функция обратного вызова для проверки валидности хоста
+ * Прежний OpenSSL подставлял своё встроенное расположение корневых сертификатов; теперь
+ * расположения перебирает сам движок, а на MS Windows корни берутся из системного хранилища
  *
- * @param x509 данные сертификата
- * @param ctx  передаваемый контекст
- * @return     результат проверки
- */
-int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
-	// Если объекты переданы верно
-	if((x509 != nullptr) && (ctx != nullptr)){
-		// Буфер данных сертификатов из хранилища
-		char buffer[256];
-		// Заполняем структуру нулями
-		::memset(buffer, 0, sizeof(buffer));
-		// Ошибка проверки сертификата
-		string status = "X509VerifyCertFailed";
-		// Выполняем проверку сертификата
-		const int32_t ok = ::X509_verify_cert(x509);
-		// Запрашиваем данные сертификата
-		X509 * cert = ::X509_STORE_CTX_get_current_cert(x509);
-		// Результат проверки домена
-		engine_t::validate_t validate = engine_t::validate_t::Error;
-		// Получаем объект подключения
-		const verify_t * verify = reinterpret_cast <const verify_t *> (ctx);
-		// Если проверка сертификата прошла удачно
-		if(ok){
-			// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-			validate = verify->engine->validateHostname(verify->host.c_str(), cert);
-			/**
-			 * Определяем полученную ошибку
-			 */
-			switch(static_cast <uint8_t> (validate)){
-				case static_cast <uint8_t> (engine_t::validate_t::MatchFound):           status = "MatchFound";           break;
-				case static_cast <uint8_t> (engine_t::validate_t::MatchNotFound):        status = "MatchNotFound";        break;
-				case static_cast <uint8_t> (engine_t::validate_t::NoSANPresent):         status = "NoSANPresent";         break;
-				case static_cast <uint8_t> (engine_t::validate_t::MalformedCertificate): status = "MalformedCertificate"; break;
-				case static_cast <uint8_t> (engine_t::validate_t::Error):                status = "Error";                break;
-				default:                                                                 status = "WTF!";
-			}
-		}
-		// Запрашиваем имя домена
-		::X509_NAME_oneline(::X509_get_subject_name(cert), buffer, sizeof(buffer));
-		// Очищаем выделенную память
-		// ::X509_free(cert);
-		// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-		if(validate == engine_t::validate_t::MatchFound){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим в лог сообщение
-				verify->engine->_log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
-			#endif
-			// Выводим сообщение, что проверка пройдена
-			return 1;
-		// Если ресурс не найден тогда выводим сообщение об ошибке
-		} else verify->engine->_log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), verify->host.c_str(), buffer);
-	}
-	// Выводим сообщение, что проверка не пройдена
-	return 0;
-}
-/**
- * @brief собран без следующих переговорщиков по протоколам
+ * @param target контекст назначения
+ * @return       результат инициализации
  *
  */
-#ifndef OPENSSL_NO_NEXTPROTONEG
-	/**
-	 * @brief Функция обратного вызова сервера для переключения на следующий протокол
-	 *
-	 * @param ssl  объект SSL
-	 * @param data данные буфера данных протокола
-	 * @param len  размер буфера данных протокола
-	 * @param ctx  передаваемый контекст
-	 * @return     результат переключения протокола
-	 */
-	int32_t awh::Engine::nextProto([[maybe_unused]] SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (ctx != nullptr)){
-			// Выполняем установку буфера данных
-			(* data) = reinterpret_cast <ctx_t *> (ctx)->protocols.data();
-			// Выполняем установку размер буфера данных протокола
-			(* len) = static_cast <uint32_t> (reinterpret_cast <ctx_t *> (ctx)->protocols.size());
-			// Выводим результат
-			return SSL_TLSEXT_ERR_OK;
-		}
-		// Выводим результат
-		return SSL_TLSEXT_ERR_NOACK;
-	}
-	/**
-	 * @brief Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
-	 *
-	 * @param ssl     объект SSL
-	 * @param out     буфер исходящего протокола
-	 * @param outSize размер буфера исходящего протокола
-	 * @param in      буфер входящего протокола
-	 * @param inSize  размер буфера входящего протокола
-	 * @param ctx     передаваемый контекст
-	 * @return        результат выбора протокола
-	 */
-	int32_t awh::Engine::selectNextProtoClient([[maybe_unused]] SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (ctx != nullptr)){
-			// Получаем объект контекста модуля
-			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
-			// Если протокол переключить получилось на HTTP/2
-			if(context->selectProto(out, outSize, in, inSize, "\x2h2", 2))
-				// Выводим результат
-				return SSL_TLSEXT_ERR_OK;
-			// Если протокол переключить не получилось
-			else {
-				// Выполняем переключение протокола обратно на HTTP/1.1
-				context->selectProto(out, outSize, in, inSize, "\x8http/1.1", 8);
-				// Выполняем переключение протокола на HTTP/1.1
-				context->_proto = proto_t::HTTP1_1;
-			}
-		}
-		// Выводим результат
-		return SSL_TLSEXT_ERR_NOACK;
-	}
-#endif // !OPENSSL_NO_NEXTPROTONEG
-/**
- * Если версия OpenSSL соответствует или выше версии 1.0.2
- */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-	/**
-	 * @brief Функция обратного вызова сервера для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
-	 *
-	 * @param ssl     объект SSL
-	 * @param out     буфер исходящего протокола
-	 * @param outSize размер буфера исходящего протокола
-	 * @param in      буфер входящего протокола
-	 * @param inSize  размер буфера входящего протокола
-	 * @param ctx     передаваемый контекст
-	 * @return        результат выбора протокола
-	 */
-	int32_t awh::Engine::selectNextProtoServer([[maybe_unused]] SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (ctx != nullptr)){
-			// Получаем объект контекста модуля
-			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
-			// Если протокол переключить получилось на HTTP/2
-			if(context->selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, "\x2h2", 2))
-				// Выводим результат
-				return SSL_TLSEXT_ERR_OK;
-			// Если протокол переключить не получилось
-			else {
-				// Выполняем переключение протокола обратно на HTTP/1.1
-				context->selectProto(const_cast <uint8_t **> (out), outSize, in, inSize, "\x8http/1.1", 8);
-				// Выполняем переключение протокола на HTTP/1.1
-				context->_proto = proto_t::HTTP1_1;
-			}
-		}
-		// Выводим результат
-		return SSL_TLSEXT_ERR_NOACK;
-	}
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-/**
- * @brief Функция обратного вызова выбора сертификата сервера по доменному имени (SNI)
- *
- * @param ssl объект SSL
- * @param ad  код предупреждения TLS
- * @param ctx передаваемый контекст
- * @return    результат выбора сертификата
- */
-int32_t awh::Engine::serverName(SSL * ssl, [[maybe_unused]] int32_t * ad, void * ctx) noexcept {
-	// Если данные переданы
-	if((ssl != nullptr) && (ctx != nullptr)){
-		// Получаем объект движка
-		const engine_t * engine = reinterpret_cast <const engine_t *> (ctx);
-		// Получаем доменное имя, переданное клиентом
-		const char * name = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
-		// Если доменное имя получено и сертификаты по доменам установлены
-		if((name != nullptr) && !engine->_sni.empty()){
-			// Получаем доменное имя в нижнем регистре
-			string host = name;
-			// Переводим доменное имя в нижний регистр
-			engine->_fmk->transform(host, fmk_t::transform_t::LOWER);
-			// Выполняем поиск сертификата для доменного имени
-			auto i = engine->_sni.find(host);
-			// Если сертификат для доменного имени не найден
-			if(i == engine->_sni.end()){
-				// Позиция первой точки в доменном имени
-				const size_t pos = host.find('.');
-				// Если домен содержит поддомен
-				if(pos != string::npos)
-					// Выполняем поиск сертификата по маске домена
-					i = engine->_sni.find(engine->_fmk->format("*%s", host.substr(pos).c_str()));
-			}
-			// Если сертификат для доменного имени найден
-			if(i != engine->_sni.end()){
-				// Если цепочка сертификатов не может быть установлена
-				if(::SSL_use_certificate_chain_file(ssl, i->second.pem.c_str()) < 1){
-					// Выводим в лог сообщение
-					engine->_log->print("Certificate for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
-					// Прерываем рукопожатие
-					return SSL_TLSEXT_ERR_ALERT_FATAL;
-				}
-				// Если приватный ключ не может быть установлен или недействителен
-				if((::SSL_use_PrivateKey_file(ssl, i->second.key.c_str(), SSL_FILETYPE_PEM) < 1) || (::SSL_check_private_key(ssl) < 1)){
-					// Выводим в лог сообщение
-					engine->_log->print("Private key for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
-					// Прерываем рукопожатие
-					return SSL_TLSEXT_ERR_ALERT_FATAL;
-				}
-			}
-		}
-	}
-	// Продолжаем рукопожатие, для неизвестного домена остаётся сертификат по умолчанию
-	return SSL_TLSEXT_ERR_OK;
-}
-/**
- * @brief Функция обратного вызова для генерации куков
- *
- * @param ssl    объект SSL
- * @param cookie данные куков
- * @param size   количество символов
- * @return       результат проверки
- */
-int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
-	// Смещение в буфере и размер сгенерированных печенок
-	uint32_t offset = 0, length = 0;
-	// Буфер под генерацию печенок
-	uint8_t result[EVP_MAX_MD_SIZE];
-	// Создаём объединение адресов
-	union {
-		struct sockaddr_in s4;      // Объект IPv4
-		struct sockaddr_in6 s6;     // Объект IPv6
-		struct sockaddr_storage ss; // Объект хранилища
-	} peer;
-	// Если печенки еще не проинициализированны
-	if(!_cookieInit){
-		// Выполняем произвольно генерацию байт в буфере печенок
-		if(!(_cookieInit = ::RAND_bytes(_cookies, sizeof(_cookies)))){
-			// Создаём объект фреймворка
-			fmk_t fmk;
-			// Выводим в лог сообщение
-			log_t(&fmk).print("Setting random cookie secret", log_t::flag_t::CRITICAL);
-			// Выходим и сообщаем, что генерация куков не удалась
-			return 0;
-		}
-	}
-	// Выполняем зануление структуры адреса, чтобы хеш неизвестных семейств был детерминирован
-	::memset(&peer, 0, sizeof(peer));
-	// Выполняем чтение из подключения информации
-	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
-	/**
-	 * Выполняем определение протокола интернета
-	 */
-	switch(peer.ss.ss_family){
-		// Для протокола IPv4
-		case AF_INET:
-			// Увеличиваем смещение на размер структуры данных протокола IPv4
-			offset += sizeof(struct in_addr);
-		break;
-		// Для протокола IPv6
-		case AF_INET6:
-			// Увеличиваем смещение на размер структуры данных протокола IPv6
-			offset += sizeof(struct in6_addr);
-		break;
-		/**
-		 * Для остальных семейств (например, AF_UNIX) хешируем сырые байты адреса.
-		 * Ранее здесь стояло аварийное завершение, которое роняло сервер DTLS на unix-сокете.
-		 */
-		default: offset += sizeof(peer.ss);
-	}
-	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(uint16_t);
-	// Выполняем выделение память для буфера данных
-	uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(offset));
-	// Если память для буфера данных не выделена
-	if(buffer == nullptr){
-		// Создаём объект фреймворка
-		fmk_t fmk;
-		// Выводим в лог сообщение
-		log_t(&fmk).print("Out of memory cookie", log_t::flag_t::CRITICAL);
-		// Выходим и сообщаем, что генерация куков не удалась
-		return 0;
-	}
-	/**
-	 * Выполняем определение протокола интернета
-	 */
-	switch(peer.ss.ss_family){
-		// Для протокола IPv4
-		case AF_INET: {
-			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s4.sin_port, sizeof(uint16_t));
-			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
-		} break;
-		// Для протокола IPv6
-		case AF_INET6: {
-			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s6.sin6_port, sizeof(uint16_t));
-			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
-		} break;
-		// Для остальных семейств протоколов
-		default: {
-			// Выполняем зануление буфера данных
-			::memset(buffer, 0, offset);
-			// Выполняем копирование сырых байт адреса
-			::memcpy(buffer, &peer.ss, sizeof(peer.ss));
-		}
-	}
-	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-	::HMAC(::EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
-	// Очищаем ранее выделенную память
-	OPENSSL_free(buffer);
-	// Выполняем копирование полученного результата в буфер печенок
-	::memcpy(cookie, result, length);
-	// Устанавливаем размер буфера печенок
-	(* size) = length;
-	// Выводим положительный ответ
-	return 1;
-}
-/**
- * @brief Функция обратного вызова для проверки куков
- *
- * @param ssl    объект SSL
- * @param cookie данные куков
- * @param size   количество символов
- * @return       результат проверки
- */
-int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
-	// Смещение в буфере и размер сгенерированных печенок
-	uint32_t offset = 0, length = 0;
-	// Буфер под генерацию печенок
-	uint8_t result[EVP_MAX_MD_SIZE];
-	// Создаём объединение адресов
-	union {
-		struct sockaddr_in s4;      // Объект IPv4
-		struct sockaddr_in6 s6;     // Объект IPv6
-		struct sockaddr_storage ss; // Объект хранилища
-	} peer;
-	// Если печенки не проинициализированы, значит куки не валидные
-	if(!_cookieInit)
-		// Выходим из функции
-		return 0;
-	// Выполняем зануление структуры адреса, чтобы хеш неизвестных семейств был детерминирован
-	::memset(&peer, 0, sizeof(peer));
-	// Выполняем чтение из подключения информации
-	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
-	/**
-	 * Выполняем определение протокола интернета
-	 */
-	switch(peer.ss.ss_family){
-		// Для протокола IPv4
-		case AF_INET:
-			// Увеличиваем смещение на размер структуры данных протокола IPv4
-			offset += sizeof(struct in_addr);
-		break;
-		// Для протокола IPv6
-		case AF_INET6:
-			// Увеличиваем смещение на размер структуры данных протокола IPv6
-			offset += sizeof(struct in6_addr);
-		break;
-		/**
-		 * Для остальных семейств (например, AF_UNIX) хешируем сырые байты адреса.
-		 * Ранее здесь стояло аварийное завершение, которое роняло сервер DTLS на unix-сокете.
-		 */
-		default: offset += sizeof(peer.ss);
-	}
-	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(uint16_t);
-	// Выполняем выделение память для буфера данных
-	uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(offset));
-	// Если память для буфера данных не выделена
-	if(buffer == nullptr){
-		// Создаём объект фреймворка
-		fmk_t fmk;
-		// Выводим в лог сообщение
-		log_t(&fmk).print("Out of memory cookie", log_t::flag_t::CRITICAL);
-		// Выходим и сообщаем, что генерация куков не удалась
-		return 0;
-	}
-	/**
-	 * Выполняем определение протокола интернета
-	 */
-	switch(peer.ss.ss_family){
-		// Для протокола IPv4
-		case AF_INET: {
-			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s4.sin_port, sizeof(uint16_t));
-			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(uint16_t), &peer.s4.sin_addr, sizeof(struct in_addr));
-		} break;
-		// Для протокола IPv6
-		case AF_INET6: {
-			// Выполняем чтение в буфер данных данные порта
-			::memcpy(buffer, &peer.s6.sin6_port, sizeof(uint16_t));
-			// Выполняем чтение в буфер данных данные структуры подключения
-			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
-		} break;
-		// Для остальных семейств протоколов
-		default: {
-			// Выполняем зануление буфера данных
-			::memset(buffer, 0, offset);
-			// Выполняем копирование сырых байт адреса
-			::memcpy(buffer, &peer.ss, sizeof(peer.ss));
-		}
-	}
-	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-	::HMAC(::EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
-	// Очищаем ранее выделенную память
-	::OPENSSL_free(buffer);
-	// Выполняем проверку печенок, если печенки совпадают, значит всё хорошо
-	if((size == length) && (::memcmp(result, cookie, length) == 0))
-		// Выходим из функции с удачей
-		return 1;
-	// Выходим из функции с неудачей
-	return 0;
-}
-/**
- * @brief Функция обратного вызова для генерации куков
- *
- * @param ssl    объект SSL
- * @param cookie данные куков
- * @param size   количество символов
- * @return       результат проверки
- */
-int32_t awh::Engine::generateStatelessCookie(SSL * ssl, uint8_t * cookie, size_t * size) noexcept {
-	// Размер буфера с печенками
-	uint32_t length = 0;
-	// Выполняем генерацию печенок
-	const int32_t result = generateCookie(ssl, cookie, &length);
-	// Получаем размер буфера с печенками
-	(* size) = length;
-	// Выводим результат работы функции
-	return result;
-}
-/**
- * @brief Функция обратного вызова для проверки куков
- *
- * @param ssl    объект SSL
- * @param cookie данные куков
- * @param size   количество символов
- * @return       результат проверки
- */
-int32_t awh::Engine::verifyStatelessCookie(SSL * ssl, const uint8_t * cookie, size_t size) noexcept {
-	// Выполняем проверку печенок
-	return verifyCookie(ssl, cookie, static_cast <uint32_t> (size));
-}
-/**
- * @brief Метод проверки доменного имени по данным из сертификата
- *
- * @param host доменное имя
- * @param cert сертификат
- * @return     результат проверки
- */
-awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, const X509 * cert) const noexcept {
-	// Результат работы функции
-	validate_t result = validate_t::MatchNotFound;
-	// Если данные переданы
-	if(!host.empty() && (cert != nullptr)){
-		// Получаем индекс имени по NID
-		const int32_t cnl = ::X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (cert)), NID_commonName, -1);
-		// Если индекс не получен тогда выходим
-		if(cnl < 0)
-			// Выводим сформированную ошибку
-			return validate_t::Error;
-		// Извлекаем поле CN
-		X509_NAME_ENTRY * cne = ::X509_NAME_get_entry(X509_get_subject_name(const_cast <X509 *> (cert)), cnl);
-		// Если поле не получено тогда выходим
-		if(cne == nullptr)
-			// Выводим сформированную ошибку
-			return validate_t::Error;
-		// Конвертируем CN поле в C строку
-		ASN1_STRING * cna = ::X509_NAME_ENTRY_get_data(cne);
-		// Если строка не сконвертирована тогда выходим
-		if(cna == nullptr)
-			// Выводим сформированную ошибку
-			return validate_t::Error;
-		// Извлекаем название в виде строки
-		const string cn(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cna))), ::ASN1_STRING_length(cna));
-		// Сравниваем размеры полученных строк
-		if(static_cast <size_t> (::ASN1_STRING_length(cna)) != cn.length())
-			// Выводим сформированную ошибку
-			return validate_t::MalformedCertificate;
-		// Выполняем рукопожатие
-		if(this->certHostcheck(host, cn))
-			// Выводим сформированную ошибку
-			return validate_t::MatchFound;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод проверки доменного имени по списку доменных имен из сертификата
- *
- * @param host доменное имя
- * @param cert сертификат
- * @return     результат проверки
- */
-awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const X509 * cert) const noexcept {
-	// Результат работы функции
-	validate_t result = validate_t::MatchNotFound;
-	// Если данные переданы
-	if(!host.empty() && (cert != nullptr)){
-		// Получаем имена
-		STACK_OF(GENERAL_NAME) * sn = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i(const_cast <X509 *> (cert), NID_subject_alt_name, nullptr, nullptr));
-		// Если имена не получены тогда выходим
-		if(sn == nullptr)
-			// Выполняем формирвоание ошибки
-			return validate_t::NoSANPresent;
-		// Получаем количество имен
-		const int32_t sanNamesNb = sk_GENERAL_NAME_num(sn);
-		// Бинарный IP-адрес хоста
-		uint8_t ip[16];
-		/**
-		 * Если хост является IP-адресом, сверяем его только с записями IP в SAN
-		 * (RFC 6125): имена DNS для IP-адреса не применяются
-		 */
-		const size_t length = ipLiteral(host, ip);
-		// Переходим по всему списку
-		for(int32_t i = 0; i < sanNamesNb; i++){
-			// Получаем имя из списка
-			const GENERAL_NAME * cn = sk_GENERAL_NAME_value(sn, i);
-			// Если хост является IP-адресом
-			if(length > 0){
-				// Если запись является IP-адресом того же размера и адреса совпадают
-				if((cn->type == GEN_IPADD) && (static_cast <size_t> (::ASN1_STRING_length(cn->d.iPAddress)) == length) &&
-				   (::memcmp(::ASN1_STRING_get0_data(cn->d.iPAddress), ip, length) == 0)){
-					// Запоминаем результат что адрес найден
-					result = validate_t::MatchFound;
-					// Выходим из цикла
-					break;
-				}
-			// Проверяем тип имени
-			} else if(cn->type == GEN_DNS){
-				// Получаем dns имя
-				const string dns(reinterpret_cast <char *> (const_cast <uint8_t *> (ASN1_STRING_get0_data(cn->d.dNSName))), ASN1_STRING_length(cn->d.dNSName));
-				// Если размер имени не совпадает
-				if((size_t) ASN1_STRING_length(cn->d.dNSName) != dns.length()){
-					// Запоминаем результат
-					result = validate_t::MalformedCertificate;
-					// Выходим из цикла
-					break;
-				// Если размер имени и dns имя совпадает
-				} else if(this->certHostcheck(host, dns)){
-					// Запоминаем результат что домен найден
-					result = validate_t::MatchFound;
-					// Выходим из цикла
-					break;
-				}
-			}
-		}
-		// Очищаем список имен
-		sk_GENERAL_NAME_pop_free(sn, GENERAL_NAME_free);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод проверки доменного имени
- *
- * @param host доменное имя
- * @param cert сертификат
- * @return     результат проверки
- */
-awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const X509 * cert) const noexcept {
-	// Результат работы функции
-	validate_t result = validate_t::Error;
-	// Если данные переданы
-	if(!host.empty() && (cert != nullptr)){
-		// Выполняем проверку имени хоста по списку доменов у сертификата
-		result = this->matchSubjectName(host, cert);
-		// Если у сертификата только один домен
-		if(result == validate_t::NoSANPresent) result = this->matchesCommonName(host, cert);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод инициализации магазина CA-файлов сертификатов
- *
- * @param ctx объект контекста SSL
- * @return    результат инициализации
- */
-bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
+bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если контекст SSL передан
-	if(ctx != nullptr){
-		// Если сертификат центра сертификации (CA-файл) найден и адрес файла указан
-		if(!this->_cert.ca.empty() && (this->_fs.isFile(this->_cert.ca) || this->_fs.isDir(this->_cert.path))){
-			// Определяем путь где хранятся сертификаты
-			const char * path = (!this->_cert.path.empty() ? this->_cert.path.c_str() : nullptr);
-			// Выполняем проверку
-			if(::SSL_CTX_load_verify_locations(ctx, this->_cert.ca.c_str(), path) != 1){
-				// Выводим в лог сообщение
-				this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
-				// Выходим
-				return result;
-			}
-			// Если каталог получен
-			if(path != nullptr){
-				// Получаем полный адрес
-				const string & dir = this->_fs.realPath(this->_cert.path, false);
-				// Если адрес существует
-				if(this->_fs.isDir(dir) && !this->_fs.isFile(this->_cert.ca)){
-					/**
-					 * Для операционной системы MS Windows
-					 */
-					#if _WIN32 || _WIN64
-						// Выполняем сплит адреса
-						const auto & params = this->_uri->split(dir);
-						// Если путь и хост получен
-						if((params.count(uri_t::flag_t::HOST) > 0) && (params.count(uri_t::flag_t::PATH) > 0)){
-							// Выполняем сплит адреса
-							auto path = this->_uri->splitPath(params.at(uri_t::flag_t::PATH), AWH_FS_SEPARATOR[0]);
-							// Добавляем адрес файла в список
-							path.push_back(this->_cert.ca);
-							// Формируем полный адарес файла
-							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, AWH_FS_SEPARATOR[0]).c_str());
-							// Выполняем проверку CRL-файла сертификата
-							if(!filename.empty()){
-								// Выполняем декодирование адреса файла
-								filename = this->_uri->decode(filename);
-								// Если адрес файла существует
-								if((result = this->_fs.isFile(filename))){
-									// Выполняем проверку CRL-файла сертификата
-									::SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(filename.c_str()));
-									// Переходим к следующей итерации
-									goto Next;
-								}
-							}
-						}
-						// Выполняем очистку адреса CRL-файла сертификата
-						this->_cert.ca.clear();
-					/**
-					 * Для операционной системы не являющейся MS Windows
-					 */
-					#else
-						// Выполняем сплит адреса
-						auto path = this->_uri->splitPath(dir, AWH_FS_SEPARATOR[0]);
-						// Добавляем адрес файла в список
-						path.push_back(this->_cert.ca);
-						// Формируем полный адарес файла
-						string filename = this->_uri->joinPath(path, AWH_FS_SEPARATOR[0]);
-						// Выполняем проверку CRL-файла сертификата
-						if(!filename.empty()){
-							// Выполняем декодирование адреса файла
-							filename = this->_uri->decode(filename);
-							// Если адрес файла существует
-							if((result = this->_fs.isFile(filename))){
-								// Выполняем проверку CA файла
-								::SSL_CTX_set_client_CA_list(ctx, ::SSL_load_client_CA_file(filename.c_str()));
-								// Переходим к следующей итерации
-								goto Next;
-							}
-						}
-						// Выполняем очистку адреса CRL-файла сертификата
-						this->_cert.ca.clear();
-					#endif
-				// Если адрес файла существует
-				} else if((result = this->_fs.isFile(this->_cert.ca)))
-					// Выполняем проверку CRL-файла сертификата
-					::SSL_CTX_set_client_CA_list(ctx, ::SSL_load_client_CA_file(this->_cert.ca.c_str()));
-				// Выполняем очистку адреса CRL-файла сертификата
-				else this->_cert.ca.clear();
-			// Если адрес файла существует
-			} else if((result = this->_fs.isFile(this->_cert.ca)))
-				// Выполняем проверку CRL-файла сертификата
-				::SSL_CTX_set_client_CA_list(ctx, ::SSL_load_client_CA_file(this->_cert.ca.c_str()));
-		// Выполняем очистку адреса CRL-файла сертификата
-		} else this->_cert.ca.clear();
-		// Метка следующей итерации
-		Next:
-		// Если сертификат центра сертификации не указан
-		if(this->_cert.ca.empty()){
-			// Получаем данные стора
-			X509_STORE * store = ::SSL_CTX_get_cert_store(ctx);
+	// Если связь инициализирована
+	if(target._tls != nullptr){
+		// Запас доверенных сертификатов связи
+		nts::trust::store_t & store = target._tls->store;
+		/**
+		 * Если указан адрес файла сертификатов центра сертификации либо каталога с ними,
+		 * разбираем только их: явный заказ приложения важнее расположений системы
+		 */
+		if(!this->_cert.ca.empty() || !this->_cert.path.empty()){
+			// Если адрес CA-файла существует как файл
+			if(!this->_cert.ca.empty() && this->_fs.isFile(this->_cert.ca)){
+				// Выполняем добавление сертификатов из файла в запас
+				result = storeCAFile(this->_fs, this->_log, store, this->_cert.ca);
+			// Если указан каталог с сертификатами центра сертификации, перебираем его содержимое
+			} else if(!this->_cert.path.empty() && this->_fs.isDir(this->_cert.path)){
+				// Выполняем обход каталога с сертификатами центра сертификации
+				static_cast <void> (this->_fs.walkDir(this->_cert.path, "", false, [this, &store, &result](const string & name) noexcept -> bool {
+					// Если файл сертификатов разобрался и пополнил запас, запоминаем это
+					if(storeCAFile(this->_fs, this->_log, store, name))
+						// Запоминаем, что в запас что-то добавлено
+						result = true;
+					// Продолжаем обход каталога
+					return true;
+				}));
+			// Если указанный адрес не найден, возвращаемся к расположениям системы
+			} else this->_log->print("CAfile is not found: %s", log_t::flag_t::CRITICAL, (!this->_cert.ca.empty() ? this->_cert.ca.c_str() : this->_cert.path.c_str()));
+		}
+		// Если явный заказ не задал или не нашёлся, перебираем расположения системы
+		if(!result){
 			/**
-			 * Для операционной системы MS Windows
+			 * Для операционной системы MS Windows запас доверенных берётся из системного
+			 * хранилища сертификатов, связки файлов там не используются
 			 */
 			#if _WIN32 || _WIN64
+				// Перечень разделителей системного хранилища корневых сертификатов
+				static const char * stores[] = {"CA", "AuthRoot", "ROOT"};
 				/**
-				 * @brief Функция проверки параметров сертификата
-				 *
-				 * @param store стор с сертификатами для работы
-				 * @param name  название параметра сертификата
-				 * @return      результат проверки
+				 * Переход по разделителям системного хранилища			
 				 */
-				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) noexcept -> int32_t {
-					// Результат работы функции
-					int32_t result = 0;
-					// Если объекты переданы верно
-					if((store != nullptr) && (name != nullptr)){
-						// Контекст сертификата
-						PCCERT_CONTEXT ctx = nullptr;
-						// Получаем данные системного стора
-						HCERTSTORE sys = ::CertOpenSystemStore(0, name);
-						// Если системный стор не получен
-						if(!sys){
-							// Выводим в лог сообщение
-							this->_log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
-							// Выходим
-							return -1;
-						}
-						/**
-						 * Перебираем все сертификаты в системном сторе
-						 */
-						while((ctx = ::CertEnumCertificatesInStore(sys, ctx))){
-							// Выполняем создание сертификата
-							X509 * cert = X509_new();
-							// Если сертификат не создан
-							if(cert == nullptr){
-								// Формируем результат ответа
-								result = -1;
-								// Выводим в лог сообщение
-								this->_log->print("%s failed", log_t::flag_t::CRITICAL, "d2i_X509");
-								// Выходим из цикла
-								break;
-							// Если сертификат создан удачно
-							} else {
-								// Получаем объект закодированного сертификата
-								const BYTE * encoded = ctx->pbCertEncoded;
-								// Добавляем сертификат в стор
-								::X509_STORE_add_cert(store, ::d2i_X509(&cert, reinterpret_cast <const uint8_t **> (&encoded), ctx->cbCertEncoded));
-								// Очищаем выделенную память
-								::X509_free(cert);
-							}
-						}
-						// Закрываем системный стор
-						::CertCloseStore(sys, 0);
+				for(const char * name : stores){
+					// Если разделитель пополнил запас, запоминаем это
+					if(storeCAWindows(store, this->_log, name))
+						// Запоминаем, что запас собран
+						result = true;
+				}
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#else
+				// Перечень адресов файлов корневых сертификатов этой системы
+				vector <string> files;
+				// Если адрес файла корневых сертификатов задан сборкой, он идёт первым
+				if(SSL_CA_FILE[0])
+					// Добавляем адрес файла корневых сертификатов сборки
+					files.push_back(SSL_CA_FILE);
+				/**
+				 * Расположения связки корневых сертификатов, принятые в самих системах
+				 */
+				#if __linux__ || __unix || __unix__
+					// Добавляем связку Debian, Alpine и Gentoo
+					files.push_back("/etc/ssl/certs/ca-certificates.crt");
+					// Добавляем связку Red Hat и Fedora
+					files.push_back("/etc/pki/tls/certs/ca-bundle.crt");
+				#endif
+				/**
+				 * Для операционной системы MacOS X, FreeBSD, OpenBSD или NetBSD
+				 */
+				#if __APPLE__ || __MACH__ || __FreeBSD__ || __OpenBSD__ || __NetBSD__
+					// Добавляем системный файл корневых сертификатов
+					files.push_back("/etc/ssl/cert.pem");
+					// Добавляем связку, устанавливаемую пакетами
+					files.push_back("/usr/local/share/ca-certificates/ca-certificates.crt");
+				#endif
+				/**
+				 * Переход по перечню адресов файлов			
+				 */
+				for(const string & file : files){
+					// Если файл существует и разобрался, останавливаем перебор
+					if(this->_fs.isFile(file) && storeCAFile(this->_fs, this->_log, store, file)){
+						// Запоминаем, что запас собран
+						result = true;
+						// Выходим из перебора
+						break;
 					}
-					// Выводим сформированный результат
-					return result;
-				};
-				// Проверяем существует ли путь
-				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0))
-					// Выводим сформированный результат
-					return result;
+				}
 			#endif
-			// Если стор не устанавливается, тогда выводим ошибку
-			if(!(result = (::X509_STORE_set_default_paths(store) == 1)))
-				// Выводим в лог сообщение
-				this->_log->print("Set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
 		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод инициализации магазина CRL-файлов сертификатов
- *
- * @param ctx объект контекста SSL
- * @return    результат инициализации
- */
-bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если контекст SSL передан
-	if(ctx != nullptr){
-		// Если сертификат (CRL-файл) найден и адрес файла указан
-		if(!this->_cert.crl.empty() && this->_fs.isFile(this->_cert.crl)){
-			// Получаем данные стора
-			X509_STORE * store = ::SSL_CTX_get_cert_store(ctx);
-			// Получаем объект поиска отозванных сертификатов в центре сертификации
-			X509_LOOKUP * lookup = ::X509_STORE_add_lookup(store, ::X509_LOOKUP_file());
-			// Выполняем загружку CRL-файла сертификата
-			// result = (::X509_load_crl_file(lookup, this->_cert.crl.c_str(), ::X509_FILETYPE_PEM) != 0);
-			result = (::X509_load_cert_crl_file(lookup, this->_cert.crl.c_str(), X509_FILETYPE_PEM) != 0);
-			// Если CRL-файл сертификата удачно загружен
-			if(result){
-				/**
-				 * Без этих флагов загруженный CRL лежит в хранилище, но OpenSSL его не проверяет,
-				 * и отозванный сертификат принимается. Проверяем отзыв для всей цепочки.
-				 */
-				::X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-				// Если CRL-файл сертификата уже создан
-				if(this->_crl != nullptr)
-					// Выполняем освобождение памяти
-					::X509_CRL_free(this->_crl);
-				// Создаём объект BIO для загрузки файла
-				BIO * bio = ::BIO_new(::BIO_s_file());
-				// Если BIO не создан
-				if(bio == nullptr){
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
-						// Выводим в лог сообщение
-						this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-						/**
-						 * Выполняем извлечение остальных ошибок
-						 */
-						do {
-							// Выводим в лог сообщение
-							this->_log->print("Engine store CRL: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(error, nullptr));
-						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
-					}
-					// Выходим из функции
-					return result;
-				}
-				// Выполняем чтение CRL-файла сертификата
-				if(BIO_read_filename(bio, this->_cert.crl.c_str()) <= 0){
-					// Выводим в лог сообщение
-					this->_log->print("CRLfile is corrupted or unreadable", log_t::flag_t::CRITICAL);
-					// Завершаем работу
-					goto End;
-				}
-				// Выполняем создание объекта CRL-файла сертификата
-				const_cast <engine_t *> (this)->_crl = ::PEM_read_bio_X509_CRL(bio, nullptr, nullptr, nullptr);
-				// Если объект CRL-файла сертификата не создан
-				if(this->_crl == nullptr)
-					// Выводим в лог сообщение
-					this->_log->print("Unable to load CRLfile", log_t::flag_t::CRITICAL);
-				// Устанавливаем метку завершения работы
-				End:
-				// Выполняем очистку памяти BIO
-				::BIO_free(bio);
-			}
-		// Выполняем очистку адреса CRL-файла сертификата
-		} else this->_cert.crl.clear();
+		// Если запас доверенных сертификатов остался пуст, предупреждаем: проверка не пройдёт
+		if(!result)
+			// Выводим в лог сообщение об отсутствии доверенных сертификатов
+			this->_log->print("There is no trusted certificates: set the CA file or install the system bundle", log_t::flag_t::CRITICAL);
 	}
 	// Выводим результат
 	return result;
@@ -3768,16 +3454,20 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 	switch(target._addr->_type){
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM:
-			// Выполняем ожидание подключения
-			return (::SSL_stateless(target._ssl) > 0);
-		break;
-		// Если сокет установлен UDP
+			/**
+			 * Прежняя SSL_stateless() отвечала, что рукопожатие ещё не началось:
+			 * приветствие своей стороны ещё не отправлено
+			 */
+			return ((target._tls != nullptr) && !target._tls->started);
+		/**
+		 * Дейтаграммы: разбор приветствия без состояния (печёнки и адрес клиента)
+		 * переносится на круг 2 — наружный модуль ведёт печёнки сам, и вызову нужен
+		 * накопитель принятой дейтаграммы вместе с адресом собеседника
+		 */
 		case SOCK_DGRAM: {
-			// Выполняем зануление структуры подключения клиента
-			::memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
-			// Выполняем ожидание подключения
-			return (::DTLSv1_listen(target._ssl, reinterpret_cast <BIO_ADDR *> (&target._addr->_peer.client)) > 0);
-		}
+			// Выводим в лог сообщение о том, что ожидание без состояния не готово
+			this->_log->print("DTLS stateless listen is not implemented yet", log_t::flag_t::WARNING);
+		} break;
 	}
 	// Сообщаем, что ничего не обработано
 	return false;
@@ -3811,83 +3501,55 @@ void awh::Engine::encrypted(const bool mode, ctx_t & ctx) noexcept {
 awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	// Результат работы функции
 	proto_t result = proto_t::HTTP1_1;
-	// Если контекст SSL инициализирован
-	if(target._ssl != nullptr){
-		// Результат работы функции
+	// Если связь инициализирована
+	if(target._tls != nullptr){
+		// Желаемый протокол подключения
 		result = target._proto;
 		/**
-		 * Продвигаем рукопожатие, но его результат намеренно не проверяем. Раньше результат
-		 * проверялся как логическое значение: -1 (рукопожатие идёт) считался успехом, а 0 (отказ)
-		 * возвращал желаемый протокол без проверки ALPN. Согласованный протокол определяется
-		 * только по ALPN/NPN: если он ещё не выбран, ниже возвращается HTTP/1.1. Проверка "> 0"
-		 * здесь не подходит: на сервере ALPN выбирается уже по ClientHello, до завершения
-		 * рукопожатия, и HTTP/2 в этот момент определялся верно.
+		 * Продвигаем рукопожатие, но его результат намеренно не проверяем: согласованный
+		 * прикладной протокол определяется только по ALPN. Проверкой «> 0» здесь не обойтись:
+		 * на сервере ALPN выбирается уже по приветствию клиента, до завершения рукопожатия
 		 */
-		static_cast <void> (target._type == type_t::SERVER ? ::SSL_accept(target._ssl) : ::SSL_connect(target._ssl));
+		static_cast <void> (target.pump(false));
 		/**
-		 * Определяет желаемый активный протокол
+		 * Определяем желаемый активный протокол
 		 */
-		{
-			switch(static_cast <uint8_t> (target._proto)){
-				// Если протокол соответствует SPDY/1
-				case static_cast <uint8_t> (proto_t::SPDY1):
-				// Если протокол соответствует HTTP/2
-				case static_cast <uint8_t> (proto_t::HTTP2):
-				// Если протокол соответствует HTTP/3
-				case static_cast <uint8_t> (proto_t::HTTP3): {
-					// Размер строки протокола
-					uint32_t size = 0;
-					// Строка протокола для сравнения
-					const uint8_t * alpn = nullptr;
-					/**
-					 * @brief собран без следующих переговорщиков по протоколам
-					 *
-					 */
-					#ifndef OPENSSL_NO_NEXTPROTONEG
-						// Выполняем извлечение следующего протокола
-						::SSL_get0_next_proto_negotiated(target._ssl, &alpn, &size);
-					#endif // !OPENSSL_NO_NEXTPROTONEG
-					/**
-					 * Если версия OpenSSL соответствует или выше версии 1.0.2
-					 */
-					#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-						// Если протокол не был извлечён
-						if(alpn == nullptr)
-							// Выполняем извлечение выбранного протокола
-							::SSL_get0_alpn_selected(target._ssl, &alpn, &size);
-					#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-					// Если тип протокола передачи данных получен
-					if(alpn != nullptr){
-						/**
-						 * Определяет желаемый активный протокол
-						 */
-						switch(static_cast <uint8_t> (target._proto)){
-							// Если протокол соответствует SPDY/1
-							case static_cast <uint8_t> (proto_t::SPDY1): {
-								// Если активный протокол не соответствует протоколу SPDY/1
-								if((size != 6) || (::memcmp("spdy/1", alpn, 6) != 0))
-									// Устанавливаем активный протокол
-									return proto_t::HTTP1_1;
-							} break;
-							// Если протокол соответствует HTTP/2
-							case static_cast <uint8_t> (proto_t::HTTP2): {
-								// Если активный протокол не соответствует протоколу HTTP/2
-								if((size != 2) || (::memcmp("h2", alpn, 2) != 0))
-									// Устанавливаем активный протокол
-									return proto_t::HTTP1_1;
-							} break;
-							// Если протокол соответствует HTTP/3
-							case static_cast <uint8_t> (proto_t::HTTP3):
-								// Если активный протокол не соответствует протоколу HTTP/3
-								if((size != 2) || (::memcmp("h3", alpn, 2) != 0))
-									// Устанавливаем активный протокол
-									return proto_t::HTTP1_1;
-							break;
-						}
-					// Устанавливаем активный протокол
-					} else return proto_t::HTTP1_1;
-				} break;
-			}
+		switch(static_cast <uint8_t> (target._proto)){
+			// Если протокол соответствует SPDY/1
+			case static_cast <uint8_t> (proto_t::SPDY1):
+			// Если протокол соответствует HTTP/2
+			case static_cast <uint8_t> (proto_t::HTTP2):
+			// Если протокол соответствует HTTP/3
+			case static_cast <uint8_t> (proto_t::HTTP3): {
+				// Название прикладного протокола, согласованного связью
+				const string & name = ((target._type == type_t::SERVER) ? target._tls->server.protocol() : target._tls->client.protocol());
+				/**
+				 * Определяем согласованное название
+				 */
+				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует SPDY/1
+					case static_cast <uint8_t> (proto_t::SPDY1):
+						// Если активный протокол не соответствует протоколу SPDY/1
+						if(name != "spdy/1")
+							// Устанавливаем активный протокол
+							return proto_t::HTTP1_1;
+					break;
+					// Если протокол соответствует HTTP/2
+					case static_cast <uint8_t> (proto_t::HTTP2):
+						// Если активный протокол не соответствует протоколу HTTP/2
+						if(name != "h2")
+							// Устанавливаем активный протокол
+							return proto_t::HTTP1_1;
+					break;
+					// Если протокол соответствует HTTP/3
+					case static_cast <uint8_t> (proto_t::HTTP3):
+						// Если активный протокол не соответствует протоколу HTTP/3
+						if(name != "h3")
+							// Устанавливаем активный протокол
+							return proto_t::HTTP1_1;
+					break;
+				}
+			} break;
 		}
 	}
 	// Выводим результат
@@ -3993,53 +3655,17 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 		}
 	}
 	/**
-	 * Определяем тип приложения
+	 * Прежний OpenSSL требовал колбэков выбора прикладного протокола с каждой стороны;
+	 * наружный модуль выбирает сам по объявленному перечню, поэтому перечень уходит связи
+	 * в wrapTLS(). Переговорщики NPN (draft-agl-tls-nextprotoneg) не включаем: их держал
+	 * лишь OpenSSL до издания 3.0, а v4 собирался против 3.x, где их уже нет
 	 */
-	switch(static_cast <uint8_t> (target._type)){
-		// Если приложение является клиентом
-		case static_cast <uint8_t> (type_t::CLIENT): {
-			/**
-			 * @brief собран без следующих переговорщиков по протоколам
-			 *
-			 */
-			#ifndef OPENSSL_NO_NEXTPROTONEG
-				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
-				::SSL_CTX_set_next_proto_select_cb(target._ctx, &engine_t::selectNextProtoClient, &target);
-			#endif // !OPENSSL_NO_NEXTPROTONEG
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 1.0.2
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				// Выполняем установку доступных протоколов передачи данных
-				::SSL_CTX_set_alpn_protos(target._ctx, target.protocols.data(), static_cast <uint32_t> (target.protocols.size()));
-			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-		} break;
-		// Если приложение является сервером
-		case static_cast <uint8_t> (type_t::SERVER): {
-			/**
-			 * @brief собран без следующих переговорщиков по протоколам
-			 *
-			 */
-			#ifndef OPENSSL_NO_NEXTPROTONEG
-				// Выполняем установку функцию обратного вызова при выборе следующего протокола
-				::SSL_CTX_set_next_protos_advertised_cb(target._ctx, &engine_t::nextProto, &target);
-			#endif // !OPENSSL_NO_NEXTPROTONEG
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 1.0.2
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
-				::SSL_CTX_set_alpn_select_cb(target._ctx, &engine_t::selectNextProtoServer, &target);
-			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-		} break;
-	}
 }
 /**
  * @brief Метод прикрепления контекста клиента к контексту сервера
  *
  * @param target  контекст назначения
  * @param address объект подключения
- * @return        объект SSL контекста
  */
 void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 	// Если данные переданы
@@ -4048,28 +3674,167 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 		target._addr = address;
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
-		// Если тип подключения является клиент
-		if((target._addr->sock != INVALID_SOCKET) && target._encrypted){
-			// Извлекаем BIO cthdthf
-			target._bio = ::SSL_get_rbio(target._ssl);
-			// Устанавливаем сокет клиента
-			::BIO_set_fd(target._bio, target._addr->sock, BIO_NOCLOSE);
-			// Выполняем установку объекта подключения в BIO
-			::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.client));
+		/**
+		 * Прежняя переналадка BIO (BIO_set_fd и BIO_CTRL_DGRAM_SET_CONNECTED) не нужна:
+		 * насос сам берёт адрес собеседника из объекта подключения. Для дейтаграмм адрес
+		 * связи передаёт наружному модулю отдельно — круг 2
+		 */
+	}
+}
+/**
+ * @brief Метод заведения связи наружного модуля шифрования
+ *
+ * Прежний OpenSSL создавал пару SSL_CTX и SSL и вешал на них колбэки; наружный модуль
+ * настраивается целиком одним контекстом, поэтому здесь остаётся только перечень настроек
+ *
+ * @param target контекст назначения
+ * @param type   тип активного приложения
+ * @param host   хост удалённого сервера
+ * @return       результат заведения связи
+ *
+ */
+bool awh::Engine::wrapTLS(ctx_t & target, const type_t type, const string & host) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если объект подключения и сокет переданы
+	if((target._addr != nullptr) && (target._addr->sock != INVALID_SOCKET)){
+		// Выполняем создание состояния связи
+		target._tls = std::make_unique <ctx_t::Tls>();
+		// Запоминаем движок: по нему связь выбирает подлинность для имени клиента
+		target._tls->engine = this;
+		// Устанавливаем адрес удалённого сервера для SNI и сверки имени сертификата
+		target._tls->host = host;
+		// Устанавливаем признак проверки доверия цепочке собеседника
+		target._tls->verify = this->_verify;
+		/**
+		 * Определяем перенос связи: дейтаграммы ведут DTLS, потоки — TLS.
+		 * SCTP у v4 заводится только как SOCK_STREAM, поэтому шифруется как обычный TCP
+		 */
+		const nts::context::transport_t transport = ((target._addr->_type == SOCK_DGRAM) ? nts::context::transport_t::DATAGRAMS : nts::context::transport_t::RECORDS);
+		// Перечень наборов шифрования для связи
+		vector <nts::protect::suite_t> suites;
+		// Выполняем разбор перечня наборов шифрования из строки настроек
+		suitesList(this->_cipher, suites, this->_log);
+		// Если список настроек пуст, а связь серверная, берём серверный набор по умолчанию
+		if(suites.empty() && (type == type_t::SERVER))
+			// Выполняем установку серверных наборов по умолчанию
+			serverSuites(suites);
+		// Перечень групп обмена ключами
+		vector <nts::extension::group_t> groups;
+		// Выполняем установку перечня групп по умолчанию
+		groupList(groups);
+		// Перечень прикладных протоколов, объявляемых связью
+		vector <string> protocols;
+		// Выполняем разбор перечня прикладных протоколов
+		protocolList(target.protocols, protocols);
+		/**
+		 * Определяем род связи
+		 */
+		if(type == type_t::SERVER){
+			// Устанавливаем перенос связи
+			target._tls->server.transport(transport);
+			// Выполняем установку пределов изданий протокола
+			result = (target._tls->server.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
+			// Выполняем установку групп обмена ключами
+			target._tls->server.groups(groups);
+			// Если перечень наборов шифрования собран, устанавливаем его
+			if(!suites.empty())
+				// Выполняем установку наборов шифрования
+				target._tls->server.suites(suites);
+			// Если перечень прикладных протоколов задан, объявляем его
+			if(!protocols.empty())
+				// Выполняем установку прикладных протоколов
+				target._tls->server.protocols(protocols);
+			// Если подлинность сервера задана файлами сертификатов, устанавливаем её
+			if(result && !this->_cert.pem.empty())
+				// Выполняем установку подлинности по умолчанию
+				result = this->credential(target, this->_cert);
+			/**
+			 * Если разрешена проверка сертификата клиента, собираем запас доверенных:
+			 * наружный модуль цепочку не судит, но запас нужен и для сверки имени издателя
+			 */
+			if(result && this->_verify){
+				// Выполняем инициализацию запаса доверенных сертификатов
+				static_cast <void> (this->storeCA(target));
+				// Устанавливаем запас доверенных сертификатов связи
+				target._tls->server.verification(true, 0, target._tls->store);
+			}
+			// Если указан файл отозванных сертификатов, предупреждаем: отзыв ожидает наружный модуль
+			if(!this->_cert.crl.empty())
+				// Выводим в лог сообщение об ожидающей проверке отзыва
+				this->_log->print("CRL checking is not supported by the cipher module yet", log_t::flag_t::WARNING);
+			// Если подлинность сервера не задана, связь завести нельзя
+			if(result && this->_cert.pem.empty()){
+				// Выводим в лог сообщение об отсутствии сертификата сервера
+				this->_log->print("There is no certificate for the server", log_t::flag_t::CRITICAL);
+				// Сообщаем, что связь не заведена
+				result = false;
+			}
+		// Если приложение является клиентом
+		} else {
+			// Устанавливаем перенос связи
+			target._tls->client.transport(transport);
+			// Выполняем установку пределов изданий протокола
+			result = (target._tls->client.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
+			// Выполняем установку групп и предложений обмена ключами
+			target._tls->client.groups(groups);
+			// Выполняем установку предложений групп
+			target._tls->client.shares(groups);
+			// Если перечень наборов шифрования собран, устанавливаем его
+			if(!suites.empty())
+				// Выполняем установку наборов шифрования
+				target._tls->client.suites(suites);
+			// Если перечень прикладных протоколов задан, объявляем его
+			if(!protocols.empty())
+				// Выполняем установку прикладных протоколов
+				target._tls->client.protocols(protocols);
+			/**
+			 * Раздел 3 RFC 6066: адрес в расширении server_name не передают, поэтому имя
+			 * отправляем только когда хост не является IP-адресом
+			 */
+			if(!host.empty() && (ipLiteral(host) == 0))
+				// Устанавливаем имя узла, за которым пришли
+				target._tls->client.name(host);
+			// Выполняем инициализацию запаса доверенных сертификатов
+			static_cast <void> (this->storeCA(target));
+			// Устанавливаем проверку цепочки собеседника и запас доверенных
+			target._tls->client.verification(this->_verify, 0, target._tls->store);
+			// Если указан сертификат клиента, устанавливаем его подлинность
+			if(!this->_cert.pem.empty())
+				// Выполняем установку подлинности клиента
+				result = this->credential(target, this->_cert);
+			// Если указан файл отозванных сертификатов, предупреждаем: отзыв ожидает наружный модуль
+			if(!this->_cert.crl.empty())
+				// Выводим в лог сообщение об ожидающей проверке отзыва
+				this->_log->print("CRL checking is not supported by the cipher module yet", log_t::flag_t::WARNING);
+		}
+		// Если связь заведена, запоминаем, что шифрование активно
+		if(result){
+			// Устанавливаем флаг инициализации шифрования
+			target._encrypted = true;
+			// Устанавливаем флаг активации TLS
+			target._addr->_encrypted = true;
+		// Если связь не завелась, очищаем состояние связи
+		} else {
+			// Выполняем очистку состояния связи
+			target._tls.reset(nullptr);
+			// Выводим в лог сообщение о невозможности завести связь
+			this->_log->print("Could not create SSL/TLS session object", log_t::flag_t::CRITICAL);
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод обертывания сетевого сокета для сервера
  *
  * @param target контекст назначения
  * @param source исходный контекст
- * @return       объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, ctx_t & source) noexcept {
-	// Если объект ещё не обёрнут в SSL контекст
+	// Если объект ещё не обёрнут в контекст шифрования
 	if(!source._encrypted && (source._addr != nullptr))
-		// Выполняем обёртывание уже активного SSL контекста
+		// Выполняем обёртывание уже активного подключения
 		this->wrap(target, source._addr);
 }
 /**
@@ -4077,7 +3842,6 @@ void awh::Engine::wrap(ctx_t & target, ctx_t & source) noexcept {
  *
  * @param target  контекст назначения
  * @param address объект подключения
- * @return        объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 	// Если данные переданы
@@ -4087,7 +3851,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
 		/**
-		 * Проверяем семейство протоколов сервера
+		 * Определяем семейство протоколов сервера
 		 */
 		switch(target._addr->_peer.client.ss_family){
 			// Если семейство протоколов IPv4
@@ -4097,289 +3861,30 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Если семейство протоколов другое, выходим
 			default: return;
 		}
-		// Если тип сокетов установлен не как потоковые
+		// Если тип сокетов установлен не как потоковые, выходим
 		if(target._addr->_type != SOCK_STREAM)
 			// Выходим из функции
 			return;
-		// Если объект фреймворка существует
-		if((target._addr->sock != INVALID_SOCKET) && !this->_cert.key.empty() && !this->_cert.pem.empty()){
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				/**
-				 * Определяем тип протокола подключения
-				 */
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLS_server_method());
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLS_server_method());
-					break;
-				}
-			/**
-			 * Для операционной системы Linux
-			 */
-			#else
-				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLS_server_method());
-			#endif
-			// Если контекст не создан
-			if(target._ctx == nullptr){
-				// Выводим в лог сообщение
-				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Устанавливаем опции запроса
-			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			// Если диапазон версий протокола не установлен
-			if(!sslVersions(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->_cipher.empty()){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(::SSL_CTX_set_cipher_list(target._ctx, this->_cipher.c_str()) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			// Если алгоритмы шифрования не заданы, устанавливаем алгоритмы сервера по умолчанию
-			} else if(::SSL_CTX_set_cipher_list(target._ctx, AWH_TLS_SERVER_CIPHERS) < 1) {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Получаем идентификатор процесса
-			const pid_t pid = ::getpid();
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 3.0.0
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
-				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-			/**
-			 * Если версия OpenSSL ниже версии 3.0.0
-			 */
-			#else
-				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
-					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Выводим в лог сообщение
-						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						// Выходим
-						return;
-					}
-					// Выполняем установку кривых P-256
-					::SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					::EC_KEY_free(ecdh);
-				}
-			#endif
-			/**
-			 * Если протоколом является HTTP, выполняем переключение на него
-			 */
-			switch(static_cast <uint8_t> (target._proto)){
-				// Если протокол соответствует SPDY/1
-				case static_cast <uint8_t> (proto_t::SPDY1):
-				// Если протокол соответствует HTTP/2
-				case static_cast <uint8_t> (proto_t::HTTP2):
-				// Если протокол соответствует HTTP/3
-				case static_cast <uint8_t> (proto_t::HTTP3):
-					// Выполняем переключение протокола подключения
-					this->httpUpgrade(target);
-				break;
-			}
-			// Выполняем установку идентификатора сессии
-			if(::SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const uint8_t *> (&pid), sizeof(pid)) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
-			// Устанавливаем поддерживаемые кривые
-			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Устанавливаем флаг quiet shutdown
-			// ::SSL_CTX_set_quiet_shutdown(target._ctx, 1);
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			::SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
-			// Запускаем кэширование
-			::SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-			// Если цепочка сертификатов установлена
-			if(!this->_cert.pem.empty()){
-				// Если цепочка сертификатов не установлена
-				if(::SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.pem.c_str()) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если приватный ключ установлен
-			if(!this->_cert.key.empty()){
-				// Если приватный ключ не может быть установлен
-				if(::SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				// Если приватный ключ недействителен
-				if(::SSL_CTX_check_private_key(target._ctx) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если сертификат центра сертификации недействителен
-			if(::SSL_CTX_set_default_verify_file(target._ctx) < 1){
-				// Выводим в лог сообщение
-				this->_log->print("CAfile is invalid", log_t::flag_t::CRITICAL);
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
-			// Если нужно произвести проверку
-			if(this->_verify){
-				// Устанавливаем глубину проверки
-				::SSL_CTX_set_verify_depth(target._ctx, 2);
-				// Выполняем проверку сертификата клиента
-				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
-			// Запрещаем выполнять првоерку сертификата пользователя
-			} else ::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
-			// Если установлены сертификаты по доменным именам
-			if(!this->_sni.empty()){
-				// Устанавливаем функцию выбора сертификата по доменному имени (SNI)
-				::SSL_CTX_set_tlsext_servername_callback(target._ctx, &serverName);
-				// Передаём объект движка в функцию выбора сертификата
-				::SSL_CTX_set_tlsext_servername_arg(target._ctx, this);
-			}
-			// Создаем SSL объект
-			target._ssl = ::SSL_new(target._ctx);
-			// Если объект не создан
-			if(!(target._encrypted = (target._ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Проверяем рукопожатие
-			if(::SSL_do_handshake(target._ssl) < 1){
-				// Выполняем проверку рукопожатия
-				const long verify = ::SSL_get_verify_result(target._ssl);
-				// Если рукопожатие не выполнено
-				if(verify != X509_V_OK){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(verify));
-					// Выходим
-					return;
-				}
-			}
-			// Устанавливаем флаг активации TLS
-			target._addr->_encrypted = target._encrypted;
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				/**
-				 * Определяем тип протокола подключения
-				 */
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-						// Выполняем обёртывание сокета UDP в BIO SSL
-						target._bio = ::BIO_new_dgram(target._addr->sock, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = ::BIO_new_dgram_sctp(target._addr->sock, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = ::BIO_new_socket(target._addr->sock, BIO_NOCLOSE);
-					break;
-				}
-			/**
-			 * Для операционной системы Linux
-			 */
-			#else
-				// Выполняем обёртывание сокета в BIO SSL
-				target._bio = ::BIO_new_socket(target._addr->sock, BIO_NOCLOSE);
-			#endif
-			// Если BIO SSL создано
-			if(target._bio != nullptr){
-				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				target.blocking(mode_t::DISABLED);
-				// Выполняем установку BIO SSL
-				::SSL_set_bio(target._ssl, target._bio, target._bio);
-				/**
-				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
-				 */
-				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
-					// Если протокол интернета установлен как SCTP
-					if(target._addr->_protocol == IPPROTO_SCTP)
-						// Устанавливаем функцию нотификации
-						::BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
-				#endif
-			// Если BIO SSL не создано
-			} else {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим сообщение об ошибке
-				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-			}
+		/**
+		 * Если протоколом является HTTP, выполняем переключение на него
+		 */
+		switch(static_cast <uint8_t> (target._proto)){
+			// Если протокол соответствует SPDY/1
+			case static_cast <uint8_t> (proto_t::SPDY1):
+			// Если протокол соответствует HTTP/2
+			case static_cast <uint8_t> (proto_t::HTTP2):
+			// Если протокол соответствует HTTP/3
+			case static_cast <uint8_t> (proto_t::HTTP3):
+				// Выполняем переключение протокола подключения
+				this->httpUpgrade(target);
+			break;
 		}
+		// Выполняем заведение связи наружного модуля
+		if(this->wrapTLS(target, type_t::SERVER, "")){
+			// Устанавливаем неблокирующий режим ввода/вывода для сокета
+			target.blocking(mode_t::DISABLED);
+		// Если связь не завелась, очищаем контекст
+		} else target.clear();
 	}
 }
 /**
@@ -4388,7 +3893,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
  * @param target  контекст назначения
  * @param address объект подключения
  * @param type    тип активного приложения
- * @return        объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noexcept {
 	// Выполняем обёртывание без хоста удалённого сервера
@@ -4397,11 +3901,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 /**
  * @brief Метод обертывания сетевого сокета для клиента/сервера
  *
+ * Для клиента DTLS хост удалённого сервера передаётся в расширение SNI
+ * и используется для проверки соответствия сертификата доменному имени
+ *
  * @param target  контекст назначения
  * @param address объект подключения
  * @param type    тип активного приложения
  * @param host    хост удалённого сервера
- * @return        объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, const string & host) noexcept {
 	// Если данные переданы
@@ -4410,405 +3916,53 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 		target._type = type;
 		// Устанавливаем сетевой сокет
 		target._addr = address;
-		// Если объект фреймворка существует
+		// Если сокет инициализирован
 		if(target._addr->sock != INVALID_SOCKET){
 			/**
-			 * Определяем тип сокета
+			 * Если протоколом является HTTP, выполняем переключение на него
 			 */
-			switch(target._addr->_type){
-				// Если тип сокета - диграммы
-				case SOCK_DGRAM: {
-					/**
-					 * Определяем тип активного приложения
-					 */
-					switch(static_cast <uint8_t> (type)){
-						// Если приложение является клиентом
-						case static_cast <uint8_t> (type_t::CLIENT):
-							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLS_client_method());
-						break;
-						// Если приложение является сервером
-						case static_cast <uint8_t> (type_t::SERVER):
-							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLS_server_method());
-						break;
-					}
-				} break;
-				// Если тип сокета - потоки
-				case SOCK_STREAM: {
-					/**
-					 * Определяем тип активного приложения
-					 */
-					switch(static_cast <uint8_t> (type)){
-						// Если приложение является клиентом
-						case static_cast <uint8_t> (type_t::CLIENT):
-							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLS_client_method());
-						break;
-						// Если приложение является сервером
-						case static_cast <uint8_t> (type_t::SERVER):
-							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLS_server_method());
-						break;
-					}
-				} break;
-			}
-			// Если контекст не создан
-			if(target._ctx == nullptr){
-				// Выводим в лог сообщение
-				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Устанавливаем опции запроса
-			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
-			// Если диапазон версий протокола не установлен
-			if(!sslVersions(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->_cipher.empty()){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(::SSL_CTX_set_cipher_list(target._ctx, this->_cipher.c_str()) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
+			switch(static_cast <uint8_t> (type)){
 				// Если приложение является сервером
-				if(type == type_t::SERVER)
-					// Заставляем серверные алгоритмы шифрования использовать в приоритете
-					::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			// Если алгоритмы шифрования не заданы и приложение является сервером, устанавливаем алгоритмы сервера по умолчанию
-			} else if((type == type_t::SERVER) && (::SSL_CTX_set_cipher_list(target._ctx, AWH_TLS_SERVER_CIPHERS) < 1)) {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 3.0.0
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
-				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-			/**
-			 * Если версия OpenSSL ниже версии 3.0.0
-			 */
-			#else
-				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
-					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Выводим в лог сообщение
-						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						// Выходим
-						return;
+				case static_cast <uint8_t> (type_t::SERVER): {
+					switch(static_cast <uint8_t> (target._proto)){
+						// Если протокол соответствует SPDY/1
+						case static_cast <uint8_t> (proto_t::SPDY1):
+						// Если протокол соответствует HTTP/2
+						case static_cast <uint8_t> (proto_t::HTTP2):
+						// Если протокол соответствует HTTP/3
+						case static_cast <uint8_t> (proto_t::HTTP3):
+							// Выполняем переключение протокола подключения
+							this->httpUpgrade(target);
+						break;
 					}
-					// Выполняем установку кривых P-256
-					::SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					::EC_KEY_free(ecdh);
-				}
-			#endif
-			// Если приложение является сервером
-			if(type == type_t::SERVER){
-				// Получаем идентификатор процесса
-				const pid_t pid = ::getpid();
-				/**
-				 * Если протоколом является HTTP, выполняем переключение на него
-				 */
-				switch(static_cast <uint8_t> (target._proto)){
-					// Если протокол соответствует SPDY/1
-					case static_cast <uint8_t> (proto_t::SPDY1):
-					// Если протокол соответствует HTTP/2
-					case static_cast <uint8_t> (proto_t::HTTP2):
-					// Если протокол соответствует HTTP/3
-					case static_cast <uint8_t> (proto_t::HTTP3):
-						// Выполняем переключение протокола подключения
-						this->httpUpgrade(target);
-					break;
-				}
-				// Выполняем установку идентификатора сессии
-				if(::SSL_CTX_set_session_id_context(target._ctx, reinterpret_cast <const uint8_t *> (&pid), sizeof(pid)) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Failed to set session ID", log_t::flag_t::CRITICAL);
-					// Выходим
-					return;
-				}
-			// Если приложение является клиентом
-			} else {
-				/**
-				 * Если протоколом является HTTP, выполняем переключение на него
-				 */
-				switch(static_cast <uint8_t> (target._proto)){
-					// Если протокол соответствует SPDY/1
-					case static_cast <uint8_t> (proto_t::SPDY1):
-					// Если протокол соответствует HTTP/1
-					case static_cast <uint8_t> (proto_t::HTTP1):
-					// Если протокол соответствует HTTP/2
-					case static_cast <uint8_t> (proto_t::HTTP2):
-					// Если протокол соответствует HTTP/3
-					case static_cast <uint8_t> (proto_t::HTTP3):
-					// Если протокол соответствует HTTP/1.1
-					case static_cast <uint8_t> (proto_t::HTTP1_1):
-						// Выполняем переключение протокола подключения
-						this->httpUpgrade(target);
-					break;
-				}
+				} break;
+				// Если приложение является клиентом
+				case static_cast <uint8_t> (type_t::CLIENT): {
+					switch(static_cast <uint8_t> (target._proto)){
+						// Если протокол соответствует SPDY/1
+						case static_cast <uint8_t> (proto_t::SPDY1):
+						// Если протокол соответствует HTTP/1
+						case static_cast <uint8_t> (proto_t::HTTP1):
+						// Если протокол соответствует HTTP/2
+						case static_cast <uint8_t> (proto_t::HTTP2):
+						// Если протокол соответствует HTTP/3
+						case static_cast <uint8_t> (proto_t::HTTP3):
+						// Если протокол соответствует HTTP/1.1
+						case static_cast <uint8_t> (proto_t::HTTP1_1):
+							// Выполняем переключение протокола подключения
+							this->httpUpgrade(target);
+						break;
+					}
+				} break;
 			}
-			// Устанавливаем поддерживаемые кривые
-			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL ECDH: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Если приложение является клиентом
-			if(type == type_t::CLIENT){
-				// Выполняем инициализацию CA-файла сертификата
-				if(!this->storeCA(target._ctx)){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				// Выполняем инициализацию CRL-файла сертификата
-				this->storeCRL(target._ctx);
-				// Если объект CRL-файла сертификата получен
-				if(this->_crl != nullptr)
-					// Выполняем установку объект CRL-файла сертификата
-					target.crl(this->_crl);
-			}
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			::SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
-			// Если приложение является сервером
-			if(type == type_t::SERVER)
-				// Выполняем отключение SSL кеша
-				::SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_OFF);
-			// Если цепочка сертификатов установлена
-			if(!this->_cert.pem.empty()){
-				/**
-				 * Определяем тип активного приложения
-				 */
-				switch(static_cast <uint8_t> (type)){
-					// Если приложение является клиентом
-					case static_cast <uint8_t> (type_t::CLIENT):
-						// Если цепочка сертификатов не установлена
-						if(::SSL_CTX_use_certificate_file(target._ctx, this->_cert.pem.c_str(), SSL_FILETYPE_PEM) < 1){
-							// Выводим в лог сообщение
-							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-							// Очищаем созданный контекст
-							target.clear();
-							// Выходим
-							return;
-						}
-					break;
-					// Если приложение является сервером
-					case static_cast <uint8_t> (type_t::SERVER):
-						// Если цепочка сертификатов не установлена
-						if(::SSL_CTX_use_certificate_chain_file(target._ctx, this->_cert.pem.c_str()) < 1){
-							// Выводим в лог сообщение
-							this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-							// Очищаем созданный контекст
-							target.clear();
-							// Выходим
-							return;
-						}
-					break;
-				}
-			}
-			// Если приватный ключ установлен
-			if(!this->_cert.key.empty()){
-				// Если приватный ключ не может быть установлен
-				if(::SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				// Если приватный ключ недействителен
-				if(::SSL_CTX_check_private_key(target._ctx) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если нужно произвести проверку
-			if(this->_verify){
-				/**
-				 * Для клиента с известным хостом проверяем сертификат так же, как у клиента TLS:
-				 * цепочка и соответствие сертификата доменному имени, глубина цепочки 4
-				 */
-				if((type == type_t::CLIENT) && !host.empty()){
-					// Создаём объект проверки домена
-					target._verify = std::make_unique <verify_t> (host, this);
-					// Выполняем проверку сертификата
-					::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-					// Выполняем проверку всех дочерних сертификатов
-					::SSL_CTX_set_cert_verify_callback(target._ctx, &verifyHost, target._verify.get());
-					// Устанавливаем глубину проверки
-					::SSL_CTX_set_verify_depth(target._ctx, 4);
-				// Если хост удалённого сервера неизвестен
-				} else {
-					// Устанавливаем глубину проверки
-					::SSL_CTX_set_verify_depth(target._ctx, 2);
-					// Выполняем проверку сертификата клиента
-					::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
-				}
-			// Запрещаем выполнять првоерку сертификата пользователя
-			} else ::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
-			// Устанавливаем, что мы должны читать как можно больше входных байтов
-			::SSL_CTX_set_read_ahead(target._ctx, 1);
-			// Если приложение является сервером
-			if(type == type_t::SERVER){
-				/**
-				 * Определяем тип сокета
-				 */
-				switch(target._addr->_type){
-					// Если тип сокета - диграммы
-					case SOCK_DGRAM: {
-						// Выполняем проверку файлов печенок
-						::SSL_CTX_set_cookie_verify_cb(target._ctx, &verifyCookie);
-						// Выполняем генерацию файлов печенок
-						::SSL_CTX_set_cookie_generate_cb(target._ctx, &generateCookie);
-					} break;
-					// Если тип сокета - потоки
-					case SOCK_STREAM: {
-						// Выполняем проверку файлов печенок
-						::SSL_CTX_set_stateless_cookie_verify_cb(target._ctx, &verifyStatelessCookie);
-						// Выполняем генерацию файлов печенок
-						::SSL_CTX_set_stateless_cookie_generate_cb(target._ctx, &generateStatelessCookie);
-					} break;
-				}
-			}
-			// Создаем SSL объект
-			target._ssl = ::SSL_new(target._ctx);
-			// Если объект не создан
-			if(!(target._encrypted = (target._ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Если приложение является клиентом и хост удалённого сервера известен
-			if((type == type_t::CLIENT) && !host.empty()){
-				// Активируем верификацию имени хоста или IP-адреса и SNI
-				if(!verifyHostParam(target._ssl, host)){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
-					// Выходим
-					return;
-				}
-			}
-			// Устанавливаем флаг активации TLS
-			target._addr->_encrypted = target._encrypted;
-			/**
-			 * Определяем тип сокета
-			 */
-			switch(target._addr->_type){
-				// Если тип сокета - диграммы
-				case SOCK_DGRAM:
-					// Выполняем обёртывание сокета UDP в BIO SSL
-					target._bio = ::BIO_new_dgram(target._addr->sock, BIO_NOCLOSE);
-				break;
-				// Если тип сокета - потоки
-				case SOCK_STREAM:
-					// Выполняем обёртывание сокета в BIO SSL
-					target._bio = ::BIO_new_socket(target._addr->sock, BIO_NOCLOSE);
-				break;
-			}
-			// Если BIO SSL создано
-			if(target._bio != nullptr){
-				// Выполняем установку BIO SSL
-				::SSL_set_bio(target._ssl, target._bio, target._bio);
-				/**
-				 * Запрос MTU пути (BIO_CTRL_DGRAM_QUERY_MTU) OpenSSL умеет только в Linux и
-				 * только для IP, в остальных случаях он берёт минимальный MTU (256 байт) и режет
-				 * ClientHello на фрагменты по 228 байт. Сервер в DTLSv1_listen разбирает лишь
-				 * первый фрагмент, остальные теряются, и каждое рукопожатие ждало перепосылки
-				 * клиента (1 секунда). Поэтому в этих случаях явно задаём MTU канала Ethernet.
-				 */
-				bool mtu = (target._addr->_type == SOCK_DGRAM);
-				/**
-				 * Для операционной системы Linux
-				 */
-				#if __linux__
-					// Запрос MTU в Linux не работает только для unix-сокета
-					mtu = (mtu && (target._addr->_peer.server.ss_family == AF_UNIX));
-				#endif
-				// Если MTU необходимо установить явно
-				if(mtu){
-					// Запрещаем запрос MTU у системы
-					::SSL_set_options(target._ssl, SSL_OP_NO_QUERY_MTU);
-					// Устанавливаем MTU канала
-					::DTLS_set_link_mtu(target._ssl, 1500);
-				}
-				/**
-				 * Определяем тип активного приложения
-				 */
-				switch(static_cast <uint8_t> (type)){
-					// Если приложение является клиентом
-					case static_cast <uint8_t> (type_t::CLIENT): {
-						// Если тип сокета - диграммы
-						if(target._addr->_type == SOCK_DGRAM){
-							/**
-							 * Для unix-сокета BIO оставляем неподключённым и задаём только начальный
-							 * адрес сервера: ответы приходят с отдельного пути сокета клиента на
-							 * сервере, и BIO переключает адрес назначения на источник ответа
-							 */
-							if(target._addr->_peer.server.ss_family == AF_UNIX)
-								// Выполняем установку адреса сервера в BIO
-								::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_PEER, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
-							// Выполняем установку объекта подключения в BIO
-							else ::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
-						}
-					} break;
-					// Если приложение является сервером
-					case static_cast <uint8_t> (type_t::SERVER): {
-						// Устанавливаем неблокирующий режим ввода/вывода для сокета
-						target.blocking(mode_t::DISABLED);
-						// Включаем обмен куками
-						::SSL_set_options(target._ssl, SSL_OP_COOKIE_EXCHANGE);
-					} break;
-				}
-			// Если BIO SSL не создано
-			} else {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим сообщение об ошибке
-				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
-			}
+			// Выполняем заведение связи наружного модуля
+			if(this->wrapTLS(target, type, host)){
+				// Если приложение является сервером, переводим сокет в неблокирующий режим
+				if(type == type_t::SERVER)
+					// Устанавливаем неблокирующий режим ввода/вывода для сокета
+					target.blocking(mode_t::DISABLED);
+			// Если связь не завелась, очищаем контекст
+			} else target.clear();
 		// Если передан неверный сокет
 		} else {
 			// Очищаем созданный контекст
@@ -4824,13 +3978,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
  * @param target контекст назначения
  * @param source исходный контекст
  * @param host   хост удалённого сервера
- * @return       объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, ctx_t & source, const string & host) noexcept {
-	// Если объект ещё не обёрнут в SSL контекст
-	if((source._ssl == nullptr) && (source._addr != nullptr))
-		// Выполняем обёртывание уже активного SSL контекста
-		this->wrap(target, source._addr, host);
+	// Если объект ещё не обёрнут в контекст шифрования
+	if(!source._encrypted && (source._addr != nullptr))
+		// Выполняем обёртывание уже активного подключения
+		this->wrap(target, source._addr, type_t::CLIENT, host);
 }
 /**
  * @brief Метод обертывания сетевого сокета для клиента
@@ -4838,277 +3991,12 @@ void awh::Engine::wrap(ctx_t & target, ctx_t & source, const string & host) noex
  * @param target  контекст назначения
  * @param address объект подключения
  * @param host    хост удалённого сервера
- * @return        объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) noexcept {
-	// Если данные переданы
-	if((address != nullptr) && !host.empty()){
-		// Устанавливаем сетевой сокет
-		target._addr = address;
-		// Устанавливаем тип приложения
-		target._type = type_t::CLIENT;
-		// Если объект фреймворка существует
-		if((target._addr->sock != INVALID_SOCKET) && this->encrypted(target)){
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				/**
-				 * Определяем тип протокола подключения
-				 */
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLS_client_method());
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLS_client_method());
-					break;
-				}
-			/**
-			 * Для операционной системы Linux
-			 */
-			#else
-				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLS_client_method());
-			#endif
-			// Если контекст не создан
-			if(target._ctx == nullptr){
-				// Выводим в лог сообщение
-				this->_log->print("Context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Устанавливаем опции запроса
-			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
-			// Если диапазон версий протокола не установлен
-			if(!sslVersions(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 3.0.0
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
-				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-			/**
-			 * Если версия OpenSSL ниже версии 3.0.0
-			 */
-			#else
-				{
-					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521) или NID_secp256k1
-					EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-					// Если кривые не получилось установить
-					if(ecdh == nullptr){
-						// Выводим в лог сообщение
-						this->_log->print("Set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-						// Выходим
-						return;
-					}
-					// Выполняем установку кривых P-256
-					::SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
-					// Выполняем очистку объекта кривой
-					::EC_KEY_free(ecdh);
-				}
-			#endif
-			/**
-			 * Если протоколом является HTTP, выполняем переключение на него
-			 */
-			switch(static_cast <uint8_t> (target._proto)){
-				// Если протокол соответствует SPDY/1
-				case static_cast <uint8_t> (proto_t::SPDY1):
-				// Если протокол соответствует HTTP/1
-				case static_cast <uint8_t> (proto_t::HTTP1):
-				// Если протокол соответствует HTTP/2
-				case static_cast <uint8_t> (proto_t::HTTP2):
-				// Если протокол соответствует HTTP/3
-				case static_cast <uint8_t> (proto_t::HTTP3):
-				// Если протокол соответствует HTTP/1.1
-				case static_cast <uint8_t> (proto_t::HTTP1_1):
-					// Выполняем переключение протокола подключения
-					this->httpUpgrade(target);
-				break;
-			}
-			// Выполняем инициализацию CA-файла сертификата
-			if(!this->storeCA(target._ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
-			// Выполняем инициализацию CRL-файла сертификата
-			this->storeCRL(target._ctx);
-			// Если объект CRL-файла сертификата получен
-			if(this->_crl != nullptr)
-				// Выполняем установку объект CRL-файла сертификата
-				target.crl(this->_crl);
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->_cipher.empty()){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(::SSL_CTX_set_cipher_list(target._ctx, this->_cipher.c_str()) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-					// Выходим
-					return;
-				}
-			}
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			::SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
-			// Если цепочка сертификатов установлена
-			if(!this->_cert.pem.empty()){
-				// Если цепочка сертификатов не установлена
-				if(::SSL_CTX_use_certificate_file(target._ctx, this->_cert.pem.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Certificate cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если приватный ключ установлен
-			if(!this->_cert.key.empty()){
-				// Если приватный ключ не может быть установлен
-				if(::SSL_CTX_use_PrivateKey_file(target._ctx, this->_cert.key.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				// Если приватный ключ недействителен
-				if(::SSL_CTX_check_private_key(target._ctx) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("Private key is not valid", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}
-			// Если нужно произвести проверку
-			if(this->_verify){
-				// Создаём объект проверки домена
-				target._verify = std::make_unique <verify_t> (host, this);
-				// Выполняем проверку сертификата
-				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-				// Выполняем проверку всех дочерних сертификатов
-				::SSL_CTX_set_cert_verify_callback(target._ctx, &verifyHost, target._verify.get());
-				// Устанавливаем глубину проверки
-				::SSL_CTX_set_verify_depth(target._ctx, 4);
-			// Запрещаем выполнять првоерку сертификата пользователя
-			} else ::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
-			// Устанавливаем, что мы должны читать как можно больше входных байтов
-			::SSL_CTX_set_read_ahead(target._ctx, 1);
-			// Создаем SSL объект
-			target._ssl = ::SSL_new(target._ctx);
-			// Если объект не создан
-			if(!(target._encrypted = (target._ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
-				// Выходим
-				return;
-			}
-			// Активируем верификацию имени хоста или IP-адреса и SNI
-			if(!verifyHostParam(target._ssl, host)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
-			// Проверяем рукопожатие
-			if(::SSL_do_handshake(target._ssl) < 1){
-				// Выполняем проверку рукопожатия
-				const long verify = ::SSL_get_verify_result(target._ssl);
-				// Если рукопожатие не выполнено
-				if(verify != X509_V_OK){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->_log->print("Certificate chain validation failed: %s", log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(verify));
-				}
-			}
-			// Устанавливаем флаг активации TLS
-			target._addr->_encrypted = target._encrypted;
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				/**
-				 * Определяем тип протокола подключения
-				 */
-				switch(target._addr->_protocol){
-					// Если протокол подключения UDP
-					case IPPROTO_UDP:
-						// Выполняем обёртывание сокета UDP в BIO SSL
-						target._bio = ::BIO_new_dgram(target._addr->sock, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения SCTP
-					case IPPROTO_SCTP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = ::BIO_new_dgram_sctp(target._addr->sock, BIO_NOCLOSE);
-					break;
-					// Если протокол подключения TCP
-					case IPPROTO_TCP:
-						// Выполняем обёртывание сокета в BIO SSL
-						target._bio = ::BIO_new_socket(target._addr->sock, BIO_NOCLOSE);
-					break;
-				}
-			/**
-			 * Для операционной системы Linux
-			 */
-			#else
-				// Выполняем обёртывание сокета в BIO SSL
-				target._bio = ::BIO_new_socket(target._addr->sock, BIO_NOCLOSE);
-			#endif
-			// Если BIO SSL создано
-			if(target._bio != nullptr){
-				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				target.blocking(mode_t::ENABLED);
-				// Выполняем установку BIO SSL
-				::SSL_set_bio(target._ssl, target._bio, target._bio);
-				/**
-				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
-				 */
-				#if (__linux__ || __FreeBSD__) && DEBUG_MODE
-					// Если протокол интернета установлен как SCTP
-					if(target._addr->_protocol == IPPROTO_SCTP)
-						// Устанавливаем функцию нотификации
-						::BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
-				#endif
-			// Если BIO SSL не создано
-			} else {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим сообщение об ошибке
-				this->_log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
-			}
-		}
-	}
+	// Если данные переданы и хост удалённого сервера известен
+	if((address != nullptr) && !host.empty())
+		// Выполняем обёртывание сокета клиента
+		this->wrap(target, address, type_t::CLIENT, host);
 }
 /**
  * @brief Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
@@ -5190,9 +4078,15 @@ void awh::Engine::certificate(const string & pem, const string & key) noexcept {
 		this->_cert.pem = this->_fs.realPath(pem, false);
 	// Если сертификат не передан, очищаем установленный адрес сертификата
 	else this->_cert.pem.clear();
+	// Если запас подлинностей уже собран, сбрасываем его: файлы сменились
+	if(this->_keys != nullptr)
+		// Выполняем очистку запаса подготовленных подлинностей
+		this->_keys->held.clear();
 }
 /**
  * @brief Метод установки файлов сертификата сервера для доменного имени (SNI)
+ *
+ * Если сертификат по умолчанию ещё не задан, этот сертификат становится и сертификатом по умолчанию
  *
  * @param host доменное имя (допускается маска вида *.example.com)
  * @param pem  файл цепочки сертификатов
@@ -5224,6 +4118,10 @@ void awh::Engine::certificate(const string & host, const string & pem, const str
 			this->_sni[name] = std::move(cert);
 		// Если сертификат не передан, удаляем сертификат доменного имени
 		} else this->_sni.erase(name);
+		// Если запас подлинностей уже собран, сбрасываем его: файлы сменились
+		if(this->_keys != nullptr)
+			// Выполняем очистку запаса подготовленных подлинностей
+			this->_keys->held.clear();
 	}
 }
 /**
@@ -5234,7 +4132,7 @@ void awh::Engine::certificate(const string & host, const string & pem, const str
  * @param uri объект работы с URI
  */
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- _verify(true), _fs(fmk, log), _cipher{""}, _crl(nullptr), _fmk(fmk), _uri(uri), _log(log) {
+ _verify(true), _fs(fmk, log), _cipher{""}, _keys(std::make_unique <Keys>()), _fmk(fmk), _uri(uri), _log(log) {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -5244,74 +4142,25 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 			// Выводим в лог сообщение
 			this->_log->print("Failed to ignoring signal SIGPIPE", log_t::flag_t::CRITICAL);
 	#endif
-	// Выполняем установку сертификата центра сертификации (CA-файла)
+	/**
+	 * Выполняем установку сертификата центра сертификации (CA-файла).
+	 * Инициализации OpenSSL здесь больше нет: наружный модуль не требует глобальной
+	 * подготовки, а его случайные значения берутся из энтропии системы сами
+	 */
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
 	/**
-	 * Алгоритмы шифрования по умолчанию не задаются: сервер без списка от приложения берёт набор
-	 * AWH_TLS_SERVER_CIPHERS (только ECDHE/DHE с AEAD), клиент — набор OpenSSL по умолчанию. Прежний список
-	 * допускал 3DES, CAMELLIA и обмен ключами RSA без прямой секретности
+	 * Алгоритмы шифрования по умолчанию не задаются: сервер без списка от приложения берёт
+	 * набор ECDHE с AEAD плюс наборы издания 1.3, клиент — набор наружного модуля по умолчанию.
+	 * Прежний список допускал 3DES, CAMELLIA и обмен ключами RSA без прямой секретности
 	 */
-	/**
-	 * Если версия OPENSSL ниже версии 1.1.0
-	 */
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
-		// Выполняем конфигурацию OpenSSL
-		OPENSSL_config(nullptr);
-		// Выполняем инициализацию OpenSSL
-		::SSL_library_init();
-	/**
-	 * Для более свежей версии
-	 */
-	#else
-		// Выполняем инициализацию OpenSSL
-		::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
-	#endif
-	// Выполняем загрузки описаний ошибок шифрования
-	::ERR_load_crypto_strings();
-	// Выполняем загрузки описаний ошибок OpenSSL
-	::SSL_load_error_strings();
-	// Добавляем все алгоритмы шифрования
-	::OpenSSL_add_all_algorithms();
-	// Активируем рандомный генератор
-	if(::RAND_poll() < 1){
-		// Выводим в лог сообщение
-		this->_log->print("Rand poll is not allow", log_t::flag_t::CRITICAL);
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
 }
 /**
  * @brief Деструктор
  *
  */
 awh::Engine::~Engine() noexcept {
-	// Если CRL-файл сертификата уже создан
-	if(this->_crl != nullptr)
-		// Выполняем освобождение памяти
-		::X509_CRL_free(this->_crl);
 	/**
-	 * Если версия OPENSSL ниже версии 1.1.0
+	 * Запас подготовленных подлинностей разрушается сам: ключ живёт shared_ptr,
+	 * и связь, которой он установлен, держит свою ссылку
 	 */
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && LIBRESSL_VERSION_NUMBER < 0x20700000L)
-		// Выполняем освобождение памяти
-		::EVP_cleanup();
-		::ERR_free_strings();
-		/**
-		 * Если версия OPENSSL ниже версии 1.0.0
-		 */
-		#if OPENSSL_VERSION_NUMBER < 0x10000000L
-			// Освобождаем стейт
-			::ERR_remove_state(0);
-		/**
-		 * Если версия OpenSSL более новая
-		 */
-		#else
-			// Освобождаем стейт для потока
-			::ERR_remove_thread_state(nullptr);
-		#endif
-		// Освобождаем оставшиеся данные
-		::CRYPTO_cleanup_all_ex_data();
-		// Выполняем освобождение памяти для методов компрессии
-		::sk_SSL_COMP_free(::SSL_COMP_get_compression_methods());
-	#endif
 }

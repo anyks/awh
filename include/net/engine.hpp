@@ -41,6 +41,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
@@ -63,15 +64,6 @@
 #include "../sys/fs.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
-
-/**
- * Подключаем OpenSSL
- */
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/x509v3.h>
 
 /**
  * @brief пространство имён
@@ -217,9 +209,6 @@ namespace awh {
 					// Список сетевых интерфейсов
 					vector <string> network;
 				private:
-					// Объект BIO
-					BIO * _bio;
-				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
 					// Объект работы с логами
@@ -334,7 +323,7 @@ namespace awh {
 					 sock(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
 					 _async(false), _encrypted(false), status(status_t::DISCONNECTED),
 					 port(0), ip{""}, mac{""}, _fs(fmk, log), _ifnet(fmk, log),
-					 _socket(fmk, log), _bio(nullptr), _fmk(fmk), _log(log) {}
+					 _socket(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
@@ -361,23 +350,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Cert() noexcept : ca{SSL_CA_FILE}, crl{""}, key{""}, pem{""}, path{""} {}
+				Cert() noexcept :
+				 ca{SSL_CA_FILE}, crl{""},
+				 key{""}, pem{""}, path{""} {}
 			} cert_t;
-			/**
-			 * @brief Структура параметров для валидации доменов
-			 *
-			 */
-			typedef struct Verify {
-				string host;           // Хост для валидации
-				const Engine * engine; // Объект для работы с двигателем
-				/**
-				 * @brief Конструктор
-				 *
-				 * @param engine основной родительский объект двигателя
-				 * @param host   хост для которого производится проверка
-				 */
-				Verify(const string & host = "", const Engine * engine = nullptr) noexcept : host{host}, engine(engine) {}
-			} verify_t;
 		public:
 			/**
 			 * @brief Класс контекста двигателя
@@ -391,7 +367,7 @@ namespace awh {
 					 */
 					friend class Engine;
 				private:
-					// Флаг вывода информации об OpenSSL
+					// Флаг вывода информации о связи
 					bool _verb;
 					// Флаг инициализации шифрования
 					bool _encrypted;
@@ -402,24 +378,24 @@ namespace awh {
 					// Протокол подключения
 					proto_t _proto;
 				private:
-					BIO * _bio;     // Объект BIO
-					SSL * _ssl;     // Объект SSL
-					SSL_CTX * _ctx; // Контекст SSL
-					addr_t * _addr; // Объект подключения
+					/**
+					 * @brief Класс внутреннего состояния связи
+					 *
+					 */
+					class Tls;
+				private:
+					// Состояние связи внешнего модуля шифрования (реализация — в src/net/engine.cpp)
+					std::unique_ptr <Tls> _tls;
+					// Объект подключения
+					addr_t * _addr;
 				public:
 					// Список поддерживаемых протоколов
 					vector <uint8_t> protocols;
-				private:
-					// Параметры валидации домена
-					std::unique_ptr <verify_t> _verify;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
 					// Объект работы с логами
 					const log_t * _log;
-				private:
-					// Объект CRL-файла сертификата
-					const X509_CRL * _crl;
 				private:
 					/**
 					 * @brief Метод вывода информации об ошибке
@@ -437,11 +413,46 @@ namespace awh {
 					bool retry() const noexcept;
 				private:
 					/**
-					 * @brief Метод выполнения шага рукопожатия (SSL_accept / SSL_connect)
+					 * @brief Метод проверки пройденности рукопожатия обеими сторонами
 					 *
-					 * @return результат работы функции OpenSSL
+					 * @return результат проверки
+					 *
 					 */
-					int32_t handshake() noexcept;
+					bool established() const noexcept;
+					/**
+					 * @brief Метод проверки наличия байтов, которые связь должна отправить
+					 *
+					 * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+					 *
+					 */
+					bool pending() const noexcept;
+					/**
+					 * @brief Метод перекачки байтов связи одним шагом
+					 *
+					 * @param want флаг, что прикладные данные нужны сейчас
+					 * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+					 *
+					 */
+					int32_t pump(const bool want) noexcept;
+					/**
+					 * @brief Метод отправки накопленных связи байтов в сокет
+					 *
+					 * @return результат работы функции (false - сокет не принял всё, повторить позже)
+					 *
+					 */
+					bool flush() noexcept;
+					/**
+					 * @brief Метод приёма байтов из сокета и подачи их связи
+					 *
+					 * @return количество принятых байт, 0 - собеседник закрылся, -1 - данных нет, -2 - связь отвергла байты
+					 *
+					 */
+					int64_t feed() noexcept;
+					/**
+					 * @brief Метод извлечения прочитанных связью байтов в буфер чтения
+					 *
+					 */
+					void drain() noexcept;
 				public:
 					/**
 					 * @brief Метод очистки контекста
@@ -454,13 +465,6 @@ namespace awh {
 					 *
 					 */
 					void info() const noexcept;
-				public:
-					/**
-					 * @brief Метод установки CRL-файла сертификата
-					 *
-					 * @param crl CRL-файл сертификат
-					 */
-					void crl(const X509_CRL * crl) noexcept;
 				public:
 					/**
 					 * @brief Метод чтения данных из сокета
@@ -592,12 +596,11 @@ namespace awh {
 					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
+					 *
+					 * @note Реализация в src/net/engine.cpp: состояние связи описано там же,
+					 *       и разрушитель unique_ptr требует, чтобы тип был полным
 					 */
-					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 _verb(false), _encrypted(false),
-					 _type(type_t::NONE), _proto(proto_t::RAW),
-					 _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
-					 _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log), _crl(nullptr) {}
+					Context(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -630,13 +633,13 @@ namespace awh {
 			// Сертификаты сервера по доменным именам (SNI)
 			std::unordered_map <string, cert_t> _sni;
 		private:
-			// Флаг инициализации куков
-			static bool _cookieInit;
-			// Буфер для создания куков
-			static uint8_t _cookies[16];
-		private:
-			// Объект CRL-файла сертификата
-			X509_CRL * _crl;
+			/**
+			 * @brief Класс запаса подготовленных подлинностей
+			 *
+			 */
+			class Keys;
+			// Запас подготовленных подлинностей (реализация — в src/net/engine.cpp)
+			std::unique_ptr <Keys> _keys;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -646,202 +649,49 @@ namespace awh {
 			const uri_t * _uri;
 		private:
 			/**
-			 * @brief Метод проверки на эквивалентность доменных имён
+			 * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
 			 *
-			 * @param first  первое доменное имя
-			 * @param second второе доменное имя
-			 * @return       результат проверки
+			 * @param host  доменное имя
+			 * @param chain цепочка сертификатов собеседника записями DER
+			 * @return      результат проверки
 			 */
-			bool rawEqual(const string & first, const string & second) const noexcept;
-			/**
-			 * @brief Метод проверки на не эквивалентность доменных имён
-			 *
-			 * @param first  первое доменное имя
-			 * @param second второе доменное имя
-			 * @param max    количество начальных символов для проверки
-			 * @return       результат проверки
-			 */
-			bool rawNequal(const string & first, const string & second, const size_t max = 0) const noexcept;
+			validate_t validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept;
 		private:
 			/**
-			 * @brief Метод проверки эквивалентности доменного имени с учетом шаблона
+			 * @brief Метод инициализации запаса доверенных сертификатов
 			 *
-			 * @param host доменное имя
-			 * @param patt шаблон домена
-			 * @return     результат проверки
+			 * @param target контекст назначения
+			 * @return       результат инициализации
 			 */
-			bool hostmatch(const string & host, const string & patt) const noexcept;
+			bool storeCA(ctx_t & target) const noexcept;
 			/**
-			 * @brief Метод проверки доменного имени по шаблону
+			 * @brief Метод установки подлинности стороны связи по файлам сертификатов
 			 *
-			 * @param host доменное имя
-			 * @param patt шаблон домена
-			 * @return     результат проверки
-			 */
-			bool certHostcheck(const string & host, const string & patt) const noexcept;
-		private:
-			/**
-			 * Для операционной системы Linux или FreeBSD
-			 */
-			#if __linux__ || __FreeBSD__
-				/**
-				 * @brief Функция обработки нотификации SCTP
-				 *
-				 * @param bio    объект подключения BIO
-				 * @param ctx    промежуточный передаваемый контекст
-				 * @param buffer буфер передаваемых данных
-				 */
-				static void notificationsSCTP(BIO * bio, void * ctx, void * buffer) noexcept;
-			#endif
-		private:
-			/**
-			 * @brief Функция обратного вызова для проверки валидности сертификата
+			 * Подготовленный ключ хранится в запасе движка: подготовка ключа RSA стоит
+			 * вдвое дороже самой подписи, и повторять её на каждое подключение нельзя
 			 *
-			 * @param ok   результат получения сертификата
-			 * @param x509 данные сертификата
-			 * @return     результат проверки
+			 * @param target контекст назначения
+			 * @param cert   адреса файлов сертификатов
+			 * @return       результат установки
 			 */
-			static int32_t verifyCert(const int32_t ok, X509_STORE_CTX * x509) noexcept;
+			bool credential(ctx_t & target, const cert_t & cert) noexcept;
 			/**
-			 * @brief Функция обратного вызова для проверки валидности хоста
+			 * @brief Метод выбора подлинности сервера по имени, запрошенному клиентом (SNI)
 			 *
-			 * @param x509 данные сертификата
-			 * @param ctx  передаваемый контекст
-			 * @return     результат проверки
+			 * @param target контекст назначения
+			 * @param name   имя, предъявленное клиентом
+			 * @return       результат выбора
 			 */
-			static int32_t verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
-		private:
+			bool sniSelect(ctx_t & target, const string & name) noexcept;
 			/**
-			 * OpenSSL собран без следующих переговорщиков по протоколам
-			 */
-			#ifndef OPENSSL_NO_NEXTPROTONEG
-				/**
-				 * @brief Функция обратного вызова сервера для переключения на следующий протокол
-				 *
-				 * @param ssl  объект SSL
-				 * @param data данные буфера данных протокола
-				 * @param len  размер буфера данных протокола
-				 * @param ctx  передаваемый контекст
-				 * @return     результат переключения протокола
-				 */
-				static int32_t nextProto(SSL * ssl, const uint8_t ** data, uint32_t * len, void * ctx = nullptr) noexcept;
-				/**
-				 * @brief Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
-				 *
-				 * @param ssl     объект SSL
-				 * @param out     буфер исходящего протокола
-				 * @param outSize размер буфера исходящего протокола
-				 * @param in      буфер входящего протокола
-				 * @param inSize  размер буфера входящего протокола
-				 * @param ctx     передаваемый контекст
-				 * @return        результат выбора протокола
-				 */
-				static int32_t selectNextProtoClient(SSL * ssl, uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx = nullptr) noexcept;
-			#endif
-			/**
-			 * Если версия OpenSSL соответствует или выше версии 1.0.2
-			 */
-			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				/**
-				 * @brief Функция обратного вызова сервера для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
-				 *
-				 * @param ssl     объект SSL
-				 * @param out     буфер исходящего протокола
-				 * @param outSize размер буфера исходящего протокола
-				 * @param in      буфер входящего протокола
-				 * @param inSize  размер буфера входящего протокола
-				 * @param ctx     передаваемый контекст
-				 * @return        результат выбора протокола
-				 */
-				static int32_t selectNextProtoServer(SSL * ssl, const uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, void * ctx = nullptr) noexcept;
-			#endif
-		private:
-			/**
-			 * @brief Функция обратного вызова выбора сертификата сервера по доменному имени (SNI)
+			 * @brief Метод заведения связи наружного модуля шифрования
 			 *
-			 * @param ssl объект SSL
-			 * @param ad  код предупреждения TLS
-			 * @param ctx передаваемый контекст
-			 * @return    результат выбора сертификата
+			 * @param target контекст назначения
+			 * @param type   тип активного приложения
+			 * @param host   хост удалённого сервера
+			 * @return       результат заведения связи
 			 */
-			static int32_t serverName(SSL * ssl, int32_t * ad, void * ctx) noexcept;
-			/**
-			 * @brief Функция обратного вызова для генерации куков
-			 *
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept;
-			/**
-			 * @brief Функция обратного вызова для проверки куков
-			 *
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int32_t verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept;
-			/**
-			 * @brief Функция обратного вызова для генерации куков
-			 *
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int32_t generateStatelessCookie(SSL * ssl, uint8_t * cookie, size_t * size) noexcept;
-			/**
-			 * @brief Функция обратного вызова для проверки куков
-			 *
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int32_t verifyStatelessCookie(SSL * ssl, const uint8_t * cookie, size_t size) noexcept;
-		private:
-			/**
-			 * @brief Метод проверки доменного имени по данным из сертификата
-			 *
-			 * @param host доменное имя
-			 * @param cert сертификат
-			 * @return     результат проверки
-			 */
-			validate_t matchesCommonName(const string & host, const X509 * cert = nullptr) const noexcept;
-			/**
-			 * @brief Метод проверки доменного имени по списку доменных имён из сертификата
-			 *
-			 * @param host доменное имя
-			 * @param cert сертификат
-			 * @return     результат проверки
-			 */
-			validate_t matchSubjectName(const string & host, const X509 * cert = nullptr) const noexcept;
-		private:
-			/**
-			 * @brief Метод проверки доменного имени
-			 *
-			 * @param host доменное имя
-			 * @param cert сертификат
-			 * @return     результат проверки
-			 */
-			validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
-		private:
-			/**
-			 * @brief Метод инициализации магазина CA-файлов сертификатов
-			 *
-			 * @param ctx объект контекста SSL
-			 * @return    результат инициализации
-			 */
-			bool storeCA(SSL_CTX * ctx) const noexcept;
-			/**
-			 * @brief Метод инициализации магазина CRL-файлов сертификатов
-			 *
-			 * @param ctx объект контекста SSL
-			 * @return    результат инициализации
-			 */
-			bool storeCRL(SSL_CTX * ctx) const noexcept;
+			bool wrapTLS(ctx_t & target, const type_t type, const string & host) noexcept;
 		public:
 			/**
 			 * @brief Метод ожидания рукопожатия
@@ -886,7 +736,6 @@ namespace awh {
 			 *
 			 * @param target  контекст назначения
 			 * @param address объект подключения
-			 * @return        объект SSL контекста
 			 */
 			void attach(ctx_t & target, addr_t * address) noexcept;
 		public:
@@ -895,7 +744,6 @@ namespace awh {
 			 *
 			 * @param target контекст назначения
 			 * @param source исходный контекст
-			 * @return       объект SSL контекста
 			 */
 			void wrap(ctx_t & target, ctx_t & source) noexcept;
 			/**
@@ -903,7 +751,6 @@ namespace awh {
 			 *
 			 * @param target  контекст назначения
 			 * @param address объект подключения
-			 * @return        объект SSL контекста
 			 */
 			void wrap(ctx_t & target, addr_t * address) noexcept;
 		public:
@@ -913,7 +760,6 @@ namespace awh {
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
-			 * @return        объект SSL контекста
 			 */
 			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
 			/**
@@ -926,7 +772,6 @@ namespace awh {
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
 			 * @param host    хост удалённого сервера
-			 * @return        объект SSL контекста
 			 */
 			void wrap(ctx_t & target, addr_t * address, const type_t type, const string & host) noexcept;
 		public:
@@ -936,7 +781,6 @@ namespace awh {
 			 * @param target контекст назначения
 			 * @param source исходный контекст
 			 * @param host   хост удалённого сервера
-			 * @return       объект SSL контекста
 			 */
 			void wrap(ctx_t & target, ctx_t & source, const string & host) noexcept;
 			/**
@@ -945,7 +789,6 @@ namespace awh {
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param host    хост удалённого сервера
-			 * @return        объект SSL контекста
 			 */
 			void wrap(ctx_t & target, addr_t * address, const string & host) noexcept;
 		public:

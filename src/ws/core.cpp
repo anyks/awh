@@ -19,6 +19,11 @@
 #include <core/core.hpp>
 
 /**
+ * Модуль вычисления свёрточных функций наружного модуля шифрования
+ */
+#include <nts/digest/hash.hpp>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
@@ -491,22 +496,22 @@ string awh::WebsocketCore::sha1() const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаем контекст
-			SHA_CTX ctx;
-			// Выполняем инициализацию контекста
-			SHA1_Init(&ctx);
-			// Массив полученных значений
-			u_char digest[20];
 			// Формируем магический ключ
 			const string text = this->_fmk->format("%s258EAFA5-E914-47DA-95CA-C5AB0DC85B11", this->_key.c_str());
-			// Выполняем расчет суммы
-			SHA1_Update(&ctx, text.c_str(), text.length());
-			// Копируем полученные данные
-			SHA1_Final(digest, &ctx);
-			// Получаем значение ключа
-			const string & key = string(reinterpret_cast <const char *> (digest), sizeof(digest));
-			// Формируем ключ для клиента
-			this->_hash.encode(key.data(), key.size(), hash_t::cipher_t::BASE64, result);
+			// Размер значения хеша SHA-1 в байтах
+			const size_t size = nts::digest::length(nts::digest::hash_t::SHA1);
+			// Буфер полученных значений хеша
+			vector <uint8_t> digest(size, 0);
+			/**
+			 * Раздел 1.3 RFC 6455: ключ ответа — SHA-1 от конкатенации ключа клиента
+			 * и магической строки, далее base64; считает наружный модуль шифрования
+			 */
+			if(nts::digest::hash(nts::digest::hash_t::SHA1, nts::view_t(reinterpret_cast <const uint8_t *> (text.data()), text.size()), digest.data(), size)){
+				// Получаем значение ключа
+				const string key(reinterpret_cast <const char *> (digest.data()), size);
+				// Формируем ключ для клиента
+				this->_hash.encode(key.data(), key.size(), hash_t::cipher_t::BASE64, result);
+			}
 		/**
 		 * Если возникает ошибка
 		 */

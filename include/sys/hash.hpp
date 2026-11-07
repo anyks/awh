@@ -59,16 +59,6 @@
 #include <brotli/encode.h>
 
 /**
- * Подключаем OpenSSL
- */
-#include <openssl/md5.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-
-/**
  * Наши модули
  */
 #include "fmk.hpp"
@@ -100,15 +90,19 @@ namespace awh {
 			typedef struct State {
 				// Количество обработанных байт
 				int32_t num;
+				// Размер ключа шифрования в байтах
+				size_t size;
 				// Ключ шифрования
-				AES_KEY key;
+				uint8_t key[32];
 				// Буфер данных для шифрования
-				u_char ivec[AES_BLOCK_SIZE];
+				uint8_t ivec[16];
+				// Гамма текущего блока
+				uint8_t ebuf[16];
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				State() noexcept : num(0), key{{0}, 0}, ivec{0} {}
+				State() noexcept : num(0), size(0), key{0}, ivec{0}, ebuf{0} {}
 			} state_t;
 		public:
 			/**

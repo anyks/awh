@@ -267,7 +267,7 @@ if (Dependence_FOUND)
     message(STATUS "ZLib include dir found: " ${ZLIB_INCLUDE_DIR})
     message(STATUS "PCRE2 include dir found: " ${PCRE_INCLUDE_DIR})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
-    message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
+    message(STATUS "A-NTS include dir found: " ${NTS_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 
     # Если операцинная система не относится к MS Windows

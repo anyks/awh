@@ -42,7 +42,8 @@ if [ -n "$1" ]; then
 		clean_submodule "brotli"
 		# Очищаем подпроекты
 		clean_submodule "pcre2"
-		clean_submodule "openssl"
+		clean_submodule "a-nts"
+		# clean_submodule "openssl"
 		clean_submodule "nghttp2"
 		clean_submodule "gperftools"
 
@@ -249,86 +250,69 @@ git submodule sync
 # Инициализируем подпроекты
 git submodule update --init --recursive
 
-# Сборка OpenSSL
-src="$ROOT/submodules/openssl"
+# Сборка A-NTS
+src="$ROOT/submodules/a-nts"
 if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** OpenSSL ******\n"
+	printf "\n****** A-NTS ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL v3.5.3
-	VER="3.5.3"
-
-	# Выполняем удаление все неподходящие зависимости
-	rm -rf "$src/fuzz/corpora"/*
+	# Версия A-NTS
+	# VER="1.0.0"
 
 	# Выполняем удаление предыдущей закаченной версии
-	git tag -d openssl-${VER}
+	#git tag -d nts-${VER}
 	# Закачиваем все изменения
 	git fetch --all
 	# Закачиваем все теги
 	git fetch --all --tags
-	# Выполняем жесткое переключение на master
-	git reset --hard origin/master
-	# Переключаемся на master
-	git checkout master
+	# Выполняем жесткое переключение на main
+	git reset --hard origin/main
+	# Переключаемся на main
+	git checkout main
 	# Выполняем обновление данных
-	git pull origin master
+	git pull origin main
 	# Удаляем старую ветку
-	git branch -D v${VER}-branch
+	#git branch -D v${VER}-branch
 	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch openssl-${VER}
+	#git checkout -b v${VER}-branch nts-${VER}
 
-	# Выполняем конфигурацию проекта под Linux или FreeBSD
-	if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
-		# Выполняем конфигурацию проекта
-		./Configure \
-		 sctp \
-		 no-docs \
-		 no-apps \
-		 no-tests \
-		 no-async \
-		 no-shared \
-		 enable-tfo \
-		 --release \
-		 --prefix="$PREFIX" \
-		 --openssldir="$PREFIX" \
-		 -Wl,-rpath,"$PREFIX/lib" || exit 1
-	# Выполняем конфигурацию проекта под Windows
-	elif [ $OS = "Windows" ]; then
-		# Выполняем конфигурацию проекта
-		./Configure \
-		 mingw64 \
-		 no-docs \
-		 no-apps \
-		 no-tests \
-		 no-async \
-		 no-shared \
-		 --release \
-		 --prefix="$PREFIX" \
-		 --openssldir="$PREFIX" \
-		 -Wl,-rpath,"$PREFIX/lib" || exit 1
-	# Выполняем конфигурацию проекта под все остальные операционные системы
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_BUILD_TESTS="OFF" \
+		 -DCMAKE_BUILD_SANITIZE="OFF" \
+		 -DCMAKE_BUILD_BENCHMARKS="OFF" \
+		 -DCMAKE_BUILD_SAMPLES="OFF" \
+		 -DCMAKE_BUILD_LIBFUZZER="OFF" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
 	else
-		# Выполняем конфигурацию проекта
-		./Configure \
-		 no-docs \
-		 no-apps \
-		 no-tests \
-		 no-async \
-		 no-shared \
-		 enable-tfo \
-		 --release \
-		 --prefix="$PREFIX" \
-		 --openssldir="$PREFIX" \
-		 -Wl,-rpath,"$PREFIX/lib" || exit 1
+		cmake \
+		 -DCMAKE_BUILD_TESTS="OFF" \
+		 -DCMAKE_BUILD_SANITIZE="OFF" \
+		 -DCMAKE_BUILD_BENCHMARKS="OFF" \
+		 -DCMAKE_BUILD_SAMPLES="OFF" \
+		 -DCMAKE_BUILD_LIBFUZZER="OFF" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
 	fi
 
 	# Выполняем сборку на всех логических ядрах
 	$MAKE -j"$numproc" || exit 1
-
-	# Выполняем установку проекта без документации
-	$MAKE install_sw || exit 1
-	$MAKE install_ssldirs || exit 1
+	# Выполняем установку проекта
+	$MAKE install || exit 1
 
 	# Выполняем компенсацию каталогов
 	restorelibs $PREFIX
@@ -337,12 +321,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
 fi
-
-# Устанавливаем переменные окружения
-export OPENSSL_CFLAGS="-I$PREFIX/include"
-export OPENSSL_INCLUDES="-I$PREFIX/include"
-export OPENSSL_LDFLAGS="-L$PREFIX/lib"
-export OPENSSL_LIBS="-lssl -lcrypto"
 
 # Сборка Zlib
 src="$ROOT/submodules/zlib"
@@ -1439,8 +1417,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
@@ -1463,10 +1439,11 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 		.. || exit 1
 	fi
+
+    # -DOPENSSL_LIBRARIES="$PREFIX/lib"
+    # -DOPENSSL_INCLUDE_DIR="$PREFIX/include"
 
 	# Выполняем сборку на всех логических ядрах
 	$MAKE -j"$numproc" || exit 1

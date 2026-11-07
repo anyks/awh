@@ -19,9 +19,9 @@
 [submodule "submodules/pcre2"]
 	path = submodules/pcre2
 	url = https://gitflic.ru/project/third_party/pcre2.git
-[submodule "submodules/openssl"]
-	path = submodules/openssl
-	url = https://gitflic.ru/project/third_party/openssl.git
+[submodule "submodules/a-nts"]
+	path = submodules/a-nts
+	url = https://gitflic.ru/project/anyks/nts.git
 [submodule "submodules/nghttp2"]
 	path = submodules/nghttp2
 	url = https://gitflic.ru/project/third_party/nghttp2.git

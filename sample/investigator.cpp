@@ -14,10 +14,13 @@
 
 /**
  * Подключаем заголовочные файлы проекта
+ *
+ * sys/log.hpp берём относительным путём: каталог заголовков A-NTS стоит в пути поиска
+ * раньше нашего, а у неё есть свой sys/log.hpp
  */
-#include <sys/investigator.hpp>
 #include <sys/fmk.hpp>
-#include <sys/log.hpp>
+#include <sys/investigator.hpp>
+#include "../include/sys/log.hpp"
 
 /**
  * Подписываемся на пространство имён AWH

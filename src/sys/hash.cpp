@@ -18,6 +18,15 @@
 #include <sys/hash.hpp>
 
 /**
+ * Подключаем A-NTS
+ */
+#include <nts/cipher/aes.hpp>
+#include <nts/codec/base64.hpp>
+#include <nts/digest/hash.hpp>
+#include <nts/digest/hmac.hpp>
+#include <nts/digest/pbkdf2.hpp>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
@@ -53,139 +62,33 @@ static void hashing(const string & text, const awh::hash_t::type_t type, T & res
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			// Буфер промежуточных значений
-			vector <u_char> digest;
-			/**
-			 * Определяем тип хэш-суммы
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если тип хэш-суммы указан как MD5
-				case static_cast <uint8_t> (awh::hash_t::type_t::MD5): {
-					// Создаем контекст
-					::MD5_CTX ctx;
-					// Выполняем инициализацию контекста
-					::MD5_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(16, 0);
-					// Выделяем память для буфера данных
-					result.resize(33, 0);
-					// Выполняем расчет суммы
-					::MD5_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::MD5_Final(digest.data(), &ctx);
-					// Заполняем строку данными MD5
-					for(uint8_t i = 0; i < 16; i++)
-						// Формируем данные MD5-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как SHA1
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA1): {
-					// Создаем контекст
-					::SHA_CTX ctx;
-					// Выполняем инициализацию контекста
-					::SHA1_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(20, 0);
-					// Выделяем память для буфера данных
-					result.resize(41, 0);
-					// Выполняем расчет суммы
-					::SHA1_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::SHA1_Final(digest.data(), &ctx);
-					// Заполняем строку данными SHA1
-					for(uint8_t i = 0; i < 20; i++)
-						// Формируем данные SHA1-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как SHA224
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA224): {
-					// Создаем контекст
-					::SHA256_CTX ctx;
-					// Выполняем инициализацию контекста
-					::SHA224_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(28, 0);
-					// Выделяем память для буфера данных
-					result.resize(57, 0);
-					// Выполняем расчет суммы
-					::SHA224_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::SHA224_Final(digest.data(), &ctx);
-					// Заполняем строку данными SHA224
-					for(uint8_t i = 0; i < 28; i++)
-						// Формируем данные SHA224-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как SHA256
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA256): {
-					// Создаем контекст
-					::SHA256_CTX ctx;
-					// Выполняем инициализацию контекста
-					::SHA256_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(32, 0);
-					// Выделяем память для буфера данных
-					result.resize(65, 0);
-					// Выполняем расчет суммы
-					::SHA256_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::SHA256_Final(digest.data(), &ctx);
-					// Заполняем строку данными SHA256
-					for(uint8_t i = 0; i < 32; i++)
-						// Формируем данные SHA256-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как SHA384
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA384): {
-					// Создаем контекст
-					::SHA512_CTX ctx;
-					// Выполняем инициализацию контекста
-					::SHA384_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(48, 0);
-					// Выделяем память для буфера данных
-					result.resize(97, 0);
-					// Выполняем расчет суммы
-					::SHA384_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::SHA384_Final(digest.data(), &ctx);
-					// Заполняем строку данными SHA384
-					for(uint8_t i = 0; i < 48; i++)
-						// Формируем данные SHA384-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как SHA512
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA512): {
-					// Создаем контекст
-					::SHA512_CTX ctx;
-					// Выполняем инициализацию контекста
-					::SHA512_Init(&ctx);
-					// Выделяем память для промежуточных значений
-					digest.resize(64, 0);
-					// Выделяем память для буфера данных
-					result.resize(129, 0);
-					// Выполняем расчет суммы
-					::SHA512_Update(&ctx, text.c_str(), text.length());
-					// Копируем полученные данные
-					::SHA512_Final(digest.data(), &ctx);
-					// Заполняем строку данными SHA512
-					for(uint8_t i = 0; i < 64; i++)
-						// Формируем данные SHA512-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
+			// Выполняем отображение типа хэш-суммы на алгоритм A-NTS: нумерация MD5…SHA512 у них совпадает
+			const nts::digest::hash_t algorithm = static_cast <nts::digest::hash_t> (static_cast <uint8_t> (type));
+			// Получаем длину суммы
+			const size_t length = nts::digest::length(algorithm);
+			// Если алгоритм не распознан, выходим
+			if(length == 0)
+				// Выходим из функции
+				return;
+			// Выделяем память для промежуточных значений
+			vector <uint8_t> digest(length, 0);
+			// Выделяем память для буфера данных
+			result.resize((length * 2) + 1, 0);
+			// Выполняем расчет суммы
+			if(!nts::digest::hash(algorithm, nts::view_t(reinterpret_cast <const uint8_t *> (text.data()), text.size()), digest.data(), length)){
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Выходим из функции
+				return;
 			}
+			/**
+			 * Заполняем строку данными хэш-суммы
+			 */
+			for(size_t i = 0; i < length; i++)
+				// Формируем данные хэш-суммы
+				::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
+			// Удаляем последний символ
+			result.pop_back();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -218,161 +121,34 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 		try {
 			// Выполняем очистку блока с результатом
 			result.clear();
-			/**
-			 * Определяем тип хэш-суммы
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если тип хэш-суммы указан как HMAC_MD5
-				case static_cast <uint8_t> (awh::hash_t::type_t::MD5): {
-					// Выделяем память для буфера данных
-					result.resize(33, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 16)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными MD5
-					for(uint8_t i = 0; i < 16; i++)
-						// Формируем данные MD5-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как HMAC_SHA1
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA1): {
-					// Выделяем память для буфера данных
-					result.resize(41, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 20)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными SHA1
-					for(uint8_t i = 0; i < 20; i++)
-						// Формируем данные SHA1-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как HMAC_SHA224
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA224): {
-					// Выделяем память для буфера данных
-					result.resize(57, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 28)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными SHA224
-					for(uint8_t i = 0; i < 28; i++)
-						// Формируем данные SHA224-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как HMAC_SHA256
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA256): {
-					// Выделяем память для буфера данных
-					result.resize(65, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 32)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными SHA256
-					for(uint8_t i = 0; i < 32; i++)
-						// Формируем данные SHA256-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как HMAC_SHA384
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA384): {
-					// Выделяем память для буфера данных
-					result.resize(97, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 48)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными SHA384
-					for(uint8_t i = 0; i < 48; i++)
-						// Формируем данные SHA384-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
-				// Если тип хэш-суммы указан как HMAC_SHA512
-				case static_cast <uint8_t> (awh::hash_t::type_t::SHA512): {
-					// Выделяем память для буфера данных
-					result.resize(129, 0);
-					// Размер полученной подписи
-					u_int length = 0;
-					/**
-					 * Буфер подписи передаём свой: при пустом буфере OpenSSL пишет подпись
-					 * в общий статический массив, что небезопасно при работе из нескольких потоков
-					 */
-					u_char digest[EVP_MAX_MD_SIZE];
-					// Выполняем получение подписи
-					if((::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), digest, &length) == nullptr) || (length < 64)){
-						// Выполняем очистку блока с результатом
-						result.clear();
-						// Выходим из функции
-						return;
-					}
-					// Заполняем строку данными SHA512
-					for(uint8_t i = 0; i < 64; i++)
-						// Формируем данные SHA512-хэша
-						::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
-					// Удаляем последний символ
-					result.pop_back();
-				} break;
+			// Выполняем отображение типа хэш-суммы на алгоритм A-NTS: нумерация MD5…SHA512 у них совпадает
+			const nts::digest::hash_t algorithm = static_cast <nts::digest::hash_t> (static_cast <uint8_t> (type));
+			// Получаем длину подписи
+			const size_t length = nts::digest::length(algorithm);
+			// Если алгоритм не распознан, выходим
+			if(length == 0)
+				// Выходим из функции
+				return;
+			// Выделяем память для промежуточных значений
+			vector <uint8_t> digest(length, 0);
+			// Выделяем память для буфера данных
+			result.resize((length * 2) + 1, 0);
+			// Выполняем получение подписи
+			if(!nts::digest::hmac(algorithm, nts::view_t(reinterpret_cast <const uint8_t *> (key.data()), key.size()),
+				nts::view_t(reinterpret_cast <const uint8_t *> (text.data()), text.size()), digest.data(), length)){
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Выходим из функции
+				return;
 			}
+			/**
+			 * Заполняем строку данными подписи
+			 */
+			for(size_t i = 0; i < length; i++)
+				// Формируем данные хэш-суммы
+				::sprintf(&result[i * 2], "%02x", static_cast <uint32_t> (digest[i]));
+			// Удаляем последний символ
+			result.pop_back();
 		/**
 		 * Если возникает ошибка
 		 */
@@ -381,6 +157,130 @@ static void hmac(const string & key, const string & text, const awh::hash_t::typ
 			result.clear();
 		}
 	}
+}
+/**
+ * @brief Функция кодирования данных в BASE64
+ *
+ * @tparam T сигнатура функции
+ *
+ */
+template <typename T>
+/**
+ * @brief Функция кодирования данных в BASE64
+ *
+ * @param buffer буфер данных для кодирования
+ * @param size   размер данных для кодирования
+ * @param result строка куда следует положить результат
+ *
+ */
+static void encode64(const char * buffer, const size_t size, T & result) noexcept {
+	// Байты, которые следует записать
+	const nts::view_t data(reinterpret_cast <const uint8_t *> (buffer), size);
+	// Запись, собранная наружным модулем
+	string text = "";
+	/**
+	 * Заполнение ставим явным: прежний вывод писал «=» на конце и не переносил строк,
+	 * и без заполнений строки хешей в настройках перестали бы читаться
+	 */
+	if(nts::codec::encode(data, text, true)){
+		// Выполняем перенос записи в буфер вызывающего
+		result.assign(text.begin(), text.end());
+		// Выходим из функции
+		return;
+	}
+	// Выполняем очистку блока с результатом
+	result.clear();
+}
+/**
+ * @brief Шаблон функции декодирования BASE64
+ *
+ * @tparam T сигнатура функции
+ *
+ */
+template <typename T>
+/**
+ * @brief Функция декодирования BASE64
+ *
+ * @param buffer буфер данных для декодирования
+ * @param size   размер данных для декодирования
+ * @param result строка куда следует положить результат
+ * @return       результат декодирования
+ *
+ */
+static bool decode64(const char * buffer, const size_t size, T & result) noexcept {
+	// Запись, которую следует разобрать
+	const nts::view_t data(reinterpret_cast <const uint8_t *> (buffer), size);
+	// Байты, разобранные наружным модулем
+	vector <uint8_t> bytes;
+	/**
+	 * Пробельные знаки разрешаем пропускать: прежний разбор мирился с переносами строк
+	 * внутри записи, и отказ на них сломал бы чтение настроенных значений. Сам разбор при
+	 * этом стал строгим — посторонний знак, «=» вне хвоста и ненулевые отброшенные разряды
+	 * отвергаются, тогда как прежний разбор их молча съедал
+	 */
+	if(nts::codec::decode(data, bytes, nts::codec::alphabet_t::STANDARD, true)){
+		// Выполняем перенос разобранных байтов в буфер вызывающего
+		result.assign(bytes.begin(), bytes.end());
+		// Выводим результат: пустого разбора считать успехом нельзя
+		return !result.empty();
+	}
+	// Выполняем очистку блока с результатом
+	result.clear();
+	// Выводим результат
+	return false;
+}
+/**
+ * @brief Функция шифрования и расшифрования AES в режиме CFB128
+ *
+ * @param state  объект стейта шифрования
+ * @param data   входные данные
+ * @param size   размер входных данных
+ * @param output место, куда следует положить результат
+ * @param encode признак кодирования (true - шифрование, false - расшифрование)
+ * @return       результат выполнения операции
+ *
+ */
+static bool cfb128(awh::hash_t::state_t & state, const uint8_t * data, const size_t size, uint8_t * output, const bool encode) noexcept {
+	// Создаём объект шифрования AES
+	nts::cipher::aes_t aes;
+	// Выполняем установку ключа шифрования
+	if(!aes.key(nts::view_t(state.key, state.size)))
+		// Выводим результат
+		return false;
+	// Определяем длину регистра обратной связи
+	const size_t length = sizeof(state.ivec);
+	// Положение в регистре обратной связи
+	size_t position = static_cast <size_t> (state.num);
+	/**
+	 * Переходим по всем байтам данных
+	 */
+	for(size_t offset = 0; offset < size; offset++) {
+		/**
+		 * В начале регистра гамма вырабатывается заново: E(K, регистр). При неполном
+		 * прохождении регистра гамма остаётся в ebuf, поэтому регистр не теряется
+		 */
+		if(position == 0) {
+			// Выполняем шифрование регистра обратной связи
+			if(!aes.encrypt(state.ivec, state.ebuf))
+				// Выводим результат
+				return false;
+		}
+		// Определяем текущий байт входных данных
+		const uint8_t current = data[offset];
+		// Выполняем наложение гаммы
+		output[offset] = state.ebuf[position] ^ current;
+		/**
+		 * Обратная связь идёт по шифртексту в обе стороны: при расшифровании это входной байт,
+		 * при шифровании — только что полученный
+		 */
+		state.ivec[position] = (encode ? output[offset] : current);
+		// Переходим к следующей позиции регистра
+		position = (position + 1) % length;
+	}
+	// Запоминаем положение в регистре для следующего куска потока
+	state.num = static_cast <int32_t> (position);
+	// Выводим результат
+	return true;
 }
 /**
  * @brief Шаблон функции хэширования данных
@@ -412,64 +312,20 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 			switch(static_cast <uint8_t> (cipher)){
 				// Если производится работы с BASE64
 				case static_cast <uint8_t> (awh::hash_t::cipher_t::BASE64): {
-					// Инициализируем объект BASE64
-					BIO * b64 = ::BIO_new(BIO_f_base64());
-					// Если объект BASE64 инициализирован
-					if(b64 != nullptr){
-						// Инициализируем объект BIO
-						BIO * bio = ::BIO_new(BIO_s_mem());
-						// Если объект BIO инициализирован
-						if(bio != nullptr){
-							// Размер обработанных данных
-							ssize_t length = 0;
-							// Устанавливаем флаги
-							::BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-							// Записываем параметры
-							::BIO_push(b64, bio);
-							/**
-							 * Определяем событие кодирование или декодирование
-							 */
-							switch(static_cast <uint8_t> (event)){
-								// Если производится кодирование данных
-								case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
-									// Выполняем кодирование в BASE64
-									length = ::BIO_write(b64, buffer, size);
-									// Выполняем очистку объекта
-									BIO_flush(b64);
-									// Если запись выполнена
-									if(length > 0){
-										// Выделяем память под запрошенный результат
-										result.resize((4 * ((length + 2) / 3)) + 1, 0);
-										// Выполняем чтение полученного результата
-										length = ::BIO_read(bio, result.data(), result.size());
-									}
-								} break;
-								// Если производится декодирование данных
-								case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
-									// Выполняем декодирование из BASE64
-									length = ::BIO_write(bio, buffer, size);
-									// Выполняем очистку объекта
-									BIO_flush(bio);
-									// Если запись выполнена
-									if(length > 0){
-										// Выделяем память под запрошенный результат
-										result.resize((3 * length / 4) + 1, 0);
-										// Выполняем чтение полученного результата
-										length = ::BIO_read(b64, result.data(), result.size());
-									}
-								} break;
-							}
-							// Если получение хэша произведено успешно
-							if(length > 0)
-								// Удаляем все лишние символы
-								result.erase(result.begin() + length, result.end());
-							// Выполняем сброс результата
-							else result.clear();
-							// Очищаем всю выделенную память
-							::BIO_free_all(bio);
-						}
-						// Очищаем объект BASE64
-						::BIO_free(b64);
+					/**
+					 * Определяем событие кодирование или декодирование
+					 */
+					switch(static_cast <uint8_t> (event)){
+						// Если производится кодирование данных
+						case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE):
+							// Выполняем кодирование в BASE64
+							::encode64(buffer, size, result);
+						break;
+						// Если производится декодирование данных
+						case static_cast <uint8_t> (awh::hash_t::event_t::DECODE):
+							// Выполняем декодирование из BASE64
+							::decode64(buffer, size, result);
+						break;
 					}
 				} break;
 				// Если производится работы с AES128
@@ -478,45 +334,13 @@ static void hashing(const char * buffer, const size_t size, const awh::hash_t::c
 				case static_cast <uint8_t> (awh::hash_t::cipher_t::AES192):
 				// Если производится работы с AES256
 				case static_cast <uint8_t> (awh::hash_t::cipher_t::AES256): {
-					// Смещение в бинарном буфере
-					size_t offset = 0;
-					// Размер записываемых данных
-					size_t length = 0;
-					// Определяем размер данных для считывания
-					size_t actual = size;
-					// Выделяем память для буфера данных
-					vector <u_char> output(AES_BLOCK_SIZE, 0);
-					/**
-					 * Выполняем шифровку всех данных
-					 */
-					do {
-						// Максимальный размер считываемых данных
-						length = (actual > AES_BLOCK_SIZE ? AES_BLOCK_SIZE : actual);
-						/**
-						 * Определяем событие кодирование или декодирование
-						 */
-						switch(static_cast <uint8_t> (event)){
-							// Если производится кодирование данных
-							case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE):
-								// Выполняем сжатие данных
-								::AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_ENCRYPT);
-							break;
-							// Если производится декодирование данных
-							case static_cast <uint8_t> (awh::hash_t::event_t::DECODE):
-								// Выполняем сжатие данных
-								::AES_cfb128_encrypt(reinterpret_cast <const u_char *> (buffer) + offset, output.data(), length, &state.key, state.ivec, &state.num, AES_DECRYPT);
-							break;
-						}
-						// Увеличиваем смещение
-						offset += length;
-						// Вычитаем считанные данные
-						actual -= length;
-						// Выполняем добавление полученных данных
-						result.insert(result.end(), output.data(), output.data() + length);
-					/**
-					 * Если данные ещё не зашифрованны
-					 */
-					} while(actual > 0);
+					// Выделяем память под результат: в CFB128 шифртекст равен данным по длине
+					result.resize(size, 0);
+					// Выполняем шифрование или расшифрование данных
+					if(!::cfb128(state, reinterpret_cast <const uint8_t *> (buffer), size,
+						reinterpret_cast <uint8_t *> (result.data()), (event == awh::hash_t::event_t::ENCODE)))
+						// Выполняем очистку блока с результатом
+						result.clear();
 				} break;
 			}
 		/**
@@ -544,11 +368,13 @@ template <typename T>
  * @param limit  максимальный размер извлекаемых данных (0 - без ограничения)
  */
 static void lzma(const char * buffer, const size_t size, const awh::hash_t::event_t event, T & result, const size_t limit = 0) noexcept {
-	// Если буфер данных передан
 	/**
+	 * @brief Если буфер данных передан
+	 *
 	 * Нижней границы размера нет: прежнее условие (size > 80) отвергало корректные
 	 * малые потоки .xz от других узлов и не давало сжимать короткие данные.
 	 * Минимальный размер потока при декодировании проверяется ниже по заголовку и подвалу
+	 *
 	 */
 	if((buffer != nullptr) && (size > 0)){
 		/**
@@ -753,10 +579,12 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 					// Указываем размер входного буфера
 					stream.avail_in = static_cast <uint32_t> (size);
 					/**
+					 * @brief Количество уже извлечённых данных
+					 *
 					 * Размеры храним в size_t: 32-битный счётчик при удвоении
 					 * переполнялся после 2 ГиБ, буфер сжимался, и запись уходила за его конец
+					 *
 					 */
-					// Количество уже извлечённых данных
 					size_t offset = 0;
 					/**
 					 * Буфер допускаем на один байт больше предела: так результат ровно
@@ -1022,11 +850,13 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 					// Выполняем компрессию буфера бинарных данных
 					actual = ::LZ4_compress_fast(buffer, result.data(), size, actual, level);
 					/**
+					 * @brief Если компрессия не выполнена
+					 *
 					 * Результат больше исходных данных допустим: буфер выделен по LZ4_compressBound,
 					 * а малые и несжимаемые данные в Lz4 всегда немного растут. Прежний отказ
 					 * при росте больше чем на 10% оставлял пустой результат для коротких тел
+					 *
 					 */
-					// Если компрессия не выполнена
 					if(actual <= 0){
 						// Выполняем очистку результата
 						result.clear();
@@ -1039,13 +869,15 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 				// Если необходимо выполнить декомпрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
 					/**
+					 * @brief Если размер входящих данных не помещается в формат Lz4
+					 *
 					 * Блочный формат Lz4 не хранит размер исходных данных, а ошибка
 					 * LZ4_decompress_safe не отличает нехватку места от испорченных данных.
 					 * Поэтому буфер наращиваем только до верхней границы: Lz4 не сжимает
 					 * сильнее чем в 255 раз, а также не выходим за допустимый предел.
 					 * Без этой границы испорченные данные раздували буфер бесконечно
+					 *
 					 */
-					// Если размер входящих данных не помещается в формат Lz4
 					if(size > static_cast <size_t> (LZ4_MAX_INPUT_SIZE)){
 						// Выполняем очистку результата
 						result.clear();
@@ -1458,8 +1290,7 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 						 * переполнялся после 2 ГиБ, буфер сжимался, и запись уходила за его конец.
 						 * Счётчик zs.total_out (uLong) в MS Windows тоже 32-битный, поэтому
 						 * количество извлечённых данных считаем сами
-						 */
-						/**
+						 *
 						 * Буфер допускаем на один байт больше предела: так результат ровно
 						 * в размер предела извлекается успешно, а превышение хотя бы на байт
 						 * обнаруживается по заполнению буфера
@@ -1769,82 +1600,56 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
  * @return       результат инициализации
  */
 bool awh::Hash::cipher(const cipher_t cipher) noexcept {
-	// Формируем массивы для шифрования
-	vector <u_char> iv, key;
-	// Создаем тип шифрования
-	const EVP_CIPHER * evp = EVP_enc_null();
+	// Определяем длину ключа шифрования
+	size_t size = 0;
 	/**
 	 * Определяем длину шифрования
 	 */
 	switch(static_cast <uint16_t> (cipher)){
 		// Устанавливаем шифрование в 128
-		case static_cast <uint16_t> (cipher_t::AES128): {
-			// Устанавливаем размер массива IV
-			iv.resize(8, 0);
-			// Устанавливаем размер массива KEY
-			key.resize(16, 0);
-			// Устанавливаем функцию шифрования
-			evp = ::EVP_aes_128_ecb();
-		} break;
+		case static_cast <uint16_t> (cipher_t::AES128):
+			// Устанавливаем длину ключа
+			size = 16;
+		break;
 		// Устанавливаем шифрование в 192
-		case static_cast <uint16_t> (cipher_t::AES192): {
-			// Устанавливаем размер массива IV
-			iv.resize(12, 0);
-			// Устанавливаем размер массива KEY
-			key.resize(24, 0);
-			// Устанавливаем функцию шифрования
-			evp = ::EVP_aes_192_ecb();
-		} break;
+		case static_cast <uint16_t> (cipher_t::AES192):
+			// Устанавливаем длину ключа
+			size = 24;
+		break;
 		// Устанавливаем шифрование в 256
-		case static_cast <uint16_t> (cipher_t::AES256): {
-			// Устанавливаем размер массива IV
-			iv.resize(16, 0);
-			// Устанавливаем размер массива KEY
-			key.resize(32, 0);
-			// Устанавливаем функцию шифрования
-			evp = ::EVP_aes_256_ecb();
-		} break;
+		case static_cast <uint16_t> (cipher_t::AES256):
+			// Устанавливаем длину ключа
+			size = 32;
+		break;
 		// Если ничего не выбрано, сбрасываем
 		default: return false;
 	}
-	// Создаем контекст
-	EVP_CIPHER_CTX * ctx = ::EVP_CIPHER_CTX_new();
-	// Если контекст для шифрования удачно инициализирован
-	if(ctx != nullptr){
-		// Привязываем контекст к типу шифрования
-		::EVP_EncryptInit_ex(ctx, evp, nullptr, nullptr, nullptr);
-		/*
-		// Выделяем нужное количество памяти
-		vector <u_char> iv(::EVP_CIPHER_CTX_iv_length(ctx), 0);
-		vector <u_char> key(::EVP_CIPHER_CTX_key_length(ctx), 0);
-		*/
-		// Выполняем инициализацию ключа
-		const int32_t ok = EVP_BytesToKey(
-			evp, ::EVP_sha256(),
-			(this->_salt.empty() ? nullptr : reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_salt.data())),
-			reinterpret_cast <u_char *> (const_cast <hash_t *> (this)->_password.data()),
-			this->_password.length(), this->_rounds, key.data(), iv.data()
-		);
-		// Очищаем контекст
-		::EVP_CIPHER_CTX_free(ctx);
-		// Если инициализация не произошла
-		if(ok == 0)
-			// Выходим из функции
-			return false;
-		// Устанавливаем ключ шифрования
-		if(::AES_set_encrypt_key(key.data(), key.size() * 8, &this->_state.key) != 0)
-			// Выходим из функции
-			return false;
-		// Обнуляем номер
-		this->_state.num = 0;
-		// Заполняем половину структуры нулями
-		::memset(this->_state.ivec, 0, sizeof(this->_state.ivec));
-		// Копируем данные шифрования
-		::memcpy(this->_state.ivec, iv.data(), iv.size());
-		// Выполняем шифрование
-		// ::AES_encrypt(this->_state.ivec, this->_state.count, &this->_state.key);
-	// Выводим сообщение об ошибке
-	} else this->_log->print("%s", log_t::flag_t::CRITICAL, "Context for encryption/decryption could not be initialized");
+	/**
+	 * @brief Выделяем память под ключ и вектор регистра
+	 *
+	 * Ключ и вектор выводятся одним отсчётом: PBKDF2 отдаёт поток байтов, который мы
+	 * делим на ключ и на регистр обратной связи целиком, без усечения вектора до половины блока
+	 *
+	 */
+	vector <uint8_t> secret(size + sizeof(this->_state.ivec), 0);
+	// Выполняем выработку ключа и вектора из пароля и соли
+	if(!nts::digest::pbkdf2(nts::digest::hash_t::SHA256,
+		nts::view_t(reinterpret_cast <const uint8_t *> (this->_password.data()), this->_password.size()),
+		nts::view_t(reinterpret_cast <const uint8_t *> (this->_salt.data()), this->_salt.size()),
+		(this->_rounds > 0 ? static_cast <uint32_t> (this->_rounds) : 1), secret.data(), secret.size())){
+		// Выводим сообщение об ошибке
+		this->_log->print("%s", log_t::flag_t::CRITICAL, "Key for encryption/decryption could not be derived");
+		// Выходим из функции
+		return false;
+	}
+	// Устанавливаем длину ключа шифрования
+	this->_state.size = size;
+	// Копируем данные ключа
+	::memcpy(this->_state.key, secret.data(), size);
+	// Обнуляем номер
+	this->_state.num = 0;
+	// Копируем данные вектора регистра обратной связи
+	::memcpy(this->_state.ivec, secret.data() + size, sizeof(this->_state.ivec));
 	// Сообщаем что всё удачно
 	return true;
 }
@@ -1854,11 +1659,13 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
  * @param buffer буфер для удаления хвоста
  */
 void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
-	// Если сообщение является финальным
 	/**
+	 * @brief Если сообщение является финальным
+	 *
 	 * Хвост снимаем только с конца буфера: поиск первого вхождения 00 00 FF FF
 	 * обрезал данные, если такая последовательность встречалась внутри сжатого потока
 	 * (хранимый блок DEFLATE копирует несжимаемые данные как есть)
+	 *
 	 */
 	if((buffer.size() > sizeof(this->_btype)) && equal(this->_btype, this->_btype + sizeof(this->_btype), buffer.end() - sizeof(this->_btype)))
 		// Удаляем хвостовой список байт из буфера данных
