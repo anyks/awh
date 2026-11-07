@@ -1322,7 +1322,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Client(const Client &) = delete;
+				explicit Client(const Client &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

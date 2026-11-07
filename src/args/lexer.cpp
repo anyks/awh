@@ -60,6 +60,11 @@ using namespace awh::args;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция извещения об отказе разбора
 	 *
 	 * @warning Виды здесь названы ПОЛНЫМ именем намеренно, и это не многословие: у
@@ -75,7 +80,7 @@ namespace {
 	 * @return         признак продолжения разбора
 	 *
 	 */
-	static __AWH_INLINE__ bool notify(const lexer_t::failure_t & failure, const error_t error, const location_t & location) noexcept {
+	static constexpr bool notify(const lexer_t::failure_t & failure, const args::error_t error, const args::location_t & location) noexcept {
 		// Если отзыв извещения об отказе установлен
 		if(failure != nullptr)
 			// Выполняем извещение об отказе разбора
@@ -116,7 +121,7 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 		// Сообщаем, что слово числом не является
 		return false;
 	// Если первый знак остатка не цифра и не точка
-	if(!awh::fmk::is(rest.front(), awh::fmk::check_t::NUMBER) && (rest.front() != '.'))
+	if(!fmk::is(rest.front(), fmk::check_t::NUMBER) && (rest.front() != '.'))
 		// Сообщаем, что слово числом не является
 		return false;
 	// Выполняем перебор остальных знаков остатка
@@ -124,7 +129,7 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 		// Получаем знак остатка слова
 		const char letter = rest.at(i);
 		// Если знак цифрой не является
-		if(!awh::fmk::is(letter, awh::fmk::check_t::NUMBER)){
+		if(!fmk::is(letter, fmk::check_t::NUMBER)){
 			// Пропускаем знаки, дозволенные записи числа
 			switch(letter){
 				// Разделитель целой и дробной части
@@ -135,7 +140,9 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 				// Знак порядка числа
 				case '+':
 				case '-':
-					// Продолжаем перебор знаков остатка
+					/**
+					 * Продолжаем перебор знаков остатка
+					 */
 				break;
 				// Для всех остальных знаков
 				default:
@@ -161,10 +168,10 @@ bool awh::args::Lexer::split(const string_view text, vector <string> & result, c
 	result.clear();
 	// Собираемое слово текста
 	string word = "";
-	// Признак начатого слова
-	bool started = false;
 	// Знак незакрытой кавычки, нуль при её отсутствии
 	char quote = 0;
+	// Признак начатого слова
+	bool started = false;
 	/**
 	 * Предел числа слов разреза, выведенный из предела числа лексем разбора
 	 *
@@ -237,7 +244,7 @@ bool awh::args::Lexer::split(const string_view text, vector <string> & result, c
 				continue;
 			}
 			// Если знаком является разделитель слов
-			if(awh::fmk::is(letter, awh::fmk::check_t::SPACE)){
+			if(fmk::is(letter, fmk::check_t::SPACE)){
 				// Если слово текста начато
 				if(started)
 					// Добавляем собранное слово в контейнер
@@ -509,12 +516,7 @@ void awh::args::Lexer::settings(const settings_t & settings) noexcept {
 	this->_settings = settings;
 }
 /**
- * \~russian
  * @brief Конструктор
  *
- * \~english
- * @brief Constructor
- *
- * \~
  */
 awh::args::Lexer::Lexer() noexcept = default;

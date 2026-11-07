@@ -96,7 +96,17 @@
 				 *
 				 * \~
 				 */
-				struct socket_t;
+				struct Socket;
+				/**
+				 * \~russian
+				 * @brief Опознаватель состояния сокета AF_XDP
+				 *
+				 * \~english
+				 * @brief AF_XDP socket state identifier
+				 *
+				 * \~
+				 */
+				typedef struct Socket socket_t;
 			}
 		}
 		/**

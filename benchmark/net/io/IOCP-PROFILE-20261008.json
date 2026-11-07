@@ -159784,5 +159784,321 @@
     },
     "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-relative-stream-result-20261101.txt",
     "approved_plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-01/iocp-current-relative-stream-proposed-20261101.txt"
+  },
+  "iocp_tcp_pull_and_available_fix_20261107": {
+    "status": "VERIFIED_TRANSFERRED",
+    "date": "2026-11-07",
+    "source_sha256": "c7eb622b81983ccc922eed16b7ef10f3d0396f8d26a764e1b200b1a7d1a7d906",
+    "archive_sha256": "60b8d2970720e567ce1334262a9fa69e3c4a374ca0c645866bcc774a9778d2c7",
+    "net_sha256": "930b37757451b1c7d0d1377658ea9df9cf9c5dd6904d9c341f5b338918f6608b",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/pull-caller-tcp/final.patch",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/pull-caller-tcp/report.txt",
+    "tcp_before": {
+      "valid": 12,
+      "late_write_cases": 8,
+      "controls": 4
+    },
+    "tcp_after": {
+      "valid": 12,
+      "correct": 12
+    },
+    "production_targeted": {
+      "tcp": 12,
+      "available": 4,
+      "pipe_pull_caller": 12,
+      "source_destroy": 12,
+      "passed": 40
+    },
+    "windows_io": {
+      "passed": 170,
+      "skipped": 1,
+      "disabled": 3,
+      "excluded": "IoFixture.IoSoakPlateauTest",
+      "elapsed_ms": 120852,
+      "stderr_empty": true
+    },
+    "allocator": "OFF",
+    "build": "Release -O3; IOCP object rebuild and frozen other objects; no whole-tree rebuild",
+    "limits": [
+      "CLIENT STREAM post-pull only",
+      "available allows CONNECTED CLIENT",
+      "No performance or allocator ON conclusion",
+      "No commits or push"
+    ]
+  },
+  "iocp_tcp_queue_available_fix_20261107": {
+    "status": "VERIFIED_TRANSFERRED",
+    "date": "2026-11-07",
+    "source_sha256": "490e8a4a5305475c637e60030223d16a4101b6eb7283133ee5f06067417aaab7",
+    "archive_sha256": "b7234415738ecdd7e3874c6667a283209029f9830ac67dc93cb51f9f5235cd73",
+    "object_sha256": "4119176fd94f516991ce9fc545ba439f459a0e3fbf749b61496ff03304cb317b",
+    "net_sha256": "fd00c8fd9dbc650946e5e4fb48ad7b1d4ff31f28b9c3c23f3019217271da62f1",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/tcp-queue-available/final.patch",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/tcp-queue-available/report.txt",
+    "before": {
+      "valid": 12,
+      "controls_passed": 4,
+      "late_available_cases": 4,
+      "late_source_cases": 8,
+      "failing_destroy_cases": 8
+    },
+    "after": {
+      "valid": 12,
+      "correct": 12
+    },
+    "production_targeted": {
+      "queue_available": 12,
+      "tcp_pull": 12,
+      "available_api": 4,
+      "pipe_pull": 12,
+      "source_destroy": 12,
+      "passed": 52
+    },
+    "windows_io": {
+      "passed": 170,
+      "skipped": 1,
+      "disabled": 3,
+      "excluded": "IoFixture.IoSoakPlateauTest",
+      "elapsed_ms": 123193,
+      "stderr_empty": true
+    },
+    "allocator": "OFF",
+    "build": "Release -O3 --coverage; IOCP object and harness rebuild; frozen other objects; no whole-tree build",
+    "evidence_zip_sha256": "3c3c0a50debddffafd9f636c15ff34323cc839ffa3191c06c89601584181f68a",
+    "limits": [
+      "CLIENT STREAM IPv4; limited/unlimited; NO/SM",
+      "No allocator ON or performance conclusion",
+      "No service/Defender/settings changes",
+      "No commits or push"
+    ]
+  },
+  "iocp_peer_callback_lifetime_fix_20261107": {
+    "status": "VERIFIED_TRANSFERRED",
+    "date": "2026-11-07",
+    "source_sha256": "832b935ef2b0deeae00fb5a027d65b618e9aaf509d444e67204635713f4b6789",
+    "archive_sha256": "e93a4bca7de11d100e82f4cb37bc739fdd76d6e7623f262b1af981742e4532a9",
+    "object_sha256": "be69a5b3fe03cd5db2e2193483c3a2b57404f378ca0009d4879b0998e390c19b",
+    "net_sha256": "acb842dc66791b3337fca8aa3edda18b27495a5cdd21dbde8f90b2a90e06f338",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/peer-callback-lifetime/final.patch",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/peer-callback-lifetime/report.txt",
+    "api_before": {
+      "valid": 4,
+      "correct": 0,
+      "offered": 65536,
+      "available": 0,
+      "status": "SUCCESS"
+    },
+    "api_after": {
+      "valid": 4,
+      "correct": 4,
+      "offered": 65536,
+      "available": 65536
+    },
+    "callbacks_before": {
+      "valid": 20,
+      "correct": 4,
+      "destroy_failures": 16,
+      "late_available": 4,
+      "late_source": 8,
+      "late_write": 16
+    },
+    "callbacks_after": {
+      "valid": 20,
+      "correct": 20,
+      "late": 0
+    },
+    "production_targeted": {
+      "peer_api": 4,
+      "peer_callbacks": 20,
+      "previous": 52,
+      "passed": 76
+    },
+    "windows_io": {
+      "passed": 170,
+      "skipped": 1,
+      "disabled": 3,
+      "excluded": "IoFixture.IoSoakPlateauTest",
+      "elapsed_ms": 122878,
+      "stderr_empty": true
+    },
+    "allocator": "OFF",
+    "build": "Release -O3 --coverage; IOCP object and harnesses rebuilt with frozen other objects; not whole-tree",
+    "evidence_zip_sha256": "8c94461086a9b2266d9ddf11c5314cf355e5fa4fd8c09945bc2671959c7faaf4",
+    "limits": [
+      "PEER STREAM IPv4 callback matrix; NO/SM, EGRESS limited/unlimited",
+      "Callback baseline includes only the separately verified available API fix plus branch probes",
+      "No allocator ON or performance conclusion",
+      "No service/Defender/settings changes",
+      "No commits or push"
+    ]
+  },
+  "iocp_origin_creation_preparation_stop_20261107": {
+    "status": "STOPPED_INVALID_PREPARATION",
+    "date": "2026-11-07",
+    "source_sha256": "832b935ef2b0deeae00fb5a027d65b618e9aaf509d444e67204635713f4b6789",
+    "attempted": 1,
+    "planned": 12,
+    "datagrams_sent": 0,
+    "valid": 0,
+    "cleanup": true,
+    "reason": "Harness incorrectly called listen for UDP; no ORIGIN lifecycle conclusion",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-creation-lifetime/attempt-1-report.txt",
+    "proposed_harness_patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-creation-lifetime/udp-preparation-proposed.patch",
+    "evidence_sha256": "197cddd4ea0fd929b6a398769b3bb92422a35ec168fca52ae8a45625314d1c22",
+    "working_cpp_changed": false
+  },
+  "iocp_origin_creation_lifetime_fix_20261107": {
+    "status": "COMPLETE_TRANSFERRED",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-creation-lifetime/report.txt",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-creation-lifetime/final.patch",
+    "source_before_sha256": "832b935ef2b0deeae00fb5a027d65b618e9aaf509d444e67204635713f4b6789",
+    "source_after_sha256": "ca239ea9fb6e575665a50bb3467bbc23a501e34e28528a490a2a88ffd64d0aa7",
+    "object_sha256": "47db2539c2f91d30503fd59facfae65cd35d34b0ee178ef947d0c362324ad1fa",
+    "library_sha256": "8786e3149be14e4505b5e52489ed270661a373fca85187e676962be0a7b229df",
+    "net_exe_sha256": "a0e879cb51ed2c68dfaadb9033dd977da560e03ee3ccf25204f8dcc3d262517d",
+    "baseline": {
+      "total": 12,
+      "valid": 12,
+      "correct": 4,
+      "resurrected": 8,
+      "late_read": 4
+    },
+    "after": {
+      "total": 12,
+      "passed": 12
+    },
+    "production": {
+      "origin": 12,
+      "previous": 76,
+      "target_total": 88,
+      "io_passed": 170,
+      "io_skipped": 1,
+      "io_disabled": 3,
+      "io_elapsed_ms": 121718,
+      "allocator": "OFF",
+      "full_tree_rebuild": false
+    },
+    "style": {
+      "error": 0,
+      "warn": 1
+    },
+    "maps_verified": 9,
+    "evidence_sha256": "c28209f930e93cad91cb076ab766aa1d6a22438f42ce916459230880f0bc6402",
+    "services_changed": false,
+    "committed": false,
+    "next": "ORIGIN available SUCCESS and queued status/available/pull lifetime audit remain untested"
+  },
+  "iocp_origin_available_proposal_20261107": {
+    "status": "PROPOSED_NOT_APPLIED",
+    "source_sha256": "ca239ea9fb6e575665a50bb3467bbc23a501e34e28528a490a2a88ffd64d0aa7",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-available/plan.txt",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-available/proposed.patch",
+    "runtime_verified": false,
+    "working_cpp_changed": false,
+    "api_cases": 4,
+    "conditional_production_targets": 92
+  },
+  "iocp_origin_available_fix_20261107": {
+    "status": "COMPLETE_TRANSFERRED",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-available/report.txt",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-available/final.patch",
+    "source_before_sha256": "ca239ea9fb6e575665a50bb3467bbc23a501e34e28528a490a2a88ffd64d0aa7",
+    "source_after_sha256": "e07ede8f22ddcddb017820dff701a3df6800a96d1879cfd06b378e8470e55126",
+    "object_sha256": "b30b8182d10545c4ffe4bbea3f7b4454d07feccce904113d0b6d5f260295bedc",
+    "library_sha256": "2e8bf4419a73d955351cf4a33bf7eeb183ce63e406cc06263b4941cb18f41cc6",
+    "net_exe_sha256": "81260e17cf5e0e86693932a3c9d8468f183dfbd6d9ee6cf625d633ee7995d8a1",
+    "baseline": {
+      "total": 4,
+      "valid": 4,
+      "correct": 0,
+      "offered": 65528,
+      "available": 0
+    },
+    "after": {
+      "total": 4,
+      "passed": 4,
+      "offered": 65528,
+      "available": 65528
+    },
+    "production": {
+      "origin_api": 4,
+      "previous": 88,
+      "target_total": 92,
+      "io_passed": 170,
+      "io_skipped": 1,
+      "io_disabled": 3,
+      "io_elapsed_ms": 121880,
+      "allocator": "OFF",
+      "full_tree_rebuild": false
+    },
+    "style": {
+      "error": 0,
+      "warn": 1
+    },
+    "maps_verified": 10,
+    "evidence_sha256": "92e60fd3382b4cac07986e865ed314317d3c7e503d1c45212c3e4eeccaeaa728",
+    "services_changed": false,
+    "committed": false,
+    "next": "ORIGIN queued status/available/pull lifetime remains untested"
+  },
+  "iocp_origin_queue_lifetime_proposal_20261107": {
+    "status": "PROPOSED_NOT_APPLIED",
+    "source_sha256": "e07ede8f22ddcddb017820dff701a3df6800a96d1879cfd06b378e8470e55126",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-queue-lifetime/plan.txt",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-queue-lifetime/proposed.patch",
+    "runtime_confirmed": false,
+    "working_cpp_changed": false,
+    "cases": 20,
+    "conditional_production_targets": 112,
+    "excluded": "EMSGSIZE lambda, RAW, IPv6, keyed route"
+  },
+  "iocp_origin_queue_preparation_stop_20261107": {
+    "status": "STOPPED_SERVER_CONTINUITY_FAILURE",
+    "source_sha256": "e07ede8f22ddcddb017820dff701a3df6800a96d1879cfd06b378e8470e55126",
+    "attempted": 1,
+    "planned": 20,
+    "exit": 4,
+    "queued": 4096,
+    "delivered": 4096,
+    "limited_branch_hits": 1,
+    "second_sent_bytes": 16,
+    "second_reads": 0,
+    "cleanup": true,
+    "runtime_destroy_hypothesis_tested": false,
+    "owner_hypothesis_confirmed": false,
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-queue-lifetime/attempt-1-report.txt",
+    "next_plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-queue-lifetime/owner-diagnostic-plan.txt",
+    "working_cpp_changed": false
+  },
+  "iocp_origin_owner_diagnostic_20261107": {
+    "status": "COMPLETE_DIAGNOSTIC_OWNER_REPLACEMENT_CONFIRMED",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-queue-lifetime/owner-diagnostic/report.txt",
+    "source_sha256": "e07ede8f22ddcddb017820dff701a3df6800a96d1879cfd06b378e8470e55126",
+    "diagnostic_source_sha256": "9c1c1b4d2357a12bea7fbe9a1afe369e8169d02f0ab32e482b67bfcf1039f34a",
+    "cases": 4,
+    "valid": 4,
+    "immediate_server_owner_and_continuity": 2,
+    "queued_origin_owner_and_no_second_session": 2,
+    "observation_seconds": 5,
+    "evidence_sha256": "cabf712eeb82396ec2266a7062f01b935c27cc5144029fbcd93964229324467b",
+    "working_cpp_changed": false,
+    "lifetime_20_resumed": false,
+    "next": "Prepare separate shared UDP ownership fix preserving SERVER receive and per-ORIGIN queued writes; no fix approved yet"
+  },
+  "iocp_origin_owner_fix_proposal_20261107": {
+    "status": "PROPOSED_NOT_APPLIED_AWAITING_APPROVAL",
+    "source_sha256": "e07ede8f22ddcddb017820dff701a3df6800a96d1879cfd06b378e8470e55126",
+    "patch": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/proposed.patch",
+    "patch_sha256": "80b805320f1cecb4205318abde15de6372b5df0492738a1f2d186898871b9f22",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/plan.txt",
+    "added_lines": 171,
+    "removed_lines": 0,
+    "style_error": 0,
+    "style_warn": 1,
+    "compiled": false,
+    "windows_runs": 0,
+    "working_cpp_changed": false,
+    "production_transfer_authorized": false,
+    "lifetime_20_resumed": false
   }
 }
