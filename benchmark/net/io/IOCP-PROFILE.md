@@ -7981,3 +7981,83 @@ SHA256: 0bbd535aed9d2df561295d71c8e46e79ccfbd7de7deaef2ba1c088dba0172564; про
 ### 07.11.2026 — предложен изолированный фикс владельца UDP
 
 Подготовлен неприменённый патч 171 добавленная строка: отдельная очередь ORIGIN id/поколений сохраняет READ за SERVER. Статические проверки: применимость успешна, 0 ERROR/1 прежний WARN; сборок и новых запусков нет. Предложен ограниченный набор owner/multi-session/отмены/очистки с мутационными контролями и условной регрессией. Рабочий перенос и возобновление прежних20 исключены, требуется отдельное согласование. План: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/plan.txt`; ключ JSON `iocp_origin_owner_fix_proposal_20261107`.
+
+
+### 07.11.2026 — owner фикс:4/4 PASS, multi остановлен на оснастке
+
+Изолированный вариант сохранил SERVER/READ и приём следующей сессии во всех4 owner-сценариях. Первый multi no-1 остановлен до слива: две записи заняли правильные8208 байт, но оснастка посчитала write(0) завершённой отправкой и отвергла подготовку. Остальные11, отрицательные Windows-контроли и регрессия не запускались. Рабочий IOCP неизменён. Подготовлен неприменённый патч раздельного учёта нулевых уведомлений и план одного нового набора12 с условным продолжением D/E; нужно решение по стоп-условию. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/report.txt`; ключ JSON `iocp_origin_owner_fix_attempt_20261107`.
+
+
+### 07.11.2026 — owner multi12 и четыре мутации проверены
+
+После согласованного учёта write(0) новый multi-r2:12/12 PASS. Две мутации владельца возвращают потерю приёма,две мутации поколений обнаруживают исполнение старой записи. Обычный IOCP и12 EXE собраны,но предварительная проверка символов ошибочно приняла API awh::engine::snapshot за probe;16+92 и штатная IO-регрессия ещё не запускались. Точный проверочный шаблон проверен read-only,probes в обычном объекте отсутствуют. Подготовлен неприменённый патч и план продолжения готовыми EXE без повторов/пересборки;нужно решение по стоп-условию. Рабочий C++ неизменён. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/report-r2.txt`;ключ JSON `iocp_origin_owner_fix_r2_20261107`.
+
+
+### 07.11.2026 — ORIGIN owner: целевые108 PASS, полная IO-регрессия остановлена
+
+Готовые EXE без пересборки:16 новых+92 прежних PASS. Штатный IO:169 PASS/1 IPv6 SKIP/1 FAIL/3 DISABLED; IoAutoReconnectAfterConnectTimeoutTest зарегистрировал1 переподключение и1 успешный connect. Причина не установлена; deafAddress проверяет порт9, тест8080, но ошибка движка не исключена.81 прежний артефакт неизменен,12 maps/probe-check пройдены. Повторов и рабочего переноса нет. Предложен только отдельный A/B/B/A отказавшего теста после согласования;20 callback-сценариев остаются остановленными. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/report-r3.txt`; ключ JSON `iocp_origin_owner_fix_regression_20261107`.
+
+
+### 07.11.2026 — reconnect: отдельные A/B/B/A прошли, причина полного отказа открыта
+
+Четыре согласованных процесса без пересборки: PASS/PASS/PASS/PASS, исходные EXE неизменны. Полный IO-отказ этим не закрыт: адрес зависит от PID, история полного набора не повторялась. Новых запусков/переноса нет,20 ORIGIN callback-сценариев остаются остановленными. Далее предложена отдельная диагностика выбранного адреса и результатов connect после согласования. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/reconnect-abba/report.txt`; ключ JSON `iocp_origin_owner_reconnect_abba_20261107`.
+
+
+### 07.11.2026 — предложение журнала reconnect
+
+Подготовлен неприменённый патч только одного теста: выбранный адрес/PID, статусы, callback, таймеры, итоговые счётчики. Утверждения/таймауты сохранены; рабочий IOCP не менялся. Предложены сборка только тестового объекта, один smoke и при успехе один полный IO-набор, максимум2 процесса без повторов. Причину прежнего отказа не объявляем установленной; журнал отражает callback, не системное подтверждение соединения. Нужно отдельное согласование. План: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/reconnect-trace-proposal/plan.txt`; ключ JSON `iocp_origin_owner_reconnect_trace_proposal_20261107`.
+
+
+### 07.11.2026 — reconnect trace: EXE собран, ложная проверка map остановила подготовку
+
+Только тестовый объект и отдельный EXE собраны. Тестов0: проверка искала обратные слеши PSScriptRoot в map с прямыми. Read-only сверка подтверждает оба объекта и прежнюю библиотеку, probes нет. Анализатор3+/10−, нормализация map2+/2−. Подготовлено продолжение готовыми EXE без сборки; требуется решение по стоп-условию. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/reconnect-trace-attempt/report.txt`; ключ `iocp_origin_owner_reconnect_trace_pretest_stop_20261107`.
+
+
+### 07.11.2026 — reconnect trace:170 PASS, но прежний порядок не воспроизведён
+
+Без пересборки smoke PASS, полный IO170PASS/1IPv6SKIP/0FAIL/3DISABLED. Оба reconnect-журнала:4 переподключения/4 отказа/0 успехов, цели192.168.53.58 и192.168.53.8. Контроллер остановился на порядке:15 туннельных тестов переместились из конца в начало. Read-only разбор подтверждает состав/результаты/счётчики, но original_protocol_valid=false; прежний TCP-отказ остаётся открытым. Новых запусков/переноса нет. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/reconnect-trace-results/report.txt`; ключ `iocp_origin_owner_reconnect_trace_results_20261107`.
+
+
+### 07.11.2026 — порядок объяснён изменением __FILE__
+
+GoogleTest1.17.0 сортирует file/line. Путь отдельного static.cpp изменил сортировку; подстановка канонического пути возвращает точный прежний список171. PE-таблицы функций инициализации имеют одинаковую последовательность. Предложен только -fmacro-prefix-map для отдельного тестового объекта и один smoke+условный full после согласования. Новых сборок/запусков0, C++ неизменён. Первичный TCP-отказ остаётся открытым. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/registration-order/report.txt`; ключ `iocp_origin_owner_registration_order_20261107`.
+
+
+### 07.11.2026 — канонический __FILE__: полный IO прошёл в исходном порядке
+
+С прежним диагностическим C++ и флагом -fmacro-prefix-map: smoke PASS; полный IO170PASS/1IPv6SKIP/0FAIL/3DISABLED, точный прежний порядок171 по XML/stdout. Библиотека и старые EXE неизменны. Reconnect в обоих процессах4 переподключения/4 отказа/0 успехов; историческая причина успешного connect остаётся неизвестной. Это валидный новый прогон, не опровержение старого отказа. Рабочего переноса/20 ORIGIN lifetime-запусков нет. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-owner-fix/reconnect-canonical-results/report.txt`; ключ `iocp_origin_owner_reconnect_canonical_20261107`.
+
+
+### 07.11.2026 — подготовлено возобновление20 ORIGIN lifetime
+
+Оснастка/критерии прежние, валидатор55 отрицательных контролей, стиль0ERROR. Готовая диагностическая owner-библиотека проверена по SHA/NM, A можно выполнить без её пересборки. Подготовлены24 строки guards поверх171 owner (combined195 только для обзора), стиль0ERROR/1 прежнийWARN. Предложены20A, условные20B, production128 и один полный IO с каноническим __FILE__; максимум169 запусков без повторов. Нужен отдельный допуск этапа, рабочий перенос исключён. План: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-lifetime-resume/plan.txt`; ключ `iocp_origin_lifetime_resume_proposal_20261107`.
+
+
+### 07.11.2026 — ORIGIN lifetime:16 дефектных сценариев исправлены; full остановлен на лишнем Wintun SKIP
+
+A20valid/4correct,16 поздних callback;B20/20PASS после шести guards. Production128/128PASS. Full169PASS/2SKIP/0FAIL/3DISABLED, исходный порядок171; reconnect4/4/4/0. Лишний WintunSKIP вызван пропущенной мной копией DLL рядом с новымEXE; на стенде DLL есть и SHA прежний. Строгая приёмка не завершена,169 разрешённых процессов исчерпаны, повторов/рабочего переноса нет. Изолированный кандидат195 строк, стиль0ERROR/1 прежнийWARN; хеши/13maps/cleanup проверены. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-lifetime-resume/results/report.txt`; ключ `iocp_origin_lifetime_resume_20261107`. Подготовлен только один повтор полного IO сDLL без пересборки/повтора целевых проверок, требуется отдельное решение по стоп-условию.
+
+
+### 07.11.2026 — ORIGIN owner+lifetime: валидный full с Wintun
+
+Один новый процесс тем жеEXE с провереннойDLL:170PASS/1IPv6SKIP/0FAIL/3DISABLED, исходный порядок171, Wintun lifecyclePASS. Reconnect4/4/4/0,121.626сек. Хеши/объекты/cleanup/WPR проверены. Предыдущая серия с лишнимSKIP сохранена отдельно. С учётом прежнихA20/B20/production128 изолированная проверка кандидата195 строк завершена; рабочего переноса нет, он требует отдельного решения. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-lifetime-resume/wintun-replay-results/report.txt`; ключ `iocp_origin_lifetime_wintun_replay_20261107`.
+
+
+### 07.11.2026 — ORIGIN owner+lifetime перенесён в рабочий IOCP
+
+По явному согласию применён проверенный патч195+/0−. РабочийSHA6a0f3e17d1d57f297241f7ee9dae956be96e15fe6b80cda8a3ddee4d48fdae91 точно равен Windows production-снимку. Прежние71+/3− сохранены, общий diff266+/3−. Стиль0ERROR/1 прежнийWARN внутреннегоlisten; git diff --check и точное совпадение diff пройдены. Новых Windows-запусков/сборок0, основание:128 целевыхPASS и full170PASS/1IPv6SKIP. Коммит/push не выполнялись. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-07/origin-lifetime-resume/transfer/report.txt`; ключ `iocp_origin_owner_lifetime_transfer_20261107`.
+
+
+### 08.11.2026 — следующий аудит: ORIGIN EMSGSIZE
+
+Рабочий IOCP совпадает с перенесённым провереннымSHA6a0f3e17…. В ранее исключённойEMSGSIZE-ветви по коду нет guards междуstatus/available/pull/write0/FAILURE/error. Runtime ещё не проверялся. Подготовлена только диагностика16 случаев NO/SM со сливом безлимитера, реальной ошибкой слишком большой датаграммы и проверкой жизни сервера. C++/стенд не менялись; запуск требует нового согласования. План: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/origin-emsgsize/plan.txt`; ключ `iocp_origin_emsgsize_proposal_20261108`.
+
+
+### 08.11.2026 — ORIGIN EMSGSIZE: поздние callback подтверждены
+
+16/16 валидных случаев, 12 с поздними вызовами после destroy, четыре корректных контроля. Во всех 16 сервер принял новую датаграмму; настоящий EMSGSIZE на 65508 байт, одно удаление записи. Валидатор 8 синтетических/75 отрицательных проверок; сырые результаты и 75 файлов manifest проверены повторно. Рабочий IOCP неизменен. Подготовлен неприменённый патч на 20 строк; исправление, регрессия и перенос требуют отдельного согласования. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/origin-emsgsize/diagnostic-report.txt`; план: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/origin-emsgsize/fix-plan.txt`; ключ `iocp_origin_emsgsize_diagnostic_20261108`.
+
+
+### 08.11.2026 — ORIGIN EMSGSIZE: исправление перенесено
+
+Пять проверок состояния после status/available/pull/write(0)/FAILURE, ровно 20 добавленных строк. 16 диагностических и 144 публичных целевых проверки прошли; полный IO — 170 PASS/1 IPv6 SKIP/0 FAIL/3 DISABLED, прежний порядок 171 теста, Wintun lifecycle PASS. Всего 161 новый процесс без повторов. Рабочий IOCP побайтно равен проверенному исходнику `9ce53dbb7080d787c0a709fcc1f4f5ae15592922be9d3d2368e6c3bdc75a41e4`; прежние правки сохранены, стиль 0 ERROR/1 прежний WARN. Полная сборка всего текущего параллельно изменяемого дерева не выполнялась. Отчёт: `/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/origin-emsgsize/fix-validation/report.txt`; ключ `iocp_origin_emsgsize_fix_20261108`.

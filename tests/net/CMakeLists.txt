@@ -173,6 +173,7 @@ if (${GTest_FOUND})
                 io/tunnel.cpp
                 io/parameterized.cpp
                 io/blocking.cpp
+                io/xdp.cpp
             )
         # Если не нужно собрать тесты для работы с модулем ввода-вывода
         else()

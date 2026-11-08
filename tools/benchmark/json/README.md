@@ -19,11 +19,21 @@
 | `rapidjson` | [Tencent/rapidjson](https://github.com/Tencent/rapidjson) | дерево значений, однонаправленный распределитель |
 | `boost` | [Boost.JSON](https://github.com/boostorg/json) | дерево значений, однонаправленный распределитель |
 | `nlohmann` | [nlohmann/json](https://github.com/nlohmann/json) | дерево на `std::map` и `std::vector`, всё на заголовках |
+| `userver-json` | [userver](https://github.com/userver-framework/userver) | слой значения поверх RapidJSON, берёт его с `CrtAllocator` |
 
 Реализация Boost.JSON берётся из установленной библиотеки, а не из подмодуля: подмодуль
 Boost сложен из подмодулей поменьше, и один лишь Boost.JSON из него не собирается — за
 ним тянется два десятка иных частей библиотеки. Путь к установленной библиотеке задаётся
 переменной `BOOST_ROOT`, умолчанием служит `/opt/homebrew`.
+
+Реализация userver собственного разбора JSON не несёт: значение её построено поверх
+RapidJSON, и стенд её меряет не столько разбор, сколько слой значения поверх чужого
+двигателя. Обход ведётся публичным обращением, а не доступом к родному значению —
+родное значение меряло бы RapidJSON, какой уже снят своим стендом. Оттого ряд с
+userver читают трёхсторонним: AWH — RapidJSON — userver, и разность «userver ÷
+RapidJSON» показывает цену их слоя. Две оговорки: userver ниже C++20 не собирается,
+а строку и имя поля его обращение отдаёт копией, так что обход платит выделения,
+какие стенд AWH не платит. Стенд собирается своим сценарием, см. ниже.
 
 ## Сценарии
 
@@ -51,6 +61,17 @@ for STAND in awh yyjson simdjson rapidjson boost nlohmann; do
 	echo "=== $STAND"; /tmp/rival-json/$STAND
 done
 ```
+
+Стенд userver собирается отдельным сценарием, общим для JSON и YAML:
+
+```sh
+./tools/benchmark/userver.sh
+/tmp/rival-userver/userver-json --checksum
+```
+
+Сценарий этот не входит в общий порядок съёма таблиц: он собирает библиотеку
+userver из подмодуля, а та тянет fmt, cctz, re2 и cryptopp, каких на образах
+кластера нет. Сличение с userver ведётся на той машине, где всё это собралось.
 
 Отбор сценария задаётся ключом `--filter=`, а сверка выполненной работы — ключом
 `--checksum`:
