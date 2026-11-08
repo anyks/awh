@@ -15779,7 +15779,7 @@ namespace io {
 	 * @return результат выполнения обработки
 	 *
 	 */
-	static bool destroy(::io::node_t *) noexcept;
+	static bool destroy(::io::node_t *, const event::send_error_t = event::send_error_t::IO_EVENT) noexcept;
 	/**
 	 * @brief Прототип функции обработки пользовательского события
 	 *
@@ -26373,26 +26373,8 @@ namespace io {
 											}
 											// Если сокет повреждён
 											if(error == event::error_t::INVALID_SOCKET){
-												// Размер данных для извлечения из очереди
-												size_t size = 0;
-												// Указатель на данные в очереди
-												const void * buffer = nullptr;
-												/**
-												 * Перебираем все данные в очереди
-												 */
-												while(!origin->transfer.queue.empty()){
-													// Извлекаем данные из очереди для записи в сокет
-													if(origin->transfer.queue.front(&buffer, size)){
-														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
-														if(origin->callbacks.spool != nullptr)
-															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-															origin->callbacks.spool(origin->id, event::send_error_t::IO_QUEUE, reinterpret_cast <const uint8_t *> (buffer), size);
-													}
-													// Удаляем запись из очереди
-													origin->transfer.queue.pop();
-												}
-												// Выполняем удаление узла
-												::io::destroy(origin);
+												// Уничтожаем узел до возврата очереди, сохраняя причину отказа
+												::io::destroy(origin, event::send_error_t::IO_QUEUE);
 											}
 										}
 									}
@@ -37919,14 +37901,14 @@ namespace io {
 	 *       обрыве: признаки у порта завершений свои, а сходиться они обязаны в одно
 	 *       место - иначе снос узла пойдёт двумя путями и разойдётся на первой же правке
 	 *
-	 * @warning Отклик зовётся отсюда, из сноса, и вправе позвать снос повторно. Обхода это
-	 *          выдерживает: возврат ИЗЫМАЕТ записи по мере обхода, и повторный заход
-	 *          находит очередь уже пустой
+	 * @warning Повторный снос из отклика не должен начинать новый обход: запись остаётся
+	 *          в очереди до возврата отклика, а узел уже помечен на уничтожение
 	 *
 	 * @param node узел, чья очередь возвращается потребителю
+	 * @param code причина возврата неотправленных данных
 	 *
 	 */
-	static void spill(::io::node_t * node) noexcept {
+	static void spill(::io::node_t * node, const event::send_error_t code) noexcept {
 		// Если узел не задан
 		if(node == nullptr)
 			// Выходим, возвращать нечего
@@ -37957,7 +37939,7 @@ namespace io {
 							// Прекращаем обход очереди
 							break;
 						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-						peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+						peer->callbacks.spool(peer->id, code, reinterpret_cast <const uint8_t *> (buffer), size);
 					}
 					// Удаляем запись из очереди
 					peer->transfer.queue.pop(size);
@@ -37981,7 +37963,7 @@ namespace io {
 							// Прекращаем обход очереди
 							break;
 						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-						origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+						origin->callbacks.spool(origin->id, code, reinterpret_cast <const uint8_t *> (buffer), size);
 					}
 					// Удаляем запись из очереди
 					origin->transfer.queue.pop(size);
@@ -38005,7 +37987,7 @@ namespace io {
 							// Прекращаем обход очереди
 							break;
 						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-						client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+						client->callbacks.spool(client->id, code, reinterpret_cast <const uint8_t *> (buffer), size);
 					}
 					// Удаляем запись из очереди
 					client->transfer.queue.pop(size);
@@ -38030,7 +38012,7 @@ namespace io {
 							// Прекращаем обход очереди
 							break;
 						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
-						ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+						ipc->callbacks.spool(ipc->id, code, reinterpret_cast <const uint8_t *> (buffer), size);
 					}
 					// Удаляем запись из очереди
 					ipc->transfer.queue.pop(size);
@@ -38075,12 +38057,11 @@ namespace io {
 	 * @brief Функция обработки события удаления узла
 	 *
 	 * @param node узел, в котором произошло событие
+	 * @param code причина возврата неотправленных данных
 	 * @return результат выполнения обработки
 	 *
 	 */
-	static bool destroy(::io::node_t * node) noexcept {
-		// Возвращаем потребителю неотданный остаток очереди
-		::io::spill(node);
+	static bool destroy(::io::node_t * node, const event::send_error_t code) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38092,6 +38073,8 @@ namespace io {
 				node->state.status = event::status_t::DESTROYED;
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
+				// Возвращаем потребителю неотданный остаток очереди
+				::io::spill(node, code);
 				/**
 				 * Определяем чем является текущий узел
 				 */

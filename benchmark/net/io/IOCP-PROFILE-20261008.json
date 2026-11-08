@@ -161153,5 +161153,58 @@
     "postflight_clean": true,
     "style_errors": 0,
     "style_warnings": 1
+  },
+  "iocp_spool_reentrant_proposal_20261108": {
+    "status": "PROPOSED_NOT_RUN",
+    "head": "b4c6162902e7f2cff390c0272cb1442956baae84",
+    "iocp_sha256": "c29bbe0e3b56d78c699cf4751db0dcc38f5ec51bfb9b771e166c7752c6c507cf",
+    "prior_validated_iocp_sha256": "9ce53dbb7080d787c0a709fcc1f4f5ae15592922be9d3d2368e6c3bdc75a41e4",
+    "runtime_confirmed": false,
+    "cpp_changed": false,
+    "proposed_full_io_runs": 1,
+    "proposed_targeted_runs": 8,
+    "audit": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/audit.txt",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/plan.txt",
+    "diagnostic_result_20261108": {
+      "head": "b4c6162902e7f2cff390c0272cb1442956baae84",
+      "valid_cases": 8,
+      "control_pass": 4,
+      "nested_duplicate": 4,
+      "full_io": "170 PASS, 1 IPv6 SKIP, 3 disabled; Wintun PASS",
+      "evidence": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/evidence",
+      "working_code_changed": false
+    },
+    "fix_validation_20261108": {
+      "origin_cases_pass": 8,
+      "previous_target_cases_pass": 128,
+      "full_io": "timeout after 360 seconds during IoTunnelLifecycleOnWintunTest; cause unknown",
+      "transfer": false,
+      "evidence": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/fix-validation"
+    },
+    "wintun_pair_20261108": {
+      "baseline": "PASS 0.751 seconds",
+      "fixed": "PASS 0.488 seconds",
+      "full_timeout_cause": "unknown",
+      "full_repeat": "not run",
+      "evidence": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/wintun-diagnostic/paired-results"
+    },
+    "fix_transfer_20261108": {
+      "full_io": "170 PASS, 1 IPv6 SKIP, 3 disabled; Wintun PASS",
+      "origin_reentrant_cases_pass": 8,
+      "previous_target_cases_pass": 128,
+      "source_sha256": "15834f1cd7094d559f89a0c286d15e10c0f91422f823d526633a6b2cff605390",
+      "peer_client_ipc_reentrant_not_tested": true,
+      "prior_timeout_cause": "unknown",
+      "transferred": true,
+      "evidence": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/fix-validation"
+    },
+    "other_nodes_validation_20261108": {
+      "processes": 32,
+      "baseline_nested_duplicates": 8,
+      "fixed_cases_correct": 16,
+      "ipc_validator_negative_controls": 5,
+      "tcp_validator_negative_controls": "5 passed on saved real data",
+      "evidence": "/Users/forman/Work/AI/protocols/awh/iocp/2026-11-08/spool-reentrant/other-nodes"
+    }
   }
 }
