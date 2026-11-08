@@ -3720,7 +3720,7 @@ bool awh::eth::iface::getAddress(string_view name, unique_ptr <net::addr_t> & ip
 				/**
 				 * Метка завершения поиска
 				 */
-				End:
+				End:;
 			// Если список сетевых интерфейсов получить не удалось
 			} else {
 				/**

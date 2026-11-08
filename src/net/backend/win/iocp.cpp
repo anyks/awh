@@ -15053,6 +15053,102 @@ namespace pipeout {
 }
 
 /**
+ * @brief Инкапсулируем отложенные записи сессий общего сокета
+ *
+ * @details Подписка приёма общего сокета принадлежит серверу. Записи сессий
+ *          учитываются отдельно и не заменяют владельца подписки. Поколение
+ *          отличает повторное взведение от отменённой записи той же сессии.
+ *
+ */
+namespace originout {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	// Записи сессий, ожидающие следующего оборота опроса
+	static vector <pair <event::id_t, uint64_t>> __awh_waiting__;
+	// Действующие поколения отложенных записей сессий
+	static unordered_map <event::id_t, uint64_t> __awh_pending__;
+	// Последнее выданное поколение записи
+	static uint64_t __awh_generation__ = 0;
+	/**
+	 * @brief Функция постановки сессии на отложенную запись
+	 *
+	 * @param id идентификатор сессии
+	 * @return   результат постановки
+	 *
+	 */
+	static bool arm(const event::id_t id) noexcept {
+		// Если сессия уже ожидает записи
+		if(::originout::__awh_pending__.find(id) != ::originout::__awh_pending__.end())
+			// Повторную запись не добавляем
+			return true;
+		// Если все значения поколений исчерпаны
+		if(::originout::__awh_generation__ == UINT64_MAX)
+			// Не допускаем совпадения с прежним поколением
+			return false;
+		/**
+		 * Выполняем перехват ошибок выделения памяти
+		 */
+		try {
+			// Выдаём новое поколение записи
+			const uint64_t generation = ++::originout::__awh_generation__;
+			// Сохраняем действующее поколение сессии
+			::originout::__awh_pending__.emplace(id, generation);
+			// Добавляем запись в конец очереди следующего оборота
+			::originout::__awh_waiting__.emplace_back(id, generation);
+			// Сообщаем об успешной постановке
+			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Удаляем поколение, для которого не удалось сохранить запись
+			::originout::__awh_pending__.erase(id);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("%s", log::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Сообщаем об отказе постановки
+		return false;
+	}
+	/**
+	 * @brief Функция отмены отложенной записи сессии
+	 *
+	 * @param id идентификатор сессии
+	 *
+	 */
+	static void disarm(const event::id_t id) noexcept {
+		// Отменяем поколение также в уже разбираемой пачке
+		::originout::__awh_pending__.erase(id);
+	}
+	/**
+	 * @brief Функция очистки отложенных записей сессий
+	 *
+	 * @note Счётчик поколений не сбрасывается: повторная инициализация не должна
+	 *       сделать действительной запись из прежнего оборота опроса.
+	 *
+	 */
+	static void clear() noexcept {
+		// Отменяем все действующие поколения
+		::originout::__awh_pending__.clear();
+		// Удаляем записи следующего оборота опроса
+		::originout::__awh_waiting__.clear();
+	}
+}
+
+/**
  * @brief Инкапсулируем статические функции в пространство имён событий
  *
  */
@@ -15501,6 +15597,19 @@ namespace events {
 		bool result = false;
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
+			// Если запись принадлежит сессии общего серверного сокета
+			if((node != nullptr) && (node->state.node == event::node_t::ORIGIN)){
+				// Если запись требуется активировать
+				if(mode == event::mode_t::ENABLED)
+					// Ставим сессию на запись без изменения подписки сервера
+					return ::originout::arm(node->id);
+				// Если запись требуется отменить
+				if(mode == event::mode_t::DISABLED)
+					// Снимаем сессию с отложенной записи
+					::originout::disarm(node->id);
+				// Подписка общего сокета остаётся у сервера
+				return true;
+			}
 			/**
 			 * Готовность к записи у именованного канала берётся не учётом подписок
 			 *
@@ -24665,9 +24774,14 @@ namespace io {
 											 *       готовности здесь нет вовсе, её место занимает поданная отправка
 											 *
 											 */
-											if(ipc->callbacks.source != nullptr)
+											if(ipc->callbacks.source != nullptr){
 												// Вытягиваем следующую порцию данных из источника и отправляем её
 												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd);
+												// Если узел уничтожен из функции обратного вызова
+												if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+													// Выводим результат
+													return result;
+											}
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(ipc->callbacks.write != nullptr){
@@ -25400,10 +25514,18 @@ namespace io {
 											if(peer->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об освобождении очереди
 												peer->callbacks.status(peer->id, event::status_t::QUEUE_AVAILABLE);
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											// Если функция обратного вызова для вывода доступных данных установлена
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											/**
 											 * Если очередь опустела, а источник данных установлен
 											 *
@@ -25420,6 +25542,10 @@ namespace io {
 											if(peer->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
 												::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd);
+											// Если узел уничтожен из источника данных
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
@@ -25517,10 +25643,18 @@ namespace io {
 										if(peer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об освобождении очереди
 											peer->callbacks.status(peer->id, event::status_t::QUEUE_AVAILABLE);
+										// Если узел уничтожен из функции обратного вызова
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										// Если функция обратного вызова для вывода доступных данных установлена
 										if(peer->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+										// Если узел уничтожен из функции обратного вызова
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										/**
 										 * Если очередь опустела, а источник данных установлен
 										 *
@@ -25537,6 +25671,10 @@ namespace io {
 										if(peer->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
 											::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd);
+										// Если узел уничтожен из источника данных
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(peer->callbacks.write != nullptr){
@@ -26137,10 +26275,18 @@ namespace io {
 													if(origin->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об освобождении очереди
 														origin->callbacks.status(origin->id, event::status_t::QUEUE_AVAILABLE);
+													// Если узел уничтожен из функции обратного вызова
+													if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+														// Выводим результат
+														return result;
 													// Если функция обратного вызова для вывода доступных данных установлена
 													if(origin->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+													// Если узел уничтожен из функции обратного вызова
+													if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+														// Выводим результат
+														return result;
 													/**
 													 * Если очередь опустела, а источник данных установлен
 													 *
@@ -26157,6 +26303,10 @@ namespace io {
 													if(origin->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
 														::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd);
+													// Если узел уничтожен из функции обратного вызова
+													if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+														// Выводим результат
+														return result;
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -26187,12 +26337,20 @@ namespace io {
 										if(origin->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											origin->callbacks.write(origin->id, 0);
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										// Если данные не записаны в сокет
 										if(error != event::error_t::NONE){
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
 												origin->callbacks.status(origin->id, event::status_t::FAILURE);
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
@@ -26275,10 +26433,18 @@ namespace io {
 											if(origin->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об освобождении очереди
 												origin->callbacks.status(origin->id, event::status_t::QUEUE_AVAILABLE);
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											// Если функция обратного вызова для вывода доступных данных установлена
 											if(origin->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											/**
 											 * Если очередь опустела, а источник данных установлен
 											 *
@@ -26295,6 +26461,10 @@ namespace io {
 											if(origin->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
 												::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd);
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr){
@@ -26387,10 +26557,18 @@ namespace io {
 										if(origin->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об освобождении очереди
 											origin->callbacks.status(origin->id, event::status_t::QUEUE_AVAILABLE);
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										// Если функция обратного вызова для вывода доступных данных установлена
 										if(origin->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										/**
 										 * Если очередь опустела, а источник данных установлен
 										 *
@@ -26407,6 +26585,10 @@ namespace io {
 										if(origin->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
 											::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd);
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr){
@@ -26963,10 +27145,18 @@ namespace io {
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об освобождении очереди
 												client->callbacks.status(client->id, event::status_t::QUEUE_AVAILABLE);
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											// Если функция обратного вызова для вывода доступных данных установлена
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 											/**
 											 * Если очередь опустела, а источник данных установлен
 											 *
@@ -26983,6 +27173,10 @@ namespace io {
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
 												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd);
+											// Если узел уничтожен из источника данных
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+												// Выводим результат
+												return result;
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
@@ -27080,10 +27274,18 @@ namespace io {
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об освобождении очереди
 											client->callbacks.status(client->id, event::status_t::QUEUE_AVAILABLE);
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										// Если функция обратного вызова для вывода доступных данных установлена
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 										/**
 										 * Если очередь опустела, а источник данных установлен
 										 *
@@ -27100,6 +27302,10 @@ namespace io {
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
 											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd);
+										// Если узел уничтожен из источника данных
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+											// Выводим результат
+											return result;
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
@@ -37625,6 +37831,10 @@ namespace io {
 				const uint8_t * chunk = nullptr;
 				// Запрашиваем данные у источника, получая указатель на его собственный буфер
 				const bool proceed = node->callbacks.source(node->id, &chunk, capacity);
+				// Если узел уничтожен из источника данных
+				if(!(pulling = ((node->state.status != event::status_t::DESTROYED) && (node->state.status != event::status_t::GARBAGE))))
+					// Прекращаем вытягивание данных
+					break;
 				// Если источник отдал больше отданной ему ёмкости
 				if(!(pulling = (capacity <= offered))){
 					// Записываем ошибку в лог
@@ -38122,6 +38332,8 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+						// Отменяем отложенную запись уничтожаемой сессии
+						::originout::disarm(origin->id);
 						// Сбрасываем очередь передачи данных события
 						origin->transfer.queue.clear();
 						/**
@@ -43683,6 +43895,10 @@ namespace io {
 					if(server->callbacks.accept != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
 						server->callbacks.accept(server->id, origin->id);
+					// Если сессия уничтожена из функции обратного вызова
+					if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+						// Прекращаем обработку уничтоженной сессии
+						return false;
 					// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
 					if((origin->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
 						// Формируем отрицательный результат
@@ -43691,6 +43907,10 @@ namespace io {
 					if(origin->callbacks.read != nullptr)
 						// Вызываем функцию обратного вызова для вывода полученных данных
 						origin->callbacks.read(origin->id, buffer, static_cast <size_t> (size));
+					// Если сессия уничтожена из функции обратного вызова
+					if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+						// Прекращаем обработку уничтоженной сессии
+						return false;
 					// Если узел не помечен как мусорный
 					if(!guard.garbage()){
 						// Устанавливаем статус события в состояние успешного подключения
@@ -75346,6 +75566,8 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									origin->transfer.actions &= ~::action::WRITE;
+									// Отменяем прежнее поколение записи сессии
+									::originout::disarm(origin->id);
 									// Если событие является неблокирующим
 									if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 										/**
@@ -77072,6 +77294,8 @@ bool awh::engine::isAlive(const event::id_t id) noexcept {
  *
  */
 void awh::engine::clear() noexcept {
+	// Отменяем отложенные записи до завершающих оборотов опроса
+	::originout::clear();
 	// Если очередь опроса заведена
 	if(::__awh_ep__ != net::invalid_socket_t){
 		/**
@@ -77689,6 +77913,8 @@ void awh::engine::clear() noexcept {
 		if(!::__awh_origin_sessions__.empty())
 			// Очищаем список активных сессий одноранговых узлов-источников
 			::__awh_origin_sessions__.clear();
+		// Удаляем записи, добавленные во время завершения узлов
+		::originout::clear();
 	}
 }
 /**
@@ -78515,6 +78741,8 @@ bool awh::engine::reinitialize() noexcept {
  *
  */
 bool awh::engine::deinitialize() noexcept {
+	// Отменяем отложенные записи до завершающих оборотов опроса
+	::originout::clear();
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -78830,6 +79058,8 @@ bool awh::engine::deinitialize() noexcept {
 	if(!::__awh_origin_sessions__.empty())
 		// Очищаем список активных сессий одноранговых узлов-источников
 		::__awh_origin_sessions__.clear();
+	// Удаляем записи, добавленные во время завершения узлов
+	::originout::clear();
 	// Если механизм ожидания заведён
 	if(::__awh_ep__ != net::invalid_socket_t){
 		/**
@@ -79113,8 +79343,11 @@ size_t awh::engine::available(const event::id_t id) noexcept {
 	try {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status == event::status_t::PENDING)){
+		// Если найдено ожидающее событие, подключённый клиент, принятый узел или сессия
+		if((i != ::__awh_nodes__.end()) && ((i->second->state.status == event::status_t::PENDING) ||
+		   ((i->second->state.node == event::node_t::CLIENT) && (i->second->state.status == event::status_t::CONNECTED)) ||
+		   ((i->second->state.node == event::node_t::PEER) && (i->second->state.status == event::status_t::SUCCESS)) ||
+		   ((i->second->state.node == event::node_t::ORIGIN) && (i->second->state.status == event::status_t::SUCCESS)))){
 			/**
 			 * Определяем чем является текущий узел
 			 */
@@ -79478,6 +79711,45 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 			 * время ожидания вышло бы завышенным ровно на возраст слепка
 			 */
 			::timer::release();
+			// Запоминаем наличие записей до обработки функций обратного вызова
+			const bool originReady = !::originout::__awh_waiting__.empty();
+			// Если сессии общего сокета ожидают записи
+			if(originReady){
+				// Создаём отдельную пачку без указателей на узлы
+				vector <pair <event::id_t, uint64_t>> ready;
+				// Отделяем пачку от записей, добавляемых функциями обратного вызова
+				ready.swap(::originout::__awh_waiting__);
+				/**
+				 * Обрабатываем каждую запись не более одного раза за пачку
+				 */
+				for(const auto & item : ready){
+					// Находим действующее поколение записи
+					auto pending = ::originout::__awh_pending__.find(item.first);
+					// Если запись отменена либо сессия уже взведена повторно
+					if((pending == ::originout::__awh_pending__.end()) || (pending->second != item.second))
+						// Пропускаем устаревшую запись
+						continue;
+					// Снимаем одноразовую запись до вызова обработчика
+					::originout::__awh_pending__.erase(pending);
+					// Заново находим узел после возможного уничтожения из предыдущего обработчика
+					auto i = ::__awh_nodes__.find(item.first);
+					// Если узел отсутствует, уничтожен либо не является сессией
+					if((i == ::__awh_nodes__.end()) || (i->second->state.node != event::node_t::ORIGIN) ||
+					   (i->second->state.status == event::status_t::DESTROYED) || (i->second->state.status == event::status_t::GARBAGE))
+						// Пропускаем недействительный узел
+						continue;
+					// Получаем сессию для проверки остатка очереди
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если очередь уже опустела
+					if(origin->transfer.queue.empty())
+						// Повторная отправка не требуется
+						continue;
+					// Вызываем общий обработчик с охранником узла и проверкой разрешённых действий
+					::io::write(i->second.get());
+				}
+				// Обновляем время после исполнения пользовательских обработчиков
+				::timer::release();
+			}
 			/**
 			 * Подготавливаем время ожидания опроса событий
 			 *
@@ -79490,6 +79762,13 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 			 *
 			 */
 			int32_t wait = timeout;
+			// Если обработаны отложенные записи сессий
+			if(originReady){
+				// Если повторных записей не осталось
+				if(::originout::__awh_waiting__.empty())
+					// Возвращаем управление после уже выполненной работы
+					wait = 0;
+			}
 			// Если ожидание не запрещено вовсе
 			if(timeout != 0){
 				// Получаем дедлайн ближайшего внутреннего таймера
@@ -79655,6 +79934,10 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 					// Устанавливаем ожидание в один оборот часов
 					wait = ((wait < 0) ? 1 : ((wait > 1) ? 1 : wait));
 			}
+			// Если записи сессий остались либо появились при фиксации изменений
+			if(!::originout::__awh_waiting__.empty() && (wait != 0))
+				// Ограничиваем ожидание повторной попытки без непрерывного вращения
+				wait = ((wait < 0) ? 1 : ((wait > 1) ? 1 : wait));
 			// Количество полученных событий
 			ssize_t events = 0;
 			/**
@@ -79972,27 +80255,6 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 						// Переходим к завершению следующему: разбирать в отмене нечего
 						continue;
 					/**
-					 * Набор произошедших событий готовности
-					 *
-					 * @note Ожидание готовности отдаёт набор событий числовым исходом
-					 *       завершения, а не отдельным полем
-					 *
-					 */
-					/**
-					 * Определяем набор наступивших событий готовности
-					 *
-					 * @details Порт завершений о готовности не знает вовсе, и наступившим
-					 *          считается тот набор, какой был запрошен подачей: обмен
-					 *          нулевой длины завершается ровно тогда, когда запрошенное и
-					 *          наступило. Там, где ядро сообщает набор само, он приходит
-					 *          итогом завершения и запоминать запрошенное не приходится
-					 *
-					 * @note Отказ обмена обращается признаком ошибки: разбор ниже
-					 *       разберётся с ним обычным путём - позовёт приём, а тот
-					 *       ответит отказом и доведёт узел до отключения
-					 *
-					 */
-					/**
 					 * Набор событий готовности, выдаваемых наружу
 					 *
 					 * @warning Выдаётся не вся запрошенная маска, а лишь готовность к
@@ -80084,7 +80346,7 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 						 *          подписку на запись: согласование её не подавало, пока отправка
 						 *          заведена, и учёт с ядром расходился. Подписки на родном пути больше
 						 *          нет - расходиться нечему, а переучёт стоил снятия и повторной подачи
-						 *          ожидания на всякий кусок очереди
+						 *          ожидания на всякий кусок очереди.
 						 *
 						 * @note Остаток очереди будит цикл сам: разбор этого завершения подаёт ядру
 						 *       следующий кусок, и оно приведёт сюда снова
@@ -80100,7 +80362,7 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 					 *          ход, а не исключение: сработавшее ожидание ядром снято, и
 					 *          без повторной подачи узел не получил бы событий больше
 					 *          никогда. Довод в пользу однократности - при подаче
-					 *          ожидания в согласовании учёта
+					 *          ожидания в согласовании учёта.
 					 *
 					 * @note Ветвь эта берёт на себя и тот случай, когда ядро прекращает
 					 *       многократное ожидание само, не выставив признака продолжения.
@@ -80150,20 +80412,6 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 								::kernel::pending.push_back(state->sock);
 							}
 							/**
-							 * У именованного канала ожидание подаётся заново прямо здесь
-							 *
-							 * @details Очередь согласования разбирается перед ожиданием, и до неё
-							 *          работа доходит лишь тогда, когда разбор пачки завершился
-							 *          обычным путём. У канала же разбор пришедшей готовности
-							 *          вправе окончиться отсутствием данных - готовность выдаётся
-							 *          и по подключению встречной стороны, когда данных ещё нет, -
-							 *          и подписка оставалась неподанной навсегда, а обмен вставал
-							 *
-							 * @note Установлено следом в памяти: за пришедшей готовностью не
-							 *       следовало ни одного согласования по этому описателю
-							 *
-							 */
-							/**
 							 * Успешное ожидание сокета не требует повторного опознания канала
 							 *
 							 * @note Ответ системы принадлежит записи операции с её поколением,
@@ -80202,6 +80450,173 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 						continue;
 					}
 					/**
+					 * Если завершение принадлежит наложенному приёму подключения
+					 *
+					 * @details Подключение к этому мигу уже принято, и обращению системы принимать
+					 *          после него нечего. Принятое складывается в очередь по слушающему
+					 *          дескриптору, а наружу выдаётся готовность к чтению - та самая, по
+					 *          которой движок зовёт приём. Разбор приёма от этого не меняется.
+					 *
+					 * @note Следующий приём подаётся не здесь, а согласованием учёта: подписка
+					 *       отмечается расходящейся, и подача идёт общим порядком - тем же, каким
+					 *       подаются заново все однократные ожидания
+					 *
+					 */
+					if(kind == ::inflight::kind_t::ACCEPT){
+						// Выполняем поиск сведений о поданном наложенном приёме
+						auto i = ::kernel::acceptions.find(completion.token);
+						// Если сведения о поданном наложенном приёме найдены
+						if(i != ::kernel::acceptions.end()){
+							// Получаем дескриптор принятого подключения
+							const net::socket_t peer = i->second->sock;
+							/**
+							 * Если приём вёлся именованным каналом
+							 *
+							 * @details Принятый описатель здесь и есть заведённый заранее экземпляр
+							 *          канала: подключение приняло его самого, а не завело новый.
+							 *          Сокетных шагов ему не нужно - ни наследования свойств
+							 *          слушающего, ни добычи адресов сторон: адрес у канала один на
+							 *          обе стороны, и он есть его имя.
+							 *
+							 */
+							if(::channel::listening(sockOf)){
+								// Адрес принятого подключения: у канала адрес один на обе стороны
+								::kernel::accepted_t empty;
+								// Если приём подключения удался и операция не отменена
+								if((completion.res >= 0) && !cancelled)
+									// Складываем принятое подключение до выдачи движку
+									::kernel::accepted[sockOf].emplace_back(peer, empty);
+								// Если приём подключения не удался - закрываем заведённый экземпляр
+								else ::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (peer)));
+							// Если приём подключения завершился успешно и операция не отменена
+							} else if((completion.res >= 0) && !cancelled) {
+								/**
+								 * Переносим сведения о приёме в принятый сокет
+								 *
+								 * @note Обращение это обязательно: до него принятый сокет о своём
+								 *       подключении не знает, и опции слушающего сокета на него не
+								 *       наследуются вовсе
+								 *
+								 */
+								if(::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf))) != 0)
+									// Выводим в журнал сообщение о неудавшемся наследовании свойств
+									log::print("%s: accepted socket %d did not inherit the listening socket properties: %s", log::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (peer), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+								// Адрес принятого подключения с его фактической длиной
+								::kernel::accepted_t source;
+								// Адреса сторон принятого подключения, добываемые из буфера
+								struct sockaddr * local = nullptr, * remote = nullptr;
+								// Размеры адресов сторон принятого подключения
+								int32_t first = 0, second = 0;
+								// Выполняем добычу адресов сторон принятого подключения
+								::kernel::sockaddrs(
+									i->second->buffer, 0,
+									static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+									static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
+									&local, &first, &remote, &second, sockOf
+								);
+								// Если адрес удалённой стороны добыт
+								if((remote != nullptr) && (second > 0)){
+									// Длина адреса, уместившаяся в хранилище очереди
+									const socklen_t length = static_cast <socklen_t> ((static_cast <size_t> (second) < sizeof(source.address)) ? static_cast <size_t> (second) : sizeof(source.address));
+									// Запоминаем адрес удалённой стороны
+									::memcpy(&source.address, remote, length);
+									// Запоминаем фактическую длину адреса рядом с адресом
+									source.size = length;
+								}
+								// Складываем принятое подключение до выдачи движку
+								::kernel::accepted[sockOf].emplace_back(peer, source);
+							// Если приём подключения не удался, заведённый под него сокет закрывается
+							} else ::closesocket(static_cast <SOCKET> (peer));
+							// Забываем сведения о поданном наложенном приёме
+							::kernel::acceptions.erase(i);
+						}
+						// Получаем запись учёта подписки по слушающему дескриптору
+						signalData = ::kernel::subscription(sockOf);
+						// Если подписка по слушающему дескриптору заведена
+						if(signalData != nullptr){
+							// Получаем запись учёта подписки
+							::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
+							// Забываем метку завершившегося приёма
+							state->token = ::inflight::INVALID;
+							// Отмечаем подписку снятой: приём подаётся заново согласованием
+							state->registered = false;
+							// Снимаем набор признаков, поданный ядру последним
+							state->applied = 0;
+							// Если включённые подписки остались и учёт согласия не ждёт
+							if((state->enabled != 0) && !state->pending){
+								// Отмечаем учёт разошедшимся с ядром
+								state->pending = true;
+								// Ставим дескриптор в очередь согласования
+								::kernel::pending.push_back(sockOf);
+							}
+						}
+						// Выдаём наружу готовность к чтению либо признак ошибки дескриптора
+						signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLIN) : static_cast <uint32_t> (EPOLLERR));
+					}
+					/**
+					 * Если завершение принадлежит наложенному подключению
+					 *
+					 * @details Наружу оно выдаётся готовностью к записи - той самой, какой
+					 *          сообщают о завершении подключения системы POSIX. Разбор
+					 *          подключения от этого не меняется ни строкой: он по-прежнему
+					 *          видит готовность к записи и по-прежнему выясняет исход
+					 *          подключения опросом ошибки сокета.
+					 *
+					 * @note Отказ подключения выдаётся признаком ошибки дескриптора:
+					 *       готовность к записи по неподключённому сокету увела бы разбор к
+					 *       отправке в никуда
+					 *
+					 */
+					if(kind == ::inflight::kind_t::CONNECT){
+						// Снимаем отметку подключения с дескриптора
+						::kernel::connections.erase(sockOf);
+						/**
+						 * Переносим сведения о подключении в сам сокет
+						 *
+						 * @note Обращение это обязательно: до него сокет, подключённый наложенно,
+						 *       о своём подключении не знает - ни адреса собеседника, ни
+						 *       состояния у него не спросить
+						 *
+						 */
+						if(completion.res >= 0)
+							/**
+							 * @brief Выполняем перенос сведений о подключении в сокет
+							 *
+							 * @details Отказ этого шага оглашается, а не проглатывается.
+							 *
+							 * @note Шаг обязателен после `ConnectEx`: без него сокет остаётся
+							 *       полузаведённым, и обращения к его именам отвечают отказом
+							 *
+							 */
+							if(::setsockopt(static_cast <SOCKET> (sockOf), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) != 0)
+								// Выводим в журнал сообщение о незавершённом заведении подключения
+								log::print("%s: connected socket %d was not updated after the overlapped connect: %s", log::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (sockOf), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+						/**
+						 * Применяем к подключённому сокету запомненную отметку качества обслуживания
+						 *
+						 * @note Стоит оно ПОСЛЕ переноса сведений о подключении: до того сокет
+						 *       о своём назначении не знает, а подсистема берёт назначение
+						 *       именно у него - завести поток ей было бы нечем
+						 *
+						 */
+						if(completion.res >= 0)
+							// Выполняем применение запомненной отметки
+							win::qos::apply(sockOf);
+						// Получаем запись учёта подписки по дескриптору
+						signalData = ::kernel::subscription(sockOf);
+						// Если подписка по дескриптору заведена
+						if(signalData != nullptr){
+							// Получаем запись учёта подписки
+							::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
+							// Отмечаем учёт разошедшимся с ядром: ожидание готовности подадут заново
+							state->pending = true;
+							// Ставим дескриптор в очередь согласования
+							::kernel::pending.push_back(sockOf);
+						}
+						// Выдаём наружу готовность к записи либо признак ошибки дескриптора
+						signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLOUT) : static_cast <uint32_t> (EPOLLERR));
+					}
+					/**
 					 * Если места в пачке разбора не осталось
 					 *
 					 * @note Тело взято в скобки намеренно. Разбор завершений ниже идёт
@@ -80211,182 +80626,6 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 					 *       (`-Wmisleading-indentation`)
 					 *
 					 */
-						/**
-						 * Если завершение принадлежит наложенному приёму подключения
-						 *
-						 * @details Подключение к этому мигу уже принято, и обращению системы принимать
-						 *          после него нечего. Принятое складывается в очередь по слушающему
-						 *          дескриптору, а наружу выдаётся готовность к чтению - та самая, по
-						 *          которой движок зовёт приём. Разбор приёма от этого не меняется
-						 *
-						 * @note Следующий приём подаётся не здесь, а согласованием учёта: подписка
-						 *       отмечается расходящейся, и подача идёт общим порядком - тем же, каким
-						 *       подаются заново все однократные ожидания
-						 *
-						 */
-						if(kind == ::inflight::kind_t::ACCEPT){
-							// Выполняем поиск сведений о поданном наложенном приёме
-							auto i = ::kernel::acceptions.find(completion.token);
-							// Если сведения о поданном наложенном приёме найдены
-							if(i != ::kernel::acceptions.end()){
-								// Получаем дескриптор принятого подключения
-								const net::socket_t peer = i->second->sock;
-								// Если приём подключения завершился успешно и операция не отменена
-								/**
-								 * Если приём вёлся именованным каналом
-								 *
-								 * @details Принятый описатель здесь и есть заведённый заранее экземпляр
-								 *          канала: подключение приняло его самого, а не завело новый.
-								 *          Сокетных шагов ему не нужно - ни наследования свойств
-								 *          слушающего, ни добычи адресов сторон: адрес у канала один на
-								 *          обе стороны, и он есть его имя
-								 *
-								 */
-								if(::channel::listening(sockOf)){
-									// Адрес принятого подключения: у канала адрес один на обе стороны
-									::kernel::accepted_t empty;
-									// Если приём подключения удался и операция не отменена
-									if((completion.res >= 0) && !cancelled)
-										// Складываем принятое подключение до выдачи движку
-										::kernel::accepted[sockOf].emplace_back(peer, empty);
-									// Если приём подключения не удался - закрываем заведённый экземпляр
-									else ::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (peer)));
-								} else if((completion.res >= 0) && !cancelled){
-									/**
-									 * Переносим сведения о приёме в принятый сокет
-									 *
-									 * @note Обращение это обязательно: до него принятый сокет о своём
-									 *       подключении не знает, и опции слушающего сокета на него не
-									 *       наследуются вовсе
-									 *
-									 */
-									/**
-									 * Отказ этого шага оглашается, а не проглатывается
-									 *
-									 * @note Шаг обязателен: без него принятый сокет не наследует свойств
-									 *       слушающего, и `getpeername`, `getsockname` и плавное закрытие
-									 *       отвечают ему невнятно. Отказ редок, а разбор его без сообщения
-									 *       стоил бы долгих поисков далеко от места
-									 *
-									 */
-									if(::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf))) != 0)
-										// Выводим в журнал сообщение о неудавшемся наследовании свойств
-										log::print("%s: accepted socket %d did not inherit the listening socket properties: %s", log::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (peer), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
-									// Адрес принятого подключения с его фактической длиной
-									::kernel::accepted_t source;
-									// Адреса сторон принятого подключения, добываемые из буфера
-									struct sockaddr * local = nullptr, * remote = nullptr;
-									// Размеры адресов сторон принятого подключения
-									int32_t first = 0, second = 0;
-									// Выполняем добычу адресов сторон принятого подключения
-									::kernel::sockaddrs(
-										i->second->buffer, 0,
-										static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
-										static_cast <DWORD> (sizeof(struct sockaddr_storage) + 16),
-										&local, &first, &remote, &second, sockOf
-									);
-									// Если адрес удалённой стороны добыт
-									if((remote != nullptr) && (second > 0)){
-										// Длина адреса, уместившаяся в хранилище очереди
-										const socklen_t length = static_cast <socklen_t> ((static_cast <size_t> (second) < sizeof(source.address)) ? static_cast <size_t> (second) : sizeof(source.address));
-										// Запоминаем адрес удалённой стороны
-										::memcpy(&source.address, remote, length);
-										// Запоминаем фактическую длину адреса рядом с адресом
-										source.size = length;
-									}
-									// Складываем принятое подключение до выдачи движку
-									::kernel::accepted[sockOf].emplace_back(peer, source);
-								// Если приём подключения не удался, заведённый под него сокет закрывается
-								} else ::closesocket(static_cast <SOCKET> (peer));
-								// Забываем сведения о поданном наложенном приёме
-								::kernel::acceptions.erase(i);
-							}
-							// Получаем запись учёта подписки по слушающему дескриптору
-							signalData = ::kernel::subscription(sockOf);
-							// Если подписка по слушающему дескриптору заведена
-							if(signalData != nullptr){
-								// Получаем запись учёта подписки
-								::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
-								// Забываем метку завершившегося приёма
-								state->token = ::inflight::INVALID;
-								// Отмечаем подписку снятой: приём подаётся заново согласованием
-								state->registered = false;
-								// Снимаем набор признаков, поданный ядру последним
-								state->applied = 0;
-								// Если включённые подписки остались и учёт согласия не ждёт
-								if((state->enabled != 0) && !state->pending){
-									// Отмечаем учёт разошедшимся с ядром
-									state->pending = true;
-									// Ставим дескриптор в очередь согласования
-									::kernel::pending.push_back(sockOf);
-								}
-							}
-							// Выдаём наружу готовность к чтению либо признак ошибки дескриптора
-							signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLIN) : static_cast <uint32_t> (EPOLLERR));
-						}
-						/**
-						 * Если завершение принадлежит наложенному подключению
-						 *
-						 * @details Наружу оно выдаётся готовностью к записи - той самой, какой
-						 *          сообщают о завершении подключения системы POSIX. Разбор
-						 *          подключения от этого не меняется ни строкой: он по-прежнему
-						 *          видит готовность к записи и по-прежнему выясняет исход
-						 *          подключения опросом ошибки сокета
-						 *
-						 * @note Отказ подключения выдаётся признаком ошибки дескриптора:
-						 *       готовность к записи по неподключённому сокету увела бы разбор к
-						 *       отправке в никуда
-						 *
-						 */
-						if(kind == ::inflight::kind_t::CONNECT){
-							// Снимаем отметку подключения с дескриптора
-							::kernel::connections.erase(sockOf);
-							/**
-							 * Переносим сведения о подключении в сам сокет
-							 *
-							 * @note Обращение это обязательно: до него сокет, подключённый наложенно,
-							 *       о своём подключении не знает - ни адреса собеседника, ни
-							 *       состояния у него не спросить
-							 *
-							 */
-							if(completion.res >= 0)
-								// Выполняем перенос сведений о подключении в сокет
-								/**
-								 * Отказ этого шага оглашается, а не проглатывается
-								 *
-								 * @note Шаг обязателен после `ConnectEx`: без него сокет остаётся
-								 *       полузаведённым, и обращения к его именам отвечают отказом
-								 *
-								 */
-								if(::setsockopt(static_cast <SOCKET> (sockOf), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) != 0)
-									// Выводим в журнал сообщение о незавершённом заведении подключения
-									log::print("%s: connected socket %d was not updated after the overlapped connect: %s", log::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (sockOf), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
-							/**
-							 * Применяем к подключённому сокету запомненную отметку качества обслуживания
-							 *
-							 * @note Стоит оно ПОСЛЕ переноса сведений о подключении: до того сокет
-							 *       о своём назначении не знает, а подсистема берёт назначение
-							 *       именно у него - завести поток ей было бы нечем
-							 *
-							 */
-							if(completion.res >= 0)
-								// Выполняем применение запомненной отметки
-								win::qos::apply(sockOf);
-							// Получаем запись учёта подписки по дескриптору
-							signalData = ::kernel::subscription(sockOf);
-							// Если подписка по дескриптору заведена
-							if(signalData != nullptr){
-								// Получаем запись учёта подписки
-								::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (signalData);
-								// Отмечаем учёт разошедшимся с ядром: ожидание готовности подадут заново
-								state->pending = true;
-								// Ставим дескриптор в очередь согласования
-								::kernel::pending.push_back(sockOf);
-							}
-							// Выдаём наружу готовность к записи либо признак ошибки дескриптора
-							signalEvents = ((completion.res >= 0) ? static_cast <uint32_t> (EPOLLOUT) : static_cast <uint32_t> (EPOLLERR));
-						}
-					// Если завершение принадлежит не ожиданию готовности
 					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::SEND) && (kind != ::inflight::kind_t::CONNECT) && (kind != ::inflight::kind_t::ACCEPT))
 						// Переходим к завершению следующему
 						continue;
@@ -80530,14 +80769,14 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
 						 *          Разбор переводил такой нуль обращением `strerror` и писал в журнал
 						 *          «No error» - сообщение, каким ошибку ни назвать, ни найти.
 						 *          Установлено прогоном проверки передачи события: закрытие канала
-						 *          работником печаталось именно так
+						 *          работником печаталось именно так.
 						 *
 						 * @note Код завершения переводится в понятия POSIX тем же порядком, что и у
 						 *       чтения канала: закрытый встречной стороной конец разбирается обрывом
 						 *       соединения
 						 *
 						 */
-						else if(completion.res < 0){
+						else if(completion.res < 0) {
 							/**
 							 * Определяем код отказа, отданный завершением
 							 */
