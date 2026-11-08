@@ -121,6 +121,29 @@ namespace awh {
 				};
 				/**
 				 * \~russian
+				 * @brief Причины отказа в заведении связи
+				 *
+				 * @note Отказ называет причину, а не молчит: вызывающей стороне решать,
+				 *       повторять ли заказ, и по молчаливому отказу решить это нечем
+				 *
+				 * \~english
+				 * @brief Reasons of the refusal to establish a link
+				 *
+				 * @note The refusal names the reason rather than keeping silent: it is up to the calling side
+				 *       to decide whether to repeat the order, and a silent refusal gives nothing to decide by
+				 *
+				 * \~
+				 */
+				enum class reason_t : uint8_t {
+					NONE    = 0x00, // Причина отказа не определена
+					UNKNOWN = 0x01, // Названного узла в кластере нет
+					ITSELF  = 0x02, // Узел заказал связь с самим собой
+					REFUSED = 0x03, // Мастер связь запретил
+					EXISTS  = 0x04, // Связь между этими узлами уже заведена
+					FAILED  = 0x05  // Пара не завелась либо снимок не снялся
+				};
+				/**
+				 * \~russian
 				 * @brief Виды служебных сообщений кластера
 				 *
 				 * @details Идут они своим каналом, отдельным от пользовательского, и
@@ -152,36 +175,13 @@ namespace awh {
 					LEAVE    = 0x0A, // Названный узел из кластера выбыл
 					SHUTDOWN = 0x0B  // Завершить работу названным кодом
 				};
-				/**
-				 * \~russian
-				 * @brief Причины отказа в заведении связи
-				 *
-				 * @note Отказ называет причину, а не молчит: вызывающей стороне решать,
-				 *       повторять ли заказ, и по молчаливому отказу решить это нечем
-				 *
-				 * \~english
-				 * @brief Reasons of the refusal to establish a link
-				 *
-				 * @note The refusal names the reason rather than keeping silent: it is up to the calling side
-				 *       to decide whether to repeat the order, and a silent refusal gives nothing to decide by
-				 *
-				 * \~
-				 */
-				enum class reason_t : uint8_t {
-					NONE    = 0x00, // Причина отказа не определена
-					UNKNOWN = 0x01, // Названного узла в кластере нет
-					ITSELF  = 0x02, // Узел заказал связь с самим собой
-					REFUSED = 0x03, // Мастер связь запретил
-					EXISTS  = 0x04, // Связь между этими узлами уже заведена
-					FAILED  = 0x05  // Пара не завелась либо снимок не снялся
-				};
 			public:
 				/**
 				 * \~russian
 				 * @brief Код завершения работника, когда мастер кода не назвал
 				 *
 				 * @details Постоянная эта - кластерная, а не системный номер сигнала:
-				 *          `SIGUSR1` у MS Windows не значит ничего, и код завершения
+				 *          `SIGUSR1` у Microsoft Windows не значит ничего, и код завершения
 				 *          сложился бы там не тот, какого ждали. Нужен потребителю номер
 				 *          сигнала - он волен назвать его сам.
 				 *
@@ -189,7 +189,7 @@ namespace awh {
 				 * @brief Exit code of a worker when the master has not named a code
 				 *
 				 * @details This constant is the cluster's own one rather than a system number of a signal:
-				 *          `SIGUSR1` means nothing on MS Windows, and the termination code
+				 *          `SIGUSR1` means nothing on Microsoft Windows, and the termination code
 				 *          would come out there not as the one expected. Should the consumer need a number
 				 *          of a signal — he is free to name it himself.
 				 *
@@ -199,18 +199,29 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Структура воркера
-				 *
-				 * @details Содержит идентификатор процесса, время жизни и идентификатор события для обмена сообщениями между процессами.
+				 * @brief Упаковка структуры воркера
 				 *
 				 * \~english
-				 * @brief Worker structure
-				 *
-				 * @details Contains the process identifier, the lifetime and the event identifier for exchanging messages between the processes.
+				 * @brief Packaging the worker structure
 				 *
 				 * \~
 				 */
 				__AWH_PACK_BEGIN__
+				/**
+				 * \~russian
+				 * @brief Структура воркера
+				 *
+				 * @details Содержит идентификатор процесса, время жизни и идентификатор
+				 *          события для обмена сообщениями между процессами.
+				 *
+				 * \~english
+				 * @brief Worker structure
+				 *
+				 * @details Contains the process identifier, the lifetime and the event
+				 *          identifier for exchanging messages between the processes.
+				 *
+				 * \~
+				 */
 				typedef struct __AWH_SHARED_EXPORT__ Worker {
 					// Идентификатор процесса
 					pid_t pid;
@@ -234,6 +245,16 @@ namespace awh {
 				__AWH_PACK_END__
 				/**
 				 * \~russian
+				 * @brief Упаковка структуры хранения параметров возрождения процессов
+				 *
+				 * \~english
+				 * @brief Packaging of the storage structure for process-revival parameters
+				 *
+				 * \~
+				 */
+				__AWH_PACK_BEGIN__
+				/**
+				 * \~russian
 				 * @brief Структура хранения параметров возрождения процессов
 				 *
 				 * @details Содержит флаг автоматического возрождения процессов,
@@ -251,7 +272,6 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Rebirth {
 					// Флаг автоматического возрождения процессов (по умолчанию false)
 					bool mode;
@@ -320,45 +340,16 @@ namespace awh {
 				// Параметры возрождения процессов
 				rebirth_t _rebirth;
 			private:
-				// Идентификатор события пробуждения для отложенной обработки сигнала SIGCHLD
-				event::id_t _wakeup;
-			private:
 				/**
-				 * Для операционной системы MS Windows
+				 * \~russian
+				 * @brief Идентификатор события пробуждения для отложенной обработки сигнала SIGCHLD
+				 *
+				 * \~english
+				 * @brief Wake-up event identifier for deferred processing of the SIGCHLD signal
+				 *
+				 * \~
 				 */
-				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
-					/**
-					 * \~russian
-					 * @brief Дескриптор объекта родительского процесса (0 у мастера и до захвата)
-					 *
-					 * @details Хранится числом, а не типом `HANDLE`, чтобы открытый заголовок
-					 *          не тянул за собой системные заголовки MS Windows. По этому
-					 *          дескриптору дочерний процесс узнаёт, жив ли мастер: у MS Windows
-					 *          нет ни `getppid`, ни устойчивой связи «родитель — потомок», и
-					 *          номер процесса система переиспользует.
-					 *
-					 * \~english
-					 * @brief Handle of the object of the parent process (0 in the master and before the capture)
-					 *
-					 * @details Stored as a number rather than as the `HANDLE` type so that the public header
-					 *          does not drag the system headers of MS Windows along with it. By that
-					 *          handle the child process learns whether the master is alive: MS Windows has
-					 *          neither `getppid` nor a stable «parent — child» link, and
-					 *          the system reuses the process number.
-					 *
-					 * \~
-					 */
-					uintptr_t _master;
-				#endif
-			private:
-				// Тип протокола передачи данных между воркерами
-				event::type_t _type;
-			private:
-				// Список соответствия идентификаторов событий и идентификаторов процессов
-				unordered_map <event::id_t, pid_t> _matching;
-				// Список активных воркеров
-				unordered_map <pid_t, unique_ptr <worker_t>> _workers;
-			private:
+				event::id_t _wakeup;
 				/**
 				 * \~russian
 				 * @brief Идентификатор своего служебного события у работника
@@ -376,9 +367,39 @@ namespace awh {
 				 */
 				event::id_t _control;
 			private:
-				// Список соответствия идентификаторов служебных событий и идентификаторов процессов
-				unordered_map <event::id_t, pid_t> _controls;
+				/**
+				 * Для операционной системы Microsoft Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
+					/**
+					 * \~russian
+					 * @brief Дескриптор объекта родительского процесса (0 у мастера и до захвата)
+					 *
+					 * @details Хранится числом, а не типом `HANDLE`, чтобы открытый заголовок
+					 *          не тянул за собой системные заголовки Microsoft Windows. По этому
+					 *          дескриптору дочерний процесс узнаёт, жив ли мастер: у Microsoft Windows
+					 *          нет ни `getppid`, ни устойчивой связи «родитель — потомок», и
+					 *          номер процесса система переиспользует.
+					 *
+					 * \~english
+					 * @brief Handle of the object of the parent process (0 in the master and before the capture)
+					 *
+					 * @details Stored as a number rather than as the `HANDLE` type so that the public header
+					 *          does not drag the system headers of Microsoft Windows along with it. By that
+					 *          handle the child process learns whether the master is alive: Microsoft Windows has
+					 *          neither `getppid` nor a stable «parent — child» link, and
+					 *          the system reuses the process number.
+					 *
+					 * \~
+					 */
+					uintptr_t _master;
+				#endif
 			private:
+				// Тип протокола передачи данных между воркерами
+				event::type_t _type;
+			private:
+				// Список известных узлов кластера (у работника)
+				unordered_set <pid_t> _nodes;
 				/**
 				 * \~russian
 				 * @brief Список узлов, поднявшихся и дошедших до цикла событий (у мастера)
@@ -408,15 +429,21 @@ namespace awh {
 				unordered_set <pid_t> _online;
 				// Список узлов, уходящих намеренно, - возрождению они не подлежат (у мастера)
 				unordered_set <pid_t> _leaving;
-				// Список заведённых связей между работниками (у мастера)
-				unordered_map <pid_t, unordered_set <pid_t>> _links;
 			private:
-				// Список известных узлов кластера (у работника)
-				unordered_set <pid_t> _nodes;
 				// Список заведённых связей работника: узел и его событие обмена
 				unordered_map <pid_t, event::id_t> _peers;
+			private:
+				// Список соответствия идентификаторов событий и идентификаторов процессов
+				unordered_map <event::id_t, pid_t> _matching;
+				// Список соответствия идентификаторов служебных событий и идентификаторов процессов
+				unordered_map <event::id_t, pid_t> _controls;
 				// Список соответствия идентификаторов событий связей и идентификаторов узлов
 				unordered_map <event::id_t, pid_t> _matchingPeers;
+			private:
+				// Список заведённых связей между работниками (у мастера)
+				unordered_map <pid_t, unordered_set <pid_t>> _links;
+				// Список активных рабочих процессов
+				unordered_map <pid_t, unique_ptr <worker_t>> _workers;
 			private:
 				/**
 				 * \~russian
@@ -508,6 +535,29 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * @brief Метод разбора разорванной прямой связи
+				 *
+				 * @note Разбор идемпотентен намеренно: признаков разрыва два, и приходят они
+				 *       оба - вторым заходом связи по событию уже не находится, и потребитель
+				 *       извещается ровно однажды
+				 *
+				 * @param eid идентификатор события связи
+				 *
+				 * \~english
+				 * @brief Method of the disassembling of a broken direct link
+				 *
+				 * @note A parsing is idempotent on purpose: there are two signs of a rupture, and both of them
+				 *      come - by a second coming a connection by an event is already not found, and a consumer
+				 *      is notified exactly once
+				 *
+				 * @param eid identifier of the link event
+				 *
+				 * \~
+				 */
+				void sever(const event::id_t eid) noexcept;
+			private:
+				/**
+				 * \~russian
 				 * @brief Метод создания одного дочернего процесса (воркера)
 				 *
 				 * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
@@ -524,93 +574,11 @@ namespace awh {
 				 * \~
 				 */
 				family_t spawn(const pid_t replaced, const bool deferred) noexcept;
-			private:
 				/**
-				 * Для операционной системы MS Windows
+				 * Для операционной системы Microsoft Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
-					/**
-					 * \~russian
-					 * @brief Метод порождения дочернего процесса повторным запуском образа приложения
-					 *
-					 * @details Метода этого на системах POSIX нет вовсе: дочерний процесс
-					 *          достаётся там вызовом `fork`, продолжающим работу с того же
-					 *          места и с тем же состоянием. У MS Windows соответствия `fork`
-					 *          нет, и дочерний процесс запускается заново - собственным
-					 *          образом приложения, с той же строкой доводов и с меткой роли
-					 *          в окружении.
-					 *
-					 * @warning Отсюда следует, что код, лежащий в `main` до `cluster.start()`,
-					 *          в дочернем процессе исполняется повторно
-					 *
-					 * @return идентификатор порождённого процесса, либо 0 при отказе
-					 *
-					 * \~english
-					 * @brief Method of spawning a child process by launching the image of the application anew
-					 *
-					 * @details There is no such method on the POSIX systems at all: a child process
-					 *          is obtained there by the `fork` call, which continues the work from the same
-					 *          place and with the same state. MS Windows has no counterpart of `fork`,
-					 *          and the child process is launched anew — by its own
-					 *          image of the application, with the same argument line and with a mark of the role
-					 *          in the environment.
-					 *
-					 * @warning It follows from this that the code lying in `main` before `cluster.start()`
-					 *          is executed once more in the child process
-					 *
-					 * @return identifier of the spawned process, or 0 on a refusal
-					 *
-					 * \~
-					 */
-					pid_t execute() noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод заведения своего конца канала обмена для порождаемого процесса
-					 *
-					 * @details Сводит в одно место весь порядок, каким конец канала доводится
-					 *          до ожидания подключения ПРЕЖДЕ порождения процесса: заведение
-					 *          пары, передачу имени окружением, уничтожение конца работника,
-					 *          подписку откликов, фиксацию, запуск и ожидание готовности.
-					 *          Порядок этот тонкий и добыт щупом на стендах, и разводить его
-					 *          по двум каналам - пользовательскому и служебному - значило бы
-					 *          завести второе место, где его надо помнить.
-					 *
-					 * @note Служебный канал отличается одними лишь откликами: наружу он не
-					 *       выходит вовсе, и пользовательские отклики его не касаются
-					 *
-					 * @note Метода этого на системах POSIX нет вовсе: там оба конца пары
-					 *       достаются дочернему процессу вызовом fork
-					 *
-					 * @param variable имя переменной окружения, какой имя канала уходит порождаемому процессу
-					 * @param type     устройство обмена канала
-					 * @param service  признак служебного канала
-					 * @return         идентификатор заведённого события, либо 0 при отказе
-					 *
-					 * \~english
-					 * @brief Method of the establishment of one's own end of the exchange channel for the spawned process
-					 *
-					 * @details It gathers into one place the whole order by which an end of a channel is brought
-					 *         up to a waiting of a connection BEFORE a spawning of a process: a starting
-					 *         of a pair, a passing of a name by an environment, a destruction of an end of a worker,
-					 *         a subscribing of the callbacks, a fixation, a starting and a waiting of a readiness.
-					 *         This order is thin and was got by a probe on the stands, and to spread it
-					 *         over two channels - a user one and a service one - would mean to start a second place,
-					 *         where it has to be remembered.
-					 *
-					 * @note A service channel differs by the callbacks only: outward it does not
-					 *      go at all, and the user callbacks do not touch it
-					 *
-					 * @note There is no such method at all on the POSIX systems: there both ends of a pair
-					 *      are got by a child process by a call of fork
-					 *
-					 * @param variable name of the environment variable by which the name of the channel goes to the spawned process
-					 * @param type     layout of the exchange of the channel
-					 * @param service  flag of the service channel
-					 * @return         identifier of the established event, or 0 on a refusal
-					 *
-					 * \~
-					 */
-					event::id_t provision(const wchar_t * variable, const event::type_t type, const bool service) noexcept;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод распознавания роли дочернего процесса и захвата мастера
@@ -651,7 +619,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод открытия своего конца канала обмена сообщениями с мастером
 					 *
-					 * @details Соответствия socketpair у MS Windows нет, и пара обмена строится
+					 * @details Соответствия socketpair у Microsoft Windows нет, и пара обмена строится
 					 *          именованным каналом. Сторону ожидания заводит мастер, а имя её
 					 *          передаёт порождаемому процессу окружением `AWH_CLUSTER_PIPE`:
 					 *          дескриптора тот по наследству не получает, проходя main заново,
@@ -665,7 +633,7 @@ namespace awh {
 					 * \~english
 					 * @brief Method of opening one's own end of the message exchange channel with the master
 					 *
-					 * @details MS Windows has no counterpart of socketpair, and the exchange pair is built
+					 * @details Microsoft Windows has no counterpart of socketpair, and the exchange pair is built
 					 *          with a named pipe. The waiting side is created by the master, while its name
 					 *          is passed to the spawned process through the `AWH_CLUSTER_PIPE` environment:
 					 *          the latter does not receive the descriptor by inheritance, passing through main anew,
@@ -679,240 +647,92 @@ namespace awh {
 					 * \~
 					 */
 					bool attach() noexcept;
-				#endif
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод перезапуска упавшего процесса
-				 *
-				 * @param pid    идентификатор упавшего процесса
-				 * @param status статус остановившегося процесса
-				 *
-				 * \~english
-				 * @brief Method of restarting a fallen process
-				 *
-				 * @param pid    identifier of the fallen process
-				 * @param status status of the stopped process
-				 *
-				 * \~
-				 */
-				void process(const pid_t pid, const int32_t status) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод отложенной обработки завершившихся процессов (выполняется в цикле событий)
-				 *
-				 * @param eid  идентификатор события пробуждения
-				 * @param data данные события пробуждения
-				 * @param size размер данных события пробуждения
-				 *
-				 * \~english
-				 * @brief Method of the deferred processing of the terminated processes (performed in the event loop)
-				 *
-				 * @param eid  event identifier of the wake-up
-				 * @param data data of the wake-up event
-				 * @param size data size of the wake-up event
-				 *
-				 * \~
-				 */
-				void reap(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
-			private:
-				/**
-				 * Для операционных систем, отличных от MS Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
 					/**
 					 * \~russian
-					 * @brief Функция фильтр перехватчика сигналов
+					 * @brief Метод порождения дочернего процесса повторным запуском образа приложения
 					 *
-					 * @note Под MS Windows тела у метода нет: сигнала SIGCHLD там не
-					 *       существует, и о завершении дочернего процесса извещает
-					 *       ожидание объекта процесса из системного пула потоков.
-					 *       Пробуждение цикла событий в обоих случаях общее — событие
-					 *       `_wakeup`, а разбор завершившихся ведёт метод `reap`
+					 * @details Метода этого на системах POSIX нет вовсе: дочерний процесс
+					 *          достаётся там вызовом `fork`, продолжающим работу с того же
+					 *          места и с тем же состоянием. У Microsoft Windows соответствия `fork`
+					 *          нет, и дочерний процесс запускается заново - собственным
+					 *          образом приложения, с той же строкой доводов и с меткой роли
+					 *          в отдельной копии окружения без изменения переменных мастера.
 					 *
-					 * @param signal номер сигнала полученного системой
-					 * @param info   объект информации полученный системой
-					 * @param ctx    передаваемый внутренний контекст
+					 * @warning Отсюда следует, что код, лежащий в `main` до `cluster.start()`,
+					 *          в дочернем процессе исполняется повторно
+					 *
+					 * @param eid идентификатор пользовательского канала
+					 * @param cid идентификатор служебного канала
+					 * @return    идентификатор порождённого процесса, либо 0 при отказе
 					 *
 					 * \~english
-					 * @brief Filter function of the signal interceptor
+					 * @brief Method of spawning a child process by launching the image of the application anew
 					 *
-					 * @note Under MS Windows the method has no body: the SIGCHLD signal does not
-					 *       exist there, and the termination of a child process is announced by
-					 *       the waiting on the process object from the system thread pool.
-					 *       The wake-up of the event loop is common in both cases — the
-					 *       `_wakeup` event, while the parsing of the terminated ones is done by the `reap` method
+					 * @details There is no such method on the POSIX systems at all: a child process
+					 *          is obtained there by the `fork` call, which continues the work from the same
+					 *          place and with the same state. Microsoft Windows has no counterpart of `fork`,
+					 *          and the child process is launched anew — by its own
+					 *          image of the application, with the same argument line and with a mark of the role
+					 *          in a separate environment copy without changing the master variables.
 					 *
-					 * @param signal number of the signal received by the system
-					 * @param info   information object received by the system
-					 * @param ctx    internal context being passed
+					 * @warning It follows from this that the code lying in `main` before `cluster.start()`
+					 *          is executed once more in the child process
+					 *
+					 * @param eid identifier of the user channel
+					 * @param cid identifier of the control channel
+					 * @return    identifier of the spawned process, or 0 on a refusal
 					 *
 					 * \~
 					 */
-					static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
-				#endif
-				/**
-				 * Для операционной системы MS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
+					pid_t execute(const event::id_t eid, const event::id_t cid) noexcept;
 					/**
 					 * \~russian
-					 * @brief Функция извещения о завершении дочернего процесса
+					 * @brief Метод заведения своего конца канала обмена для порождаемого процесса
 					 *
-					 * @details Вызывается системным пулом потоков, а не потоком петли
-					 *          событий. Поэтому не делает ничего, кроме постановки номера
-					 *          процесса в очередь и пробуждения петли: разбор ведёт метод
-					 *          `reap` уже в своём потоке. Соображение то же, что и у
-					 *          обработчика сигнала SIGCHLD на системах POSIX.
+					 * @details Сводит в одно место весь порядок, каким конец канала доводится
+					 *          до ожидания подключения ПРЕЖДЕ порождения процесса: заведение
+					 *          пары, проверку имени канала, уничтожение конца работника,
+					 *          подписку откликов, фиксацию, запуск и ожидание готовности.
+					 *          Порядок этот тонкий и добыт щупом на стендах, и разводить его
+					 *          по двум каналам - пользовательскому и служебному - значило бы
+					 *          завести второе место, где его надо помнить.
 					 *
-					 * @note Написание доводов повторяет WAITORTIMERCALLBACK, но своими
-					 *       словами: `void *` вместо PVOID и `uint8_t` вместо BOOLEAN.
-					 *       Сделано так, чтобы открытый заголовок не тянул за собой
-					 *       заголовки MS Windows
+					 * @note Служебный канал отличается одними лишь откликами: наружу он не
+					 *       выходит вовсе, и пользовательские отклики его не касаются
 					 *
-					 * @param ctx     идентификатор завершившегося процесса
-					 * @param timeout признак срабатывания по истечении срока ожидания
+					 * @note Метода этого на системах POSIX нет вовсе: там оба конца пары
+					 *       достаются дочернему процессу вызовом fork
+					 *
+					 * @param type    устройство обмена канала
+					 * @param service признак служебного канала
+					 * @return        идентификатор заведённого события, либо 0 при отказе
 					 *
 					 * \~english
-					 * @brief Function of the notification about the termination of a child process
+					 * @brief Method of the establishment of one's own end of the exchange channel for the spawned process
 					 *
-					 * @details Called by the system thread pool rather than by the thread of the event
-					 *          loop. Therefore it does nothing except placing the number of the
-					 *          process into the queue and waking the loop up: the parsing is done by the
-					 *          `reap` method already in its own thread. The consideration is the same as that of
-					 *          the handler of the SIGCHLD signal on the POSIX systems.
+					 * @details It gathers into one place the whole order by which an end of a channel is brought
+					 *         up to a waiting of a connection BEFORE a spawning of a process: a starting
+					 *         of a pair, a check of the channel name, a destruction of an end of a worker,
+					 *         a subscribing of the callbacks, a fixation, a starting and a waiting of a readiness.
+					 *         This order is thin and was got by a probe on the stands, and to spread it
+					 *         over two channels - a user one and a service one - would mean to start a second place,
+					 *         where it has to be remembered.
 					 *
-					 * @note The spelling of the arguments repeats WAITORTIMERCALLBACK, but in its own
-					 *       words: `void *` instead of PVOID and `uint8_t` instead of BOOLEAN.
-					 *       This has been done so that the public header does not drag the
-					 *       headers of MS Windows along with it
+					 * @note A service channel differs by the callbacks only: outward it does not
+					 *       go at all, and the user callbacks do not touch it
 					 *
-					 * @param ctx     identifier of the terminated process
-					 * @param timeout flag of the triggering by the expiration of the waiting term
+					 * @note There is no such method at all on the POSIX systems: there both ends of a pair
+					 *       are got by a child process by a call of fork
+					 *
+					 * @param type    layout of the exchange of the channel
+					 * @param service flag of the service channel
+					 * @return        identifier of the established event, or 0 on a refusal
 					 *
 					 * \~
 					 */
-					static void __stdcall child(void * ctx, uint8_t timeout) noexcept;
+					event::id_t provision(const event::type_t type, const bool service) noexcept;
 				#endif
 			private:
-				/**
-				 * \~russian
-				 * @brief Метод разбора служебного сообщения кластера
-				 *
-				 * @param eid  идентификатор служебного события
-				 * @param data данные служебного сообщения
-				 * @param size размер служебного сообщения
-				 *
-				 * \~english
-				 * @brief Method of the parsing of a service message of the cluster
-				 *
-				 * @param eid  identifier of the service event
-				 * @param data data of the service message
-				 * @param size size of the service message
-				 *
-				 * \~
-				 */
-				void control(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод отправки служебного сообщения кластера
-				 *
-				 * @param eid    идентификатор служебного события
-				 * @param type   вид служебного сообщения
-				 * @param pid    узел, которого сообщение касается
-				 * @param buffer тело служебного сообщения
-				 * @param size   размер тела служебного сообщения
-				 * @return       количество отправленных байт
-				 *
-				 * \~english
-				 * @brief Method of the sending of a service message of the cluster
-				 *
-				 * @param eid    identifier of the service event
-				 * @param type   kind of the service message
-				 * @param pid    node the message concerns
-				 * @param buffer body of the service message
-				 * @param size   size of the body of the service message
-				 * @return       number of the sent bytes
-				 *
-				 * \~
-				 */
-				size_t dispatch(const event::id_t eid, const control_t type, const pid_t pid, const void * buffer = nullptr, const size_t size = 0) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод извещения работников о входе либо выбытии узла
-				 *
-				 * @note Извещение уходит всем работникам, КРОМЕ названного: себе о своём
-				 *       входе работник вести счёт не обязан
-				 *
-				 * @param type вид служебного сообщения
-				 * @param pid  узел, о котором идёт речь
-				 *
-				 * \~english
-				 * @brief Method of the notification of the workers about the entering or the leaving of a node
-				 *
-				 * @note The notification goes to all the workers EXCEPT the named one: a worker is not obliged
-				 *       to keep count of his own entering
-				 *
-				 * @param type kind of the service message
-				 * @param pid  node in question
-				 *
-				 * \~
-				 */
-				void announce(const control_t type, const pid_t pid) noexcept;
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод заведения прямой связи между двумя работниками
-				 *
-				 * @param initiator узел, заказавший связь
-				 * @param peer      узел, с которым связь заказана
-				 * @param data      тело заказа: имя канала у MS Windows, пустое у систем POSIX
-				 * @param size      размер тела заказа
-				 *
-				 * \~english
-				 * @brief Method of the establishment of a direct link between two workers
-				 *
-				 * @param initiator node that has ordered the link
-				 * @param peer      node the link with which has been ordered
-				 * @param data      body of an order: a name of a channel at MS Windows, empty at the POSIX systems
-				 * @param size      a size of a body of an order
-				 *
-				 * \~
-				 */
-				void establish(const pid_t initiator, const pid_t peer, const uint8_t * data, const size_t size) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод разрыва всех связей выбывающего узла
-				 *
-				 * @param pid выбывающий узел
-				 *
-				 * \~english
-				 * @brief Method of the breaking of all the links of a leaving node
-				 *
-				 * @param pid leaving node
-				 *
-				 * \~
-				 */
-				void dissolve(const pid_t pid) noexcept;
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод обработки событий чтения по прямой связи с соседом
-				 *
-				 * @param eid  идентификатор события связи
-				 * @param data данные сообщения
-				 * @param size размер сообщения
-				 *
-				 * \~english
-				 * @brief Method of processing the read events on a direct link with a neighbour
-				 *
-				 * @param eid  identifier of the link event
-				 * @param data data of the message
-				 * @param size size of the message
-				 *
-				 * \~
-				 */
-				void incoming(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод обработки состояния прямой связи с соседом
@@ -961,28 +781,238 @@ namespace awh {
 				 * \~
 				 */
 				void closed(const event::id_t eid, const event::action_t action) noexcept;
+			private:
 				/**
 				 * \~russian
-				 * @brief Метод разбора разорванной прямой связи
+				 * @brief Метод перезапуска упавшего процесса
 				 *
-				 * @note Разбор идемпотентен намеренно: признаков разрыва два, и приходят они
-				 *       оба - вторым заходом связи по событию уже не находится, и потребитель
-				 *       извещается ровно однажды
-				 *
-				 * @param eid идентификатор события связи
+				 * @param pid    идентификатор упавшего процесса
+				 * @param status статус остановившегося процесса
 				 *
 				 * \~english
-				 * @brief Method of the disassembling of a broken direct link
+				 * @brief Method of restarting a fallen process
 				 *
-				 * @note A parsing is idempotent on purpose: there are two signs of a rupture, and both of them
-				 *      come - by a second coming a connection by an event is already not found, and a consumer
-				 *      is notified exactly once
-				 *
-				 * @param eid identifier of the link event
+				 * @param pid    identifier of the fallen process
+				 * @param status status of the stopped process
 				 *
 				 * \~
 				 */
-				void sever(const event::id_t eid) noexcept;
+				void process(const pid_t pid, const int32_t status) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отложенной обработки завершившихся процессов (выполняется в цикле событий)
+				 *
+				 * @param eid  идентификатор события пробуждения
+				 * @param data данные события пробуждения
+				 * @param size размер данных события пробуждения
+				 *
+				 * \~english
+				 * @brief Method of the deferred processing of the terminated processes (performed in the event loop)
+				 *
+				 * @param eid  event identifier of the wake-up
+				 * @param data data of the wake-up event
+				 * @param size data size of the wake-up event
+				 *
+				 * \~
+				 */
+				void reap(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * Для операционных систем, отличных от Microsoft Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					/**
+					 * \~russian
+					 * @brief Функция фильтр перехватчика сигналов
+					 *
+					 * @note Под Microsoft Windows тела у метода нет: сигнала SIGCHLD там не
+					 *       существует, и о завершении дочернего процесса извещает
+					 *       ожидание объекта процесса из системного пула потоков.
+					 *       Пробуждение цикла событий в обоих случаях общее — событие
+					 *       `_wakeup`, а разбор завершившихся ведёт метод `reap`
+					 *
+					 * @param signal номер сигнала полученного системой
+					 * @param info   объект информации полученный системой
+					 * @param ctx    передаваемый внутренний контекст
+					 *
+					 * \~english
+					 * @brief Filter function of the signal interceptor
+					 *
+					 * @note Under Microsoft Windows the method has no body: the SIGCHLD signal does not
+					 *       exist there, and the termination of a child process is announced by
+					 *       the waiting on the process object from the system thread pool.
+					 *       The wake-up of the event loop is common in both cases — the
+					 *       `_wakeup` event, while the parsing of the terminated ones is done by the `reap` method
+					 *
+					 * @param signal number of the signal received by the system
+					 * @param info   information object received by the system
+					 * @param ctx    internal context being passed
+					 *
+					 * \~
+					 */
+					static void child(int32_t signal, siginfo_t * info, void * ctx) noexcept;
+				/**
+				 * Для операционной системы Microsoft Windows
+				 */
+				#elif defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
+					/**
+					 * \~russian
+					 * @brief Функция извещения о завершении дочернего процесса
+					 *
+					 * @details Вызывается системным пулом потоков, а не потоком петли
+					 *          событий. Поэтому не делает ничего, кроме постановки номера
+					 *          процесса в очередь и пробуждения петли: разбор ведёт метод
+					 *          `reap` уже в своём потоке. Соображение то же, что и у
+					 *          обработчика сигнала SIGCHLD на системах POSIX.
+					 *
+					 * @note Написание доводов повторяет WAITORTIMERCALLBACK, но своими
+					 *       словами: `void *` вместо PVOID и `uint8_t` вместо BOOLEAN.
+					 *       Сделано так, чтобы открытый заголовок не тянул за собой
+					 *       заголовки Microsoft Windows
+					 *
+					 * @param ctx     идентификатор завершившегося процесса
+					 * @param timeout признак срабатывания по истечении срока ожидания
+					 *
+					 * \~english
+					 * @brief Function of the notification about the termination of a child process
+					 *
+					 * @details Called by the system thread pool rather than by the thread of the event
+					 *          loop. Therefore it does nothing except placing the number of the
+					 *          process into the queue and waking the loop up: the parsing is done by the
+					 *          `reap` method already in its own thread. The consideration is the same as that of
+					 *          the handler of the SIGCHLD signal on the POSIX systems.
+					 *
+					 * @note The spelling of the arguments repeats WAITORTIMERCALLBACK, but in its own
+					 *       words: `void *` instead of PVOID and `uint8_t` instead of BOOLEAN.
+					 *       This has been done so that the public header does not drag the
+					 *       headers of Microsoft Windows along with it
+					 *
+					 * @param ctx     identifier of the terminated process
+					 * @param timeout flag of the triggering by the expiration of the waiting term
+					 *
+					 * \~
+					 */
+					static void __stdcall child(void * ctx, uint8_t timeout) noexcept;
+				#endif
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод извещения работников о входе либо выбытии узла
+				 *
+				 * @note Извещение уходит всем работникам, КРОМЕ названного: себе о своём
+				 *       входе работник вести счёт не обязан
+				 *
+				 * @param type вид служебного сообщения
+				 * @param pid  узел, о котором идёт речь
+				 *
+				 * \~english
+				 * @brief Method of the notification of the workers about the entering or the leaving of a node
+				 *
+				 * @note The notification goes to all the workers EXCEPT the named one: a worker is not obliged
+				 *       to keep count of his own entering
+				 *
+				 * @param type kind of the service message
+				 * @param pid  node in question
+				 *
+				 * \~
+				 */
+				void announce(const control_t type, const pid_t pid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разбора служебного сообщения кластера
+				 *
+				 * @param eid  идентификатор служебного события
+				 * @param data данные служебного сообщения
+				 * @param size размер служебного сообщения
+				 *
+				 * \~english
+				 * @brief Method of the parsing of a service message of the cluster
+				 *
+				 * @param eid  identifier of the service event
+				 * @param data data of the service message
+				 * @param size size of the service message
+				 *
+				 * \~
+				 */
+				void control(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод разрыва всех связей выбывающего узла
+				 *
+				 * @param pid выбывающий узел
+				 *
+				 * \~english
+				 * @brief Method of the breaking of all the links of a leaving node
+				 *
+				 * @param pid leaving node
+				 *
+				 * \~
+				 */
+				void dissolve(const pid_t pid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод заведения прямой связи между двумя работниками
+				 *
+				 * @param initiator узел, заказавший связь
+				 * @param peer      узел, с которым связь заказана
+				 * @param data      тело заказа: имя канала у Microsoft Windows, пустое у систем POSIX
+				 * @param size      размер тела заказа
+				 *
+				 * \~english
+				 * @brief Method of the establishment of a direct link between two workers
+				 *
+				 * @param initiator node that has ordered the link
+				 * @param peer      node the link with which has been ordered
+				 * @param data      body of an order: a name of a channel at Microsoft Windows, empty at the POSIX systems
+				 * @param size      a size of a body of an order
+				 *
+				 * \~
+				 */
+				void establish(const pid_t initiator, const pid_t peer, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод обработки событий чтения по прямой связи с соседом
+				 *
+				 * @param eid  идентификатор события связи
+				 * @param data данные сообщения
+				 * @param size размер сообщения
+				 *
+				 * \~english
+				 * @brief Method of processing the read events on a direct link with a neighbour
+				 *
+				 * @param eid  identifier of the link event
+				 * @param data data of the message
+				 * @param size size of the message
+				 *
+				 * \~
+				 */
+				void incoming(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отправки служебного сообщения кластера
+				 *
+				 * @param eid    идентификатор служебного события
+				 * @param type   вид служебного сообщения
+				 * @param pid    узел, которого сообщение касается
+				 * @param buffer тело служебного сообщения
+				 * @param size   размер тела служебного сообщения
+				 * @return       количество отправленных байт
+				 *
+				 * \~english
+				 * @brief Method of the sending of a service message of the cluster
+				 *
+				 * @param eid    identifier of the service event
+				 * @param type   kind of the service message
+				 * @param pid    node the message concerns
+				 * @param buffer body of the service message
+				 * @param size   size of the body of the service message
+				 * @return       number of the sent bytes
+				 *
+				 * \~
+				 */
+				size_t dispatch(const event::id_t eid, const control_t type, const pid_t pid, const void * buffer = nullptr, const size_t size = 0) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1092,6 +1122,82 @@ namespace awh {
 				static bool exited(const int32_t status) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод проверки, снят ли процесс с клавиатуры
+				 *
+				 * @details Ручной остановкой считается прерывание с клавиатуры: сигнал SIGINT
+				 *          у POSIX и код завершения STATUS_CONTROL_C_EXIT у Microsoft Windows, каким
+				 *          та помечает процесс, снятый по нажатию Ctrl+C или Ctrl+Break.
+				 *
+				 * @param status состояние завершения процесса
+				 * @return       признак ручной остановки процесса
+				 *
+				 * \~english
+				 * @brief Method of checking whether the process has been removed from the keyboard
+				 *
+				 * @details A manual stop is an interruption from the keyboard: the SIGINT signal
+				 *          on POSIX and the STATUS_CONTROL_C_EXIT termination code on Microsoft Windows, with which
+				 *          the latter marks a process removed by pressing Ctrl+C or Ctrl+Break.
+				 *
+				 * @param status termination state of the process
+				 * @return       flag of the manual stop of the process
+				 *
+				 * \~
+				 */
+				static bool manual(const int32_t status) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки, завершился ли процесс ненормально
+				 *
+				 * @details Вопрос этот переносим, в отличие от `signaled`: у POSIX
+				 *          ненормальным считается снятие сигналом краха (SIGSEGV, SIGBUS,
+				 *          SIGILL, SIGFPE, SIGABRT), у Microsoft Windows - код завершения с
+				 *          признаком ошибки в старших разрядах, каким система помечает
+				 *          необработанные исключения.
+				 *
+				 * @param status состояние завершения процесса
+				 * @return       признак ненормального завершения процесса
+				 *
+				 * \~english
+				 * @brief Method of checking whether the process has terminated abnormally
+				 *
+				 * @details This question is portable, unlike `signaled`: on POSIX
+				 *          a removal by a crash signal (SIGSEGV, SIGBUS,
+				 *          SIGILL, SIGFPE, SIGABRT) is considered abnormal, on Microsoft Windows — a termination code with
+				 *          the error flag in the high bits, with which the system marks
+				 *          the unhandled exceptions.
+				 *
+				 * @param status termination state of the process
+				 * @return       flag of the abnormal termination of the process
+				 *
+				 * \~
+				 */
+				static bool crashed(const int32_t status) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки, снят ли процесс сигналом
+				 *
+				 * @note У Microsoft Windows отвечает ложью всегда: сигналов там нет вовсе.
+				 *       Переносимый вопрос «кончился ли процесс ненормально» задаётся
+				 *       методом `crashed`, а не этим
+				 *
+				 * @param status состояние завершения процесса
+				 * @return       признак того, что процесс снят сигналом
+				 *
+				 * \~english
+				 * @brief Method of checking whether the process has been removed by a signal
+				 *
+				 * @note On Microsoft Windows it always answers with a lie: there are no signals there at all.
+				 *       The portable question «has the process ended abnormally» is asked by
+				 *       the `crashed` method rather than by this one
+				 *
+				 * @param status termination state of the process
+				 * @return       flag of the process having been removed by a signal
+				 *
+				 * \~
+				 */
+				static bool signaled(const int32_t status) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод получения кода возврата завершившегося процесса
 				 *
 				 * @param status состояние завершения процесса
@@ -1108,33 +1214,9 @@ namespace awh {
 				static int32_t exitcode(const int32_t status) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод проверки, снят ли процесс сигналом
-				 *
-				 * @note У MS Windows отвечает ложью всегда: сигналов там нет вовсе.
-				 *       Переносимый вопрос «кончился ли процесс ненормально» задаётся
-				 *       методом `crashed`, а не этим
-				 *
-				 * @param status состояние завершения процесса
-				 * @return       признак того, что процесс снят сигналом
-				 *
-				 * \~english
-				 * @brief Method of checking whether the process has been removed by a signal
-				 *
-				 * @note On MS Windows it always answers with a lie: there are no signals there at all.
-				 *       The portable question «has the process ended abnormally» is asked by
-				 *       the `crashed` method rather than by this one
-				 *
-				 * @param status termination state of the process
-				 * @return       flag of the process having been removed by a signal
-				 *
-				 * \~
-				 */
-				static bool signaled(const int32_t status) noexcept;
-				/**
-				 * \~russian
 				 * @brief Метод получения номера сигнала, снявшего процесс
 				 *
-				 * @note У MS Windows отвечает нулём всегда - см. пояснение к `signaled`
+				 * @note У Microsoft Windows отвечает нулём всегда - см. пояснение к `signaled`
 				 *
 				 * @param status состояние завершения процесса
 				 * @return       номер сигнала, либо 0 если процесс снят не сигналом
@@ -1142,7 +1224,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the number of the signal that has removed the process
 				 *
-				 * @note On MS Windows it always answers with zero — see the explanation of `signaled`
+				 * @note On Microsoft Windows it always answers with zero — see the explanation of `signaled`
 				 *
 				 * @param status termination state of the process
 				 * @return       signal number, or 0 if the process has not been removed by a signal
@@ -1150,58 +1232,6 @@ namespace awh {
 				 * \~
 				 */
 				static int32_t termsig(const int32_t status) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод проверки, завершился ли процесс ненормально
-				 *
-				 * @details Вопрос этот переносим, в отличие от `signaled`: у POSIX
-				 *          ненормальным считается снятие сигналом краха (SIGSEGV, SIGBUS,
-				 *          SIGILL, SIGFPE, SIGABRT), у MS Windows - код завершения с
-				 *          признаком ошибки в старших разрядах, каким система помечает
-				 *          необработанные исключения.
-				 *
-				 * @param status состояние завершения процесса
-				 * @return       признак ненормального завершения процесса
-				 *
-				 * \~english
-				 * @brief Method of checking whether the process has terminated abnormally
-				 *
-				 * @details This question is portable, unlike `signaled`: on POSIX
-				 *          a removal by a crash signal (SIGSEGV, SIGBUS,
-				 *          SIGILL, SIGFPE, SIGABRT) is considered abnormal, on MS Windows — a termination code with
-				 *          the error flag in the high bits, with which the system marks
-				 *          the unhandled exceptions.
-				 *
-				 * @param status termination state of the process
-				 * @return       flag of the abnormal termination of the process
-				 *
-				 * \~
-				 */
-				static bool crashed(const int32_t status) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод проверки, снят ли процесс с клавиатуры
-				 *
-				 * @details Ручной остановкой считается прерывание с клавиатуры: сигнал SIGINT
-				 *          у POSIX и код завершения STATUS_CONTROL_C_EXIT у MS Windows, каким
-				 *          та помечает процесс, снятый по нажатию Ctrl+C или Ctrl+Break.
-				 *
-				 * @param status состояние завершения процесса
-				 * @return       признак ручной остановки процесса
-				 *
-				 * \~english
-				 * @brief Method of checking whether the process has been removed from the keyboard
-				 *
-				 * @details A manual stop is an interruption from the keyboard: the SIGINT signal
-				 *          on POSIX and the STATUS_CONTROL_C_EXIT termination code on MS Windows, with which
-				 *          the latter marks a process removed by pressing Ctrl+C or Ctrl+Break.
-				 *
-				 * @param status termination state of the process
-				 * @return       flag of the manual stop of the process
-				 *
-				 * \~
-				 */
-				static bool manual(const int32_t status) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1226,6 +1256,54 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод определения роли процесса до запуска кластера
+				 *
+				 * @details Отвечает на вопрос «запущен ли этот процесс работником» ещё
+				 *          до того, как кластер начал работу. Нужен он там, где порядок
+				 *          подготовки у мастера и у работника расходится: мастер обязан
+				 *          подготовиться ПРЕЖДЕ порождения работников, а работник -
+				 *          ПОСЛЕ того, как связался с мастером.
+				 *
+				 * @note Роль здесь лишь спрашивается и не перенимается: перенимает её
+				 *       запуск кластера, и метку роли снимает тоже он
+				 *
+				 * @return признак того, что процесс запущен работником кластера
+				 *
+				 * \~english
+				 * @brief Method of the determination of the role of the process before the start of the cluster
+				 *
+				 * @details It answers a question `is this process started as a worker`
+				 *         yet before a cluster began the work. It is needed there, where an order
+				 *         of a preparation at a master and at a worker diverges: a master is obliged
+				 *         to prepare BEFORE a spawning of the workers,
+				 *         and a worker - AFTER it connected with a master.
+				 *
+				 * @note A role is only asked here and is not taken over: a starting of a cluster takes it over,
+				 *      and a removal of a role mark is also performed by it
+				 *
+				 * @return flag that the process is started as a worker of the cluster
+				 *
+				 * \~
+				 */
+				bool worker() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод получения предельного размера пересылаемого сообщения
+				 *
+				 * @return предельный размер тела пересылаемого сообщения в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the limiting size of a relayed message
+				 *
+				 * @return limiting size of the body of a relayed message in bytes
+				 *
+				 * \~
+				 */
+				size_t maximumRelay() const noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод очистки всех выделенных ресурсов
 				 *
 				 * @param shutdown тип завершения работы кластера
@@ -1238,6 +1316,41 @@ namespace awh {
 				 * \~
 				 */
 				void clear(const shutdown_t shutdown) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод получения события обмена с процессом кластера
+				 *
+				 * @details Событие это и есть путь к названному процессу: им называется
+				 *          получатель там, где одного номера процесса мало, - прежде
+				 *          всего при передаче событий между процессами (`snapshot`).
+				 *          Родительский процесс спрашивает событие обмена с дочерним по
+				 *          его номеру, дочерний - своё, назвав собственный номер.
+				 *
+				 * @note Событие живёт ровно столько же, сколько и сам процесс кластера:
+				 *       у завершившегося процесса его нет, и метод отвечает нулём
+				 *
+				 * @param pid идентификатор процесса кластера
+				 * @return    идентификатор события обмена с процессом кластера
+				 *
+				 * \~english
+				 * @brief Method of the getting of the exchange event with a process of the cluster
+				 *
+				 * @details This event is exactly a path to a named process: it is called a recipient there,
+				 *         where one process number is not enough - above all at a passing of the events
+				 *         between the processes (`snapshot`).
+				 *         A parent process asks an exchange event with a child one by
+				 *         its number, a child one - its own, having named a own number.
+				 *
+				 * @note An event lives exactly as long as a process of a cluster itself: at
+				 *      a finished process it has none, and a method answers with a zero
+				 *
+				 * @param pid identifier of the process of the cluster
+				 * @return    identifier of the exchange event with the process of the cluster
+				 *
+				 * \~
+				 */
+				event::id_t channel(const pid_t pid) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1372,6 +1485,26 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод получения списка известных работнику узлов кластера
+				 *
+				 * @details Список этот наполняется извещениями мастера о входе и выбытии
+				 *          узлов: собственного способа узнать соседей у работника нет.
+				 *
+				 * @return список известных узлов кластера
+				 *
+				 * \~english
+				 * @brief Method of getting the list of the nodes of the cluster known to the worker
+				 *
+				 * @details This list is filled by the notifications of a master about an entering and a leaving
+				 *         of the nodes: an own way to learn the neighbours a worker has none.
+				 *
+				 * @return list of the known nodes of the cluster
+				 *
+				 * \~
+				 */
+				unordered_set <pid_t> nodes() const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод получения списка дочерних процессов
 				 *
 				 * @return список дочерних процессов
@@ -1438,74 +1571,6 @@ namespace awh {
 				 * \~
 				 */
 				size_t send(const pid_t pid, const void * buffer, const size_t size) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения события обмена с процессом кластера
-				 *
-				 * @details Событие это и есть путь к названному процессу: им называется
-				 *          получатель там, где одного номера процесса мало, - прежде
-				 *          всего при передаче событий между процессами (`snapshot`).
-				 *          Родительский процесс спрашивает событие обмена с дочерним по
-				 *          его номеру, дочерний - своё, назвав собственный номер.
-				 *
-				 * @note Событие живёт ровно столько же, сколько и сам процесс кластера:
-				 *       у завершившегося процесса его нет, и метод отвечает нулём
-				 *
-				 * @param pid идентификатор процесса кластера
-				 * @return    идентификатор события обмена с процессом кластера
-				 *
-				 * \~english
-				 * @brief Method of the getting of the exchange event with a process of the cluster
-				 *
-				 * @details This event is exactly a path to a named process: it is called a recipient there,
-				 *         where one process number is not enough - above all at a passing of the events
-				 *         between the processes (`snapshot`).
-				 *         A parent process asks an exchange event with a child one by
-				 *         its number, a child one - its own, having named a own number.
-				 *
-				 * @note An event lives exactly as long as a process of a cluster itself: at
-				 *      a finished process it has none, and a method answers with a zero
-				 *
-				 * @param pid identifier of the process of the cluster
-				 * @return    identifier of the exchange event with the process of the cluster
-				 *
-				 * \~
-				 */
-				event::id_t channel(const pid_t pid) const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод определения роли процесса до запуска кластера
-				 *
-				 * @details Отвечает на вопрос «запущен ли этот процесс работником» ещё
-				 *          до того, как кластер начал работу. Нужен он там, где порядок
-				 *          подготовки у мастера и у работника расходится: мастер обязан
-				 *          подготовиться ПРЕЖДЕ порождения работников, а работник -
-				 *          ПОСЛЕ того, как связался с мастером.
-				 *
-				 * @note Роль здесь лишь спрашивается и не перенимается: перенимает её
-				 *       запуск кластера, и метку роли снимает тоже он
-				 *
-				 * @return признак того, что процесс запущен работником кластера
-				 *
-				 * \~english
-				 * @brief Method of the determination of the role of the process before the start of the cluster
-				 *
-				 * @details It answers a question `is this process started as a worker`
-				 *         yet before a cluster began the work. It is needed there, where an order
-				 *         of a preparation at a master and at a worker diverges: a master is obliged
-				 *         to prepare BEFORE a spawning of the workers,
-				 *         and a worker - AFTER it connected with a master.
-				 *
-				 * @note A role is only asked here and is not taken over: a starting of a cluster takes it over,
-				 *      and a removal of a role mark is also performed by it
-				 *
-				 * @return flag that the process is started as a worker of the cluster
-				 *
-				 * \~
-				 */
-				bool worker() const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1577,87 +1642,24 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод отправки сообщения соседу по прямой связи
+				 * @brief Метод ухода работника из кластера по своей воле
 				 *
-				 * @param pid    узел, которому предназначено сообщение
-				 * @param buffer бинарный буфер для отправки сообщения
-				 * @param size   размер бинарного буфера для отправки сообщения
-				 * @return       количество байт отправленного сообщения
+				 * @details Работник извещает мастера и выходит названным кодом, дождавшись
+				 *          отдачи извещения каналу. Возрождению он не подлежит.
+				 *
+				 * @param code код завершения работы
 				 *
 				 * \~english
-				 * @brief Method of sending a message to a neighbour over a direct link
+				 * @brief Method of a worker leaving the cluster of its own will
 				 *
-				 * @param pid    node the message is meant for
-				 * @param buffer binary buffer for sending the message
-				 * @param size   size of the binary buffer for sending the message
-				 * @return       number of the bytes of the sent message
+				 * @details A worker notifies a master and leaves by a named code, having waited for a giving
+				 *         of a notification to a channel. A revival is not due to it.
+				 *
+				 * @param code termination code of the work
 				 *
 				 * \~
 				 */
-				size_t transmit(const pid_t pid, const void * buffer, const size_t size) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод пересылки сообщения соседу через мастера
-				 *
-				 * @details Связи для пересылки не требуется, и заводить её ради одного
-				 *          короткого сообщения дороже самого сообщения. Платой идут две
-				 *          передачи вместо одной и предел размера - `maximumRelay`.
-				 *
-				 * @param pid    узел, которому предназначено сообщение
-				 * @param buffer бинарный буфер для отправки сообщения
-				 * @param size   размер бинарного буфера для отправки сообщения
-				 * @return       количество байт отправленного сообщения
-				 *
-				 * \~english
-				 * @brief Method of relaying a message to a neighbour through the master
-				 *
-				 * @details A connection for a forwarding is not required, and to start it for the sake of one
-				 *         short message is dearer than the message itself. A price is two
-				 *         transfers instead of one and a limit of a size - `maximumRelay`.
-				 *
-				 * @param pid    node the message is meant for
-				 * @param buffer binary buffer for sending the message
-				 * @param size   size of the binary buffer for sending the message
-				 * @return       number of the bytes of the sent message
-				 *
-				 * \~
-				 */
-				size_t relay(const pid_t pid, const void * buffer, const size_t size) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения предельного размера пересылаемого сообщения
-				 *
-				 * @return предельный размер тела пересылаемого сообщения в байтах
-				 *
-				 * \~english
-				 * @brief Method of getting the limiting size of a relayed message
-				 *
-				 * @return limiting size of the body of a relayed message in bytes
-				 *
-				 * \~
-				 */
-				size_t maximumRelay() const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения списка известных работнику узлов кластера
-				 *
-				 * @details Список этот наполняется извещениями мастера о входе и выбытии
-				 *          узлов: собственного способа узнать соседей у работника нет.
-				 *
-				 * @return список известных узлов кластера
-				 *
-				 * \~english
-				 * @brief Method of getting the list of the nodes of the cluster known to the worker
-				 *
-				 * @details This list is filled by the notifications of a master about an entering and a leaving
-				 *         of the nodes: an own way to learn the neighbours a worker has none.
-				 *
-				 * @return list of the known nodes of the cluster
-				 *
-				 * \~
-				 */
-				unordered_set <pid_t> nodes() const noexcept;
+				void leave(const int32_t code = 0) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1691,26 +1693,55 @@ namespace awh {
 				 * \~
 				 */
 				bool shutdown(const pid_t pid, const int32_t code = SHUTDOWN_CODE) noexcept;
+			public:
 				/**
 				 * \~russian
-				 * @brief Метод ухода работника из кластера по своей воле
+				 * @brief Метод пересылки сообщения соседу через мастера
 				 *
-				 * @details Работник извещает мастера и выходит названным кодом, дождавшись
-				 *          отдачи извещения каналу. Возрождению он не подлежит.
+				 * @details Связи для пересылки не требуется, и заводить её ради одного
+				 *          короткого сообщения дороже самого сообщения. Платой идут две
+				 *          передачи вместо одной и предел размера - `maximumRelay`.
 				 *
-				 * @param code код завершения работы
+				 * @param pid    узел, которому предназначено сообщение
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
 				 *
 				 * \~english
-				 * @brief Method of a worker leaving the cluster of its own will
+				 * @brief Method of relaying a message to a neighbour through the master
 				 *
-				 * @details A worker notifies a master and leaves by a named code, having waited for a giving
-				 *         of a notification to a channel. A revival is not due to it.
+				 * @details A connection for a forwarding is not required, and to start it for the sake of one
+				 *         short message is dearer than the message itself. A price is two
+				 *         transfers instead of one and a limit of a size - `maximumRelay`.
 				 *
-				 * @param code termination code of the work
+				 * @param pid    node the message is meant for
+				 * @param buffer binary buffer for sending the message
+				 * @param size   size of the binary buffer for sending the message
+				 * @return       number of the bytes of the sent message
 				 *
 				 * \~
 				 */
-				void leave(const int32_t code = 0) noexcept;
+				size_t relay(const pid_t pid, const void * buffer, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отправки сообщения соседу по прямой связи
+				 *
+				 * @param pid    узел, которому предназначено сообщение
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 *
+				 * \~english
+				 * @brief Method of sending a message to a neighbour over a direct link
+				 *
+				 * @param pid    node the message is meant for
+				 * @param buffer binary buffer for sending the message
+				 * @param size   size of the binary buffer for sending the message
+				 * @return       number of the bytes of the sent message
+				 *
+				 * \~
+				 */
+				size_t transmit(const pid_t pid, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1760,7 +1791,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Cluster(const Cluster &) = delete;
+				explicit Cluster(const Cluster &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

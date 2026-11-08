@@ -27,10 +27,12 @@
 #include <thread>
 #include <cerrno>
 #include <cstdio>
+#include <cwchar>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <csignal>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файл модуля разбора чисел
@@ -41,11 +43,11 @@
 #include <num/lexical/lexical.hpp>
 
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы Microsoft Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
-	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 * Подключаем единую точку подключения системных заголовков Microsoft Windows
 	 */
 	#include <sys/macro/win32.hpp>
 /**
@@ -95,30 +97,137 @@ using namespace placeholders;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * Для операционной системы Microsoft Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * @brief Функция подготовки отдельного окружения работника
+		 *
+		 * @details Окружение мастера не меняется. Сохраняются обычные переменные и
+		 *          записи текущих каталогов дисков, а кластерные ключи заменяются
+		 *          без учёта регистра только в копии для порождаемого процесса.
+		 *
+		 * @param pid     идентификатор мастера
+		 * @param pipe    имя пользовательского канала
+		 * @param control имя служебного канала
+		 * @return        блок Unicode с двойным нулём в конце, либо пустой блок при отказе
+		 *
+		 */
+		static vector <wchar_t> __awh_cluster_environment__(const pid_t pid, const string & pipe, const string & control) noexcept {
+			// Результат работы функции
+			vector <wchar_t> result;
+			// Если имена каналов отсутствуют
+			if(pipe.empty() || control.empty())
+				// Выводим отсутствие подготовленного окружения
+				return result;
+			/**
+			 * Выполняем перехват ошибок
+			 */
+			try {
+				// Получаем снимок окружения с автоматическим освобождением памяти Windows
+				unique_ptr <wchar_t, decltype(&::FreeEnvironmentStringsW)> source(::GetEnvironmentStringsW(), &::FreeEnvironmentStringsW);
+				// Если снимок окружения получить не удалось
+				if(source == nullptr)
+					// Выводим отсутствие подготовленного окружения
+					return result;
+				// Список переменных окружения работника
+				vector <wstring> entries;
+				/**
+				 * Копируем переменные мастера, включая служебные записи дисков вида =C:
+				 */
+				for(const wchar_t * item = source.get(); *item != L'\0'; item += (::wcslen(item) + 1)){
+					// Копируем текущую запись
+					const wstring entry(item);
+					// Определяем конец имени, пропуская начальный знак служебной записи
+					const size_t length = entry.find(L'=', 1);
+					// Если запись окружения повреждена
+					if(length == wstring::npos)
+						// Выводим отсутствие подготовленного окружения
+						return result;
+					// Если запись не является кластерным ключом
+					if((::CompareStringOrdinal(item, static_cast <int> (length), L"AWH_CLUSTER_MASTER", -1, TRUE) != CSTR_EQUAL) &&
+					   (::CompareStringOrdinal(item, static_cast <int> (length), L"AWH_CLUSTER_PIPE", -1, TRUE) != CSTR_EQUAL) &&
+					   (::CompareStringOrdinal(item, static_cast <int> (length), L"AWH_CLUSTER_CONTROL", -1, TRUE) != CSTR_EQUAL))
+						// Сохраняем исходную запись без изменения её значения
+						entries.push_back(entry);
+				}
+				// Добавляем роль и идентификатор мастера
+				entries.push_back(L"AWH_CLUSTER_MASTER=" + ::to_wstring(static_cast <uint32_t> (pid)));
+				// Добавляем имя пользовательского канала
+				entries.push_back(L"AWH_CLUSTER_PIPE=" + fmk::convert(pipe));
+				// Добавляем имя служебного канала
+				entries.push_back(L"AWH_CLUSTER_CONTROL=" + fmk::convert(control));
+				// Сортируем имена без учёта регистра и локали по правилам Windows
+				::sort(entries.begin(), entries.end(), [](const wstring & first, const wstring & second) noexcept -> bool {
+					// Сравниваем только имена переменных, сохраняя начальный знак служебных записей
+					return (::CompareStringOrdinal(first.c_str(), static_cast <int> (first.find(L'=', 1)), second.c_str(), static_cast <int> (second.find(L'=', 1)), TRUE) == CSTR_LESS_THAN);
+				});
+				/**
+				 * Собираем последовательность строк, разделённых нулевыми символами
+				 */
+				for(const auto & entry : entries){
+					// Переносим запись в блок окружения
+					result.insert(result.end(), entry.begin(), entry.end());
+					// Завершаем строку записи
+					result.push_back(L'\0');
+				}
+				// Завершаем весь блок вторым нулевым символом
+				result.push_back(L'\0');
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Удаляем незавершённый блок окружения
+				result.clear();
+				// Записываем ошибку в лог
+				log::print("Cluster worker environment could not be prepared: %s", log::flag_t::CRITICAL, error.what());
+			}
+			// Выводим результат
+			return result;
+		}
+	#endif
+	/**
 	 * @brief Состояние завершения воркера, остановленного мастером
 	 *
 	 * @details Мастер останавливает воркера закрытием своего конца канала, и тот
 	 *          завершает работу сам. Наружу об этом извещает событие "exit",
 	 *          принимающее состояние завершения в том виде, в каком его отдаёт система,
-	 *          поэтому и значение это у каждой системы своё
+	 *          поэтому и значение это у каждой системы своё.
 	 *
 	 *          У POSIX берётся SIGSTOP: число это - правильно сложенное состояние
 	 *          ожидания, читаемое разборными макросами как «снят сигналом SIGSTOP».
-	 *          Подделывать тот же номер у MS Windows нельзя - там на его месте стоит
+	 *          Подделывать тот же номер у Microsoft Windows нельзя - там на его месте стоит
 	 *          код завершения, и число 17 или 19 прочиталось бы как обычный код
-	 *          возврата приложения
+	 *          возврата приложения.
 	 *
-	 *          Взамен у MS Windows берётся значение по правилам NTSTATUS: старшие
+	 *          Взамен у Microsoft Windows берётся значение по правилам NTSTATUS: старшие
 	 *          разряды несут признак важности «ошибка» вместе с разрядом, отведённым
 	 *          значениям прикладным. Разряд этот затем и заведён - чтобы значения
 	 *          приложений не путались с системными, и по нему же метод `crashed`
-	 *          отличает падение от остановки
+	 *          отличает падение от остановки.
 	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		constexpr int32_t AWH_CLUSTER_STOPPED = static_cast <int32_t> (0xE0000001u);
+		/**
+		 * @brief Устанавливаем значение состояния завершения воркера, остановленного мастером
+		 *
+		 */
+		constexpr int32_t __AWH_CLUSTER_STOPPED__ = static_cast <int32_t> (0xE0000001u);
+	/**
+	 * @brief Если операционная система принадлежит к Unix-подобной (POSIX)
+	 *
+	 */
 	#else
-		constexpr int32_t AWH_CLUSTER_STOPPED = SIGSTOP;
+		/**
+		 * @brief Устанавливаем значение состояния завершения воркера, остановленного мастером
+		 *
+		 */
+		constexpr int32_t __AWH_CLUSTER_STOPPED__ = SIGSTOP;
 	#endif
 };
 
@@ -128,36 +237,41 @@ namespace {
  */
 namespace {
 	/**
-	 * @brief Заголовок служебного сообщения кластера
+	 * @brief Упаковка структуры заголовка служебного сообщения кластера
+	 *
+	 */
+	__AWH_PACK_BEGIN__
+	/**
+	 * @brief Структура заголовка служебного сообщения кластера
 	 *
 	 * @details Длины в заголовке нет намеренно: служебный канал заводится SEQPACKET
 	 *          безусловно, границы сообщений держит он сам, и сообщение приходит
 	 *          целым. Оттого и разбирать здесь нечего - заголовок снимается одним
-	 *          копированием
+	 *          копированием.
 	 *
 	 */
-	__AWH_PACK_BEGIN__
 	typedef struct Envelope {
 		// Вид служебного сообщения (значение cluster_t::control_t)
-		uint8_t type;
+		uint8_t type = 0;
 		// Узел, которого сообщение касается (0 - никого)
-		int32_t pid;
+		int32_t pid = 0;
 	} __AWH_PACKED__ envelope_t;
 	__AWH_PACK_END__
+
 	/**
 	 * @brief Предельный размер служебного сообщения кластера
 	 *
 	 * @details Предел объявлен и проверяется НА ОТПРАВКЕ. Обнаруживать его отказом
 	 *          записи в канал нельзя: работник узнал бы о нём случайно и с чужой
 	 *          причиной - сообщение, не вместившееся в дейтаграмму, система отвергает
-	 *          так же, как и всякое иное
+	 *          так же, как и всякое иное.
 	 *
 	 * @note Число взято с запасом вниз от предела дейтаграммы домена UNIX у самой
 	 *       скупой из поддерживаемых систем: пересылка заведена под короткие
 	 *       сообщения, и упираться в него ей не предназначено
 	 *
 	 */
-	constexpr size_t AWH_CLUSTER_CONTROL_LIMIT = 8192;
+	constexpr size_t __AWH_CLUSTER_CONTROL_LIMIT__ = 8192;
 };
 
 /**
@@ -171,10 +285,10 @@ namespace {
 	 * @param pid идентификатор завершаемого процесса
 	 *
 	 * @details Соответствие между системами прямое: `kill(pid, SIGKILL)` у POSIX и
-	 *          `TerminateProcess` у MS Windows. Ни то, ни другое процесс перехватить
-	 *          не может, и ни то, ни другое не даёт ему довести работу до конца
+	 *          `TerminateProcess` у Microsoft Windows. Ни то, ни другое процесс перехватить
+	 *          не может, и ни то, ни другое не даёт ему довести работу до конца.
 	 *
-	 * @note Дескриптор процесса у MS Windows приходится открывать заново по номеру:
+	 * @note Дескриптор процесса у Microsoft Windows приходится открывать заново по номеру:
 	 *       список активных воркеров хранит именно номера процессов. Номер система
 	 *       переиспользует, поэтому вызывать функцию допустимо лишь для процессов,
 	 *       которые кластер считает живыми
@@ -182,7 +296,7 @@ namespace {
 	 */
 	void __awh_terminate__([[maybe_unused]] const pid_t pid) noexcept {
 		/**
-		 * Для операционной системы MS Windows
+		 * Для операционной системы Microsoft Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем открытие дескриптора завершаемого процесса
@@ -205,7 +319,7 @@ namespace {
 };
 
 /**
- * Для операционной системы не являющейся MS Windows
+ * Для операционной системы не являющейся Microsoft Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -213,6 +327,11 @@ namespace {
 	 *
 	 */
 	namespace {
+		/**
+		 * Используем пространство имён AWH
+		 */
+		using namespace awh;
+
 		/**
 		 * @brief Объект перехвата сигнала
 		 *
@@ -222,12 +341,12 @@ namespace {
 		 * @brief Объект кластера для работы статических методов
 		 *
 		 */
-		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
+		static unit::cluster_t * __awh_cluster__ = nullptr;
 	};
 #endif
 
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы Microsoft Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
@@ -235,48 +354,44 @@ namespace {
 	 *
 	 * @details Ничего этого нет у POSIX: там дочерний процесс достаётся вызовом fork,
 	 *          о завершении его извещает сигнал SIGCHLD, а пожинает его waitpid. У
-	 *          MS Windows каждое из трёх заменяется своим средством, и всем трём нужно
-	 *          где-то держать состояние
+	 *          Microsoft Windows каждое из трёх заменяется своим средством, и всем трём нужно
+	 *          где-то держать состояние.
 	 *
 	 */
 	namespace {
 		/**
+		 * Используем пространство имён AWH
+		 */
+		using namespace awh;
+
+		/**
 		 * @brief Дочерний процесс кластера
 		 *
 		 */
-		struct Child {
-			// Дескриптор объекта процесса
-			HANDLE process;
+		typedef struct Child {
 			// Дескриптор ожидания завершения процесса из системного пула потоков
 			HANDLE wait;
+			// Дескриптор объекта процесса
+			HANDLE process;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			Child() noexcept :
-			 process(nullptr), wait(nullptr) {}
-		};
+			explicit Child() noexcept :
+			 wait(nullptr), process(nullptr) {}
+		} child_t;
 
 		/**
-		 * @brief Объект кластера для работы статических функций
+		 * @brief Очередь завершившихся процессов, ожидающих разбора в петле событий
 		 *
 		 */
-		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
+		static deque <pid_t> __awh_finished__;
 		/**
-		 * @brief Объект задания, удерживающий дочерние процессы
-		 *
-		 * @details Задание заводится с пределом JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE:
-		 *          закрытие последнего дескриптора задания снимает все входящие в него
-		 *          процессы. Так замещается проверка на осиротевание, какую у POSIX даёт
-		 *          сравнение с getppid: погибни мастер любым образом, включая падение,
-		 *          система снимет воркеров сама, и осиротевших процессов не остаётся
+		 * @brief Список дочерних процессов, за которыми ведётся наблюдение
 		 *
 		 */
-		static HANDLE __awh_job__ = nullptr;
-		// Список дочерних процессов, за которыми ведётся наблюдение
-		static std::unordered_map <pid_t, Child> __awh_children__;
-		// Очередь завершившихся процессов, ожидающих разбора в петле событий
-		static std::deque <pid_t> __awh_finished__;
+		static unordered_map <pid_t, child_t> __awh_children__;
+
 		/**
 		 * @brief Замок доступа к спискам дочерних процессов
 		 *
@@ -290,12 +405,28 @@ namespace {
 		 *       включённым, и здесь это то, что нужно
 		 *
 		 */
-		static awh::lock_state_t <> __awh_children_mutex__;
+		static lock_state_t <> __awh_mtx__;
+		/**
+		 * @brief Объект задания, удерживающий дочерние процессы
+		 *
+		 * @details Задание заводится с пределом JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE:
+		 *          закрытие последнего дескриптора задания снимает все входящие в него
+		 *          процессы. Так замещается проверка на осиротевание, какую у POSIX даёт
+		 *          сравнение с getppid: погибни мастер любым образом, включая падение,
+		 *          система снимет воркеров сама, и осиротевших процессов не остаётся.
+		 *
+		 */
+		static HANDLE __awh_job__ = nullptr;
+		/**
+		 * @brief Объект кластера для работы статических функций
+		 *
+		 */
+		static unit::cluster_t * __awh_cluster__ = nullptr;
 	};
 #endif
 
 /**
- * Для операционных систем, отличных от MS Windows
+ * Для операционных систем, отличных от Microsoft Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -308,13 +439,18 @@ namespace {
 		 */
 		namespace {
 			/**
+			 * Используем пространство имён AWH
+			 */
+			using namespace awh;
+
+			/**
 			 * @brief Функция выполнения внешней команды и получения её стандартного вывода
 			 *
 			 * @param cmd команда для выполнения
 			 * @return    стандартный вывод выполненной команды
 			 *
 			 */
-			string __awh_exec_command__(const string & cmd) noexcept {
+			static __AWH_INLINE__ string __awh_exec_command__(const string & cmd) noexcept {
 				// Результат выполнения команды
 				string result = "";
 				// Открываем канал на чтение стандартного вывода команды
@@ -342,7 +478,7 @@ namespace {
 			 * @return   строка вида «функция файл:строка», либо пустая строка, если позицию определить не удалось
 			 *
 			 */
-			string __awh_resolve_line__(void * pc) noexcept {
+			static string __awh_resolve_line__(void * pc) noexcept {
 				// Результат определения позиции в исходном коде
 				string result = "";
 				// Объект информации о символе
@@ -392,7 +528,7 @@ namespace {
 			 * @param sig номер сигнала вызвавшего краш
 			 *
 			 */
-			void childCrashHandler(const int32_t sig) noexcept {
+			static void childCrashHandler(const int32_t sig) noexcept {
 				/**
 				 * Если разбор стека вызовов системой не поддерживается
 				 *
@@ -406,38 +542,38 @@ namespace {
 				 * Если разбор стека вызовов системой поддерживается
 				 */
 				#else
-				// Буфер для формирования ошибки
-				void * array[50];
-				// Определяем размер бэктрейса
-				const int32_t size = ::backtrace(array, 50);
-				// Получаем текстовое представление символов бэктрейса (используется как запасной вариант вывода)
-				char ** symbols = ::backtrace_symbols(array, size);
-				// Записываем в лог информацию в консоль
-				cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << " (" << ::strsignal(sig) << ")\nBacktrace:" << endl;
-				/**
-				 * Переходим по всем кадрам бэктрейса
-				 */
-				for(int32_t i = 0; i < size; ++i){
-					// Определяем позицию в исходном коде по адресу инструкции
-					const string & location = __awh_resolve_line__(array[i]);
-					// Если позицию в исходном коде удалось определить
-					if(!location.empty())
-						// Выводим номер кадра, адрес и расшифрованную позицию «функция файл:строка»
-						cerr << "  #" << i << " " << array[i] << " " << location << endl;
-					// Если позицию определить не удалось — выводим исходную (закодированную) информацию символа
-					else cerr << "  #" << i << " " << ((symbols != nullptr) ? symbols[i] : "") << endl;
-				}
-				// Если символы бэктрейса были выделены — освобождаем память
-				if(symbols != nullptr)
-					// Освобождаем память символов бэктрейса
-					::free(symbols);
+					// Буфер для формирования ошибки
+					void * array[50];
+					// Определяем размер бэктрейса
+					const int32_t size = ::backtrace(array, 50);
+					// Получаем текстовое представление символов бэктрейса (используется как запасной вариант вывода)
+					char ** symbols = ::backtrace_symbols(array, size);
+					// Записываем в лог информацию в консоль
+					cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << " (" << ::strsignal(sig) << ")\nBacktrace:" << endl;
+					/**
+					 * Переходим по всем кадрам бэктрейса
+					 */
+					for(int32_t i = 0; i < size; ++i){
+						// Определяем позицию в исходном коде по адресу инструкции
+						const string & location = __awh_resolve_line__(array[i]);
+						// Если позицию в исходном коде удалось определить
+						if(!location.empty())
+							// Выводим номер кадра, адрес и расшифрованную позицию «функция файл:строка»
+							cerr << "  #" << i << " " << array[i] << " " << location << endl;
+						// Если позицию определить не удалось — выводим исходную (закодированную) информацию символа
+						else cerr << "  #" << i << " " << ((symbols != nullptr) ? symbols[i] : "") << endl;
+					}
+					// Если символы бэктрейса были выделены — освобождаем память
+					if(symbols != nullptr)
+						// Освобождаем память символов бэктрейса
+						::free(symbols);
 				#endif
 				// Возвращаем стандартный обработчик, чтобы операционная система создала полноценный Crash Report
 				::signal(sig, SIG_DFL);
 				// Повторно вызываем сигнал
 				::kill(::getpid(), sig);
 			}
-		}
+		};
 	#endif
 #endif
 
@@ -464,7 +600,7 @@ awh::unit::Cluster::Rebirth::Rebirth() noexcept :
  */
 bool awh::unit::Cluster::parent() const noexcept {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Если дескриптор объекта родительского процесса не получен - процесс родителя не отслеживается
@@ -495,40 +631,53 @@ void awh::unit::Cluster::create() noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		{
-			/**
-			 * Создаём дочерние процессы по количеству установленных воркеров
-			 */
-			for(uint16_t index = 0; index < this->_count; ++index){
-				// Создаём очередной воркер с отложенным запуском события
-				const family_t family = this->spawn(0, true);
-				// Если мы оказались в дочернем процессе — прекращаем создание и выходим в цикл событий
-				if(family == family_t::CHILDREN)
-					// Выходим из функции
-					return;
-				// Если воркер создать не удалось — откатываем уже созданные процессы
-				else if(family == family_t::NONE) {
-					// Освобождаем ресурсы и принудительно завершаем уже созданные процессы
-					this->clear(shutdown_t::FORCEFUL);
-					// Выходим из функции
-					return;
-				}
+		/**
+		 * Создаём дочерние процессы по количеству установленных воркеров
+		 */
+		for(uint16_t index = 0; index < this->_count; ++index){
+			// Создаём очередной воркер с отложенным запуском события
+			const family_t family = this->spawn(0, true);
+			// Если мы оказались в дочернем процессе — прекращаем создание и выходим в цикл событий
+			if(family == family_t::CHILDREN)
+				// Выходим из функции
+				return;
+			// Если воркер создать не удалось — откатываем уже созданные процессы
+			else if(family == family_t::NONE) {
+				// Освобождаем ресурсы и принудительно завершаем уже созданные процессы
+				this->clear(shutdown_t::FORCEFUL);
+				// Выходим из функции
+				return;
 			}
-			// Записываем в лог информацию о запущенном кластере
-			log::print("Cluster [%s] has been started successfully", log::flag_t::INFO, this->_name.c_str());
+		}
+		// Записываем в лог информацию о запущенном кластере
+		log::print("Cluster [%s] has been started successfully", log::flag_t::INFO, this->_name.c_str());
+		/**
+		 * Для операционных систем, отличных от Microsoft Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
 			/**
 			 * Переходим по всему списку активных воркеров
 			 *
-			 * @note На MS Windows события уже зафиксированы и запущены - прежде порождения
+			 * @note На Microsoft Windows события уже зафиксированы и запущены - прежде порождения
 			 *       процессов: работник выходит на канал по имени сразу, и конец мастера
 			 *       обязан ждать подключения к тому времени
 			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
 			for(auto & [pid, worker] : this->_workers){
 				// Если служебный канал заведён, фиксируем и запускаем его
 				if((worker->cid != 0) && !(engine::commit(worker->cid) && engine::launch(worker->cid)))
-					// Записываем ошибку в лог
-					log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, pid);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог запуска события
+						log::debug("Cluster control channel of the worker process [%d] could not be launched", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, pid);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, pid);
+					#endif
 				// Выполняем фиксацию и запуск работы события
 				if(!(engine::commit(worker->eid) && engine::launch(worker->eid))){
 					/**
@@ -548,10 +697,9 @@ void awh::unit::Cluster::create() noexcept {
 					::_exit(EXIT_FAILURE);
 				}
 			}
-			#endif
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
-		}
+		#endif
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -583,16 +731,18 @@ void awh::unit::Cluster::emplace(const pid_t pid) noexcept {
 	 */
 	try {
 		/**
-		 * Заслона по системам здесь нет намеренно: порождение работника разведено по
-		 * системам внутри самого spawn - у POSIX это fork, у MS Windows повторный запуск
-		 * себя, - а размещение взамен выбывшего у них общее
+		 * @brief Создаём новый дочерний процесс с немедленным запуском события взамен завершившегося
+		 *
+		 * @details Заслона по системам здесь нет намеренно: порождение работника разведено по
+		 *          системам внутри самого spawn - у POSIX это fork, у Microsoft Windows повторный запуск
+		 *          себя, - а размещение взамен выбывшего у них общее.
 		 *
 		 * @note Прежде тело это было заключено в заслон «кроме MS Windows», отчего
 		 *       перезапуск упавшего работника там не делал ровно ничего: кластер
 		 *       распознавал падение, рассылал события завершения и остановки, а нового
 		 *       работника взамен не поднимал. Найдено пробой на стенде
+		 *
 		 */
-		// Создаём новый дочерний процесс с немедленным запуском события взамен завершившегося
 		this->spawn(pid, false);
 	/**
 	 * Если возникает ошибка
@@ -647,14 +797,16 @@ void awh::unit::Cluster::release(const event::id_t eid) noexcept {
 		}
 	}
 	/**
-	 * Заслона по системам здесь нет намеренно: все три действия существуют у обеих
-	 * систем, а событие обмена сообщениями заводится и там, и там
+	 * @brief Сбрасываем функцию обратного вызова на изменение статуса, чтобы не реагировать на DESTROYED при ручном закрытии события
+	 *
+	 * @details Заслона по системам здесь нет намеренно: все три действия существуют у обеих
+	 *          систем, а событие обмена сообщениями заводится и там, и там.
 	 *
 	 * @note Прежде тело это было заключено в заслон «кроме MS Windows», отчего события
 	 *       выбывших работников там не уничтожались вовсе - ни при их падении, ни при
 	 *       снятии мастером. Соответствие идентификаторов росло без конца
+	 *
 	 */
-	// Сбрасываем функцию обратного вызова на изменение статуса, чтобы не реагировать на DESTROYED при ручном закрытии события
 	engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
 	// Удаляем соответствие идентификатора события и идентификатора процесса
 	this->_matching.erase(eid);
@@ -675,7 +827,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 		// Если работа кластера запущена
 		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 			/**
-			 * Для операционной системы MS Windows
+			 * Для операционной системы Microsoft Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				/**
@@ -774,6 +926,37 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 	}
 }
 /**
+ * @brief Метод разбора разорванной прямой связи
+ *
+ * @param eid идентификатор события связи
+ *
+ */
+void awh::unit::Cluster::sever(const event::id_t eid) noexcept {
+	// Выполняем поиск узла по идентификатору события связи
+	auto i = this->_matchingPeers.find(eid);
+	/**
+	 * Если узел найден
+	 *
+	 * @note Не найденный узел означает, что разрыв уже разобран другим признаком, а не
+	 *       ошибку: признаков разрыва два, и приходят они оба
+	 */
+	if(i != this->_matchingPeers.end()){
+		// Получаем узел, связь с которым разорвана
+		const pid_t node = i->second;
+		// Забываем соответствие события связи и узла
+		this->_matchingPeers.erase(i);
+		// Забываем разорванную связь
+		this->_peers.erase(node);
+		/**
+		 * Событие связи здесь НЕ уничтожается намеренно
+		 *
+		 * @note Оба признака приходят от самого движка, изымающего узел: уничтожать его
+		 *       из отклика значило бы сносить событие посреди его собственного разбора
+		 */
+		this->_callback.call <void (const pid_t, const reason_t)> ("unlinked", node, reason_t::NONE);
+	}
+}
+/**
  * @brief Метод создания одного дочернего процесса (воркера)
  *
  * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
@@ -783,13 +966,13 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
  */
 awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const pid_t replaced, [[maybe_unused]] const bool deferred) noexcept {
 	/**
-	 * Для операционных систем, отличных от MS Windows
+	 * Для операционных систем, отличных от Microsoft Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём новый вокрер дочернего процесса
 		unique_ptr <worker_t> worker = make_unique <worker_t> ();
 		// Устанавливаем время создания процесса
-		worker->life = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		worker->life = fmk::milliseconds();
 		// Добавляем новые события для обмена сообщениями между процессами
 		const auto & events = engine::events(event::family_t::UDS, this->_type);
 		// Если события не созданы
@@ -811,20 +994,32 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			return family_t::NONE;
 		}
 		/**
-		 * Заводим служебный канал обмена, отдельный от пользовательского
+		 * @brief Заводим служебный канал обмена, отдельный от пользовательского
 		 *
 		 * @details Канал этот заводится SEQPACKET БЕЗУСЛОВНО, каким бы ни был
 		 *          пользовательский тип обмена: границы сообщений держит он сам, и
 		 *          служебное сообщение приходит целым. Пойди служебный обмен по
 		 *          пользовательскому каналу - у потокового типа границ не стало бы вовсе,
 		 *          и разметка обернулась бы своим протоколом передачи внутри кластера,
-		 *          платой на каждом пользовательском сообщении. Разбор - в CLUSTER-LINK.md
+		 *          платой на каждом пользовательском сообщении. Разбор - в CLUSTER-LINK.md.
+		 *
 		 */
 		const auto & controls = engine::events(event::family_t::UDS, event::type_t::SEQPACKET);
 		// Если служебный канал не заведён
 		if((controls[0] == 0) || (controls[1] == 0)){
-			// Записываем ошибку в лог
-			log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster control channel could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
+			#endif
 			// Если первый конец служебного канала заведён
 			if(controls[0] != 0)
 				// Уничтожаем первый конец служебного канала
@@ -961,20 +1156,20 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					}
 					// Устанавливаем функцию обратного вызова на событие записи сообщений
 					engine::on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-					// Устанавливаем функцию обратного вызова на событие чтения сообщений
-					engine::on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие изменения состояния
 					engine::on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+					// Устанавливаем функцию обратного вызова на событие чтения сообщений
+					engine::on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
 					engine::on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
 					engine::on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
 					/**
-					 * Заводим свой конец служебного канала
+					 * @brief Заводим свой конец служебного канала
 					 *
 					 * @note Отклики его - одно лишь чтение: пользовательские отклики
-					 *       служебного канала не касаются вовсе, и разметка его наружу не
-					 *       выходит
+					 *       служебного канала не касаются вовсе, и разметка его наружу не выходит
+					 *
 					 */
 					engine::on(controls[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
 					// Устанавливаем идентификатор события для обмена сообщениями между процессами
@@ -990,17 +1185,29 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					// Выполняем фиксацию и запуск работы события
 					if(engine::commit(ret.first->second->eid) && engine::launch(ret.first->second->eid)){
 						/**
-						 * Заводим служебный канал вслед за пользовательским
+						 * @brief Заводим служебный канал вслед за пользовательским
 						 *
 						 * @warning Отказ здесь работника НЕ валит: без служебного канала он
 						 *          лишается связи с соседями и приказов мастера, но свою
 						 *          пользовательскую работу ведёт по-прежнему. Валить его
 						 *          отказом второстепенного канала значило бы менять
 						 *          поведение кластера там, где связи никто и не просил
+						 *
 						 */
 						if(!(engine::commit(this->_control) && engine::launch(this->_control))){
-							// Записываем ошибку в лог
-							log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Cluster control channel could not be launched, the worker is deaf to the master", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
+							#endif
 							// Уничтожаем свой конец служебного канала
 							engine::destroy(this->_control);
 							// Обнуляем идентификатор служебного канала
@@ -1008,12 +1215,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 							// Обнуляем идентификатор служебного события воркера
 							ret.first->second->cid = 0;
 						/**
-						 * Извещаем мастера о том, что работник поднялся
+						 * @brief Извещаем мастера о том, что работник поднялся
 						 *
-						 * @details Извещение это - не вежливость: у MS Windows оно
+						 * @details Извещение это - не вежливость: у Microsoft Windows оно
 						 *          единственный способ узнать правду. Мастер знает лишь,
 						 *          что процесс породился, а дошёл ли тот до цикла событий,
-						 *          ему неизвестно вовсе
+						 *          ему неизвестно вовсе.
+						 *
 						 */
 						} else this->dispatch(this->_control, control_t::ONLINE, ret.first->first);
 						// Записываем в лог сообщение об успешном запуске события
@@ -1026,13 +1234,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог запуска события
+							// Записываем ошибку в лог
 							log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, ret.first->first);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Записываем ошибку в лог запуска события
+							// Записываем ошибку в лог
 							log::print("Cluster worker process [%d] event could not be launched", log::flag_t::CRITICAL, ret.first->first);
 						#endif
 						// Выходим из приложения
@@ -1050,7 +1258,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Процесс превратился в зомби, самоликвидируем его
+						// Записываем ошибку в лог
 						log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
@@ -1085,10 +1293,10 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				}
 				// Устанавливаем функцию обратного вызова на событие записи сообщений
 				engine::on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-				// Устанавливаем функцию обратного вызова на событие чтения сообщений
-				engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 				// Устанавливаем функцию обратного вызова на событие изменения состояния
 				engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+				// Устанавливаем функцию обратного вызова на событие чтения сообщений
+				engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок
 				engine::on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
 				// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
@@ -1107,21 +1315,32 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				if(!deferred){
 					// Выполняем фиксацию и запуск работы служебного канала
 					if(!(engine::commit(ret.first->second->cid) && engine::launch(ret.first->second->cid)))
-						// Записываем ошибку в лог
-						log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, ret.first->first);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("Cluster control channel of the worker process [%d] could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, ret.first->first);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("Cluster control channel of the worker process [%d] could not be launched", log::flag_t::CRITICAL, ret.first->first);
+						#endif
 					// Выполняем фиксацию и запуск работы события
 					if(!(engine::commit(ret.first->second->eid) && engine::launch(ret.first->second->eid))){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог запуска события
+							// Записываем ошибку в лог
 							log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL, replaced);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Записываем ошибку в лог запуска события
+							// Записываем ошибку в лог
 							log::print("Cluster worker process [%d] event could not be launched", log::flag_t::CRITICAL, replaced);
 						#endif
 						// Выходим из приложения
@@ -1135,51 +1354,86 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		// Возвращаем признак родительского процесса
 		return family_t::MASTER;
 	/**
-	 * Если операционной системой является MS Windows
+	 * Если операционной системой является Microsoft Windows
 	 */
 	#else
 		// Создаём новый вокрер дочернего процесса
 		unique_ptr <worker_t> worker = make_unique <worker_t> ();
 		// Устанавливаем время создания процесса
-		worker->life = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		worker->life = fmk::milliseconds();
 		// Заводим свой конец пользовательского канала обмена сообщениями
-		const event::id_t eid = this->provision(L"AWH_CLUSTER_PIPE", this->_type, false);
+		const event::id_t eid = this->provision(this->_type, false);
 		// Если пользовательский канал обмена сообщениями не заведён
-		if(eid == 0)
+		if(eid == 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster control channel could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
+			#endif
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
+		}
 		/**
-		 * Заводим свой конец служебного канала обмена
+		 * @brief Заводим свой конец служебного канала обмена
 		 *
 		 * @details Канал этот заводится SEQPACKET БЕЗУСЛОВНО, каким бы ни был
 		 *          пользовательский тип обмена: границы сообщений держит он сам, и
 		 *          служебное сообщение приходит целым. Пойди служебный обмен по
 		 *          пользовательскому каналу - у потокового типа границ не стало бы вовсе,
 		 *          и разметка обернулась бы своим протоколом передачи внутри кластера,
-		 *          платой на каждом пользовательском сообщении. Разбор - в CLUSTER-LINK.md
+		 *          платой на каждом пользовательском сообщении. Разбор - в CLUSTER-LINK.md.
+		 *
 		 */
-		const event::id_t cid = this->provision(L"AWH_CLUSTER_CONTROL", event::type_t::SEQPACKET, true);
+		const event::id_t cid = this->provision(event::type_t::SEQPACKET, true);
 		// Если служебный канал обмена не заведён
 		if(cid == 0){
-			// Снимаем имя пользовательского канала из окружения
-			::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
 			// Уничтожаем событие пользовательского канала
 			engine::destroy(eid);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster control channel could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
+			#endif
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
 		// Выполняем порождение дочернего процесса
-		const pid_t pid = this->execute();
-		// Снимаем имя канала из окружения: своим процессам работник его не передаёт
-		::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
-		// Снимаем имя служебного канала из окружения по тому же доводу
-		::SetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", nullptr);
+		const pid_t pid = this->execute(eid, cid);
 		// Если порождение процесса не удалось
 		if(pid == 0){
 			// Уничтожаем событие родительского процесса
 			engine::destroy(eid);
 			// Уничтожаем служебное событие родительского процесса
 			engine::destroy(cid);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster control channel could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster control channel could not be created", log::flag_t::CRITICAL);
+			#endif
 			// Возвращаем результат отсутствия созданного воркера
 			return family_t::NONE;
 		}
@@ -1196,11 +1450,13 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		// Добавляем соответствие идентификаторов служебных событий и идентификатора процесса
 		this->_controls.emplace(static_cast <event::id_t> (ret.first->second->cid), ret.first->first);
 		/**
-		 * Фиксация и запуск события здесь уже произошли - прежде порождения процесса,
-		 * и признак отложенного запуска на MS Windows означает лишь то, что оповещать
-		 * о замене упавшего процесса рано
-		 */
-		// Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
+		 * @brief Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
+		 *
+		 * @details Фиксация и запуск события здесь уже произошли - прежде порождения процесса,
+		 *          и признак отложенного запуска на Microsoft Windows означает лишь то, что оповещать
+		 *          о замене упавшего процесса рано.
+		 *
+		 */ 
 		if(!deferred){
 			// Если процесс размещается взамен упавшего
 			if(replaced > 0)
@@ -1212,630 +1468,835 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 	#endif
 }
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы Microsoft Windows
  *
  * @note Метода этого на системах POSIX нет вовсе: дочерний процесс достаётся там
  *       вызовом fork, продолжающим работу с того же места и с тем же состоянием.
- *       У MS Windows соответствия fork нет, и дочерний процесс приходится
+ *       У Microsoft Windows соответствия fork нет, и дочерний процесс приходится
  *       запускать заново - собственным образом приложения
  *
  */
 #if defined(_WIN32) || defined(_WIN64)
-/**
- * @brief Метод заведения своего конца канала обмена для порождаемого процесса
- *
- * @param variable имя переменной окружения, какой имя канала уходит порождаемому процессу
- * @param type     устройство обмена канала
- * @param service  признак служебного канала
- * @return         идентификатор заведённого события, либо 0 при отказе
- *
- */
-awh::event::id_t awh::unit::Cluster::provision(const wchar_t * variable, const event::type_t type, const bool service) noexcept {
-	// Добавляем новые события для обмена сообщениями между процессами
-	const auto & events = engine::events(event::family_t::PIPE, type);
-	// Если события не созданы
-	if((events[0] == 0) || (events[1] == 0)){
-		// Записываем ошибку в лог
-		log::print("Cluster %s channel could not be created", log::flag_t::CRITICAL, (service ? "control" : "worker"));
-		// Выводим отсутствие заведённого события
-		return 0;
-	}
 	/**
-	 * Передаём порождаемому процессу имя канала обмена сообщениями
+	 * @brief Метод распознавания роли дочернего процесса и захвата мастера
 	 *
-	 * @details Дескриптора по наследству порождённый процесс не получает - он
-	 *          проходит main заново, - зато имя именованного канала переносимо и
-	 *          доходит до него окружением. Свой конец канала работник открывает по
-	 *          этому имени сам
-	 *
-	 * @note Имя снимается прежде уничтожения события: уничтоженное события имени
-	 *       уже не отдаст
+	 * @return признак того, что процесс является дочерним
 	 *
 	 */
-	const string & pipe = engine::getTarget(events[1]);
-	// Если имя канала обмена сообщениями получено
-	/**
-	 * Имя канала обязано дойти до порождаемого процесса
-	 *
-	 * @warning Прежде оба отказа лишь заносились в журнал, а порождение шло дальше:
-	 *          работник поднимался, не находил имени канала в своём окружении и
-	 *          оставался ЖИВЫМ, но глухим - обмен сообщениями с мастером у него не
-	 *          заводился вовсе. Мастер же считал его исправным работником и слал
-	 *          ему задания в никуда
-	 *
-	 */
-	if(pipe.empty() || !::SetEnvironmentVariableW(variable, awh::fmk::convert(pipe).c_str())){
-		// Записываем ошибку в лог
-		log::print("Cluster %s pipe name %s, the worker is not spawned", log::flag_t::CRITICAL, (service ? "control" : "worker"),
-		 (pipe.empty() ? "could not be obtained" : "could not be passed to the child process"));
-		// Уничтожаем оба конца канала обмена сообщениями
-		engine::destroy(events[1]);
-		// Уничтожаем событие родительского процесса
-		engine::destroy(events[0]);
-		// Выводим отсутствие заведённого события
-		return 0;
-	}
-	// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
-	engine::destroy(events[1]);
-	/**
-	 * Свой конец канала доводится до ожидания подключения ПРЕЖДЕ порождения процесса
-	 *
-	 * @details Порождённый процесс выходит на канал по имени сразу, едва запустившись,
-	 *          и застаёт единственный экземпляр канала занятым: мастер держал его сам,
-	 *          покуда не закрыл свой конец пары, а к ожиданию нового подключения конец
-	 *          возвращает лишь подача приёма. Пока приём не подан, обращение работника
-	 *          отвечает `ERROR_PIPE_BUSY` (231), и работник сдаётся по сроку ожидания -
-	 *          кластер под MS Windows не обменивался тогда ни одним сообщением.
-	 *          Проверено щупом на обоих стендах, x86-64 и ARM64
-	 *
-	 * @note На системах POSIX порядок этот безразличен: там пара достаётся дочернему
-	 *       процессу по наследству вызовом fork, уже связанной с обеих сторон
-	 */
-	// Устанавливаем опции события
-	if(!engine::setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
-		// Записываем ошибку в лог
-		log::print("Error setting cluster worker event options", log::flag_t::WARNING);
-	/**
-	 * Служебному каналу подписывается одно лишь чтение
-	 *
-	 * @note Наружу он не выходит вовсе: пользовательские отклики разбирают соответствие
-	 *       идентификаторов, а служебные события лежат в своём соответствии, отдельном
-	 */
-	if(service)
-		// Устанавливаем функцию обратного вызова на чтение служебного канала
-		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
-	// Если канал является пользовательским
-	else {
-		// Устанавливаем функцию обратного вызова на событие записи сообщений
-		engine::on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-		engine::on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-	}
-	// Выполняем фиксацию и запуск работы события: конец канала переходит к ожиданию подключения
-	if(!(engine::commit(events[0]) && engine::launch(events[0]))){
-		// Записываем ошибку в лог запуска события
-		log::print("Cluster %s event could not be launched", log::flag_t::CRITICAL, (service ? "control" : "worker"));
+	bool awh::unit::Cluster::adopt() noexcept {
+		// Буфер под метку роли
+		wchar_t marker[32]{0};
+		// Получаем метку роли из окружения
+		const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", marker, static_cast <DWORD> (sizeof(marker) / sizeof(marker[0])));
+		// Если метки роли в окружении нет — процесс является мастером
+		if((size == 0) || (size >= (sizeof(marker) / sizeof(marker[0]))))
+			// Сообщаем, что процесс дочерним не является
+			return false;
 		/**
-		 * Снимаем имя канала из окружения: канал уничтожается, и имя его лживо
+		 * Снимаем метку роли из окружения
 		 *
-		 * @details Сторож этот стоит УСТРОЙСТВОМ: кто переменную поставил, тот её и
-		 *          снимает, и вызывающей стороне о ней помнить не надо
-		 *
-		 * @warning Прежде отказ этот уходил наружу, оставляя имя уничтоженного канала
-		 *          висеть в окружении мастера, - и всякий последующий запуск приложения
-		 *          получал его по наследству. То самое, от чего бережёт снятие имени
-		 *          после порождения работника, только с другого конца
+		 * Порождай воркер собственные процессы, метка досталась бы тем по наследству, и
+		 * те сочли бы себя воркерами несуществующего мастера
 		 */
-		::SetEnvironmentVariableW(variable, nullptr);
-		// Уничтожаем событие родительского процесса
-		engine::destroy(events[0]);
-		// Выводим отсутствие заведённого события
-		return 0;
-	}
-	/**
-	 * Даём движку оборот прежде порождения процесса
-	 *
-	 * @details Фиксация и запуск события конец канала к ожиданию подключения ещё не
-	 *          приводят: ожидание подаётся оборотом цикла, а до цикла хозяин доходит,
-	 *          породив ВСЕ свои процессы. Работник же выходит на канал по имени сразу,
-	 *          застаёт экземпляр незанятым, но и не ждущим подключения, и получает
-	 *          `ERROR_PIPE_BUSY` - обмена в кластере не выходило вовсе
-	 *
-	 * @note Оборот берётся холостой, без ожидания: подать ожидание подключения ему
-	 *       достаточно, а ждать здесь нечего - встречная сторона ещё даже не запущена
-	 *
-	 * @warning Разрыв подключения при фиксации тут не годится: конец канала после
-	 *          закрытия встречного конца уже разорван - `DisconnectNamedPipe` отвечает
-	 *          `ERROR_PIPE_NOT_CONNECTED` (233), - а обращение работника всё равно
-	 *          отвергается, покуда сторона не ЖДЁТ подключения. Установлено щупом
-	 */
-	/**
-	 * Дожидаемся, пока конец канала встанет в ожидание подключения
-	 *
-	 * @details Экземпляр канала, доставшийся от пары, остаётся за прежним подключением:
-	 *          пара заводится связанной, встречный конец её открыт тут же, и закрытие
-	 *          его экземпляра не освобождает. Система пускает работника лишь к стороне,
-	 *          которая ЖДЁТ подключения, а ожидание подаётся согласованием подписок в
-	 *          цикле опроса. Готовность спрашивается поэтому у самой системы:
-	 *          `WaitNamedPipeW` с нулевым сроком отвечает истиной ровно тогда, когда
-	 *          экземпляр готов принять подключение
-	 *
-	 * @warning Ожидание это не запас времени «на всякий случай», а условие работы:
-	 *          прежде порождение шло сразу за запуском события, работник получал
-	 *          `ERROR_PIPE_BUSY` и сдавался по сроку - обмена в кластере не выходило
-	 *          вовсе, ни на x86-64, ни на ARM64. Причём под печатью щупа обмен ШЁЛ:
-	 *          печать вносила задержку, и согласование успевало пройти
-	 *
-	 * @note Отвергнутое устройство (проверено прогоном): перезаведение стороны канала
-	 *       при фиксации события. Подключались тогда ВСЕ работники, но обмен отвечал
-	 *       отказом ввода-вывода - состояние движка, живущее на прежнем описателе, к
-	 *       заведённому заново не переходит, и одного забывания прежнего мало
-	 *
-	 * @note Срок ограничен: не дождавшись, порождаем всё равно - у работника свой срок
-	 */
-	{
-		// Имя канала в понимании системы
-		const std::wstring channel = awh::fmk::convert(pipe);
-		// Число оборотов ожидания готовности канала
-		uint16_t rounds = 0;
+		::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr);
+		// Идентификатор процесса мастера
+		pid_t pid = 0;
 		/**
-		 * Выполняем обороты цикла, покуда канал не станет ждать подключения
-		 */
-		while((rounds++ < 200) && !::WaitNamedPipeW(channel.c_str(), 0))
-			// Выполняем холостой оборот цикла событий
-			engine::poll(0);
-		/**
-		 * Исчерпание оборотов ожидания обязано быть слышно
+		 * @brief Выполняем разбор метки роли числом
 		 *
-		 * @warning Прежде цикл этот исчерпывался МОЛЧА, и порождение шло дальше по
-		 *          неготовому каналу: работник поднимался, подключиться не мог, а в
-		 *          журнале не оставалось ничего. Отличить это от исправной работы
-		 *          было нечем
+		 * @warning Разбор ведётся `lexical`, а НЕ `std::stoul`: тот кидает исключение
+		 *          и при переполнении, и при негодной записи, а метод объявлен
+		 *          `noexcept` - перехват исключений в теле его есть скрытая роскошь,
+		 *          которую рамка не обещает. Разбор локали не подвластен и исключений
+		 *          не бросает вовсе
 		 *
-		 * @note Порождение при этом не обрывается: канал вправе поспеть и позже,
-		 *       а обрыв стоил бы работника там, где всё обошлось бы. Запись же
-		 *       даёт разбирающему зацепку
+		 * @note Метка пишется самим мастером из четырёхбайтового номера процесса, и
+		 *       запись, в четыре байта не влезающая либо разобранная не целиком, меткой
+		 *       не является: поставить её мог лишь тот, кто правил окружение руками
 		 *
 		 */
-		if(rounds > 200)
-			// Записываем предупреждение в лог
-			log::print("Cluster %s pipe was not ready after %u rounds, the worker is spawned anyway", log::flag_t::WARNING, (service ? "control" : "worker"), static_cast <uint32_t> (rounds - 1));
-	}
-	// Выводим идентификатор заведённого события
-	return events[0];
-}
-/**
- * @brief Метод порождения дочернего процесса повторным запуском образа приложения
- *
- * @return идентификатор порождённого процесса, либо 0 при отказе
- *
- */
-pid_t awh::unit::Cluster::execute() noexcept {
-	/**
-	 * Заводим объект задания, если тот ещё не заведён
-	 *
-	 * Задание держит все порождённые процессы и снимает их при закрытии последнего
-	 * своего дескриптора - то есть при завершении мастера любым образом, включая
-	 * падение. Так замещается проверка на осиротевание, какую у POSIX даёт сравнение
-	 * с getppid, и осиротевших воркеров не остаётся
-	 */
-	if(::__awh_job__ == nullptr){
-		// Создаём объект задания
-		::__awh_job__ = ::CreateJobObjectW(nullptr, nullptr);
-		// Если объект задания создан
-		if(::__awh_job__ != nullptr){
-			// Создаём объект пределов задания
-			JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-			// Устанавливаем предел снятия процессов при закрытии задания
-			limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-			// Устанавливаем пределы объекта задания
-			if(!::SetInformationJobObject(::__awh_job__, JobObjectExtendedLimitInformation, &limits, sizeof(limits)))
+		uint64_t number = 0;
+		// Выполняем разбор идентификатора процесса мастера
+		const auto & parsed = lexical::fromChars <uint64_t, wchar_t> (marker, (marker + size), number);
+		/**
+		 * Если метка роли числом не разобралась
+		 */
+		if(!static_cast <bool> (parsed) || (parsed.ptr != (marker + size)) ||
+		  (number > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::print("Cluster job object limits could not be set", log::flag_t::WARNING);
-		// Если объект задания создать не удалось
-		} else log::print("Cluster job object could not be created, orphaned workers are possible", log::flag_t::WARNING);
-	}
-	// Буфер под путь к образу приложения
-	wchar_t image[MAX_PATH]{0};
-	// Получаем длину пути к образу приложения
-	const DWORD length = ::GetModuleFileNameW(nullptr, image, MAX_PATH);
-	/**
-	 * Путь обязан уместиться в буфер целиком
-	 *
-	 * @warning Проверялся прежде лишь нуль, а усечение НУЛЁМ НЕ ОТВЕЧАЕТ: обращение
-	 *          отдаёт при нём размер буфера и оставляет путь обрезанным. Дальше
-	 *          порождение шло по обрезанному пути и отказывало «файл не найден» - то
-	 *          есть отказ называл следствие и о длине пути не намекал ничем
-	 *
-	 * @note Предел этот достижим: у MS Windows `MAX_PATH` равен 260, а образ набора
-	 *       проверок живёт под каталогом сборки, вложенным на пять-шесть уровней
-	 *
-	 */
-	if((length == 0) || (length >= MAX_PATH)){
-		// Записываем ошибку в лог
-		log::print("Cluster could not determine its own executable path%s", log::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
-		// Возвращаем признак отсутствия порождённого процесса
-		return 0;
-	}
-	/**
-	 * Помечаем роль дочернего процесса в его окружении
-	 *
-	 * Окружение достаётся порождённому процессу целиком, и метка эта - единственное,
-	 * чем тот отличает себя от мастера: запускается он тем же образом и с той же
-	 * строкой доводов. Номер мастера в метке нужен ещё и затем, чтобы дочерний процесс
-	 * мог открыть дескриптор его объекта и следить, жив ли тот
-	 */
-	if(!::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", std::to_wstring(static_cast <uint32_t> (this->_pid)).c_str())){
-		// Записываем ошибку в лог
-		log::print("Cluster role marker could not be set in the environment", log::flag_t::CRITICAL);
-		// Возвращаем признак отсутствия порождённого процесса
-		return 0;
-	}
-	// Копия строки доводов запуска: CreateProcessW вправе менять её на месте
-	std::wstring command = ::GetCommandLineW();
-	// Создаём объект сведений о запуске процесса
-	STARTUPINFOW startup{};
-	// Устанавливаем размер объекта сведений о запуске
-	startup.cb = sizeof(startup);
-	// Создаём объект сведений о порождённом процессе
-	PROCESS_INFORMATION info{};
-	/**
-	 * Порождаем процесс приостановленным: до внесения его в задание он работать не
-	 * должен. Успей он завершиться раньше, в задание попасть было бы уже некому, и
-	 * снятие по закрытию задания его не коснулось бы
-	 */
-	/**
-	 * Описатели мастера дочернему процессу НЕ наследуются
-	 *
-	 * @warning Наследование было включено, а нужды в нём нет ни одной: канал воркер
-	 *          открывает ПО ИМЕНИ, роль узнаёт из окружения, а описатель мастера
-	 *          открывает по его номеру. Меж тем сокеты у MS Windows наследуются по
-	 *          умолчанию - заводятся они без `WSA_FLAG_NO_HANDLE_INHERIT`, - и
-	 *          дочернему доставались ВСЕ сокеты мастера: и слушающий, и всякий
-	 *          принятый. Мастер, закрывший свой сокет, порта не освобождал, а
-	 *          закрытое им подключение не разрывалось: встречная сторона не получала
-	 *          `FIN`, покуда жив хоть один воркер, державший тот же сокет
-	 *
-	 * @note Доказано щупом на стенде одним прогоном о двух ходах, разница одна:
-	 *       с наследованием повторная привязка порта после закрытия сокета мастером
-	 *       отвечает отказом 10048 (`WSAEADDRINUSE`), без наследования - удаётся
-	 *
-	 */
-	const BOOL created = ::CreateProcessW(image, command.data(), nullptr, nullptr, FALSE, CREATE_SUSPENDED, nullptr, nullptr, &startup, &info);
-	// Снимаем метку роли из своего окружения, чтобы та не досталась мастеру
-	::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr);
-	// Если процесс породить не удалось
-	if(!created){
-		// Записываем ошибку в лог
-		log::print("Child process could not be created", log::flag_t::CRITICAL);
-		// Возвращаем признак отсутствия порождённого процесса
-		return 0;
-	}
-	// Если объект задания заведён — вносим в него порождённый процесс
-	if((::__awh_job__ != nullptr) && !::AssignProcessToJobObject(::__awh_job__, info.hProcess))
-		// Записываем ошибку в лог
-		log::print("Child process [%d] could not be assigned to the cluster job object", log::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
-	// Получаем идентификатор порождённого процесса
-	const pid_t pid = static_cast <pid_t> (info.dwProcessId);
-	{
-		// Создаём запись о наблюдаемом дочернем процессе
-		::Child child;
-		// Запоминаем дескриптор объекта процесса
-		child.process = info.hProcess;
+				log::debug("Cluster role marker is malformed, the process is treated as master", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster role marker is malformed, the process is treated as master", log::flag_t::CRITICAL);
+			#endif
+			// Сообщаем, что процесс дочерним не является
+			return false;
+		}
+		// Запоминаем разобранный идентификатор процесса мастера
+		pid = static_cast <pid_t> (number);
 		/**
-		 * Подписываемся на завершение процесса
+		 * Перенимаем номер процесса мастера
 		 *
-		 * Извещение однократное: WT_EXECUTEONLYONCE снимает подписку после первого
-		 * срабатывания, а завершиться процесс может лишь однажды
+		 * Поле это заполняется в конструкторе основания собственным номером процесса, и
+		 * на нём держится метод master. У дочернего процесса, запущенного заново, номер
+		 * этот свой, и без подмены тот счёл бы себя мастером
 		 */
+		this->_pid = pid;
 		/**
-		 * Наблюдение за завершением обязано быть заведено
+		 * Открываем дескриптор объекта процесса мастера
 		 *
-		 * @warning Прежде отказ лишь заносился в журнал, а процесс всё равно попадал в
-		 *          список наблюдаемых с ПУСТЫМ описателем ожидания и возобновлялся.
-		 *          Узнать о его гибели было тогда нечем: отклик `child` не звался
-		 *          никогда, разбор завершения не шёл, замена упавшего работника не
-		 *          выполнялась. Мастер продолжал считать работника живым, а кластер
-		 *          молча редел
+		 * По дескриптору этому метод parent и отвечает, жив ли мастер. Права запрашиваются
+		 * наименьшие из достаточных: SYNCHRONIZE довольно, чтобы ожидать объект
+		 */
+		HANDLE handle = ::OpenProcess(SYNCHRONIZE, FALSE, static_cast <DWORD> (pid));
+		// Если дескриптор объекта мастера получен
+		if(handle != nullptr)
+			// Запоминаем дескриптор объекта родительского процесса
+			this->_master = reinterpret_cast <uintptr_t> (handle);
+		// Если дескриптор объекта мастера получить не удалось
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster master process [%d] could not be opened, orphan detection is disabled", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, pid);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster master process [%d] could not be opened, orphan detection is disabled", log::flag_t::CRITICAL, pid);
+			#endif
+		}
+		/**
+		 * Открываем свой конец канала обмена сообщениями с мастером
 		 *
-		 * @note Порождённый процесс здесь снимается принудительно: он остановлен
-		 *       (`CREATE_SUSPENDED`) и работать ещё не начинал, а оставлять его без
-		 *       надзора хуже, чем не порождать вовсе
+		 * @warning Итог этот прежде ОТБРАСЫВАЛСЯ: работник, не открывший канала, оставался
+		 *          живым и глухим, а запуск его тут же объявлялся удачным записью
+		 *          «worker process has been started successfully». Мастер считал его
+		 *          исправным и слал задания в никуда - ровно тот изъян, от какого
+		 *          стережётся встречная сторона у spawn, отказываясь порождать работника
+		 *          без имени канала
+		 *
+		 * @note Отказ здесь для работника смертелен: обмена с мастером у него нет, а
+		 *       иного дела у работника не бывает. Возврат же признака мастера отсюда
+		 *       НЕДОПУСТИМ - работник ушёл бы тогда в ветвь хозяина и принялся порождать
+		 *       собственных работников
+		 *
+		 * @note Круговой перезапуск здесь не грозит: мастер видит гибель работника и
+		 *       считает быстрые падения, а превысив предел, останавливает кластер целиком
 		 *
 		 */
-		if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE)){
-			// Записываем ошибку в лог
-			log::print("Child process [%d] termination watch could not be registered, the process is terminated", log::flag_t::CRITICAL, pid);
-			// Снимаем порождённый процесс, работать он ещё не начинал
-			::TerminateProcess(info.hProcess, static_cast <UINT> (EXIT_FAILURE));
-			// Закрываем дескриптор объекта процесса
-			::CloseHandle(info.hProcess);
-			// Закрываем дескриптор основного потока порождённого процесса
-			::CloseHandle(info.hThread);
+		if(!this->attach()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] has no messaging channel with the master, the worker is terminated", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] has no messaging channel with the master, the worker is terminated", log::flag_t::CRITICAL, ::getpid());
+			#endif
+			// Завершаем работу работника: работать ему нечем
+			::_exit(EXIT_FAILURE);
+		}
+		// Сообщаем, что процесс является дочерним
+		return true;
+	}
+	/**
+	 * @brief Метод открытия своего конца канала обмена сообщениями с мастером
+	 *
+	 * @details Соответствия socketpair у Microsoft Windows нет, и пара обмена строится
+	 *          именованным каналом. Сторону ожидания заводит мастер, а имя её передаёт
+	 *          порождаемому процессу окружением - дескриптора тот по наследству не
+	 *          получает, проходя main заново. Здесь имя это снимается, и по нему
+	 *          открывается свой конец.
+	 *
+	 * @note Работник заводит себе воркера с собственным номером процесса - ровно так же,
+	 *       как это делает дочерний процесс на системах POSIX после fork. На нём и
+	 *       держится отправка сообщений мастеру
+	 *
+	 * @return признак того, что канал обмена сообщениями открыт
+	 *
+	 */
+	bool awh::unit::Cluster::attach() noexcept {
+		// Буфер под имя канала обмена сообщениями
+		wchar_t buffer[256]{0};
+		// Получаем имя канала обмена сообщениями из окружения
+		const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", buffer, static_cast <DWORD> (sizeof(buffer) / sizeof(buffer[0])));
+		// Если имени канала в окружении нет
+		if((size == 0) || (size >= (sizeof(buffer) / sizeof(buffer[0])))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker pipe name is not set, messaging with the master is disabled", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker pipe name is not set, messaging with the master is disabled", log::flag_t::CRITICAL);
+			#endif
+			// Сообщаем, что канал обмена сообщениями не открыт
+			return false;
+		}
+		/**
+		 * @brief Снимаем имя канала из окружения
+		 *
+		 * @details Порождай работник собственные процессы, имя досталось бы тем по наследству, и
+		 *          те подключились бы к чужому каналу.
+		 *
+		 */
+		::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
+		// Заводим событие обмена сообщениями с мастером
+		const event::id_t eid = engine::event(event::node_t::IPC, event::family_t::PIPE, this->_type);
+		// Если событие завести не удалось
+		if(eid == 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker event could not be created", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker event could not be created", log::flag_t::CRITICAL);
+			#endif
+			// Сообщаем, что канал обмена сообщениями не открыт
+			return false;
+		}
+		// Устанавливаем имя канала обмена сообщениями событию
+		engine::setTarget(eid, fmk::convert(wstring(buffer)));
+		// Устанавливаем функцию обратного вызова на событие записи сообщений
+		engine::on(eid, static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие изменения состояния
+		engine::on(eid, static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие чтения сообщений
+		engine::on(eid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		engine::on(eid, static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+		engine::on(eid, static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+		/**
+		 * Открываем свой конец служебного канала
+		 *
+		 * @details Имя его приходит той же дорогой, что и имя пользовательского канала, -
+		 *          окружением, - и снимается из окружения по тому же доводу: порождай
+		 *          работник свои процессы, имя досталось бы им по наследству.
+		 *
+		 * @warning Отказ здесь работника НЕ валит: без служебного канала он лишается связи
+		 *          с соседями и приказов мастера, но свою пользовательскую работу ведёт
+		 *          по-прежнему
+		 *
+		 */
+		event::id_t cid = 0;
+		{
+			// Буфер под имя служебного канала
+			wchar_t control[256]{0};
+			// Получаем имя служебного канала из окружения
+			const DWORD length = ::GetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", control, static_cast <DWORD> (sizeof(control) / sizeof(control[0])));
+			// Если имя служебного канала в окружении есть
+			if((length > 0) && (length < (sizeof(control) / sizeof(control[0])))){
+				// Снимаем имя служебного канала из окружения
+				::SetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", nullptr);
+				// Заводим событие служебного канала
+				cid = engine::event(event::node_t::IPC, event::family_t::PIPE, event::type_t::SEQPACKET);
+				// Если событие служебного канала заведено
+				if(cid != 0){
+					// Устанавливаем имя служебного канала событию
+					engine::setTarget(cid, fmk::convert(wstring(control)));
+					// Устанавливаем функцию обратного вызова на чтение служебного канала
+					engine::on(cid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+				}
+			// Если имени служебного канала в окружении нет
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Cluster control channel name is not set, the worker is deaf to the master", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Cluster control channel name is not set, the worker is deaf to the master", log::flag_t::CRITICAL);
+				#endif
+			}
+		}
+		// Создаём воркера для самого себя
+		unique_ptr <worker_t> worker = make_unique <worker_t> ();
+		// Устанавливаем время создания процесса
+		worker->life = fmk::milliseconds();
+		// Устанавливаем идентификатор события обмена сообщениями
+		worker->eid = eid;
+		// Устанавливаем идентификатор служебного события
+		worker->cid = cid;
+		// Запоминаем свой служебный канал
+		this->_control = cid;
+		// Устанавливаем собственный идентификатор процесса
+		worker->pid = static_cast <pid_t> (::getpid());
+		// Добавляем воркера в список активных воркеров
+		auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
+		// Добавляем соответствие идентификатора события идентификатору процесса
+		this->_matching.emplace(eid, ret.first->first);
+		/**
+		 * @brief Выполняем фиксацию, подключение и запуск работы события
+		 *
+		 * @warning Отказ здесь прежде уходил наружу БЕЗ отката: событие оставалось
+		 *          заведённым, а записи о воркере и о соответствии - в списках. Работник
+		 *          после того числил сам себя в живых воркерах, держал описатель канала до
+		 *          конца работы и отвечал на channel по своему номеру процесса событием,
+		 *          какое не запущено
+		 *
+		 * @note Порядок отката обратен заведению: сперва снимаются записи списков, затем
+		 *       уничтожается само событие - соответствие ищется по его номеру
+		 *
+		 */
+		if(!(engine::commit(eid) && engine::connect({eid}) && engine::launch(eid))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker event could not be launched", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker event could not be launched", log::flag_t::CRITICAL);
+			#endif
+			// Удаляем соответствие идентификатора события идентификатору процесса
+			this->_matching.erase(eid);
+			// Удаляем воркера из списка активных воркеров
+			this->_workers.erase(ret.first);
+			// Уничтожаем событие обмена сообщениями с мастером
+			engine::destroy(eid);
+			// Если служебное событие заведено
+			if(cid != 0){
+				// Уничтожаем служебное событие
+				engine::destroy(cid);
+				// Обнуляем идентификатор служебного канала
+				this->_control = 0;
+			}
+			// Сообщаем, что канал обмена сообщениями не открыт
+			return false;
+		}
+		// Если служебное событие заведено
+		if(cid != 0){
+			// Выполняем фиксацию, подключение и запуск работы служебного события
+			if(!(engine::commit(cid) && engine::connect({cid}) && engine::launch(cid))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Cluster control channel could not be launched, the worker is deaf to the master", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
+				#endif
+				// Уничтожаем служебное событие
+				engine::destroy(cid);
+				// Обнуляем идентификатор служебного канала
+				this->_control = 0;
+				// Обнуляем идентификатор служебного события воркера
+				ret.first->second->cid = 0;
+			/**
+			 * @brief Извещаем мастера о том, что работник поднялся
+			 *
+			 * @details У этой системы извещение - единственный способ узнать правду: мастер
+			 *          знает лишь, что процесс породился, а дошёл ли тот до цикла событий и
+			 *          открыл ли свои концы каналов, ему неизвестно вовсе.
+			 *
+			 */
+			} else this->dispatch(cid, control_t::ONLINE, ret.first->first);
+		}
+		// Сообщаем, что канал обмена сообщениями открыт
+		return true;
+	}
+	/**
+	 * @brief Метод порождения дочернего процесса повторным запуском образа приложения
+	 *
+	 * @param eid идентификатор пользовательского канала
+	 * @param cid идентификатор служебного канала
+	 * @return    идентификатор порождённого процесса, либо 0 при отказе
+	 *
+	 */
+	pid_t awh::unit::Cluster::execute(const event::id_t eid, const event::id_t cid) noexcept {
+		/**
+		 * @brief Заводим объект задания, если тот ещё не заведён
+		 *
+		 * @details Задание держит все порождённые процессы и снимает их при закрытии последнего
+		 *          своего дескриптора - то есть при завершении мастера любым образом, включая
+		 *          падение. Так замещается проверка на осиротевание, какую у POSIX даёт сравнение
+		 *          с getppid, и осиротевших воркеров не остаётся.
+		 *
+		 */
+		if(::__awh_job__ == nullptr){
+			// Создаём объект задания
+			::__awh_job__ = ::CreateJobObjectW(nullptr, nullptr);
+			// Если объект задания создан
+			if(::__awh_job__ != nullptr){
+				// Создаём объект пределов задания
+				JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+				// Устанавливаем предел снятия процессов при закрытии задания
+				limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+				// Устанавливаем пределы объекта задания
+				if(!::SetInformationJobObject(::__awh_job__, JobObjectExtendedLimitInformation, &limits, sizeof(limits)))
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Cluster job object limits could not be set", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Cluster job object limits could not be set", log::flag_t::WARNING);
+					#endif
+			// Если объект задания создать не удалось
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Cluster job object could not be created, orphaned workers are possible", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Cluster job object could not be created, orphaned workers are possible", log::flag_t::WARNING);
+				#endif
+			}
+		}
+		// Буфер под путь к образу приложения
+		wchar_t image[MAX_PATH]{0};
+		// Получаем длину пути к образу приложения
+		const DWORD length = ::GetModuleFileNameW(nullptr, image, MAX_PATH);
+		/**
+		 * @brief Путь обязан уместиться в буфер целиком
+		 *
+		 * @warning Проверялся прежде лишь нуль, а усечение НУЛЁМ НЕ ОТВЕЧАЕТ: обращение
+		 *          отдаёт при нём размер буфера и оставляет путь обрезанным. Дальше
+		 *          порождение шло по обрезанному пути и отказывало «файл не найден» - то
+		 *          есть отказ называл следствие и о длине пути не намекал ничем
+		 *
+		 * @note Предел этот достижим: у Microsoft Windows `MAX_PATH` равен 260, а образ набора
+		 *       проверок живёт под каталогом сборки, вложенным на пять-шесть уровней
+		 *
+		 */
+		if((length == 0) || (length >= MAX_PATH)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster could not determine its own executable path%s", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster could not determine its own executable path%s", log::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
+			#endif
 			// Возвращаем признак отсутствия порождённого процесса
 			return 0;
 		}
-		// Выполняем блокировку замка доступа к спискам дочерних процессов
-		const awh::locker_t <> lock(::__awh_children_mutex__);
-		// Добавляем процесс в список наблюдаемых
-		::__awh_children__.emplace(pid, child);
-	}
-	// Возобновляем работу порождённого процесса
-	::ResumeThread(info.hThread);
-	// Закрываем дескриптор основного потока порождённого процесса: тот больше не нужен
-	::CloseHandle(info.hThread);
-	// Возвращаем идентификатор порождённого процесса
-	return pid;
-}
-/**
- * @brief Метод распознавания роли дочернего процесса и захвата мастера
- *
- * @return признак того, что процесс является дочерним
- *
- */
-bool awh::unit::Cluster::adopt() noexcept {
-	// Буфер под метку роли
-	wchar_t marker[32]{0};
-	// Получаем метку роли из окружения
-	const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", marker, static_cast <DWORD> (sizeof(marker) / sizeof(marker[0])));
-	// Если метки роли в окружении нет — процесс является мастером
-	if((size == 0) || (size >= (sizeof(marker) / sizeof(marker[0]))))
-		// Сообщаем, что процесс дочерним не является
-		return false;
-	/**
-	 * Снимаем метку роли из окружения
-	 *
-	 * Порождай воркер собственные процессы, метка досталась бы тем по наследству, и
-	 * те сочли бы себя воркерами несуществующего мастера
-	 */
-	::SetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr);
-	// Идентификатор процесса мастера
-	pid_t pid = 0;
-	/**
-	 * Выполняем разбор метки роли числом
-	 *
-	 * @warning Разбор ведётся `lexical`, а НЕ `std::stoul`: тот кидает исключение
-	 *          и при переполнении, и при негодной записи, а метод объявлен
-	 *          `noexcept` - перехват исключений в теле его есть скрытая роскошь,
-	 *          которую рамка не обещает. Разбор локали не подвластен и исключений
-	 *          не бросает вовсе
-	 *
-	 * @note Метка пишется самим мастером из четырёхбайтового номера процесса, и
-	 *       запись, в четыре байта не влезающая либо разобранная не целиком, меткой
-	 *       не является: поставить её мог лишь тот, кто правил окружение руками
-	 */
-	uint64_t number = 0;
-	// Выполняем разбор идентификатора процесса мастера
-	const auto & parsed = awh::lexical::fromChars <uint64_t, wchar_t> (marker, (marker + size), number);
-	/**
-	 * Если метка роли числом не разобралась
-	 */
-	if(!static_cast <bool> (parsed) || (parsed.ptr != (marker + size)) ||
-	   (number > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))){
-		// Записываем ошибку в лог
-		log::print("Cluster role marker is malformed, the process is treated as master", log::flag_t::CRITICAL);
-		// Сообщаем, что процесс дочерним не является
-		return false;
-	}
-	// Запоминаем разобранный идентификатор процесса мастера
-	pid = static_cast <pid_t> (number);
-	/**
-	 * Перенимаем номер процесса мастера
-	 *
-	 * Поле это заполняется в конструкторе основания собственным номером процесса, и
-	 * на нём держится метод master. У дочернего процесса, запущенного заново, номер
-	 * этот свой, и без подмены тот счёл бы себя мастером
-	 */
-	this->_pid = pid;
-	/**
-	 * Открываем дескриптор объекта процесса мастера
-	 *
-	 * По дескриптору этому метод parent и отвечает, жив ли мастер. Права запрашиваются
-	 * наименьшие из достаточных: SYNCHRONIZE довольно, чтобы ожидать объект
-	 */
-	HANDLE handle = ::OpenProcess(SYNCHRONIZE, FALSE, static_cast <DWORD> (pid));
-	// Если дескриптор объекта мастера получен
-	if(handle != nullptr)
-		// Запоминаем дескриптор объекта родительского процесса
-		this->_master = reinterpret_cast <uintptr_t> (handle);
-	// Если дескриптор объекта мастера получить не удалось
-	else log::print("Cluster master process [%d] could not be opened, orphan detection is disabled", log::flag_t::CRITICAL, pid);
-	/**
-	 * Открываем свой конец канала обмена сообщениями с мастером
-	 *
-	 * @warning Итог этот прежде ОТБРАСЫВАЛСЯ: работник, не открывший канала, оставался
-	 *          живым и глухим, а запуск его тут же объявлялся удачным записью
-	 *          «worker process has been started successfully». Мастер считал его
-	 *          исправным и слал задания в никуда - ровно тот изъян, от какого
-	 *          стережётся встречная сторона у spawn, отказываясь порождать работника
-	 *          без имени канала
-	 *
-	 * @note Отказ здесь для работника смертелен: обмена с мастером у него нет, а
-	 *       иного дела у работника не бывает. Возврат же признака мастера отсюда
-	 *       НЕДОПУСТИМ - работник ушёл бы тогда в ветвь хозяина и принялся порождать
-	 *       собственных работников
-	 *
-	 * @note Круговой перезапуск здесь не грозит: мастер видит гибель работника и
-	 *       считает быстрые падения, а превысив предел, останавливает кластер целиком
-	 *
-	 */
-	if(!this->attach()){
-		// Записываем ошибку в лог
-		log::print("Cluster worker process [%d] has no messaging channel with the master, the worker is terminated", log::flag_t::CRITICAL, ::getpid());
-		// Завершаем работу работника: работать ему нечем
-		::_exit(EXIT_FAILURE);
-	}
-	// Сообщаем, что процесс является дочерним
-	return true;
-}
-/**
- * @brief Метод открытия своего конца канала обмена сообщениями с мастером
- *
- * @details Соответствия socketpair у MS Windows нет, и пара обмена строится
- *          именованным каналом. Сторону ожидания заводит мастер, а имя её передаёт
- *          порождаемому процессу окружением - дескриптора тот по наследству не
- *          получает, проходя main заново. Здесь имя это снимается, и по нему
- *          открывается свой конец
- *
- * @note Работник заводит себе воркера с собственным номером процесса - ровно так же,
- *       как это делает дочерний процесс на системах POSIX после fork. На нём и
- *       держится отправка сообщений мастеру
- *
- * @return признак того, что канал обмена сообщениями открыт
- *
- */
-bool awh::unit::Cluster::attach() noexcept {
-	// Буфер под имя канала обмена сообщениями
-	wchar_t buffer[256]{0};
-	// Получаем имя канала обмена сообщениями из окружения
-	const DWORD size = ::GetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", buffer, static_cast <DWORD> (sizeof(buffer) / sizeof(buffer[0])));
-	// Если имени канала в окружении нет
-	if((size == 0) || (size >= (sizeof(buffer) / sizeof(buffer[0])))){
-		// Записываем ошибку в лог
-		log::print("Cluster worker pipe name is not set, messaging with the master is disabled", log::flag_t::CRITICAL);
-		// Сообщаем, что канал обмена сообщениями не открыт
-		return false;
-	}
-	/**
-	 * Снимаем имя канала из окружения
-	 *
-	 * Порождай работник собственные процессы, имя досталось бы тем по наследству, и
-	 * те подключились бы к чужому каналу
-	 */
-	::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", nullptr);
-	// Заводим событие обмена сообщениями с мастером
-	const event::id_t eid = engine::event(event::node_t::IPC, event::family_t::PIPE, this->_type);
-	// Если событие завести не удалось
-	if(eid == 0){
-		// Записываем ошибку в лог
-		log::print("Cluster worker event could not be created", log::flag_t::CRITICAL);
-		// Сообщаем, что канал обмена сообщениями не открыт
-		return false;
-	}
-	// Устанавливаем имя канала обмена сообщениями событию
-	engine::setTarget(eid, awh::fmk::convert(wstring(buffer)));
-	// Устанавливаем функцию обратного вызова на событие записи сообщений
-	engine::on(eid, static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-	// Устанавливаем функцию обратного вызова на событие чтения сообщений
-	engine::on(eid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-	// Устанавливаем функцию обратного вызова на событие изменения состояния
-	engine::on(eid, static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	engine::on(eid, static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-	engine::on(eid, static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-	/**
-	 * Открываем свой конец служебного канала
-	 *
-	 * @details Имя его приходит той же дорогой, что и имя пользовательского канала, -
-	 *          окружением, - и снимается из окружения по тому же доводу: порождай
-	 *          работник свои процессы, имя досталось бы им по наследству
-	 *
-	 * @warning Отказ здесь работника НЕ валит: без служебного канала он лишается связи
-	 *          с соседями и приказов мастера, но свою пользовательскую работу ведёт
-	 *          по-прежнему
-	 */
-	event::id_t cid = 0;
-	{
-		// Буфер под имя служебного канала
-		wchar_t control[256]{0};
-		// Получаем имя служебного канала из окружения
-		const DWORD length = ::GetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", control, static_cast <DWORD> (sizeof(control) / sizeof(control[0])));
-		// Если имя служебного канала в окружении есть
-		if((length > 0) && (length < (sizeof(control) / sizeof(control[0])))){
-			// Снимаем имя служебного канала из окружения
-			::SetEnvironmentVariableW(L"AWH_CLUSTER_CONTROL", nullptr);
-			// Заводим событие служебного канала
-			cid = engine::event(event::node_t::IPC, event::family_t::PIPE, event::type_t::SEQPACKET);
-			// Если событие служебного канала заведено
-			if(cid != 0){
-				// Устанавливаем имя служебного канала событию
-				engine::setTarget(cid, awh::fmk::convert(wstring(control)));
-				// Устанавливаем функцию обратного вызова на чтение служебного канала
-				engine::on(cid, static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
-			}
-		// Если имени служебного канала в окружении нет
-		} else log::print("Cluster control channel name is not set, the worker is deaf to the master", log::flag_t::CRITICAL);
-	}
-	// Создаём воркера для самого себя
-	unique_ptr <worker_t> worker = make_unique <worker_t> ();
-	// Устанавливаем время создания процесса
-	worker->life = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
-	// Устанавливаем идентификатор события обмена сообщениями
-	worker->eid = eid;
-	// Устанавливаем идентификатор служебного события
-	worker->cid = cid;
-	// Запоминаем свой служебный канал
-	this->_control = cid;
-	// Устанавливаем собственный идентификатор процесса
-	worker->pid = static_cast <pid_t> (::getpid());
-	// Добавляем воркера в список активных воркеров
-	auto ret = this->_workers.emplace(static_cast <pid_t> (worker->pid), ::move(worker));
-	// Добавляем соответствие идентификатора события идентификатору процесса
-	this->_matching.emplace(eid, ret.first->first);
-	/**
-	 * Выполняем фиксацию, подключение и запуск работы события
-	 *
-	 * @warning Отказ здесь прежде уходил наружу БЕЗ отката: событие оставалось
-	 *          заведённым, а записи о воркере и о соответствии - в списках. Работник
-	 *          после того числил сам себя в живых воркерах, держал описатель канала до
-	 *          конца работы и отвечал на channel по своему номеру процесса событием,
-	 *          какое не запущено
-	 *
-	 * @note Порядок отката обратен заведению: сперва снимаются записи списков, затем
-	 *       уничтожается само событие - соответствие ищется по его номеру
-	 *
-	 */
-	if(!(engine::commit(eid) && engine::connect({eid}) && engine::launch(eid))){
-		// Записываем ошибку в лог
-		log::print("Cluster worker event could not be launched", log::flag_t::CRITICAL);
-		// Удаляем соответствие идентификатора события идентификатору процесса
-		this->_matching.erase(eid);
-		// Удаляем воркера из списка активных воркеров
-		this->_workers.erase(ret.first);
-		// Уничтожаем событие обмена сообщениями с мастером
-		engine::destroy(eid);
-		// Если служебное событие заведено
-		if(cid != 0){
-			// Уничтожаем служебное событие
-			engine::destroy(cid);
-			// Обнуляем идентификатор служебного канала
-			this->_control = 0;
+		// Готовим отдельный блок окружения, не меняя переменные мастера
+		vector <wchar_t> environment = ::__awh_cluster_environment__(this->_pid, engine::getTarget(eid), engine::getTarget(cid));
+		// Если окружение работника подготовить не удалось
+		if(environment.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker environment could not be prepared", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker environment could not be prepared", log::flag_t::CRITICAL);
+			#endif
+			// Возвращаем признак отсутствия порождённого процесса
+			return 0;
 		}
-		// Сообщаем, что канал обмена сообщениями не открыт
-		return false;
-	}
-	// Если служебное событие заведено
-	if(cid != 0){
-		// Выполняем фиксацию, подключение и запуск работы служебного события
-		if(!(engine::commit(cid) && engine::connect({cid}) && engine::launch(cid))){
-			// Записываем ошибку в лог
-			log::print("Cluster control channel could not be launched, the worker is deaf to the master", log::flag_t::CRITICAL);
-			// Уничтожаем служебное событие
-			engine::destroy(cid);
-			// Обнуляем идентификатор служебного канала
-			this->_control = 0;
-			// Обнуляем идентификатор служебного события воркера
-			ret.first->second->cid = 0;
+		// Копия строки доводов запуска: CreateProcessW вправе менять её на месте
+		wstring command = ::GetCommandLineW();
+		// Создаём объект сведений о запуске процесса
+		STARTUPINFOW startup{};
+		// Устанавливаем размер объекта сведений о запуске
+		startup.cb = sizeof(startup);
+		// Создаём объект сведений о порождённом процессе
+		PROCESS_INFORMATION info{};
 		/**
-		 * Извещаем мастера о том, что работник поднялся
+		 * @brief Описатели мастера дочернему процессу НЕ наследуются
 		 *
-		 * @details У этой системы извещение - единственный способ узнать правду: мастер
-		 *          знает лишь, что процесс породился, а дошёл ли тот до цикла событий и
-		 *          открыл ли свои концы каналов, ему неизвестно вовсе
+		 * @details Порождаем процесс приостановленным: до внесения его в задание он работать не
+		 *          должен. Успей он завершиться раньше, в задание попасть было бы уже некому, и
+		 *          снятие по закрытию задания его не коснулось бы.
+		 *
+		 * @warning Наследование было включено, а нужды в нём нет ни одной: канал воркер
+		 *          открывает ПО ИМЕНИ, роль узнаёт из окружения, а описатель мастера
+		 *          открывает по его номеру. Меж тем сокеты у Microsoft Windows наследуются по
+		 *          умолчанию - заводятся они без `WSA_FLAG_NO_HANDLE_INHERIT`, - и
+		 *          дочернему доставались ВСЕ сокеты мастера: и слушающий, и всякий
+		 *          принятый. Мастер, закрывший свой сокет, порта не освобождал, а
+		 *          закрытое им подключение не разрывалось: встречная сторона не получала
+		 *          `FIN`, покуда жив хоть один воркер, державший тот же сокет
+		 *
+		 * @note Доказано щупом на стенде одним прогоном о двух ходах, разница одна:
+		 *       с наследованием повторная привязка порта после закрытия сокета мастером
+		 *       отвечает отказом 10048 (`WSAEADDRINUSE`), без наследования - удаётся
+		 *
 		 */
-		} else this->dispatch(cid, control_t::ONLINE, ret.first->first);
+		const BOOL created = ::CreateProcessW(image, command.data(), nullptr, nullptr, FALSE, CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, environment.data(), nullptr, &startup, &info);
+		// Если процесс породить не удалось
+		if(!created){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Child process could not be created", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Child process could not be created", log::flag_t::CRITICAL);
+			#endif
+			// Возвращаем признак отсутствия порождённого процесса
+			return 0;
+		}
+		// Если объект задания заведён — вносим в него порождённый процесс
+		if((::__awh_job__ != nullptr) && !::AssignProcessToJobObject(::__awh_job__, info.hProcess))
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Child process [%d] could not be assigned to the cluster job object", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Child process [%d] could not be assigned to the cluster job object", log::flag_t::WARNING, static_cast <int32_t> (info.dwProcessId));
+			#endif
+		// Получаем идентификатор порождённого процесса
+		const pid_t pid = static_cast <pid_t> (info.dwProcessId);
+		{
+			// Создаём запись о наблюдаемом дочернем процессе
+			::child_t child;
+			// Запоминаем дескриптор объекта процесса
+			child.process = info.hProcess;
+			/**
+			 * @brief Наблюдение за завершением обязано быть заведено
+			 *
+			 * @details Подписываемся на завершение процесса.
+			 *
+			 *          Извещение однократное: WT_EXECUTEONLYONCE снимает подписку после первого
+			 *          срабатывания, а завершиться процесс может лишь однажды.
+			 *
+			 * @warning Прежде отказ лишь заносился в журнал, а процесс всё равно попадал в
+			 *          список наблюдаемых с ПУСТЫМ описателем ожидания и возобновлялся.
+			 *          Узнать о его гибели было тогда нечем: отклик `child` не звался
+			 *          никогда, разбор завершения не шёл, замена упавшего работника не
+			 *          выполнялась. Мастер продолжал считать работника живым, а кластер
+			 *          молча редел
+			 *
+			 * @note Порождённый процесс здесь снимается принудительно: он остановлен
+			 *       (`CREATE_SUSPENDED`) и работать ещё не начинал, а оставлять его без
+			 *       надзора хуже, чем не порождать вовсе
+			 *
+			 */
+			if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Child process [%d] termination watch could not be registered, the process is terminated", __PRETTY_FUNCTION__, {eid, cid}, log::flag_t::CRITICAL, pid);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Child process [%d] termination watch could not be registered, the process is terminated", log::flag_t::CRITICAL, pid);
+				#endif
+				// Снимаем порождённый процесс, работать он ещё не начинал
+				::TerminateProcess(info.hProcess, static_cast <UINT> (EXIT_FAILURE));
+				// Закрываем дескриптор объекта процесса
+				::CloseHandle(info.hProcess);
+				// Закрываем дескриптор основного потока порождённого процесса
+				::CloseHandle(info.hThread);
+				// Возвращаем признак отсутствия порождённого процесса
+				return 0;
+			}
+			// Выполняем блокировку замка доступа к спискам дочерних процессов
+			const awh::locker_t <> lock(::__awh_mtx__);
+			// Добавляем процесс в список наблюдаемых
+			::__awh_children__.emplace(pid, child);
+		}
+		// Возобновляем работу порождённого процесса
+		::ResumeThread(info.hThread);
+		// Закрываем дескриптор основного потока порождённого процесса: тот больше не нужен
+		::CloseHandle(info.hThread);
+		// Возвращаем идентификатор порождённого процесса
+		return pid;
 	}
-	// Сообщаем, что канал обмена сообщениями открыт
-	return true;
-}
+	/**
+	 * @brief Метод заведения своего конца канала обмена для порождаемого процесса
+	 *
+	 * @param type    устройство обмена канала
+	 * @param service признак служебного канала
+	 * @return        идентификатор заведённого события, либо 0 при отказе
+	 *
+	 */
+	awh::event::id_t awh::unit::Cluster::provision(const event::type_t type, const bool service) noexcept {
+		// Добавляем новые события для обмена сообщениями между процессами
+		const auto & events = engine::events(event::family_t::PIPE, type);
+		// Если события не созданы
+		if((events[0] == 0) || (events[1] == 0)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster %s channel could not be created", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), service}, log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster %s channel could not be created", log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			#endif
+			// Выводим отсутствие заведённого события
+			return 0;
+		}
+		// Сохраняем имя канала для ожидания готовности после закрытия второго конца
+		const string pipe = engine::getTarget(events[0]);
+		// Если имя созданного канала недоступно для передачи работнику
+		if(pipe.empty()){
+			// Уничтожаем конец канала работника
+			engine::destroy(events[1]);
+			// Уничтожаем конец канала мастера
+			engine::destroy(events[0]);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster %s pipe name could not be obtained", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), service}, log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster %s pipe name could not be obtained", log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			#endif
+			// Выводим отсутствие заведённого события
+			return 0;
+		}
+		// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
+		engine::destroy(events[1]);
+		/**
+		 * @brief Устанавливаем опции события
+		 *
+		 * @note Свой конец канала доводится до ожидания подключения ПРЕЖДЕ порождения процесса
+		 *
+		 * @details Порождённый процесс выходит на канал по имени сразу, едва запустившись,
+		 *          и застаёт единственный экземпляр канала занятым: мастер держал его сам,
+		 *          покуда не закрыл свой конец пары, а к ожиданию нового подключения конец
+		 *          возвращает лишь подача приёма. Пока приём не подан, обращение работника
+		 *          отвечает `ERROR_PIPE_BUSY` (231), и работник сдаётся по сроку ожидания -
+		 *          кластер под Microsoft Windows не обменивался тогда ни одним сообщением.
+		 *          Проверено щупом на обоих стендах, x86-64 и ARM64.
+		 *
+		 * @note На системах POSIX порядок этот безразличен: там пара достаётся дочернему
+		 *       процессу по наследству вызовом fork, уже связанной с обеих сторон
+		 *
+		 */
+		if(!engine::setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), service}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Error setting cluster worker event options", log::flag_t::WARNING);
+			#endif
+		/**
+		 * @brief Служебному каналу подписывается одно лишь чтение
+		 *
+		 * @note Наружу он не выходит вовсе: пользовательские отклики разбирают соответствие
+		 *       идентификаторов, а служебные события лежат в своём соответствии, отдельном
+		 *
+		 */
+		if(service)
+			// Устанавливаем функцию обратного вызова на чтение служебного канала
+			engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::control, this, _1, _2, _3)));
+		// Если канал является пользовательским
+		else {
+			// Устанавливаем функцию обратного вызова на событие записи сообщений
+			engine::on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие изменения состояния
+			engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения сообщений
+			engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			engine::on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+			engine::on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+		}
+		// Выполняем фиксацию и запуск работы события: конец канала переходит к ожиданию подключения
+		if(!(engine::commit(events[0]) && engine::launch(events[0]))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster %s event could not be launched", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), service}, log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster %s event could not be launched", log::flag_t::CRITICAL, (service ? "control" : "worker"));
+			#endif
+			// Уничтожаем событие родительского процесса
+			engine::destroy(events[0]);
+			// Выводим отсутствие заведённого события
+			return 0;
+		}
+		/**
+		 * @brief Дожидаемся, пока конец канала встанет в ожидание подключения
+		 *
+		 * @details Экземпляр канала, доставшийся от пары, остаётся за прежним подключением:
+		 *          пара заводится связанной, встречный конец её открыт тут же, и закрытие
+		 *          его экземпляра не освобождает. Система пускает работника лишь к стороне,
+		 *          которая ЖДЁТ подключения, а ожидание подаётся согласованием подписок в
+		 *          цикле опроса. Готовность спрашивается поэтому у самой системы:
+		 *          `WaitNamedPipeW` с нулевым сроком отвечает истиной ровно тогда, когда
+		 *          экземпляр готов принять подключение.
+		 *
+		 * @warning Ожидание это не запас времени «на всякий случай», а условие работы:
+		 *          прежде порождение шло сразу за запуском события, работник получал
+		 *          `ERROR_PIPE_BUSY` и сдавался по сроку - обмена в кластере не выходило
+		 *          вовсе, ни на x86-64, ни на ARM64. Причём под печатью щупа обмен ШЁЛ:
+		 *          печать вносила задержку, и согласование успевало пройти
+		 *
+		 * @note Отвергнутое устройство (проверено прогоном): перезаведение стороны канала
+		 *       при фиксации события. Подключались тогда ВСЕ работники, но обмен отвечал
+		 *       отказом ввода-вывода - состояние движка, живущее на прежнем описателе, к
+		 *       заведённому заново не переходит, и одного забывания прежнего мало
+		 *
+		 * @note Срок ограничен: не дождавшись, порождаем всё равно - у работника свой срок
+		 *
+		 */
+		{
+			// Имя канала в понимании системы
+			const wstring & channel = fmk::convert(pipe);
+			// Число оборотов ожидания готовности канала
+			uint16_t rounds = 0;
+			/**
+			 * Выполняем обороты цикла, покуда канал не станет ждать подключения
+			 */
+			while((rounds++ < 200) && !::WaitNamedPipeW(channel.c_str(), 0))
+				// Выполняем холостой оборот цикла событий
+				engine::poll(0);
+			/**
+			 * @brief Исчерпание оборотов ожидания обязано быть слышно
+			 *
+			 * @warning Прежде цикл этот исчерпывался МОЛЧА, и порождение шло дальше по
+			 *          неготовому каналу: работник поднимался, подключиться не мог, а в
+			 *          журнале не оставалось ничего. Отличить это от исправной работы
+			 *          было нечем
+			 *
+			 * @note Порождение при этом не обрывается: канал вправе поспеть и позже,
+			 *       а обрыв стоил бы работника там, где всё обошлось бы. Запись же
+			 *       даёт разбирающему зацепку
+			 *
+			 */
+			if(rounds > 200)
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем предупреждение в лог
+					log::debug("Cluster %s pipe was not ready after %u rounds, the worker is spawned anyway", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), service}, log::flag_t::WARNING, (service ? "control" : "worker"), static_cast <uint32_t> (rounds - 1));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем предупреждение в лог
+					log::print("Cluster %s pipe was not ready after %u rounds, the worker is spawned anyway", log::flag_t::WARNING, (service ? "control" : "worker"), static_cast <uint32_t> (rounds - 1));
+				#endif
+		}
+		// Выводим идентификатор заведённого события
+		return events[0];
+	}
 #endif
+/**
+ * @brief Метод обработки состояния прямой связи с соседом
+ *
+ * @param eid    идентификатор события связи
+ * @param status статус события
+ *
+ */
+void awh::unit::Cluster::broken(const event::id_t eid, const event::status_t status) noexcept {
+	// Если связь уничтожена
+	if(status == event::status_t::DESTROYED)
+		// Выполняем разбор разорванной связи
+		this->sever(eid);
+}
+/**
+ * @brief Метод обработки закрытия прямой связи с соседом
+ *
+ * @param eid    идентификатор события связи
+ * @param action действие, случившееся с событием
+ *
+ */
+void awh::unit::Cluster::closed(const event::id_t eid, const event::action_t action) noexcept {
+	// Если связь закрыта
+	if(action == event::action_t::CLOSE)
+		// Выполняем разбор разорванной связи
+		this->sever(eid);
+}
 /**
  * @brief Метод перезапуска упавшего процесса
  *
@@ -1850,8 +2311,19 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 	if(i != this->_workers.end()){
 		// Если завершившийся процесс требуется анализировать дальше
 		if(i->second->pid == pid){
-			// Записываем в лог сообщение об остановке дочернего процесса
-			log::print("Child process stopped, PID=%d, STATUS=%d", log::flag_t::WARNING, pid, status);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем в лог сообщение об остановке дочернего процесса
+				log::debug("Child process stopped, PID=%d, STATUS=%d", __PRETTY_FUNCTION__, {pid, status}, log::flag_t::WARNING, pid, status);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем в лог сообщение об остановке дочернего процесса
+				log::print("Child process stopped, PID=%d, STATUS=%d", log::flag_t::WARNING, pid, status);
+			#endif
 			// Определяем, является ли завершение ручной остановкой процесса
 			const bool manual = cluster_t::manual(status);
 			// Если это ручная остановка процесса — останавливаем весь кластер
@@ -1862,21 +2334,22 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 				::_exit(SIGINT);
 			}
 			// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
-			const bool rapid = ((awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) - i->second->life) <= this->_rebirth.window);
+			const bool rapid = ((fmk::milliseconds() - i->second->life) <= this->_rebirth.window);
 			// Освобождаем ресурсы завершившегося воркера
 			this->release(i->second->eid);
 			// Удаляем завершившийся процесс из списка активных воркеров
 			this->_workers.erase(i);
 			/**
-			 * Определяем, ушёл ли работник намеренно
+			 * @brief Определяем, ушёл ли работник намеренно
 			 *
 			 * @details Признак этот ставится приказом мастера либо извещением самого
-			 *          работника об уходе, и снимается он здесь - разбором завершившегося
+			 *          работника об уходе, и снимается он здесь - разбором завершившегося.
 			 *
 			 * @warning Ушедший намеренно работник возрождению НЕ подлежит, и счётчик
 			 *          быстрых падений его уход не задевает: иначе мастер поднимал бы
 			 *          работника, которому сам же велел уйти, а череда правильных уходов
 			 *          останавливала бы кластер защитой от цикла перезапусков
+			 *
 			 */
 			const bool leaving = (this->_leaving.erase(pid) > 0);
 			// Снимаем выбывший узел с учёта поднявшихся
@@ -1901,8 +2374,19 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 				else this->_rebirth.restarts = 0;
 				// Если защита включена и число подряд идущих быстрых падений превысило порог — прекращаем перезапуск и останавливаем кластер
 				if((this->_rebirth.limit > 0) && (this->_rebirth.restarts >= this->_rebirth.limit)){
-					// Записываем в лог сообщение об обнаружении цикла перезапусков
-					log::print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем в лог сообщение об обнаружении цикла перезапусков
+						log::debug("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", __PRETTY_FUNCTION__, {pid, status}, log::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем в лог сообщение об обнаружении цикла перезапусков
+						log::print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+					#endif
 					// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
 					this->clear(shutdown_t::NONE);
 					// Выходим из приложения с кодом завершения дочернего процесса
@@ -1938,7 +2422,7 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
  */
 void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept {
 	/**
-	 * Для операционных систем, отличных от MS Windows
+	 * Для операционных систем, отличных от Microsoft Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Идентификатор завершившегося процесса
@@ -1947,27 +2431,26 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 		int32_t status = 0;
 		/**
 		 * Пожинаем все завершившиеся дочерние процессы. Метод выполняется в потоке цикла событий,
-		 * поэтому мутации контейнеров, перезапуск воркеров и логирование здесь безопасны.
+		 * поэтому мутации контейнеров, перезапуск воркеров и логирование здесь безопасны
 		 */
 		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
 			// Выполняем обработку завершившегося процесса
 			this->process(pid, status);
 	/**
-	 * Если операционной системой является MS Windows
+	 * Если операционной системой является Microsoft Windows
 	 */
 	#else
 		// Список завершившихся процессов, снятый с очереди на разбор
-		std::deque <pid_t> finished;
+		deque <pid_t> finished;
 		{
 			// Выполняем блокировку замка доступа к спискам дочерних процессов
-			const awh::locker_t <> lock(::__awh_children_mutex__);
+			const awh::locker_t <> lock(::__awh_mtx__);
 			// Забираем всю очередь завершившихся процессов
 			finished.swap(::__awh_finished__);
 		}
 		/**
 		 * Пожинаем все завершившиеся дочерние процессы. Метод выполняется в потоке цикла
-		 * событий, поэтому мутации контейнеров, перезапуск воркеров и логирование здесь
-		 * безопасны
+		 * событий, поэтому мутации контейнеров, перезапуск воркеров и логирование здесь безопасны
 		 */
 		for(const pid_t pid : finished){
 			// Код завершения процесса
@@ -1978,7 +2461,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 			HANDLE process = nullptr;
 			{
 				// Выполняем блокировку замка доступа к спискам дочерних процессов
-				const awh::locker_t <> lock(::__awh_children_mutex__);
+				const awh::locker_t <> lock(::__awh_mtx__);
 				// Выполняем поиск завершившегося процесса среди наблюдаемых
 				auto i = ::__awh_children__.find(pid);
 				// Если наблюдаемый процесс найден
@@ -1988,13 +2471,14 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 						// Считаем завершение ненормальным, если код получить не удалось
 						status = static_cast <DWORD> (EXIT_FAILURE);
 					/**
-					 * Снимаем наблюдение за процессом. Ожидание снимается доводом
-					 * INVALID_HANDLE_VALUE - тот велит системе дождаться завершения уже
-					 * начатых извещений, и после возврата обратный вызов не работает ни в
-					 * одном потоке. Без этого дескрипторы закрывались бы под работающим
-					 * извещением
+					 * @brief Снимаем описатель ожидания завершения процесса
+					 *
+					 * @details Снимаем наблюдение за процессом. Ожидание снимается доводом
+					 *          INVALID_HANDLE_VALUE - тот велит системе дождаться завершения уже
+					 *          начатых извещений, и после возврата обратный вызов не работает ни в
+					 *          одном потоке. Без этого дескрипторы закрывались бы под работающим извещением.
+					 *
 					 */
-					// Снимаем описатель ожидания завершения процесса
 					wait = i->second.wait;
 					// Снимаем дескриптор объекта завершившегося процесса
 					process = i->second.process;
@@ -2003,7 +2487,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 				}
 			}
 			/**
-			 * Ожидание снимается ВНЕ замка
+			 * @brief Ожидание снимается ВНЕ замка
 			 *
 			 * @warning Снятие с доводом `INVALID_HANDLE_VALUE` не возвращается, покуда не
 			 *          отработают уже начатые извещения, а извещает система откликом
@@ -2029,9 +2513,9 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 	#endif
 }
 /**
- * Для операционных систем, отличных от MS Windows
+ * Для операционных систем, отличных от Microsoft Windows
  *
- * @note Метода этого под MS Windows нет вовсе - ни объявления в заголовке, ни тела
+ * @note Метода этого под Microsoft Windows нет вовсе - ни объявления в заголовке, ни тела
  *       здесь: сигнала SIGCHLD там не существует, как и типа siginfo_t. О завершении
  *       дочернего процесса извещает ожидание объекта процесса из системного пула
  *       потоков, а пробуждение цикла и разбор завершившихся - общие, через событие
@@ -2039,16 +2523,15 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
  *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
-/**
- * @brief Функция фильтр перехватчика сигналов
- *
- * @param signal номер сигнала полученного системой
- * @param info   объект информации полученный системой
- * @param ctx    передаваемый внутренний контекст
- *
- */
-void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
-	{
+	/**
+	 * @brief Функция фильтр перехватчика сигналов
+	 *
+	 * @param signal номер сигнала полученного системой
+	 * @param info   объект информации полученный системой
+	 * @param ctx    передаваемый внутренний контекст
+	 *
+	 */
+	void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 		// Если объект кластера ещё существует
 		if(::__awh_cluster__ != nullptr){
 			// Получаем указатель на объект кластера
@@ -2067,90 +2550,43 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 			}
 		}
 	}
-}
-#endif
 /**
- * Для операционной системы MS Windows
+ * Для операционной системы Microsoft Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
-/**
- * @brief Функция извещения о завершении дочернего процесса
- *
- * @param ctx     идентификатор завершившегося процесса
- * @param timeout признак срабатывания по истечении срока ожидания
- *
- */
-void __stdcall awh::unit::Cluster::child(void * ctx, [[maybe_unused]] uint8_t timeout) noexcept {
-	{
-		// Выполняем блокировку замка доступа к спискам дочерних процессов
-		const awh::locker_t <> lock(::__awh_children_mutex__);
-		// Добавляем завершившийся процесс в очередь ожидающих разбора
-		::__awh_finished__.push_back(static_cast <pid_t> (reinterpret_cast <uintptr_t> (ctx)));
-	}
-	// Если объект кластера ещё существует
-	if(::__awh_cluster__ != nullptr){
-		// Получаем указатель на объект кластера
-		cluster_t * self = ::__awh_cluster__;
-		// Если событие пробуждения активно
-		if(self->_wakeup != 0){
-			// Байт-маркер для триггера события пробуждения
-			const uint8_t marker = 0x01;
-			/**
-			 * Не выполняем здесь разбора завершившихся процессов и мутации контейнеров:
-			 * вызов идёт из системного пула потоков, а списки кластера принадлежат потоку
-			 * петли событий. Безопасно триггерим событие пробуждения, чтобы разбор
-			 * выполнился в потоке петли (см. метод reap)
-			 */
-			engine::send(self->_wakeup, &marker, sizeof(marker));
+#elif defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Функция извещения о завершении дочернего процесса
+	 *
+	 * @param ctx     идентификатор завершившегося процесса
+	 * @param timeout признак срабатывания по истечении срока ожидания
+	 *
+	 */
+	void __stdcall awh::unit::Cluster::child(void * ctx, [[maybe_unused]] uint8_t timeout) noexcept {
+		{
+			// Выполняем блокировку замка доступа к спискам дочерних процессов
+			const awh::locker_t <> lock(::__awh_mtx__);
+			// Добавляем завершившийся процесс в очередь ожидающих разбора
+			::__awh_finished__.push_back(static_cast <pid_t> (reinterpret_cast <uintptr_t> (ctx)));
+		}
+		// Если объект кластера ещё существует
+		if(::__awh_cluster__ != nullptr){
+			// Получаем указатель на объект кластера
+			cluster_t * self = ::__awh_cluster__;
+			// Если событие пробуждения активно
+			if(self->_wakeup != 0){
+				// Байт-маркер для триггера события пробуждения
+				const uint8_t marker = 0x01;
+				/**
+				 * Не выполняем здесь разбора завершившихся процессов и мутации контейнеров:
+				 * вызов идёт из системного пула потоков, а списки кластера принадлежат потоку
+				 * петли событий. Безопасно триггерим событие пробуждения, чтобы разбор
+				 * выполнился в потоке петли (см. метод reap)
+				 */
+				engine::send(self->_wakeup, &marker, sizeof(marker));
+			}
 		}
 	}
-}
 #endif
-/**
- * @brief Метод отправки служебного сообщения кластера
- *
- * @param eid    идентификатор служебного события
- * @param type   вид служебного сообщения
- * @param pid    узел, которого сообщение касается
- * @param buffer тело служебного сообщения
- * @param size   размер тела служебного сообщения
- * @return       количество отправленных байт
- *
- */
-size_t awh::unit::Cluster::dispatch(const event::id_t eid, const control_t type, const pid_t pid, const void * buffer, const size_t size) noexcept {
-	// Если служебного события нет вовсе, отправлять некуда
-	if(eid == 0)
-		// Выводим отсутствие отправленных байт
-		return 0;
-	/**
-	 * Если тело сообщения не вмещается в служебный канал
-	 *
-	 * @note Проверка эта - единственное место, где предел объявлен вызывающей стороне
-	 *       честно: отказ записи в канал назвал бы ей чужую причину
-	 */
-	if(size > (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t))){
-		// Записываем ошибку в лог
-		log::print("Cluster control message of %zu bytes exceeds the limit of %zu bytes", log::flag_t::WARNING, size, (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t)));
-		// Выводим отсутствие отправленных байт
-		return 0;
-	}
-	// Создаём заголовок служебного сообщения
-	::envelope_t envelope{};
-	// Устанавливаем вид служебного сообщения
-	envelope.type = static_cast <uint8_t> (type);
-	// Устанавливаем узел, которого сообщение касается
-	envelope.pid = static_cast <int32_t> (pid);
-	// Создаём буфер служебного сообщения
-	vector <uint8_t> message(sizeof(envelope) + size);
-	// Копируем заголовок служебного сообщения в буфер
-	::memcpy(message.data(), &envelope, sizeof(envelope));
-	// Если тело служебного сообщения передано
-	if((buffer != nullptr) && (size > 0))
-		// Копируем тело служебного сообщения в буфер
-		::memcpy(message.data() + sizeof(envelope), buffer, size);
-	// Отправляем служебное сообщение целиком одним обращением
-	return engine::send(eid, message.data(), message.size());
-}
 /**
  * @brief Метод извещения работников о входе либо выбытии узла
  *
@@ -2164,219 +2600,19 @@ void awh::unit::Cluster::announce(const control_t type, const pid_t pid) noexcep
 	 */
 	for(const auto & [node, worker] : this->_workers){
 		/**
-		 * Извещение уходит всем ПОДНЯВШИМСЯ, КРОМЕ названного узла
+		 * @brief Извещение уходит всем ПОДНЯВШИМСЯ, КРОМЕ названного узла
 		 *
 		 * @note Себе о своём входе работник вести счёт не обязан, а о своём выбытии
 		 *       извещать его уже некуда
 		 *
 		 * @warning Не дошедшему до цикла узлу извещение слать НЕЛЬЗЯ: свой список
 		 *          соседей он получит подъёмом, и посланное раньше пришло бы вторым
+		 *
 		 */
 		if((node != pid) && (this->_online.find(node) != this->_online.end()))
 			// Отправляем извещение работнику
 			this->dispatch(worker->cid, type, pid);
 	}
-}
-/**
- * @brief Метод заведения прямой связи между двумя работниками
- *
- * @param initiator узел, заказавший связь
- * @param peer      узел, с которым связь заказана
- * @param data      тело заказа: имя канала у MS Windows, пустое у систем POSIX
- * @param size      размер тела заказа
- *
- */
-void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept {
-	// Выполняем поиск заказавшего связь узла
-	auto i = this->_workers.find(initiator);
-	// Если заказавший связь узел кластеру не принадлежит, отвечать некому
-	if(i == this->_workers.end())
-		// Выходим из функции
-		return;
-	/**
-	 * Функция отказа в заведении связи
-	 *
-	 * @note Причина уходит заказавшему связь узлу телом сообщения: молчаливый отказ
-	 *       оставил бы его гадать, повторять ли заказ
-	 */
-	auto deny = [this, &i, peer](const reason_t reason) noexcept -> void {
-		// Получаем причину отказа в заведении связи
-		const uint8_t value = static_cast <uint8_t> (reason);
-		// Отправляем отказ в заведении связи заказавшему её узлу
-		this->dispatch(i->second->cid, control_t::DENY, peer, &value, sizeof(value));
-	};
-	// Если узел заказал связь с самим собой
-	if(initiator == peer)
-		// Отказываем в заведении связи
-		return deny(reason_t::ITSELF);
-	// Выполняем поиск узла, с которым связь заказана
-	auto j = this->_workers.find(peer);
-	// Если узла, с которым связь заказана, в кластере нет
-	if(j == this->_workers.end())
-		// Отказываем в заведении связи
-		return deny(reason_t::UNKNOWN);
-	{
-		// Выполняем поиск связей заказавшего узла
-		auto k = this->_links.find(initiator);
-		// Если связь между этими узлами уже заведена
-		if((k != this->_links.end()) && (k->second.find(peer) != k->second.end()))
-			// Отказываем в заведении связи
-			return deny(reason_t::EXISTS);
-	}
-	{
-		// Выполняем получение идентификатора функции обратного вызова
-		const callback_t::id_t fid = this->_callback.id("linking");
-		// Если мастер связь запретил
-		if(this->_callback.is(fid) && !this->_callback.call <bool (const pid_t, const pid_t)> (fid, initiator, peer))
-			// Отказываем в заведении связи
-			return deny(reason_t::REFUSED);
-	}
-	/**
-	 * Для операционной системы MS Windows
-	 *
-	 * @details Пару заводит сам заказавший узел, а мастеру достаётся одно лишь имя
-	 *          канала: передать описатель канала нельзя - перенос устройства события
-	 *          ведётся там описанием сокета, а канал сокетом не является. Оттого
-	 *          встреча идёт по имени, тем же путём, каким работник выходит на канал
-	 *          мастера
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если имени канала в заказе нет вовсе
-		if((data == nullptr) || (size == 0))
-			// Отказываем в заведении связи
-			return deny(reason_t::FAILED);
-		// Передаём имя канала узлу, с которым связь заказана
-		if(this->dispatch(j->second->cid, control_t::GRANT, initiator, data, size) == 0)
-			// Отказываем в заведении связи
-			return deny(reason_t::FAILED);
-		/**
-		 * Извещаем заказавшего узла о заведённой связи пустым телом
-		 *
-		 * @note Свой конец пары у него уже есть - он же её и завёл, - и поднимать ему
-		 *       нечего: сообщение это лишь подтверждает согласие мастера
-		 */
-		this->dispatch(i->second->cid, control_t::GRANT, peer);
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 *
-	 * @details Пару заводит мастер и раздаёт её концы обоим узлам снимками: событием-
-	 *          переносчиком годен узел межпроцессного обмена, и служебный канал к
-	 *          получателю им и является
-	 */
-	#else
-		// Заводим пару обмена для прямой связи работников
-		const auto & events = engine::events(event::family_t::UDS, this->_type);
-		// Если пара обмена не заведена
-		if((events[0] == 0) || (events[1] == 0)){
-			// Уничтожаем заведённые концы пары
-			if(events[0] != 0)
-				// Уничтожаем первый конец пары
-				engine::destroy(events[0]);
-			// Если второй конец пары заведён
-			if(events[1] != 0)
-				// Уничтожаем второй конец пары
-				engine::destroy(events[1]);
-			// Отказываем в заведении связи
-			return deny(reason_t::FAILED);
-		}
-		// Буфер снимка конца пары, предназначенного заказавшему связь узлу
-		vector <uint8_t> snapshot;
-		/**
-		 * Снимаем снимок и отправляем его тем же обращением
-		 *
-		 * @warning Порядок здесь значим: снятие снимка лишь ОТМЕЧАЕТ передачу описателя
-		 *          у переносчика, а уносит описатель ближайшее исходящее сообщение.
-		 *          Снять оба снимка подряд и лишь затем отправить два сообщения нельзя -
-		 *          метки разошлись бы с сообщениями
-		 */
-		if(!(engine::commit(events[0]) && engine::snapshot(events[0], i->second->cid, snapshot) &&
-		 (this->dispatch(i->second->cid, control_t::GRANT, peer, snapshot.data(), snapshot.size()) > 0))){
-			// Уничтожаем оба конца пары: раздать их не удалось
-			engine::destroy(events[0]);
-			// Уничтожаем второй конец пары
-			engine::destroy(events[1]);
-			// Отказываем в заведении связи
-			return deny(reason_t::FAILED);
-		}
-		/**
-		 * Отправляем второй конец пары узлу, с которым связь заказана
-		 *
-		 * @warning Отказ здесь оставляет заказавшего узла со своим концом на руках, и
-		 *          известить его о разрыве обязаны мы: сам он о нём не узнает, покуда
-		 *          не попробует что-нибудь отправить
-		 */
-		if(!(engine::commit(events[1]) && engine::snapshot(events[1], j->second->cid, snapshot) &&
-		 (this->dispatch(j->second->cid, control_t::GRANT, initiator, snapshot.data(), snapshot.size()) > 0))){
-			/**
-			 * Извещаем заказавшего узла РАЗРЫВОМ, а не отказом
-			 *
-			 * @note Свой конец пары он уже получил первым снимком, и отказ сказал бы ему
-			 *       неправду: связь завелась и тут же распалась, а не не завелась вовсе.
-			 *       Разрыв же он разберёт как обычно - снесёт своё событие
-			 */
-			this->dispatch(i->second->cid, control_t::DROP, peer);
-			// Уничтожаем оба конца пары
-			engine::destroy(events[0]);
-			// Уничтожаем второй конец пары
-			engine::destroy(events[1]);
-			// Записываем ошибку в лог
-			log::print("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", log::flag_t::CRITICAL, initiator, peer);
-			// Выходим из функции
-			return;
-		}
-		/**
-		 * Уничтожаем свои узлы пары: описатели ушли работникам
-		 *
-		 * @note Держать их у себя значило бы перехватывать обмен, предназначенный не нам
-		 */
-		engine::destroy(events[0]);
-		// Уничтожаем второй конец пары
-		engine::destroy(events[1]);
-	#endif
-	// Запоминаем заведённую связь у заказавшего узла
-	this->_links[initiator].emplace(peer);
-	// Запоминаем заведённую связь у узла, с которым связь заказана
-	this->_links[peer].emplace(initiator);
-	// Записываем в лог сообщение о заведённой связи
-	log::print("Cluster workers [%d] and [%d] have been linked", log::flag_t::INFO, initiator, peer);
-}
-/**
- * @brief Метод разрыва всех связей выбывающего узла
- *
- * @param pid выбывающий узел
- *
- */
-void awh::unit::Cluster::dissolve(const pid_t pid) noexcept {
-	// Выполняем поиск связей выбывающего узла
-	auto i = this->_links.find(pid);
-	// Если связей у выбывающего узла нет вовсе, разрывать нечего
-	if(i == this->_links.end())
-		// Выходим из функции
-		return;
-	/**
-	 * Переходим по всем связям выбывающего узла
-	 */
-	for(const pid_t peer : i->second){
-		// Выполняем поиск связей встречного узла
-		auto j = this->_links.find(peer);
-		// Если связи встречного узла найдены
-		if(j != this->_links.end()){
-			// Забываем связь с выбывающим узлом
-			j->second.erase(pid);
-			// Если связей у встречного узла больше не осталось
-			if(j->second.empty())
-				// Удаляем запись о связях встречного узла
-				this->_links.erase(j);
-		}
-		// Выполняем поиск встречного узла среди активных воркеров
-		auto k = this->_workers.find(peer);
-		// Если встречный узел ещё жив
-		if(k != this->_workers.end())
-			// Извещаем встречный узел о разрыве связи
-			this->dispatch(k->second->cid, control_t::DROP, pid);
-	}
-	// Удаляем запись о связях выбывающего узла
-	this->_links.erase(i);
 }
 /**
  * @brief Метод разбора служебного сообщения кластера
@@ -2388,10 +2624,11 @@ void awh::unit::Cluster::dissolve(const pid_t pid) noexcept {
  */
 void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	/**
-	 * Если сообщение короче заголовка - разбирать нечего
+	 * @brief Если сообщение короче заголовка - разбирать нечего
 	 *
 	 * @note Границы сообщений держит сам канал, и усечённым сообщение прийти не может:
 	 *       короткое сообщение означает чужую разметку, а не полученную наполовину
+	 *
 	 */
 	if((data == nullptr) || (size < sizeof(::envelope_t)))
 		// Выходим из функции
@@ -2427,11 +2664,11 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				// Если поднявшийся работник найден
 				if(j != this->_workers.end()){
 					/**
-					 * Извещаем новичка обо всех уже поднятых узлах
+					 * @brief Извещаем новичка обо всех уже поднятых узлах
 					 *
 					 * @note Своего способа узнать соседей у работника нет вовсе: он знает
-					 *       свой номер и номер мастера, и список этот - единственный
-					 *       путь к связи
+					 *       свой номер и номер мастера, и список этот - единственный путь к связи
+					 *
 					 */
 					for(const pid_t other : this->_online){
 						// Если узел новичком не является
@@ -2448,11 +2685,12 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				this->_callback.call <void (const pid_t)> ("join", pid);
 			} break;
 			/**
-			 * Если работник уходит сам
+			 * @brief Если работник уходит сам
 			 *
 			 * @warning Признак намеренного ухода обязан быть выставлен ДО того, как
 			 *          система известит о завершении процесса: разбор завершившегося по
 			 *          нему и решает, возрождать ли работника
+			 *
 			 */
 			case static_cast <uint8_t> (control_t::OFFLINE): {
 				// Помечаем узел уходящим намеренно
@@ -2513,10 +2751,11 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 			// Если в кластер вошёл узел
 			case static_cast <uint8_t> (control_t::JOIN): {
 				/**
-				 * Извещаем потребителя лишь о НОВОМ узле
+				 * @brief Извещаем потребителя лишь о НОВОМ узле
 				 *
 				 * @note Повторное извещение об уже известном узле увело бы потребителя к
 				 *       повторному заказу связи, а тот получил бы отказ `EXISTS`
+				 *
 				 */
 				if(this->_nodes.emplace(node).second)
 					// Выполняем функцию обратного вызова
@@ -2534,12 +2773,13 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				// Идентификатор события заведённой связи
 				event::id_t link = 0;
 				/**
-				 * Для операционной системы MS Windows
+				 * @brief Для операционной системы Microsoft Windows
 				 *
 				 * @details Пустое тело означает согласие мастера на связь, которую узел
 				 *          завёл сам: свой конец пары у него уже есть, и поднимать ему
 				 *          нечего. Имя же канала означает связь, заведённую соседом, - к
-				 *          ней выходят по имени
+				 *          ней выходят по имени.
+				 *
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Если тело сообщения пустое - связь завёл сам этот узел
@@ -2558,12 +2798,12 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 						if(link != 0){
 							// Устанавливаем имя канала связи событию
 							engine::setTarget(link, string(reinterpret_cast <const char *> (body), length));
-							// Устанавливаем функцию обратного вызова на событие чтения сообщений
-							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
-							// Устанавливаем функцию обратного вызова на событие изменения состояния
-							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на закрытие связи
 							engine::on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+							// Устанавливаем функцию обратного вызова на событие изменения состояния
+							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+							// Устанавливаем функцию обратного вызова на событие чтения сообщений
+							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 							// Выполняем фиксацию, подключение и запуск работы события связи
 							if(!(engine::commit(link) && engine::connect({link}) && engine::launch(link))){
 								// Уничтожаем событие связи
@@ -2574,11 +2814,12 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 						}
 					}
 				/**
-				 * Для операционных систем, отличных от MS Windows
+				 * @brief Для операционных систем, отличных от Microsoft Windows
 				 *
 				 * @details Конец пары приезжает описателем по служебному каналу, и узлу
 				 *          остаётся поднять его у себя. Фиксация не зовётся: описатель
-				 *          заведён чужим процессом, а подъём зовёт её сам
+				 *          заведён чужим процессом, а подъём зовёт её сам.
+				 *
 				 */
 				#else
 					// Заводим пустое событие под подъём приехавшего конца пары
@@ -2587,12 +2828,12 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 					if(link != 0){
 						// Поднимаем приехавший конец пары
 						if(engine::restore(link, body, length)){
-							// Устанавливаем функцию обратного вызова на событие чтения сообщений
-							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
-							// Устанавливаем функцию обратного вызова на событие изменения состояния
-							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на закрытие связи
 							engine::on(link, static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+							// Устанавливаем функцию обратного вызова на событие изменения состояния
+							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+							// Устанавливаем функцию обратного вызова на событие чтения сообщений
+							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 							// Запускаем работу события связи
 							if(!engine::launch(link)){
 								// Уничтожаем событие связи
@@ -2634,10 +2875,11 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 					// Снимаем причину отказа в заведении связи
 					reason = static_cast <reason_t> (body[0]);
 				/**
-				 * Уничтожаем свой конец пары, заведённый под связь
+				 * @brief Уничтожаем свой конец пары, заведённый под связь
 				 *
-				 * @note Заводит пару сам узел лишь у MS Windows; у систем POSIX её заводит
+				 * @note Заводит пару сам узел лишь у Microsoft Windows; у систем POSIX её заводит
 				 *       мастер, и уничтожать тут нечего
+				 *
 				 */
 				auto i = this->_peers.find(node);
 				// Если свой конец пары заведён
@@ -2684,10 +2926,11 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("shutdown");
 				/**
-				 * Если потребитель приказ перехватывает - уходить ему самому
+				 * @brief Если потребитель приказ перехватывает - уходить ему самому
 				 *
 				 * @note Довести своё дело до конца работник вправе: приказ этот не сигнал,
 				 *       и мгновенного ухода не требует
+				 *
 				 */
 				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
@@ -2697,6 +2940,224 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 			} break;
 		}
 	}
+}
+/**
+ * @brief Метод разрыва всех связей выбывающего узла
+ *
+ * @param pid выбывающий узел
+ *
+ */
+void awh::unit::Cluster::dissolve(const pid_t pid) noexcept {
+	// Выполняем поиск связей выбывающего узла
+	auto i = this->_links.find(pid);
+	// Если связей у выбывающего узла нет вовсе, разрывать нечего
+	if(i == this->_links.end())
+		// Выходим из функции
+		return;
+	/**
+	 * Переходим по всем связям выбывающего узла
+	 */
+	for(const pid_t peer : i->second){
+		// Выполняем поиск связей встречного узла
+		auto j = this->_links.find(peer);
+		// Если связи встречного узла найдены
+		if(j != this->_links.end()){
+			// Забываем связь с выбывающим узлом
+			j->second.erase(pid);
+			// Если связей у встречного узла больше не осталось
+			if(j->second.empty())
+				// Удаляем запись о связях встречного узла
+				this->_links.erase(j);
+		}
+		// Выполняем поиск встречного узла среди активных воркеров
+		auto k = this->_workers.find(peer);
+		// Если встречный узел ещё жив
+		if(k != this->_workers.end())
+			// Извещаем встречный узел о разрыве связи
+			this->dispatch(k->second->cid, control_t::DROP, pid);
+	}
+	// Удаляем запись о связях выбывающего узла
+	this->_links.erase(i);
+}
+/**
+ * @brief Метод заведения прямой связи между двумя работниками
+ *
+ * @param initiator узел, заказавший связь
+ * @param peer      узел, с которым связь заказана
+ * @param data      тело заказа: имя канала у Microsoft Windows, пустое у систем POSIX
+ * @param size      размер тела заказа
+ *
+ */
+void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept {
+	// Выполняем поиск заказавшего связь узла
+	auto i = this->_workers.find(initiator);
+	// Если заказавший связь узел кластеру не принадлежит, отвечать некому
+	if(i == this->_workers.end())
+		// Выходим из функции
+		return;
+	/**
+	 * @brief Функция отказа в заведении связи
+	 *
+	 * @note Причина уходит заказавшему связь узлу телом сообщения: молчаливый отказ
+	 *       оставил бы его гадать, повторять ли заказ
+	 *
+	 */
+	auto deny = [this, &i, peer](const reason_t reason) noexcept -> void {
+		// Получаем причину отказа в заведении связи
+		const uint8_t value = static_cast <uint8_t> (reason);
+		// Отправляем отказ в заведении связи заказавшему её узлу
+		this->dispatch(i->second->cid, control_t::DENY, peer, &value, sizeof(value));
+	};
+	// Если узел заказал связь с самим собой
+	if(initiator == peer)
+		// Отказываем в заведении связи
+		return deny(reason_t::ITSELF);
+	// Выполняем поиск узла, с которым связь заказана
+	auto j = this->_workers.find(peer);
+	// Если узла, с которым связь заказана, в кластере нет
+	if(j == this->_workers.end())
+		// Отказываем в заведении связи
+		return deny(reason_t::UNKNOWN);
+	{
+		// Выполняем поиск связей заказавшего узла
+		auto k = this->_links.find(initiator);
+		// Если связь между этими узлами уже заведена
+		if((k != this->_links.end()) && (k->second.find(peer) != k->second.end()))
+			// Отказываем в заведении связи
+			return deny(reason_t::EXISTS);
+	}{
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("linking");
+		// Если мастер связь запретил
+		if(this->_callback.is(fid) && !this->_callback.call <bool (const pid_t, const pid_t)> (fid, initiator, peer))
+			// Отказываем в заведении связи
+			return deny(reason_t::REFUSED);
+	}
+	/**
+	 * @brief Для операционной системы Microsoft Windows
+	 *
+	 * @details Пару заводит сам заказавший узел, а мастеру достаётся одно лишь имя
+	 *          канала: передать описатель канала нельзя - перенос устройства события
+	 *          ведётся там описанием сокета, а канал сокетом не является. Оттого
+	 *          встреча идёт по имени, тем же путём, каким работник выходит на канал мастера.
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Если имени канала в заказе нет вовсе
+		if((data == nullptr) || (size == 0))
+			// Отказываем в заведении связи
+			return deny(reason_t::FAILED);
+		// Передаём имя канала узлу, с которым связь заказана
+		if(this->dispatch(j->second->cid, control_t::GRANT, initiator, data, size) == 0)
+			// Отказываем в заведении связи
+			return deny(reason_t::FAILED);
+		/**
+		 * @brief Извещаем заказавшего узла о заведённой связи пустым телом
+		 *
+		 * @note Свой конец пары у него уже есть - он же её и завёл, - и поднимать ему
+		 *       нечего: сообщение это лишь подтверждает согласие мастера
+		 *
+		 */
+		this->dispatch(i->second->cid, control_t::GRANT, peer);
+	/**
+	 * @brief Для операционных систем, отличных от Microsoft Windows
+	 *
+	 * @details Пару заводит мастер и раздаёт её концы обоим узлам снимками: событием-
+	 *          переносчиком годен узел межпроцессного обмена, и служебный канал к
+	 *          получателю им и является.
+	 *
+	 */
+	#else
+		// Заводим пару обмена для прямой связи работников
+		const auto & events = engine::events(event::family_t::UDS, this->_type);
+		// Если пара обмена не заведена
+		if((events[0] == 0) || (events[1] == 0)){
+			// Уничтожаем заведённые концы пары
+			if(events[0] != 0)
+				// Уничтожаем первый конец пары
+				engine::destroy(events[0]);
+			// Если второй конец пары заведён
+			if(events[1] != 0)
+				// Уничтожаем второй конец пары
+				engine::destroy(events[1]);
+			// Отказываем в заведении связи
+			return deny(reason_t::FAILED);
+		}
+		// Буфер снимка конца пары, предназначенного заказавшему связь узлу
+		vector <uint8_t> snapshot;
+		/**
+		 * @brief Снимаем снимок и отправляем его тем же обращением
+		 *
+		 * @warning Порядок здесь значим: снятие снимка лишь ОТМЕЧАЕТ передачу описателя
+		 *          у переносчика, а уносит описатель ближайшее исходящее сообщение.
+		 *          Снять оба снимка подряд и лишь затем отправить два сообщения нельзя -
+		 *          метки разошлись бы с сообщениями
+		 *
+		 */
+		if(!(engine::commit(events[0]) && engine::snapshot(events[0], i->second->cid, snapshot) &&
+		  (this->dispatch(i->second->cid, control_t::GRANT, peer, snapshot.data(), snapshot.size()) > 0))){
+			// Уничтожаем оба конца пары: раздать их не удалось
+			engine::destroy(events[0]);
+			// Уничтожаем второй конец пары
+			engine::destroy(events[1]);
+			// Отказываем в заведении связи
+			return deny(reason_t::FAILED);
+		}
+		/**
+		 * @brief Отправляем второй конец пары узлу, с которым связь заказана
+		 *
+		 * @warning Отказ здесь оставляет заказавшего узла со своим концом на руках, и
+		 *          известить его о разрыве обязаны мы: сам он о нём не узнает, покуда
+		 *          не попробует что-нибудь отправить
+		 *
+		 */
+		if(!(engine::commit(events[1]) && engine::snapshot(events[1], j->second->cid, snapshot) &&
+		  (this->dispatch(j->second->cid, control_t::GRANT, initiator, snapshot.data(), snapshot.size()) > 0))){
+			/**
+			 * @brief Извещаем заказавшего узла РАЗРЫВОМ, а не отказом
+			 *
+			 * @note Свой конец пары он уже получил первым снимком, и отказ сказал бы ему
+			 *       неправду: связь завелась и тут же распалась, а не не завелась вовсе.
+			 *       Разрыв же он разберёт как обычно - снесёт своё событие
+			 *
+			 */
+			this->dispatch(i->second->cid, control_t::DROP, peer);
+			// Уничтожаем оба конца пары
+			engine::destroy(events[0]);
+			// Уничтожаем второй конец пары
+			engine::destroy(events[1]);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", __PRETTY_FUNCTION__, {initiator, peer, data, size}, log::flag_t::CRITICAL, initiator, peer);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster link between workers [%d] and [%d] has fallen apart on the second handover", log::flag_t::CRITICAL, initiator, peer);
+			#endif
+			// Выходим из функции
+			return;
+		}
+		/**
+		 * @brief Уничтожаем свои узлы пары: описатели ушли работникам
+		 *
+		 * @note Держать их у себя значило бы перехватывать обмен, предназначенный не нам
+		 *
+		 */
+		engine::destroy(events[0]);
+		// Уничтожаем второй конец пары
+		engine::destroy(events[1]);
+	#endif
+	// Запоминаем заведённую связь у заказавшего узла
+	this->_links[initiator].emplace(peer);
+	// Запоминаем заведённую связь у узла, с которым связь заказана
+	this->_links[peer].emplace(initiator);
+	// Записываем в лог сообщение о заведённой связи
+	log::print("Cluster workers [%d] and [%d] have been linked", log::flag_t::INFO, initiator, peer);
 }
 /**
  * @brief Метод обработки событий чтения по прямой связи с соседом
@@ -2715,61 +3176,61 @@ void awh::unit::Cluster::incoming(const event::id_t eid, const uint8_t * data, c
 		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("peer", i->second, data, size);
 }
 /**
- * @brief Метод обработки состояния прямой связи с соседом
+ * @brief Метод отправки служебного сообщения кластера
  *
- * @param eid    идентификатор события связи
- * @param status статус события
- *
- */
-void awh::unit::Cluster::broken(const event::id_t eid, const event::status_t status) noexcept {
-	// Если связь уничтожена
-	if(status == event::status_t::DESTROYED)
-		// Выполняем разбор разорванной связи
-		this->sever(eid);
-}
-/**
- * @brief Метод обработки закрытия прямой связи с соседом
- *
- * @param eid    идентификатор события связи
- * @param action действие, случившееся с событием
+ * @param eid    идентификатор служебного события
+ * @param type   вид служебного сообщения
+ * @param pid    узел, которого сообщение касается
+ * @param buffer тело служебного сообщения
+ * @param size   размер тела служебного сообщения
+ * @return       количество отправленных байт
  *
  */
-void awh::unit::Cluster::closed(const event::id_t eid, const event::action_t action) noexcept {
-	// Если связь закрыта
-	if(action == event::action_t::CLOSE)
-		// Выполняем разбор разорванной связи
-		this->sever(eid);
-}
-/**
- * @brief Метод разбора разорванной прямой связи
- *
- * @param eid идентификатор события связи
- *
- */
-void awh::unit::Cluster::sever(const event::id_t eid) noexcept {
-	// Выполняем поиск узла по идентификатору события связи
-	auto i = this->_matchingPeers.find(eid);
+size_t awh::unit::Cluster::dispatch(const event::id_t eid, const control_t type, const pid_t pid, const void * buffer, const size_t size) noexcept {
+	// Если служебного события нет вовсе, отправлять некуда
+	if(eid == 0)
+		// Выводим отсутствие отправленных байт
+		return 0;
 	/**
-	 * Если узел найден
+	 * @brief Если тело сообщения не вмещается в служебный канал
 	 *
-	 * @note Не найденный узел означает, что разрыв уже разобран другим признаком, а не
-	 *       ошибку: признаков разрыва два, и приходят они оба
+	 * @note Проверка эта - единственное место, где предел объявлен вызывающей стороне
+	 *       честно: отказ записи в канал назвал бы ей чужую причину
+	 *
 	 */
-	if(i != this->_matchingPeers.end()){
-		// Получаем узел, связь с которым разорвана
-		const pid_t node = i->second;
-		// Забываем соответствие события связи и узла
-		this->_matchingPeers.erase(i);
-		// Забываем разорванную связь
-		this->_peers.erase(node);
+	if(size > (::__AWH_CLUSTER_CONTROL_LIMIT__ - sizeof(::envelope_t))){
 		/**
-		 * Событие связи здесь НЕ уничтожается намеренно
-		 *
-		 * @note Оба признака приходят от самого движка, изымающего узел: уничтожать его
-		 *       из отклика значило бы сносить событие посреди его собственного разбора
+		 * Если включён режим отладки
 		 */
-		this->_callback.call <void (const pid_t, const reason_t)> ("unlinked", node, reason_t::NONE);
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster control message of %zu bytes exceeds the limit of %zu bytes", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (type), pid, buffer, size}, log::flag_t::WARNING, size, (::__AWH_CLUSTER_CONTROL_LIMIT__ - sizeof(::envelope_t)));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster control message of %zu bytes exceeds the limit of %zu bytes", log::flag_t::WARNING, size, (::__AWH_CLUSTER_CONTROL_LIMIT__ - sizeof(::envelope_t)));
+		#endif
+		// Выводим отсутствие отправленных байт
+		return 0;
 	}
+	// Создаём заголовок служебного сообщения
+	::envelope_t envelope{};
+	// Устанавливаем вид служебного сообщения
+	envelope.type = static_cast <uint8_t> (type);
+	// Устанавливаем узел, которого сообщение касается
+	envelope.pid = static_cast <int32_t> (pid);
+	// Создаём буфер служебного сообщения
+	vector <uint8_t> message(sizeof(envelope) + size);
+	// Копируем заголовок служебного сообщения в буфер
+	::memcpy(message.data(), &envelope, sizeof(envelope));
+	// Если тело служебного сообщения передано
+	if((buffer != nullptr) && (size > 0))
+		// Копируем тело служебного сообщения в буфер
+		::memcpy(message.data() + sizeof(envelope), buffer, size);
+	// Отправляем служебное сообщение целиком одним обращением
+	return engine::send(eid, message.data(), message.size());
 }
 /**
  * @brief Метод обработки событий записи сообщений кластера
@@ -2891,7 +3352,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						// Если уничтоженное событие соответствует событию процесса
 						if(i->second->eid == eid){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, AWH_CLUSTER_STOPPED);
+							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, __AWH_CLUSTER_STOPPED__);
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
 							// Удаляем завершившийся процесс из списка активных воркеров
@@ -3068,16 +3529,16 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
  */
 bool awh::unit::Cluster::exited(const int32_t status) noexcept {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
-		 * Различить возврат из main и снятие через TerminateProcess у MS Windows нельзя:
+		 * Различить возврат из main и снятие через TerminateProcess у Microsoft Windows нельзя:
 		 * код завершения выставляется и в том, и в другом случае. Отделяется потому лишь
 		 * то, что кодом возврата не является вовсе - падение, снятие с клавиатуры и
 		 * остановка воркера мастером
 		 */
-		return (!cluster_t::crashed(status) && !cluster_t::manual(status) && (status != ::AWH_CLUSTER_STOPPED));
+		return (!cluster_t::crashed(status) && !cluster_t::manual(status) && (status != ::__AWH_CLUSTER_STOPPED__));
 	/**
 	 * Для всех остальных операционных систем
 	 */
@@ -3087,73 +3548,25 @@ bool awh::unit::Cluster::exited(const int32_t status) noexcept {
 	#endif
 }
 /**
- * @brief Метод получения кода возврата завершившегося процесса
+ * @brief Метод проверки, снят ли процесс с клавиатуры
  *
  * @param status состояние завершения процесса
- * @return       код возврата процесса, либо EXIT_FAILURE при завершении ненормальном
+ * @return       признак ручной остановки процесса
  *
  */
-int32_t awh::unit::Cluster::exitcode(const int32_t status) noexcept {
+bool awh::unit::Cluster::manual(const int32_t status) noexcept {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		/**
-		 * Значение GetExitCodeProcess и есть код возврата, разбирать нечего. Ненормальное
-		 * же завершение кодом возврата не является вовсе: система кладёт туда NTSTATUS
-		 * прервавшего исключения, и выдавать его за код возврата было бы обманом
-		 */
-		return (cluster_t::exited(status) ? status : EXIT_FAILURE);
+		// Сообщаем, признана ли остановка ручной
+		return (static_cast <uint32_t> (status) == static_cast <uint32_t> (STATUS_CONTROL_C_EXIT));
 	/**
 	 * Для всех остальных операционных систем
 	 */
 	#else
-		// Возвращаем код возврата процесса
-		return (WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
-	#endif
-}
-/**
- * @brief Метод проверки, снят ли процесс сигналом
- *
- * @param status состояние завершения процесса
- * @return       признак того, что процесс снят сигналом
- *
- */
-bool awh::unit::Cluster::signaled([[maybe_unused]] const int32_t status) noexcept {
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Сигналов у MS Windows нет вовсе, снятым сигналом процесс быть не может
-		return false;
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Сообщаем, снят ли процесс сигналом
-		return WIFSIGNALED(status);
-	#endif
-}
-/**
- * @brief Метод получения номера сигнала, снявшего процесс
- *
- * @param status состояние завершения процесса
- * @return       номер сигнала, либо 0 если процесс снят не сигналом
- *
- */
-int32_t awh::unit::Cluster::termsig([[maybe_unused]] const int32_t status) noexcept {
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Сигналов у MS Windows нет вовсе, отдавать нечего
-		return 0;
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Возвращаем номер снявшего процесс сигнала
-		return (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
+		// Сообщаем, признана ли остановка ручной
+		return (WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT));
 	#endif
 }
 /**
@@ -3165,7 +3578,7 @@ int32_t awh::unit::Cluster::termsig([[maybe_unused]] const int32_t status) noexc
  */
 bool awh::unit::Cluster::crashed(const int32_t status) noexcept {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
@@ -3210,25 +3623,73 @@ bool awh::unit::Cluster::crashed(const int32_t status) noexcept {
 	#endif
 }
 /**
- * @brief Метод проверки, снят ли процесс с клавиатуры
+ * @brief Метод проверки, снят ли процесс сигналом
  *
  * @param status состояние завершения процесса
- * @return       признак ручной остановки процесса
+ * @return       признак того, что процесс снят сигналом
  *
  */
-bool awh::unit::Cluster::manual(const int32_t status) noexcept {
+bool awh::unit::Cluster::signaled([[maybe_unused]] const int32_t status) noexcept {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Сообщаем, признана ли остановка ручной
-		return (static_cast <uint32_t> (status) == static_cast <uint32_t> (STATUS_CONTROL_C_EXIT));
+		// Сигналов у Microsoft Windows нет вовсе, снятым сигналом процесс быть не может
+		return false;
 	/**
 	 * Для всех остальных операционных систем
 	 */
 	#else
-		// Сообщаем, признана ли остановка ручной
-		return (WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT));
+		// Сообщаем, снят ли процесс сигналом
+		return WIFSIGNALED(status);
+	#endif
+}
+/**
+ * @brief Метод получения кода возврата завершившегося процесса
+ *
+ * @param status состояние завершения процесса
+ * @return       код возврата процесса, либо EXIT_FAILURE при завершении ненормальном
+ *
+ */
+int32_t awh::unit::Cluster::exitcode(const int32_t status) noexcept {
+	/**
+	 * Для операционной системы Microsoft Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * Значение GetExitCodeProcess и есть код возврата, разбирать нечего. Ненормальное
+		 * же завершение кодом возврата не является вовсе: система кладёт туда NTSTATUS
+		 * прервавшего исключения, и выдавать его за код возврата было бы обманом
+		 */
+		return (cluster_t::exited(status) ? status : EXIT_FAILURE);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Возвращаем код возврата процесса
+		return (WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
+	#endif
+}
+/**
+ * @brief Метод получения номера сигнала, снявшего процесс
+ *
+ * @param status состояние завершения процесса
+ * @return       номер сигнала, либо 0 если процесс снят не сигналом
+ *
+ */
+int32_t awh::unit::Cluster::termsig([[maybe_unused]] const int32_t status) noexcept {
+	/**
+	 * Для операционной системы Microsoft Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Сигналов у Microsoft Windows нет вовсе, отдавать нечего
+		return 0;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Возвращаем номер снявшего процесс сигнала
+		return (WIFSIGNALED(status) ? WTERMSIG(status) : 0);
 	#endif
 }
 /**
@@ -3271,8 +3732,19 @@ void awh::unit::Cluster::start() noexcept {
 	 *       нём не может, а исключения в движке не применяются
 	 */
 	if(this->_rejected){
-		// Записываем ошибку в лог
-		log::print("Cluster is rejected as the second one in this process and cannot be started", log::flag_t::CRITICAL);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster is rejected as the second one in this process and cannot be started", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster is rejected as the second one in this process and cannot be started", log::flag_t::CRITICAL);
+		#endif
 		// Выходим из функции
 		return;
 	}
@@ -3309,6 +3781,61 @@ void awh::unit::Cluster::start() noexcept {
 	}
 }
 /**
+ * @brief Метод определения роли процесса до запуска кластера
+ *
+ * @details Отвечает на вопрос «запущен ли этот процесс работником» ещё до того, как
+ *          кластер начал работу: порядок подготовки у мастера и у работника
+ *          расходится, и знать роль нужно раньше запуска.
+ *
+ * @return признак того, что процесс запущен работником кластера
+ *
+ */
+bool awh::unit::Cluster::worker() const noexcept {
+	/**
+	 * @brief Для операционной системы Microsoft Windows
+	 *
+	 * @details Ветвления у этой системы нет: работник запускается заново тем же
+	 *          образом и той же строкой доводов, и отличает его лишь метка роли,
+	 *          выставленная мастером в окружении.
+	 *
+	 * @note Метка здесь только спрашивается: снимает её перенятие роли при запуске
+	 *       кластера, и снять её раньше значило бы отнять у него признак
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * @brief Роль спрашивается двумя путями, и оба нужны
+		 *
+		 * @note До перенятия роли работника выдаёт метка в окружении: номер процесса
+		 *       мастера ещё свой, и метод master ответил бы утвердительно. После
+		 *       перенятия метки уже нет, зато номер процесса мастера чужой, и ответ
+		 *       даёт сам master
+		 *
+		 */
+		return ((::GetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr, 0) != 0) || !this->master());
+	/**
+	 * @brief Для операционных систем POSIX
+	 *
+	 * @note Работник у них получается ветвлением и роль свою знает с первого мига:
+	 *       спрашивать окружение незачем
+	 *
+	 */
+	#else
+		// Выводим признак того, что процесс родительским не является
+		return !this->master();
+	#endif
+}
+/**
+ * @brief Метод получения предельного размера пересылаемого сообщения
+ *
+ * @return предельный размер тела пересылаемого сообщения в байтах
+ *
+ */
+size_t awh::unit::Cluster::maximumRelay() const noexcept {
+	// Выводим предельный размер тела пересылаемого сообщения
+	return (::__AWH_CLUSTER_CONTROL_LIMIT__ - sizeof(::envelope_t));
+}
+/**
  * @brief Метод очистки всех выделенных ресурсов
  *
  * @param shutdown тип завершения работы кластера
@@ -3342,12 +3869,12 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 		 *       записи об их связях и подъёме без них не значат ничего
 		 */
 		{
+			// Очищаем список связей между работниками
+			this->_links.clear();
 			// Очищаем список поднявшихся узлов
 			this->_online.clear();
 			// Очищаем список уходящих намеренно узлов
 			this->_leaving.clear();
-			// Очищаем список связей между работниками
-			this->_links.clear();
 		}
 	// Если процесс является дочерним то выводим сообщение об ошибке
 	} else {
@@ -3365,6 +3892,23 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 			log::print("Only the master process can clear the cluster", log::flag_t::WARNING);
 		#endif
 	}
+}
+/**
+ * @brief Метод получения события обмена с процессом кластера
+ *
+ * @param pid идентификатор процесса кластера
+ * @return    идентификатор события обмена с процессом кластера
+ *
+ */
+awh::event::id_t awh::unit::Cluster::channel(const pid_t pid) const noexcept {
+	// Выполняем поиск указанного процесса по идентификатору
+	auto i = this->_workers.find(pid);
+	// Если указанный процесс найден
+	if(i != this->_workers.end())
+		// Выводим идентификатор события обмена с процессом
+		return i->second->eid;
+	// Выводим отсутствие события обмена
+	return 0;
 }
 /**
  * @brief Метод размещения нового дочернего процесса
@@ -3422,16 +3966,17 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 				// Если требуется принудительное завершение работы процесса
 				if(shutdown == shutdown_t::FORCEFUL)
 					// Убиваем дочерний процесс
-					__awh_terminate__(i->first);
+					::__awh_terminate__(i->first);
 				// Удаляем процесс из списка активных воркеров
 				this->_workers.erase(i);
 				/**
-				 * Снимаем узел с учёта и разрываем его связи
+				 * @brief Снимаем узел с учёта и разрываем его связи
 				 *
 				 * @warning Разбор завершившегося процесса сюда НЕ придёт: воркера в списке
 				 *          активных уже нет, и известие системы о его смерти пройдёт мимо.
 				 *          Не разорви мы связи здесь - соседи держали бы события связи с
 				 *          покойником до конца своей работы
+				 *
 				 */
 				this->_leaving.erase(pid);
 				// Снимаем узел с учёта поднявшихся
@@ -3449,7 +3994,7 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING);
+			log::debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, {pid, static_cast <uint16_t> (shutdown)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3533,6 +4078,16 @@ void awh::unit::Cluster::count(const uint16_t count) noexcept {
 	this->_count = count;
 }
 /**
+ * @brief Метод получения списка известных работнику узлов кластера
+ *
+ * @return список известных узлов кластера
+ *
+ */
+unordered_set <pid_t> awh::unit::Cluster::nodes() const noexcept {
+	// Выводим список известных узлов кластера
+	return this->_nodes;
+}
+/**
  * @brief Метод получения списка дочерних процессов
  *
  * @return список дочерних процессов
@@ -3562,36 +4117,36 @@ unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
 void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
-	// Выполняем установку функции обратного вызова при завершении работы процесса
-	this->_callback.set("exit", callback);
-	// Выполняем установку функции обратного вызова при получении состояния процесса
-	this->_callback.set("state", callback);
-	// Выполняем установку функции обратного вызова при пересоздании процесса
-	this->_callback.set("rebase", callback);
-	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-	this->_callback.set("events", callback);
-	// Выполняем установку функции обратного вызова при отправке сообщения
-	this->_callback.set("sending", callback);
-	// Выполняем установку функции обратного вызова при получении сообщения
-	this->_callback.set("message", callback);
-	// Выполняем установку функции обратного вызова при получении доступности размера очереди сообщений
-	this->_callback.set("available", callback);
 	// Выполняем установку функции обратного вызова при входе узла в кластер
 	this->_callback.set("join", callback);
-	// Выполняем установку функции обратного вызова при выбытии узла из кластера
-	this->_callback.set("leave", callback);
-	// Выполняем установку функции обратного вызова при заведении прямой связи
-	this->_callback.set("linked", callback);
-	// Выполняем установку функции обратного вызова при разрыве прямой связи
-	this->_callback.set("unlinked", callback);
-	// Выполняем установку функции обратного вызова при запросе разрешения на связь
-	this->_callback.set("linking", callback);
+	// Выполняем установку функции обратного вызова при завершении работы процесса
+	this->_callback.set("exit", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения по прямой связи
 	this->_callback.set("peer", callback);
 	// Выполняем установку функции обратного вызова при получении пересылки через мастера
 	this->_callback.set("relay", callback);
+	// Выполняем установку функции обратного вызова при получении состояния процесса
+	this->_callback.set("state", callback);
+	// Выполняем установку функции обратного вызова при выбытии узла из кластера
+	this->_callback.set("leave", callback);
+	// Выполняем установку функции обратного вызова при пересоздании процесса
+	this->_callback.set("rebase", callback);
+	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
+	this->_callback.set("events", callback);
+	// Выполняем установку функции обратного вызова при заведении прямой связи
+	this->_callback.set("linked", callback);
+	// Выполняем установку функции обратного вызова при отправке сообщения
+	this->_callback.set("sending", callback);
+	// Выполняем установку функции обратного вызова при получении сообщения
+	this->_callback.set("message", callback);
+	// Выполняем установку функции обратного вызова при запросе разрешения на связь
+	this->_callback.set("linking", callback);
 	// Выполняем установку функции обратного вызова при получении приказа завершить работу
 	this->_callback.set("shutdown", callback);
+	// Выполняем установку функции обратного вызова при разрыве прямой связи
+	this->_callback.set("unlinked", callback);
+	// Выполняем установку функции обратного вызова при получении доступности размера очереди сообщений
+	this->_callback.set("available", callback);
 }
 /**
  * @brief Метод отправки сообщения родительскому процессу
@@ -3602,110 +4157,51 @@ void awh::unit::Cluster::callback(const callback_t & callback) noexcept {
  *
  */
 size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept {
-		// Если процесс является дочерним
-		if(!this->master()){
-			// Если родительский процесс живой
-			if(this->parent()){
-				// Выполняем поиск текущего процесса по идентификатору
-				auto i = this->_workers.find(::getpid());
-				// Если указанный процесс найден
-				if(i != this->_workers.end())
-					// Отправляем сообщение родительскому процессу
-					return engine::send(i->second->eid, buffer, size);
-			// Если родительский процесс умер
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, ::getpid());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Процесс превратился в зомби, самоликвидируем его
-					log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
-				#endif
-				// Выходим из приложения
-				::_exit(EXIT_FAILURE);
-			}
-		// Если процесс является родительским
+	// Если процесс является дочерним
+	if(!this->master()){
+		// Если родительский процесс живой
+		if(this->parent()){
+			// Выполняем поиск текущего процесса по идентификатору
+			auto i = this->_workers.find(::getpid());
+			// Если указанный процесс найден
+			if(i != this->_workers.end())
+				// Отправляем сообщение родительскому процессу
+				return engine::send(i->second->eid, buffer, size);
+		// Если родительский процесс умер
 		} else {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
+				log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, ::getpid());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Процесс превратился в зомби, самоликвидируем его
-				log::print("A message addressed to a parent process can only be sent from child processes", log::flag_t::WARNING);
+				log::print("Process [%d] has turned into a zombie, we perform self-destruction", log::flag_t::CRITICAL, ::getpid());
 			#endif
+			// Выходим из приложения
+			::_exit(EXIT_FAILURE);
 		}
-	// Возвращаем значение по умолчанию
-	return 0;
-}
-/**
- * @brief Метод определения роли процесса до запуска кластера
- *
- * @details Отвечает на вопрос «запущен ли этот процесс работником» ещё до того, как
- *          кластер начал работу: порядок подготовки у мастера и у работника
- *          расходится, и знать роль нужно раньше запуска
- *
- * @return признак того, что процесс запущен работником кластера
- *
- */
-bool awh::unit::Cluster::worker() const noexcept {
-	/**
-	 * Для операционной системы MS Windows
-	 *
-	 * @details Ветвления у этой системы нет: работник запускается заново тем же
-	 *          образом и той же строкой доводов, и отличает его лишь метка роли,
-	 *          выставленная мастером в окружении
-	 *
-	 * @note Метка здесь только спрашивается: снимает её перенятие роли при запуске
-	 *       кластера, и снять её раньше значило бы отнять у него признак
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	// Если процесс является родительским
+	} else {
 		/**
-		 * Роль спрашивается двумя путями, и оба нужны
-		 *
-		 * @note До перенятия роли работника выдаёт метка в окружении: номер процесса
-		 *       мастера ещё свой, и метод master ответил бы утвердительно. После
-		 *       перенятия метки уже нет, зато номер процесса мастера чужой, и ответ
-		 *       даёт сам master
+		 * Если включён режим отладки
 		 */
-		return ((::GetEnvironmentVariableW(L"AWH_CLUSTER_MASTER", nullptr, 0) != 0) || !this->master());
-	/**
-	 * Для операционных систем POSIX
-	 *
-	 * @note Работник у них получается ветвлением и роль свою знает с первого мига:
-	 *       спрашивать окружение незачем
-	 */
-	#else
-		// Выводим признак того, что процесс родительским не является
-		return !this->master();
-	#endif
-}
-/**
- * @brief Метод получения события обмена с процессом кластера
- *
- * @param pid идентификатор процесса кластера
- * @return    идентификатор события обмена с процессом кластера
- *
- */
-awh::event::id_t awh::unit::Cluster::channel(const pid_t pid) const noexcept {
-	// Выполняем поиск указанного процесса по идентификатору
-	auto i = this->_workers.find(pid);
-	// Если указанный процесс найден
-	if(i != this->_workers.end())
-		// Выводим идентификатор события обмена с процессом
-		return i->second->eid;
-	// Выводим отсутствие события обмена
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Процесс превратился в зомби, самоликвидируем его
+			log::print("A message addressed to a parent process can only be sent from child processes", log::flag_t::WARNING);
+		#endif
+	}
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -3718,30 +4214,30 @@ awh::event::id_t awh::unit::Cluster::channel(const pid_t pid) const noexcept {
  *
  */
 size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size_t size) noexcept {
-		// Если процесс является родительским
-		if(this->master()){
-			// Выполняем поиск указанного процесса по идентификатору
-			auto i = this->_workers.find(pid);
-			// Если указанный процесс найден
-			if(i != this->_workers.end())
-				// Отправляем сообщение дочернему процессу
-				return engine::send(i->second->eid, buffer, size);
-		// Если процесс является дочерним
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Процесс превратился в зомби, самоликвидируем его
-				log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
-			#endif
-		}
+	// Если процесс является родительским
+	if(this->master()){
+		// Выполняем поиск указанного процесса по идентификатору
+		auto i = this->_workers.find(pid);
+		// Если указанный процесс найден
+		if(i != this->_workers.end())
+			// Отправляем сообщение дочернему процессу
+			return engine::send(i->second->eid, buffer, size);
+	// Если процесс является дочерним
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Процесс превратился в зомби, самоликвидируем его
+			log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
+		#endif
+	}
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3754,37 +4250,37 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
  *
  */
 size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noexcept {
-		// Если процесс является родительским
-		if(this->master()){
-			// Если список активных воркеров не пустой
-			if(!this->_workers.empty()){
-				// Переменная результата
-				size_t result = 0;
-				/**
-				 * Переходим по всему списку активных воркеров
-				 */
-				for(const auto & [pid, worker] : this->_workers)
-					// Отправляем сообщение дочернему процессу
-					result += engine::send(worker->eid, buffer, size);
-				// Возвращаем результат
-				return result;
-			}
-		// Если процесс является дочерним
-		} else {
+	// Если процесс является родительским
+	if(this->master()){
+		// Если список активных воркеров не пустой
+		if(!this->_workers.empty()){
+			// Переменная результата
+			size_t result = 0;
 			/**
-			 * Если включён режим отладки
+			 * Переходим по всему списку активных воркеров
 			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Процесс превратился в зомби, самоликвидируем его
-				log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
-			#endif
+			for(const auto & [pid, worker] : this->_workers)
+				// Отправляем сообщение дочернему процессу
+				result += engine::send(worker->eid, buffer, size);
+			// Возвращаем результат
+			return result;
 		}
+	// Если процесс является дочерним
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Процесс превратился в зомби, самоликвидируем его
+			log::print("A message addressed to a child process can only be sent from the parent process", log::flag_t::WARNING);
+		#endif
+	}
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -3798,47 +4294,103 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
-		// Записываем ошибку в лог
-		log::print("Only a worker process can order a direct link", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Only a worker process can order a direct link", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Only a worker process can order a direct link", log::flag_t::WARNING);
+		#endif
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если служебный канал не заведён, заказывать связь нечем
 	if(this->_control == 0){
-		// Записываем ошибку в лог
-		log::print("Cluster control channel is not established, a direct link cannot be ordered", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster control channel is not established, a direct link cannot be ordered", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster control channel is not established, a direct link cannot be ordered", log::flag_t::WARNING);
+		#endif
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если узел заказал связь с самим собой
 	if(pid == static_cast <pid_t> (::getpid())){
-		// Записываем ошибку в лог
-		log::print("Cluster worker process [%d] cannot link to itself", log::flag_t::WARNING, pid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster worker process [%d] cannot link to itself", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING, pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster worker process [%d] cannot link to itself", log::flag_t::WARNING, pid);
+		#endif
 		// Выводим отрицательный результат
 		return false;
 	}
 	// Если связь с названным узлом уже заведена
 	if(this->_peers.find(pid) != this->_peers.end()){
-		// Записываем ошибку в лог
-		log::print("Cluster worker process [%d] is already linked", log::flag_t::WARNING, pid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster worker process [%d] is already linked", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING, pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster worker process [%d] is already linked", log::flag_t::WARNING, pid);
+		#endif
 		// Выводим отрицательный результат
 		return false;
 	}
 	/**
-	 * Для операционной системы MS Windows
+	 * @brief Для операционной системы Microsoft Windows
 	 *
 	 * @details Пару заводит сам заказавший узел: описатель канала передать нельзя -
 	 *          перенос устройства события ведётся описанием сокета, а канал сокетом не
 	 *          является, - и встреча идёт по имени. Мастеру уходит одно лишь имя, а тот
-	 *          доводит его до соседа, распорядившись правом на связь
+	 *          доводит его до соседа, распорядившись правом на связь.
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Заводим пару обмена для прямой связи
 		const auto & events = engine::events(event::family_t::PIPE, this->_type);
 		// Если пара обмена не заведена
 		if((events[0] == 0) || (events[1] == 0)){
-			// Записываем ошибку в лог
-			log::print("Cluster link channel could not be created", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster link channel could not be created", __PRETTY_FUNCTION__, {pid}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster link channel could not be created", log::flag_t::CRITICAL);
+			#endif
 			// Если первый конец пары заведён
 			if(events[0] != 0)
 				// Уничтожаем первый конец пары
@@ -3851,16 +4403,28 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 			return false;
 		}
 		/**
-		 * Снимаем имя канала ПРЕЖДЕ уничтожения второго конца
+		 * @brief Снимаем имя канала ПРЕЖДЕ уничтожения второго конца
 		 *
 		 * @note Уничтоженное событие имени уже не отдаст, а имя это - единственная точка
 		 *       встречи для соседа
+		 *
 		 */
 		const string & name = engine::getTarget(events[1]);
 		// Если имя канала связи получить не удалось
 		if(name.empty()){
-			// Записываем ошибку в лог
-			log::print("Cluster link channel name could not be obtained", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster link channel name could not be obtained", __PRETTY_FUNCTION__, {pid}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster link channel name could not be obtained", log::flag_t::CRITICAL);
+			#endif
 			// Уничтожаем первый конец пары
 			engine::destroy(events[0]);
 			// Уничтожаем второй конец пары
@@ -3870,23 +4434,35 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		}
 		// Уничтожаем второй конец пары: к нему сосед выйдет по имени
 		engine::destroy(events[1]);
-		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на закрытие связи
 		engine::on(events[0], static_cast <engine::callback::event_t> (std::bind(&cluster_t::closed, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие изменения состояния
+		engine::on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие чтения сообщений
+		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 		/**
-		 * Выполняем фиксацию и запуск своего конца канала связи
+		 * @brief Выполняем фиксацию и запуск своего конца канала связи
 		 *
 		 * @note Ожидания подключения тут не подаётся отдельно, в отличие от порождения
 		 *       работника: сосед выйдет на канал не раньше, чем заказ обойдёт мастера и
 		 *       дойдёт до него, - а это не один оборот цикла событий, и конец успеет
 		 *       встать в ожидание сам
+		 *
 		 */
 		if(!(engine::commit(events[0]) && engine::launch(events[0]))){
-			// Записываем ошибку в лог
-			log::print("Cluster link channel could not be launched", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster link channel could not be launched", __PRETTY_FUNCTION__, {pid}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster link channel could not be launched", log::flag_t::CRITICAL);
+			#endif
 			// Уничтожаем свой конец пары
 			engine::destroy(events[0]);
 			// Выводим отрицательный результат
@@ -3909,10 +4485,11 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		// Выводим отрицательный результат
 		return false;
 	/**
-	 * Для операционных систем, отличных от MS Windows
+	 * @brief Для операционных систем, отличных от Microsoft Windows
 	 *
 	 * @details Пару заводит мастер и раздаёт её концы описателями: заказ несёт один
-	 *          лишь номер узла
+	 *          лишь номер узла.
+	 *
 	 */
 	#else
 		// Отправляем мастеру заказ связи
@@ -3929,8 +4506,19 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 bool awh::unit::Cluster::unlink(const pid_t pid) noexcept {
 	// Если процесс является родительским
 	if(this->master()){
-		// Записываем ошибку в лог
-		log::print("Only a worker process can break a direct link", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Only a worker process can break a direct link", __PRETTY_FUNCTION__, {pid}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Only a worker process can break a direct link", log::flag_t::WARNING);
+		#endif
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -3949,6 +4537,158 @@ bool awh::unit::Cluster::unlink(const pid_t pid) noexcept {
 	// Извещаем мастера о разрыве связи
 	return (this->dispatch(this->_control, control_t::UNLINK, pid) > 0);
 }
+/**
+ * @brief Метод ухода работника из кластера по своей воле
+ *
+ * @param code код завершения работы
+ *
+ */
+void awh::unit::Cluster::leave(const int32_t code) noexcept {
+	// Если процесс является родительским
+	if(this->master()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Only a worker process can leave the cluster", __PRETTY_FUNCTION__, {code}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Only a worker process can leave the cluster", log::flag_t::WARNING);
+		#endif
+		// Выходим из функции
+		return;
+	}
+	/**
+	 * @brief Извещаем мастера об уходе прежде выхода
+	 *
+	 * @details Отправка отдаёт сообщение каналу тут же, покуда очередь его пуста, и
+	 *          возврата отсюда довольно: отданное в буфер ядра переживает смерть
+	 *          отправителя - приёмный конец принадлежит мастеру, и тот дочитает
+	 *          известие уже после того, как работника не станет.
+	 *
+	 * @note Извещение уходит даже тогда, когда служебного канала нет вовсе: выход в
+	 *       таком случае идёт молча, и мастер узнает об уходе одним лишь завершением
+	 *       процесса - возродив работника, если возрождение включено
+	 *
+	 */
+	if(this->_control != 0)
+		// Извещаем мастера о своём уходе
+		this->dispatch(this->_control, control_t::OFFLINE, static_cast <pid_t> (::getpid()), &code, sizeof(code));
+	// Записываем в лог сообщение об уходе работника
+	log::print("Cluster worker process [%d] is leaving with code %d", log::flag_t::INFO, ::getpid(), code);
+	// Завершаем работу процесса названным кодом
+	::_exit(code);
+}
+/**
+ * @brief Метод приказа работнику завершить работу
+ *
+ * @param pid  узел, которому велено завершить работу
+ * @param code код завершения работы
+ * @return     признак того, что приказ отправлен работнику
+ *
+ */
+bool awh::unit::Cluster::shutdown(const pid_t pid, const int32_t code) noexcept {
+	// Если процесс является дочерним
+	if(!this->master()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Only the master process can order a worker to terminate", __PRETTY_FUNCTION__, {pid, code}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Only the master process can order a worker to terminate", log::flag_t::WARNING);
+		#endif
+		// Выводим отрицательный результат
+		return false;
+	}
+	// Выполняем поиск узла, которому велено завершить работу
+	auto i = this->_workers.find(pid);
+	// Если узла в кластере нет вовсе
+	if(i == this->_workers.end())
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * @brief Помечаем узел уходящим намеренно ПРЕЖДЕ отправки приказа
+	 *
+	 * @warning Порядок здесь значим: работник вправе уйти немедленно, и известие
+	 *          системы о завершившемся процессе способно опередить возврат отсюда.
+	 *          Признак, выставленный после, застал бы разбор завершившегося уже
+	 *          прошедшим - и тот возродил бы ушедшего по приказу работника
+	 *
+	 */
+	this->_leaving.emplace(pid);
+	// Отправляем работнику приказ завершить работу
+	if(this->dispatch(i->second->cid, control_t::SHUTDOWN, pid, &code, sizeof(code)) > 0)
+		// Выводим положительный результат
+		return true;
+	// Снимаем признак намеренного ухода: приказ до работника не дошёл
+	this->_leaving.erase(pid);
+	// Выводим отрицательный результат
+	return false;
+}
+/**
+ * @brief Метод пересылки сообщения соседу через мастера
+ *
+ * @param pid    узел, которому предназначено сообщение
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
+ * @return       количество байт отправленного сообщения
+ *
+ */
+size_t awh::unit::Cluster::relay(const pid_t pid, const void * buffer, const size_t size) noexcept {
+	// Если процесс является родительским
+	if(this->master()){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Only a worker process can relay a message through the master", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Only a worker process can relay a message through the master", log::flag_t::WARNING);
+		#endif
+		// Возвращаем значение по умолчанию
+		return 0;
+	}
+	// Если служебный канал не заведён, пересылать нечем
+	if(this->_control == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Cluster control channel is not established, a message cannot be relayed", __PRETTY_FUNCTION__, {pid, buffer, size}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Cluster control channel is not established, a message cannot be relayed", log::flag_t::WARNING);
+		#endif
+		// Возвращаем значение по умолчанию
+		return 0;
+	}
+	// Пересылаем сообщение названному узлу через мастера
+	if(this->dispatch(this->_control, control_t::RELAY, pid, buffer, size) > 0)
+		// Выводим размер пересланного тела сообщения
+		return size;
+	// Возвращаем значение по умолчанию
+	return 0;
+}
+
 /**
  * @brief Метод отправки сообщения соседу по прямой связи
  *
@@ -3980,131 +4720,6 @@ size_t awh::unit::Cluster::transmit(const pid_t pid, const void * buffer, const 
 	#endif
 	// Возвращаем значение по умолчанию
 	return 0;
-}
-/**
- * @brief Метод пересылки сообщения соседу через мастера
- *
- * @param pid    узел, которому предназначено сообщение
- * @param buffer бинарный буфер для отправки сообщения
- * @param size   размер бинарного буфера для отправки сообщения
- * @return       количество байт отправленного сообщения
- *
- */
-size_t awh::unit::Cluster::relay(const pid_t pid, const void * buffer, const size_t size) noexcept {
-	// Если процесс является родительским
-	if(this->master()){
-		// Записываем ошибку в лог
-		log::print("Only a worker process can relay a message through the master", log::flag_t::WARNING);
-		// Возвращаем значение по умолчанию
-		return 0;
-	}
-	// Если служебный канал не заведён, пересылать нечем
-	if(this->_control == 0){
-		// Записываем ошибку в лог
-		log::print("Cluster control channel is not established, a message cannot be relayed", log::flag_t::WARNING);
-		// Возвращаем значение по умолчанию
-		return 0;
-	}
-	// Пересылаем сообщение названному узлу через мастера
-	if(this->dispatch(this->_control, control_t::RELAY, pid, buffer, size) > 0)
-		// Выводим размер пересланного тела сообщения
-		return size;
-	// Возвращаем значение по умолчанию
-	return 0;
-}
-/**
- * @brief Метод получения предельного размера пересылаемого сообщения
- *
- * @return предельный размер тела пересылаемого сообщения в байтах
- *
- */
-size_t awh::unit::Cluster::maximumRelay() const noexcept {
-	// Выводим предельный размер тела пересылаемого сообщения
-	return (::AWH_CLUSTER_CONTROL_LIMIT - sizeof(::envelope_t));
-}
-/**
- * @brief Метод получения списка известных работнику узлов кластера
- *
- * @return список известных узлов кластера
- *
- */
-unordered_set <pid_t> awh::unit::Cluster::nodes() const noexcept {
-	// Выводим список известных узлов кластера
-	return this->_nodes;
-}
-/**
- * @brief Метод приказа работнику завершить работу
- *
- * @param pid  узел, которому велено завершить работу
- * @param code код завершения работы
- * @return     признак того, что приказ отправлен работнику
- *
- */
-bool awh::unit::Cluster::shutdown(const pid_t pid, const int32_t code) noexcept {
-	// Если процесс является дочерним
-	if(!this->master()){
-		// Записываем ошибку в лог
-		log::print("Only the master process can order a worker to terminate", log::flag_t::WARNING);
-		// Выводим отрицательный результат
-		return false;
-	}
-	// Выполняем поиск узла, которому велено завершить работу
-	auto i = this->_workers.find(pid);
-	// Если узла в кластере нет вовсе
-	if(i == this->_workers.end())
-		// Выводим отрицательный результат
-		return false;
-	/**
-	 * Помечаем узел уходящим намеренно ПРЕЖДЕ отправки приказа
-	 *
-	 * @warning Порядок здесь значим: работник вправе уйти немедленно, и известие
-	 *          системы о завершившемся процессе способно опередить возврат отсюда.
-	 *          Признак, выставленный после, застал бы разбор завершившегося уже
-	 *          прошедшим - и тот возродил бы ушедшего по приказу работника
-	 */
-	this->_leaving.emplace(pid);
-	// Отправляем работнику приказ завершить работу
-	if(this->dispatch(i->second->cid, control_t::SHUTDOWN, pid, &code, sizeof(code)) > 0)
-		// Выводим положительный результат
-		return true;
-	// Снимаем признак намеренного ухода: приказ до работника не дошёл
-	this->_leaving.erase(pid);
-	// Выводим отрицательный результат
-	return false;
-}
-/**
- * @brief Метод ухода работника из кластера по своей воле
- *
- * @param code код завершения работы
- *
- */
-void awh::unit::Cluster::leave(const int32_t code) noexcept {
-	// Если процесс является родительским
-	if(this->master()){
-		// Записываем ошибку в лог
-		log::print("Only a worker process can leave the cluster", log::flag_t::WARNING);
-		// Выходим из функции
-		return;
-	}
-	/**
-	 * Извещаем мастера об уходе прежде выхода
-	 *
-	 * @details Отправка отдаёт сообщение каналу тут же, покуда очередь его пуста, и
-	 *          возврата отсюда довольно: отданное в буфер ядра переживает смерть
-	 *          отправителя - приёмный конец принадлежит мастеру, и тот дочитает
-	 *          известие уже после того, как работника не станет
-	 *
-	 * @note Извещение уходит даже тогда, когда служебного канала нет вовсе: выход в
-	 *       таком случае идёт молча, и мастер узнает об уходе одним лишь завершением
-	 *       процесса - возродив работника, если возрождение включено
-	 */
-	if(this->_control != 0)
-		// Извещаем мастера о своём уходе
-		this->dispatch(this->_control, control_t::OFFLINE, static_cast <pid_t> (::getpid()), &code, sizeof(code));
-	// Записываем в лог сообщение об уходе работника
-	log::print("Cluster worker process [%d] is leaving with code %d", log::flag_t::INFO, ::getpid(), code);
-	// Завершаем работу процесса названным кодом
-	::_exit(code);
 }
 /**
  * @brief Метод получения размера буфера события
@@ -4171,24 +4786,36 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
  */
 awh::unit::Cluster::Cluster() noexcept :
  unit_t(), _name{AWH_SHORT_NAME}, _rejected(false),
- _count(0), _wakeup(0), _type(event::type_t::SEQPACKET), _control(0) {
+ _count(0), _wakeup(0), _control(0), _type(event::type_t::SEQPACKET) {
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Обнуляем дескриптор объекта родительского процесса (захватывается дочерним процессом при запуске)
 		this->_master = 0;
 		/**
-		 * Если кластер уже был создан ранее
+		 * @brief Если кластер уже был создан ранее
 		 *
 		 * @warning Отвергнутый кластер объекта процесса НЕ перехватывает: перехват
 		 *          увёл бы к нему дочерние процессы первого кластера
+		 *
 		 */
 		if(::__awh_cluster__ != nullptr){
 			// Помечаем кластер отвергнутым
 			this->_rejected = true;
-			// Записываем ошибку в лог
-			log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("A cluster already exists in this process: the second one is rejected and will not be started", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
+			#endif
 			// Выходим из конструктора
 			return;
 		}
@@ -4205,21 +4832,33 @@ awh::unit::Cluster::Cluster() noexcept :
 			// Уменьшаем количество воркеров в два раза
 			this->_count /= 2;
 	/**
-	 * Для операционных систем, отличных от MS Windows
+	 * Для операционных систем, отличных от Microsoft Windows
 	 */
 	#else
 		/**
-		 * Если кластер уже был создан ранее
+		 * @brief Если кластер уже был создан ранее
 		 *
 		 * @warning Отвергнутый кластер НЕ трогает ни объект процесса, ни перехватчик
 		 *          сигнала SIGCHLD: перехват увёл бы к нему дочерние процессы первого
 		 *          кластера, а снятие оставило бы первый без оповещений вовсе
+		 *
 		 */
 		if(::__awh_cluster__ != nullptr){
 			// Помечаем кластер отвергнутым
 			this->_rejected = true;
-			// Записываем ошибку в лог
-			log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("A cluster already exists in this process: the second one is rejected and will not be started", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("A cluster already exists in this process: the second one is rejected and will not be started", log::flag_t::CRITICAL);
+			#endif
 		// Если кластер ещё не создан
 		} else {
 			// Выполняем установку объекта кластера
@@ -4262,7 +4901,7 @@ awh::unit::Cluster::~Cluster() noexcept {
 		this->_wakeup = 0;
 	}
 	/**
-	 * Для операционной системы MS Windows
+	 * Для операционной системы Microsoft Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Если дескриптор объекта родительского процесса был получен
@@ -4275,17 +4914,17 @@ awh::unit::Cluster::~Cluster() noexcept {
 		// Если разрушаемый объект является текущим зарегистрированным кластером
 		if(::__awh_cluster__ == this){
 			// Список наблюдаемых процессов, снятый для устранения
-			std::unordered_map <pid_t, Child> children;
+			unordered_map <pid_t, ::child_t> children;
 			{
 				// Выполняем блокировку замка доступа к спискам дочерних процессов
-				const awh::locker_t <> lock(::__awh_children_mutex__);
+				const awh::locker_t <> lock(::__awh_mtx__);
 				// Снимаем список наблюдаемых процессов целиком
 				children.swap(::__awh_children__);
 				// Очищаем очередь завершившихся процессов
 				::__awh_finished__.clear();
 			}
 			/**
-			 * Ожидания снимаются ВНЕ замка
+			 * @brief Ожидания снимаются ВНЕ замка
 			 *
 			 * @warning Довод тот же, что и у разбора завершившегося процесса: снятие с
 			 *          `INVALID_HANDLE_VALUE` не возвращается, покуда не отработают уже
@@ -4308,10 +4947,11 @@ awh::unit::Cluster::~Cluster() noexcept {
 					::CloseHandle(child.process);
 			}
 			/**
-			 * Закрываем объект задания
+			 * @brief Закрываем объект задания
 			 *
-			 * Закрытие последнего дескриптора задания снимает все входящие в него
-			 * процессы - тем и завершается работа воркеров, переживших мастера
+			 * @details Закрытие последнего дескриптора задания снимает все входящие в него
+			 *          процессы - тем и завершается работа воркеров, переживших мастера.
+			 *
 			 */
 			if(::__awh_job__ != nullptr){
 				// Закрываем объект задания
@@ -4323,7 +4963,7 @@ awh::unit::Cluster::~Cluster() noexcept {
 			::__awh_cluster__ = nullptr;
 		}
 	/**
-	 * Для операционных систем, отличных от MS Windows
+	 * Для операционных систем, отличных от Microsoft Windows
 	 */
 	#else
 		// Если разрушаемый объект является текущим зарегистрированным кластером
