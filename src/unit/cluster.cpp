@@ -2804,8 +2804,8 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 							engine::on(link, static_cast <engine::callback::status_t> (std::bind(&cluster_t::broken, this, _1, _2)));
 							// Устанавливаем функцию обратного вызова на событие чтения сообщений
 							engine::on(link, static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
-							// Выполняем фиксацию, подключение и запуск работы события связи
-							if(!(engine::commit(link) && engine::connect({link}) && engine::launch(link))){
+							// Открываем канал при фиксации, включаем очередь отправки и подключаем событие связи
+							if(!(engine::commit(link) && engine::setOptions(link, event::options::NO_IO_BLOCK) && engine::connect({link}) && engine::launch(link))){
 								// Уничтожаем событие связи
 								engine::destroy(link);
 								// Сбрасываем идентификатор события связи
@@ -4441,7 +4441,10 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		// Устанавливаем функцию обратного вызова на событие чтения сообщений
 		engine::on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::incoming, this, _1, _2, _3)));
 		/**
-		 * @brief Выполняем фиксацию и запуск своего конца канала связи
+		 * @brief Включаем неблокирующую отправку, фиксируем и запускаем свой конец канала связи
+		 *
+		 * @note Разрешение мастера может прийти раньше подключения соседа: первая
+		 *       отправка тогда сохраняется в очереди до готовности канала
 		 *
 		 * @note Ожидания подключения тут не подаётся отдельно, в отличие от порождения
 		 *       работника: сосед выйдет на канал не раньше, чем заказ обойдёт мастера и
@@ -4449,7 +4452,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 		 *       встать в ожидание сам
 		 *
 		 */
-		if(!(engine::commit(events[0]) && engine::launch(events[0]))){
+		if(!(engine::setOptions(events[0], event::options::NO_IO_BLOCK) && engine::commit(events[0]) && engine::launch(events[0]))){
 			/**
 			 * Если включён режим отладки
 			 */

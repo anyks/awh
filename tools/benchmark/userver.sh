@@ -188,8 +188,89 @@ readonly LIBS=$(find "$WORKDIR/_deps" -name 'libfmt.a' -o -name 'libcctz.a' \
 # Каталог установленной библиотеки yaml-cpp
 #
 # Реализация userver берёт yaml-cpp из установленной библиотеки: настроенная выше
-# сборка разрешает её своим розыском, и стенду нужен тот же самый префикс
+# сборка разрешает её своим розыском, и стенду нужен тот же самый префикс. Префикс
+# этот обязан нести тот же выпуск yaml-cpp, каким собран стенд самого yaml-cpp в
+# наборе «tools/benchmark/yaml»: расхождение выпусков делает несравнимыми ряд
+# соперника и ряд слоя поверх него
 readonly YAMLCPP="${YAMLCPP_ROOT:-/opt/homebrew}"
+
+# Каталог библиотек Boost
+#
+# Настройка userver сама нашла Boost и записала путь к его настройке в кэш сборки,
+# а каталог библиотек лежит на два уровня выше записанного. Прежде стенд брал этот
+# каталог из префикса yaml-cpp, что верно лишь пока префикс совпадает с системным:
+# на префиксе, собранном отдельно, связывание отказывало розыском библиотеки
+# «boost_stacktrace_basic»
+readonly BOOST_CMAKE_DIR=$(sed -n 's|^Boost_DIR:PATH=\(.*\)$|\1|p' "$WORKDIR/CMakeCache.txt")
+
+# Если настройка Boost в кэше сборки не найдена
+if [ -z "$BOOST_CMAKE_DIR" ]; then
+	# Выводим сообщение об отсутствии записи
+	echo "Error: \"Boost_DIR\" not found in \"$WORKDIR/CMakeCache.txt\"" >&2
+	# Выходим с ошибкой
+	exit 1
+fi
+
+# Выполняем выведение каталога библиотек Boost из каталога его настройки
+readonly BOOST_LIBDIR=$(cd "$BOOST_CMAKE_DIR/../.." && pwd)
+
+# Если каталог библиотек Boost не существует
+if [ ! -d "$BOOST_LIBDIR" ]; then
+	# Выводим сообщение о неверном пути
+	echo "Error: Boost library directory \"$BOOST_LIBDIR\" does not exist" >&2
+	# Выходим с ошибкой
+	exit 1
+fi
+
+##
+# Сличаем выпуск yaml-cpp, какой ушёл в компиляцию библиотеки userver, с запрошенным
+#
+# Настройка userver ставит системный каталог включений в список раньше префикса, какой
+# ей указали, и компилятор берёт заголовки yaml-cpp из системного каталога. Запись
+# журнала настройки о найденной библиотеке остаётся при этом верной, а заголовки
+# оказываются чужого выпуска: стенд собирается и даёт ряд слоя userver поверх одного
+# выпуска, тогда как стенд самого yaml-cpp в наборе «tools/benchmark/yaml» собран из
+# подмодуля другого выпуска. Расхождение это молчаливо, потому и поверяется здесь
+##
+# Выполняем чтение списка включений цели сборки библиотеки userver
+readonly UV_INCLUDES=$(sed -n 's/^CXX_INCLUDES = //p' "$FLAGS_MAKE")
+
+# Выполняем подготовку переменной действующего каталога включений
+YAMLCPP_EFFECTIVE=""
+
+# Выполняем перебор слов списка включений
+for INCLUDE in $UV_INCLUDES; do
+	# Если слово есть ключ с приклеенным каталогом, отделяем каталог от ключа
+	case "$INCLUDE" in
+		-I*) INCLUDE="${INCLUDE#-I}" ;;
+		-*) continue ;;
+	esac
+	# Если заголовок yaml-cpp в очередном каталоге выложен, розыск окончен
+	if [ -f "$INCLUDE/yaml-cpp/yaml.h" ]; then
+		# Запоминаем действующий каталог включений
+		YAMLCPP_EFFECTIVE="$INCLUDE"
+		# Прекращаем перебор
+		break
+	fi
+done
+
+# Если каталог включений, несущий заголовок yaml-cpp, не найден
+if [ -z "$YAMLCPP_EFFECTIVE" ]; then
+	# Выводим сообщение об отсутствии заголовка
+	echo "Error: no include directory with \"yaml-cpp/yaml.h\" in \"$FLAGS_MAKE\"" >&2
+	# Выходим с ошибкой
+	exit 1
+fi
+
+# Если в компиляцию ушёл не тот каталог, какой запрошен префиксом
+if [ "$YAMLCPP_EFFECTIVE" != "$YAMLCPP/include" ]; then
+	# Выводим сообщение о подмене выпуска
+	echo "Error: userver is compiled against \"$YAMLCPP_EFFECTIVE\", not the requested \"$YAMLCPP/include\"" >&2
+	# Выводим указание к устранению подмены
+	echo "The system include directory precedes the prefix: drop the system yaml-cpp or take it as the prefix" >&2
+	# Выходим с ошибкой
+	exit 1
+fi
 
 # Выполняем сборку стенда контейнера JSON
 echo "Build \"userver-json\""
@@ -200,7 +281,7 @@ echo "Build \"userver-json\""
 # несет пробелы и заключено в кавычки внутри самой строки настроек
 eval c++ $FLAGS $DEFS $INCS \
 	-I"$JSON_STANDS" -I"$RE2_PREFIX/include" -I"$YAMLCPP/include" \
-	-L"$YAMLCPP/lib" \
+	-L"$YAMLCPP/lib" -L"$BOOST_LIBDIR" \
 	"\"$JSON_STANDS/userver.cpp\"" \
 	"\"$WORKDIR/universal/libuserver-universal.a\"" $LIBS \
 	"\"$RE2_PREFIX/lib/libre2.a\"" \
@@ -213,7 +294,7 @@ echo "Build \"userver-yaml\""
 # Выполняем сборку стенда дерева настроек YAML
 eval c++ $FLAGS $DEFS $INCS \
 	-I"$YAML_STANDS" -I"$RE2_PREFIX/include" -I"$YAMLCPP/include" \
-	-L"$YAMLCPP/lib" \
+	-L"$YAMLCPP/lib" -L"$BOOST_LIBDIR" \
 	"\"$YAML_STANDS/userver.cpp\"" \
 	"\"$WORKDIR/universal/libuserver-universal.a\"" $LIBS \
 	"\"$RE2_PREFIX/lib/libre2.a\"" \
