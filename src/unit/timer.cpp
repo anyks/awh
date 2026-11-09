@@ -59,7 +59,7 @@ void awh::unit::Timer::state(const event::id_t eid, const event::status_t status
 					callback(eid);
 			}
 			// Если узел таймера является таймаутом
-			if(engine::node(eid) == event::node_t::TIMEOUT)
+			if(engine::io::node(eid) == event::node_t::TIMEOUT)
 				// Удаляем таймер из списка активных таймеров
 				this->clear(eid);
 		} break;
@@ -86,9 +86,9 @@ void awh::unit::Timer::clear() noexcept {
 		// Удаляем функцию обратного вызова для события таймера
 		this->_callback.erase(eid);
 		// Снимаем функцию обратного вызова на событие таймера
-		engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+		engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 		// Удаляем событие таймера
-		engine::destroy(eid);
+		engine::io::destroy(eid);
 	}
 	// Очищаем список активных таймеров
 	this->_timers.clear();
@@ -103,9 +103,9 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 	// Удаляем функцию обратного вызова для события таймера
 	this->_callback.erase(eid);
 	// Снимаем функцию обратного вызова на событие таймера
-	engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+	engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 	// Удаляем событие таймера
-	engine::destroy(eid);
+	engine::io::destroy(eid);
 	// Удаляем идентификатор таймера из списка активных таймеров
 	this->_timers.erase(eid);
 }
@@ -118,19 +118,19 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
  */
 awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
-	event::id_t result = engine::event(event::node_t::TIMEOUT, event::family_t::TIMER);
+	event::id_t result = engine::io::event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Если событие таймера успешно создано
 	if(result > 0){
 		// Добавляем новое событие таймера
-		engine::setTimeout(result, event::action_t::NONE, delay);
+		engine::timer::timeout(result, event::action_t::NONE, delay);
 		// Выполняем фиксацию настроек события таймера
-		if(engine::commit(result)){
+		if(engine::io::commit(result)){
 			// Устанавливаем функцию обратного вызова на событие таймера
-			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 			// Запускаем работу события таймера
-			if(!engine::launch(result)){
+			if(!engine::io::launch(result)){
 				// Удаляем событие таймера
-				engine::destroy(result);
+				engine::io::destroy(result);
 				// Обнуляем результат
 				result = 0;
 				/**
@@ -151,7 +151,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 		// Если событие таймера не может быть запущено
 		} else {
 			// Удаляем событие таймера
-			engine::destroy(result);
+			engine::io::destroy(result);
 			// Обнуляем результат
 			result = 0;
 			/**
@@ -181,19 +181,19 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
  */
 awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 	// Создаём новое событие таймера
-	event::id_t result = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
+	event::id_t result = engine::io::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Если событие таймера успешно создано
 	if(result > 0){
 		// Добавляем новое событие таймера
-		engine::setTimeout(result, event::action_t::NONE, delay);
+		engine::timer::timeout(result, event::action_t::NONE, delay);
 		// Выполняем фиксацию настроек события таймера
-		if(engine::commit(result)){
+		if(engine::io::commit(result)){
 			// Устанавливаем функцию обратного вызова на событие таймера
-			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&unit::timer_t::state, this, _1, _2)));
 			// Запускаем работу события таймера
-			if(!engine::launch(result)){
+			if(!engine::io::launch(result)){
 				// Удаляем событие таймера
-				engine::destroy(result);
+				engine::io::destroy(result);
 				// Обнуляем результат
 				result = 0;
 				/**
@@ -214,7 +214,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 		// Если событие таймера не может быть запущено
 		} else {
 			// Удаляем событие таймера
-			engine::destroy(result);
+			engine::io::destroy(result);
 			// Обнуляем результат
 			result = 0;
 			/**

@@ -168,7 +168,7 @@ class Executor {
 				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 				log::print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log::flag_t::INFO, tid, tls::coder::alpn(tid));
 				// Выполняем подписку на SCTP события
-				engine::sctp::eventsSubscribe(cid, {
+				engine::sctp::subscription(cid, {
 					net::sctp::event_type_t::ASSOC_CHANGE,
 					net::sctp::event_type_t::SHUTDOWN_EVENT,
 					net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -383,7 +383,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Выполняем подписку на SCTP события
-	engine::sctp::eventsSubscribe(eid, {
+	engine::sctp::subscription(eid, {
 		net::sctp::event_type_t::ASSOC_CHANGE,
 		net::sctp::event_type_t::SHUTDOWN_EVENT,
 		net::sctp::event_type_t::SEND_FAILED_EVENT,

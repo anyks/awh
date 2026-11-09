@@ -307,11 +307,12 @@ clean_submodule(){
 # Функция применения патча
 apply_patch(){
 	PATCH="$ROOT/patches/$1/$2"
-	if ! git apply --reverse --check "$PATCH" 2> /dev/null; then
-		echo "applaying patch $PATCH"
-		git apply "$PATCH" || exit 1
-	else
+	# Применённость и наложение проверяем git, затем patch: снимок без .git не даёт git apply
+	if git apply --reverse --check "$PATCH" 2> /dev/null || patch -p1 -R --dry-run < "$PATCH" > /dev/null 2>&1; then
 		echo "patch $PATCH already applied"
+	else
+		echo "applying patch $PATCH"
+		git apply "$PATCH" 2> /dev/null || patch -p1 < "$PATCH" || exit 1
 	fi
 }
 

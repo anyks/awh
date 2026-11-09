@@ -59,11 +59,11 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Добавляем новое событие каталога
-	event::id_t eid = engine::event(event::node_t::DIR, event::family_t::FSYS);
+	event::id_t eid = engine::io::event(event::node_t::DIR, event::family_t::FSYS);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Устанавливаем функцию обратного вызова на изменение статуса события
-		engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -136,7 +136,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
-		engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -189,7 +189,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на изменение события
-		engine::on(eid, []([[maybe_unused]] const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
+		engine::io::on(eid, []([[maybe_unused]] const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
 			/**
 			 * Обрабатываем тип узла события
 			 */
@@ -326,7 +326,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -359,7 +359,7 @@ int32_t main(){
 				// Если действие является переименованием
 				case static_cast <uint8_t> (event::action_t::RENAME):
 					// Записываем в лог сообщение о переименовании события
-					log::print("Событие на переименование: ID=%u, новый адрес: %s", log::flag_t::INFO, eid, engine::getAddress(eid, event::address_t::FS).c_str());
+					log::print("Событие на переименование: ID=%u, новый адрес: %s", log::flag_t::INFO, eid, engine::address::get(eid, event::address_t::FS).c_str());
 				break;
 				// Если действие является изменением атрибутов
 				case static_cast <uint8_t> (event::action_t::ATTRIB):
@@ -379,17 +379,17 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому каталогу
-		if(engine::setAddress(eid, event::address_t::FS, "../tmp")){
+		if(engine::address::set(eid, event::address_t::FS, "../tmp")){
 			// Выполняем фиксацию настроек события сервера
-			if(engine::commit(eid)){
+			if(engine::io::commit(eid)){
 				// Выполняем запуск события
-				if(engine::launch(eid)){
+				if(engine::io::launch(eid)){
 					// Записываем в лог сообщение об успешном запуске события
 					cout << " Событие успешно запущено!" << endl;
 					/**
 					 * Запускаем опрос событий
 					 */
-					while(engine::poll());
+					while(engine::io::poll());
 				// Записываем ошибку в лог запуска события
 				} else cout << " Ошибка запуска события!" << endl;
 			}

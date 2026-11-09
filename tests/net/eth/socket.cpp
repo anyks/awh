@@ -559,20 +559,48 @@ TEST_F(EthFixture, SocketMessagePeekTest){
 		char buffer[64];
 		// Буфер принимаемых служебных сообщений
 		char control[256];
-		// Описание буфера принимаемых данных
-		struct iovec io = {buffer, sizeof(buffer)};
-		// Описание принимаемого сообщения
-		struct msghdr message;
-		// Зануляем описание принимаемого сообщения
-		::memset(&message, 0, sizeof(message));
-		// Устанавливаем буфер принимаемых данных
-		message.msg_iov = &io;
-		// Устанавливаем количество буферов принимаемых данных
-		message.msg_iovlen = 1;
-		// Устанавливаем буфер принимаемых служебных сообщений
-		message.msg_control = control;
-		// Устанавливаем размер буфера принимаемых служебных сообщений
-		message.msg_controllen = sizeof(control);
+		/**
+		 * @brief Сборка описания буфера и принимаемого сообщения под платформу
+		 *
+		 * @details Под MS Windows посредник message.hpp даёт типы iovec_t/msghdr_t
+		 *          с полями base/iovec/control, у POSIX системные struct iovec/msghdr
+		 *          с полями iov_base/msg_iov/msg_control
+		 *
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Описание буфера принимаемых данных
+			iovec_t io = {buffer, sizeof(buffer)};
+			// Описание принимаемого сообщения
+			msghdr_t message;
+			// Зануляем описание принимаемого сообщения
+			::memset(&message, 0, sizeof(message));
+			// Устанавливаем буфер принимаемых данных
+			message.iovec = &io;
+			// Устанавливаем количество буферов принимаемых данных
+			message.iovecSize = 1;
+			// Устанавливаем буфер принимаемых служебных сообщений
+			message.control = control;
+			// Устанавливаем размер буфера принимаемых служебных сообщений
+			message.controlSize = sizeof(control);
+		/**
+		 * Для систем POSIX
+		 */
+		#else
+			// Описание буфера принимаемых данных
+			struct iovec io = {buffer, sizeof(buffer)};
+			// Описание принимаемого сообщения
+			struct msghdr message;
+			// Зануляем описание принимаемого сообщения
+			::memset(&message, 0, sizeof(message));
+			// Устанавливаем буфер принимаемых данных
+			message.msg_iov = &io;
+			// Устанавливаем количество буферов принимаемых данных
+			message.msg_iovlen = 1;
+			// Устанавливаем буфер принимаемых служебных сообщений
+			message.msg_control = control;
+			// Устанавливаем размер буфера принимаемых служебных сообщений
+			message.msg_controllen = sizeof(control);
+		#endif
 		/**
 		 * Если проверка идёт под MS Windows
 		 */
@@ -1219,20 +1247,48 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	char buffer[64];
 	// Буфер принимаемых служебных сообщений
 	char control[256];
-	// Описание буфера принимаемых данных
-	struct iovec io = {buffer, sizeof(buffer)};
-	// Описание принимаемого сообщения
-	struct msghdr message;
-	// Зануляем описание принимаемого сообщения
-	::memset(&message, 0, sizeof(message));
-	// Устанавливаем буфер принимаемых данных
-	message.msg_iov = &io;
-	// Устанавливаем количество буферов принимаемых данных
-	message.msg_iovlen = 1;
-	// Устанавливаем буфер принимаемых служебных сообщений
-	message.msg_control = control;
-	// Устанавливаем размер буфера принимаемых служебных сообщений
-	message.msg_controllen = sizeof(control);
+	/**
+	 * @brief Сборка описания буфера и принимаемого сообщения под платформу
+	 *
+	 * @details Под MS Windows посредник message.hpp даёт типы iovec_t/msghdr_t
+	 *          с полями base/iovec/control, у POSIX системные struct iovec/msghdr
+	 *          с полями iov_base/msg_iov/msg_control
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Описание буфера принимаемых данных
+		iovec_t io = {buffer, sizeof(buffer)};
+		// Описание принимаемого сообщения
+		msghdr_t message;
+		// Зануляем описание принимаемого сообщения
+		::memset(&message, 0, sizeof(message));
+		// Устанавливаем буфер принимаемых данных
+		message.iovec = &io;
+		// Устанавливаем количество буферов принимаемых данных
+		message.iovecSize = 1;
+		// Устанавливаем буфер принимаемых служебных сообщений
+		message.control = control;
+		// Устанавливаем размер буфера принимаемых служебных сообщений
+		message.controlSize = sizeof(control);
+	/**
+	 * Для систем POSIX
+	 */
+	#else
+		// Описание буфера принимаемых данных
+		struct iovec io = {buffer, sizeof(buffer)};
+		// Описание принимаемого сообщения
+		struct msghdr message;
+		// Зануляем описание принимаемого сообщения
+		::memset(&message, 0, sizeof(message));
+		// Устанавливаем буфер принимаемых данных
+		message.msg_iov = &io;
+		// Устанавливаем количество буферов принимаемых данных
+		message.msg_iovlen = 1;
+		// Устанавливаем буфер принимаемых служебных сообщений
+		message.msg_control = control;
+		// Устанавливаем размер буфера принимаемых служебных сообщений
+		message.msg_controllen = sizeof(control);
+	#endif
 	/**
 	 * Если проверка идёт под MS Windows
 	 */
@@ -1255,7 +1311,26 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	/**
 	 * Перебираем служебные сообщения принятой датаграммы
 	 */
-	for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * @brief Обход служебных метаданных посредником message.hpp
+		 *
+		 * @details Макросы CMSG_* под MS Windows заняты, обход ведут функции first/next
+		 *
+		 */
+		for(cmsghdr_t * cmsg = awh::win::message::first(&message); cmsg != nullptr; cmsg = awh::win::message::next(&message, cmsg)){
+	/**
+	 * Для систем POSIX
+	 */
+	#else
+		/**
+		 * @brief Обход служебных метаданных системными макросами
+		 *
+		 * @details У POSIX обход ведут CMSG_FIRSTHDR и CMSG_NXTHDR
+		 *
+		 */
+		for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+	#endif
 		// Если служебное сообщение несёт класс обслуживания заголовка IPv4-пакета
 		if((cmsg->cmsg_level == IPPROTO_IP) && ((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)))
 			// Извлекаем признак перегрузки пути из младших двух бит октета

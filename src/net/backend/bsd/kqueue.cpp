@@ -8481,13 +8481,13 @@ namespace timer {
 												// Сбрасываем опции события
 												client->state.options = event::options::NONE;
 												// Выполняем установку опций события и фиксацию изменений
-												if(engine::setOptions(client->id, options) && engine::commit(client->id)){
+												if(engine::options::set(client->id, options) && engine::io::commit(client->id)){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова для возрождения клиента
 														client->callbacks.status(client->id, event::status_t::REBIRTHED);
 													// Выполняем повторное подключение клиента
-													if(!engine::connect(client->id) || !engine::launch(client->id)){
+													if(!engine::io::connect(client->id) || !engine::io::launch(client->id)){
 														// Если функция обратного вызова для вывода подключения установлена
 														if(client->callbacks.connect != nullptr)
 															// Вызываем функцию обратного вызова для подключения
@@ -10344,13 +10344,13 @@ namespace timer {
 												// Сбрасываем опции события
 												client->state.options = event::options::NONE;
 												// Выполняем установку опций события и фиксацию изменений
-												if(engine::setOptions(client->id, options) && engine::commit(client->id)){
+												if(engine::options::set(client->id, options) && engine::io::commit(client->id)){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова для возрождения клиента
 														client->callbacks.status(client->id, event::status_t::REBIRTHED);
 													// Выполняем повторное подключение клиента
-													if(!engine::connect(client->id) || !engine::launch(client->id)){
+													if(!engine::io::connect(client->id) || !engine::io::launch(client->id)){
 														// Если функция обратного вызова для вывода подключения установлена
 														if(client->callbacks.connect != nullptr)
 															// Вызываем функцию обратного вызова для подключения
@@ -11101,7 +11101,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									fs->callbacks.read(fs->id, reinterpret_cast <const uint8_t *> (buffer) + offset, size);
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								else engine::relay(fs->dest, buffer + offset, size);
+								else engine::io::relay(fs->dest, buffer + offset, size);
 								// Отвязываем текущий маппинг
 								::munmap(buffer, fs->size);
 								// Устанавливаем новое смещение в файле
@@ -11292,7 +11292,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-										} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+										} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если узел уничтожен из функции обратного вызова
 										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 											// Формируем отрицательный результат
@@ -11348,7 +11348,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Возвращаем результат
 									return result;
 								}
@@ -11457,7 +11457,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -11513,7 +11513,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -11593,7 +11593,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -11649,7 +11649,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для вывода полученных данных
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else engine::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+							} else engine::io::relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Возвращаем результат
 							return result;
 						}
@@ -11871,7 +11871,7 @@ namespace io {
 										// Выполняем выдачу полученных данных потребителю
 										::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else engine::io::relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
 									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -12075,7 +12075,7 @@ namespace io {
 								// Выполняем выдачу полученных данных потребителю
 								::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else engine::relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else engine::io::relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
 							if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
@@ -12247,7 +12247,7 @@ namespace io {
 										// Выполняем выдачу полученных данных потребителю
 										::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
 									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -12416,7 +12416,7 @@ namespace io {
 									// Выполняем выдачу полученных данных потребителю
 									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -12746,7 +12746,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else engine::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else engine::io::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
 									// Если адрес сервера не совпадает с настройками туннеля
@@ -12973,7 +12973,7 @@ namespace io {
 													// Вызываем функцию обратного вызова для вывода полученных данных
 													mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-												else engine::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+												else engine::io::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
 									/**
@@ -13337,7 +13337,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else engine::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else engine::io::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -13564,7 +13564,7 @@ namespace io {
 												// Вызываем функцию обратного вызова для вывода полученных данных
 												mediator->callbacks.read(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else engine::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
+											else engine::io::relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								/**
@@ -13971,7 +13971,7 @@ namespace io {
 										// Выполняем выдачу полученных данных потребителю
 										::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+									} else engine::io::relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
 									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -14175,7 +14175,7 @@ namespace io {
 								// Выполняем выдачу полученных данных потребителю
 								::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-							} else engine::relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+							} else engine::io::relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
 							if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
@@ -14421,7 +14421,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
 									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -14670,7 +14670,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -14924,7 +14924,7 @@ namespace io {
 											// Вызываем функцию обратного вызова для вывода полученных данных
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
 									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -15186,7 +15186,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для вывода полученных данных
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -15367,7 +15367,7 @@ namespace io {
 										// Выполняем выдачу полученных данных потребителю
 										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
 									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -15546,7 +15546,7 @@ namespace io {
 									// Выполняем выдачу полученных данных потребителю
 									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -15736,7 +15736,7 @@ namespace io {
 										// Выполняем выдачу полученных данных потребителю
 										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-									} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+									} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
 									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
@@ -15928,7 +15928,7 @@ namespace io {
 									// Выполняем выдачу полученных данных потребителю
 									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-								} else engine::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
+								} else engine::io::relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
 								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
@@ -30785,7 +30785,7 @@ namespace io {
 							// Выполняем извлечение данных из очереди
 							user->callbacks.read(user->id, static_cast <const uint8_t *> (buffer), size);
 						// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-						else engine::relay(user->dest, static_cast <const char *> (buffer), size);
+						else engine::io::relay(user->dest, static_cast <const char *> (buffer), size);
 						// Удаляем запись из очереди
 						user->events.pop();
 					}
@@ -32863,13 +32863,13 @@ namespace io {
 			 *          переподключения
 			 *
 			 */
-			if(engine::rebuild(client->id) && (client->state.options & event::options::AUTO_RECONNECT)){
+			if(engine::io::rebuild(client->id) && (client->state.options & event::options::AUTO_RECONNECT)){
 				// Если установлена функция обратного вызова
 				if(client->callbacks.status != nullptr)
 					// Вызываем функцию обратного вызова для возрождения клиента
 					client->callbacks.status(client->id, event::status_t::REBIRTHED);
 				// Выполняем повторное подключение клиента
-				if(!engine::connect(client->id) || !engine::launch(client->id)){
+				if(!engine::io::connect(client->id) || !engine::io::launch(client->id)){
 					// Если функция обратного вызова для вывода подключения установлена
 					if(client->callbacks.connect != nullptr)
 						// Вызываем функцию обратного вызова для подключения
@@ -33164,7 +33164,7 @@ namespace io {
 					} else eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 				}
 				// Выполняем "пинок" для применения изменений
-				result = engine::kick();
+				result = engine::io::kick();
 			}
 		/**
 		 * Если возникает ошибка
@@ -35316,7 +35316,7 @@ namespace io {
 						// Вызываем функцию обратного вызова для вывода полученных данных
 						origin->callbacks.read(origin->id, buffer, static_cast <size_t> (size));
 				// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
-				} else engine::relay(origin->transfer.dest, buffer, static_cast <size_t> (size));
+				} else engine::io::relay(origin->transfer.dest, buffer, static_cast <size_t> (size));
 				// Если дескриптор сокета стал недействительным или серверный дескриптор сокета недействителен
 				if((origin->transfer.fd == net::invalid_socket_t) || (server->fd == net::invalid_socket_t))
 					// Формируем отрицательный результат
@@ -37969,7 +37969,7 @@ namespace sctp {
 	 * @return   список событий SCTP на которые выполнена подписка
 	 *
 	 */
-	const awh::net::sctp::event_types_t & awh::engine::sctp::eventsSubscribed(const event::id_t id) noexcept {
+	const awh::net::sctp::event_types_t & awh::engine::sctp::subscription(const event::id_t id) noexcept {
 		// Результат работы функции
 		static net::sctp::event_types_t result;
 		/**
@@ -38028,7 +38028,7 @@ namespace sctp {
 	 * @param events список событий SCTP для подписки
 	 *
 	 */
-	void awh::engine::sctp::eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
+	void awh::engine::sctp::subscription(const event::id_t id, const net::sctp::event_types_t & events) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38148,7 +38148,7 @@ namespace sctp {
 	 * @return     значение таймаута в миллисекундах
 	 *
 	 */
-	uint32_t awh::engine::sctp::getTimeout(const event::id_t id, const net::sctp::timeout_t type) noexcept {
+	uint32_t awh::engine::sctp::timeout(const event::id_t id, const net::sctp::timeout_t type) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38353,7 +38353,7 @@ namespace sctp {
 	 * @return        результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::setTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
+	bool awh::engine::sctp::timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38546,7 +38546,7 @@ namespace sctp {
 	 * @return    результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::authenticateKey(const event::id_t id, const uint16_t num, string_view key) noexcept {
+	bool awh::engine::sctp::auth::key(const event::id_t id, const uint16_t num, string_view key) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38669,7 +38669,7 @@ namespace sctp {
 	 * @return     результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
+	bool awh::engine::sctp::auth::key(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -38813,7 +38813,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
+	bool awh::engine::sctp::auth::chunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -38938,7 +38938,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) noexcept {
+	bool awh::engine::sctp::auth::chunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -39102,7 +39102,7 @@ namespace sctp {
 	 * @return      результат работы функции
 	 *
 	 */
-	bool awh::engine::sctp::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
+	bool awh::engine::sctp::auth::algorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -39713,7 +39713,7 @@ namespace sctp {
  * @return   результат выполнения очистки
  *
  */
-bool awh::engine::clearControlList(const event::id_t id, const event::control_list_t type) noexcept {
+bool awh::engine::control_list::clear(const event::id_t id, const event::control_list_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -39823,7 +39823,7 @@ bool awh::engine::clearControlList(const event::id_t id, const event::control_li
  * @return      результат выполнения установки
  *
  */
-bool awh::engine::addToControlList(const event::id_t id, const event::control_list_t type, string_view value) noexcept {
+bool awh::engine::control_list::add(const event::id_t id, const event::control_list_t type, string_view value) noexcept {
 	// Если адрес для удаления передан
 	if(!value.empty()){
 		/**
@@ -40108,7 +40108,7 @@ bool awh::engine::addToControlList(const event::id_t id, const event::control_li
  * @return      результат выполнения удаления
  *
  */
-bool awh::engine::removeFromControlList(const event::id_t id, const event::control_list_t type, string_view value) noexcept {
+bool awh::engine::control_list::remove(const event::id_t id, const event::control_list_t type, string_view value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес для удаления передан
@@ -40270,7 +40270,7 @@ bool awh::engine::removeFromControlList(const event::id_t id, const event::contr
  * @return   контрольный список события
  *
  */
-const unordered_map <string, event::address_t> & awh::engine::getControlList(const event::id_t id, const event::control_list_t type) noexcept {
+const unordered_map <string, event::address_t> & awh::engine::control_list::get(const event::id_t id, const event::control_list_t type) noexcept {
 	// Результат работы функции
 	static const unordered_map <string, event::address_t> result;
 	/**
@@ -40372,7 +40372,7 @@ const unordered_map <string, event::address_t> & awh::engine::getControlList(con
  * @return   результат выполнения фиксации
  *
  */
-bool awh::engine::commit(const event::id_t id) noexcept {
+bool awh::engine::io::commit(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -40961,7 +40961,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 						 *          а имени к тому мигу ещё не было - туннели там не работали вовсе.
 						 *
 						 * @note Место выбрано по укладу, заданному переносом создания сокета из
-						 *       event() в commit(): к мигу фиксации набор настроек известен целиком.
+						 *       event() в io::commit(): к мигу фиксации набор настроек известен целиком.
 						 *       Туннель того переноса не прошёл и оставался единственным узлом,
 						 *       заводившим ресурс ядра прежде своих настроек
 						 *
@@ -40992,7 +40992,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 								// Сбрасываем запомненные опции, чтобы установка не сочла их выставленными
 								tunnel->state.options = event::options::NONE;
 								// Доводим запомненные опции до заведённого устройства
-								setOptions(id, reapply);
+								options::set(id, reapply);
 							}
 						}
 						// Если устройство туннеля заведено
@@ -41349,7 +41349,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
 							client->state.options = eth::socket::inborn(options);
 							// Применяем остальные настройки обычным путём
-							setOptions(id, options);
+							options::set(id, options);
 							/**
 							 * Если вступление в группу рассылки было отложено, исполняем его
 							 *
@@ -41365,7 +41365,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 							 */
 							if(client->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
-								membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
+								multicast::membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
 							/**
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
@@ -43511,7 +43511,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 							// Оставляем в состоянии лишь то, что ядро наложило при создании сокета
 							server->state.options = eth::socket::inborn(options);
 							// Применяем остальные настройки обычным путём
-							setOptions(id, options);
+							options::set(id, options);
 							/**
 							 * Если вступление в группу рассылки было отложено, исполняем его
 							 *
@@ -43522,7 +43522,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 							 */
 							if(server->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
-								membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
+								multicast::membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
 							/**
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
@@ -43950,7 +43950,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
 																	 * Состояние узла обязано быть СНЯТО перед выходом
 																	 *
 																	 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
-																	 *          возвращал отказ, оставив его стоять: launch() смотрит именно
+																	 *          возвращал отказ, оставив его стоять: io::launch() смотрит именно
 																	 *          на него и поднял бы узел, чья привязка не удалась. Соседние
 																	 *          пути привязки той же ветви состояние снимают.
 																	 *
@@ -45007,7 +45007,7 @@ bool awh::engine::commit(const event::id_t id) noexcept {
  * @return   результат выполнения перестройки
  *
  */
-bool awh::engine::rebuild(const event::id_t id) noexcept {
+bool awh::engine::io::rebuild(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -45061,16 +45061,16 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Снимаем размеры буферов первого узла
 				if(present0){
 					// Снимаем размер буфера приёма первого узла
-					readBuffer0 = getBufferSize(id, event::action_t::READ);
+					readBuffer0 = buffer::size::get(id, event::action_t::READ);
 					// Снимаем размер буфера отправки первого узла
-					writeBuffer0 = getBufferSize(id, event::action_t::WRITE);
+					writeBuffer0 = buffer::size::get(id, event::action_t::WRITE);
 				}
 				// Снимаем размеры буферов парного узла
 				if(present1){
 					// Снимаем размер буфера приёма парного узла
-					readBuffer1 = getBufferSize(ipc->partner, event::action_t::READ);
+					readBuffer1 = buffer::size::get(ipc->partner, event::action_t::READ);
 					// Снимаем размер буфера отправки парного узла
-					writeBuffer1 = getBufferSize(ipc->partner, event::action_t::WRITE);
+					writeBuffer1 = buffer::size::get(ipc->partner, event::action_t::WRITE);
 				}
 				// Если у первого узла был действующий дескриптор
 				if(ipc->transfer.fd != net::invalid_socket_t){
@@ -45155,51 +45155,51 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции парного узла
 				mate->state.options = event::options::NONE;
 				// Переприменяем опции первого узла пары
-				setOptions(id, reapply0);
+				options::set(id, reapply0);
 				// Переприменяем опции парного узла
-				setOptions(ipc->partner, reapply1);
+				options::set(ipc->partner, reapply1);
 				// Восстанавливаем размеры буферов первого узла
 				if(present0){
 					// Восстанавливаем размер буфера приёма первого узла, если он был задан
 					if(readBuffer0 > 0)
 						// Устанавливаем размер буфера приёма первого узла
-						setBufferSize(id, event::action_t::READ, readBuffer0);
+						buffer::size::set(id, event::action_t::READ, readBuffer0);
 					// Восстанавливаем размер буфера отправки первого узла, если он был задан
 					if(writeBuffer0 > 0)
 						// Устанавливаем размер буфера отправки первого узла
-						setBufferSize(id, event::action_t::WRITE, writeBuffer0);
+						buffer::size::set(id, event::action_t::WRITE, writeBuffer0);
 				}
 				// Восстанавливаем размеры буферов парного узла
 				if(present1){
 					// Восстанавливаем размер буфера приёма парного узла, если он был задан
 					if(readBuffer1 > 0)
 						// Устанавливаем размер буфера приёма парного узла
-						setBufferSize(ipc->partner, event::action_t::READ, readBuffer1);
+						buffer::size::set(ipc->partner, event::action_t::READ, readBuffer1);
 					// Восстанавливаем размер буфера отправки парного узла, если он был задан
 					if(writeBuffer1 > 0)
 						// Устанавливаем размер буфера отправки парного узла
-						setBufferSize(ipc->partner, event::action_t::WRITE, writeBuffer1);
+						buffer::size::set(ipc->partner, event::action_t::WRITE, writeBuffer1);
 				}
 				// Переигрываем пройденные стадии подъёма для обоих узлов пары
 				result = true;
 				// Если первый узел был закоммичен - выполняем повторную фиксацию
 				if(committed0)
 					// Выполняем фиксацию настроек первого узла
-					result = commit(id);
+					result = io::commit(id);
 				// Если парный узел был закоммичен - выполняем повторную фиксацию
 				if(result && committed1)
 					// Выполняем фиксацию настроек парного узла
-					result = commit(ipc->partner);
+					result = io::commit(ipc->partner);
 				// Если первый узел был запущен - выполняем повторный запуск
 				if(result && launched0)
 					// Запускаем работу первого узла
-					result = launch(id);
+					result = io::launch(id);
 				// Если парный узел был запущен - выполняем повторный запуск
 				if(result && launched1)
 					// Запускаем работу парного узла
-					result = launch(ipc->partner);
+					result = io::launch(ipc->partner);
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			// Если узел является туннелем
 			case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -45284,7 +45284,7 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				tunnel->state.options = event::options::NONE;
 				// Переприменяем опции узла на новый дескриптор
-				setOptions(id, reapply);
+				options::set(id, reapply);
 				// Восстанавливаем тип очереди передачи данных туннеля
 				tunnel->queue.type(net_queue_t::type_t::UDP);
 				// Переигрываем стадии: commit настроит адреса и зарегистрирует чтение, launch его включит
@@ -45292,13 +45292,13 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Если событие было закоммичено - выполняем повторную фиксацию
 				if(committed)
 					// Выполняем фиксацию настроек события
-					result = commit(id);
+					result = io::commit(id);
 				// Если событие было запущено - выполняем повторный запуск
 				if(result && launched)
 					// Запускаем работу события
-					result = launch(id);
+					result = io::launch(id);
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			// Если узел является файлом
 			case static_cast <uint8_t> (event::node_t::FILE): {
@@ -45341,19 +45341,19 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				fs->state.options = event::options::NONE;
 				// Переприменяем опции узла на новый дескриптор
-				setOptions(id, reapply);
+				options::set(id, reapply);
 				// Переигрываем стадии: commit переоткроет файл и зарегистрирует watch, launch включит нужные NOTE_*
 				result = true;
 				// Если событие было закоммичено - выполняем повторную фиксацию
 				if(committed)
 					// Выполняем фиксацию настроек события (переоткрытие файла)
-					result = commit(id);
+					result = io::commit(id);
 				// Если событие было запущено - выполняем повторный запуск
 				if(result && launched)
 					// Запускаем работу события
-					result = launch(id);
+					result = io::launch(id);
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			// Если узел является директорией
 			case static_cast <uint8_t> (event::node_t::DIR): {
@@ -45405,19 +45405,19 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				dir->state.options = event::options::NONE;
 				// Переприменяем опции узла на новый дескриптор
-				setOptions(id, reapply);
+				options::set(id, reapply);
 				// Переигрываем стадии: commit переоткроет директорию и зарегистрирует watch, launch включит нужные NOTE_*
 				result = true;
 				// Если событие было закоммичено - выполняем повторную фиксацию
 				if(committed)
 					// Выполняем фиксацию настроек события (переоткрытие директории)
-					result = commit(id);
+					result = io::commit(id);
 				// Если событие было запущено - выполняем повторный запуск
 				if(result && launched)
 					// Запускаем работу события
-					result = launch(id);
+					result = io::launch(id);
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			// Если узел является клиентом
 			case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -45444,7 +45444,7 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 					/**
 					 * Название устройства берём из состояния узла, а не у системы
 					 *
-					 * @warning `getIface()` при неназванном устройстве отвечает интерфейсом
+					 * @warning `iface::get()` при неназванном устройстве отвечает интерфейсом
 					 *          маршрута по умолчанию: узел после всякой перестройки оказывался
 					 *          привязан к устройству, какого никто не называл. Состояние же
 					 *          узла ведёт ровно заказанное - пустое, если заказа не было
@@ -45452,15 +45452,15 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 					 */
 					iface = client->iface;
 					// Снимаем размер буфера приёма
-					readBuffer = getBufferSize(id, event::action_t::READ);
+					readBuffer = buffer::size::get(id, event::action_t::READ);
 					// Снимаем размер буфера отправки
-					writeBuffer = getBufferSize(id, event::action_t::WRITE);
+					writeBuffer = buffer::size::get(id, event::action_t::WRITE);
 					// Снимаем режим уведомления о перегрузке
-					ecn = getExplicitCongestionNotification(id, client->state.family);
+					ecn = qos::ecn::get(id, client->state.family);
 					// Снимаем режим обнаружения MTU
-					mtu = getMaximumTransmissionUnitDiscover(id, client->state.family);
+					mtu = mtu::discover::get(id, client->state.family);
 					// Снимаем код дифференцированного обслуживания
-					dscp = getDifferentiatedServicesCodePoint(id, client->state.family);
+					dscp = qos::dscp::get(id, client->state.family);
 				}
 				// Сбрасываем очередь передачи данных
 				client->transfer.queue.clear();
@@ -45535,27 +45535,27 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				client->state.options = event::options::NONE;
 				// Переприменяем опции узла на новый дескриптор
-				setOptions(id, reapply);
+				options::set(id, reapply);
 				// Если состояние снималось с прежнего дескриптора - восстанавливаем его
 				if(present){
 					// Восстанавливаем привязку к сетевому интерфейсу, если она была
 					if(!iface.empty())
 						// Устанавливаем сетевой интерфейс
-						setIface(id, iface);
+						iface::set(id, iface);
 					// Восстанавливаем размер буфера приёма, если он был задан
 					if(readBuffer > 0)
 						// Устанавливаем размер буфера приёма
-						setBufferSize(id, event::action_t::READ, readBuffer);
+						buffer::size::set(id, event::action_t::READ, readBuffer);
 					// Восстанавливаем размер буфера отправки, если он был задан
 					if(writeBuffer > 0)
 						// Устанавливаем размер буфера отправки
-						setBufferSize(id, event::action_t::WRITE, writeBuffer);
+						buffer::size::set(id, event::action_t::WRITE, writeBuffer);
 					// Восстанавливаем режим уведомления о перегрузке
-					setExplicitCongestionNotification(id, client->state.family, ecn);
+					qos::ecn::set(id, client->state.family, ecn);
 					// Восстанавливаем код дифференцированного обслуживания
-					setDifferentiatedServicesCodePoint(id, client->state.family, dscp);
+					qos::dscp::set(id, client->state.family, dscp);
 					// Восстанавливаем режим обнаружения MTU
-					setMaximumTransmissionUnitDiscover(id, client->state.family, mtu);
+					mtu::discover::set(id, client->state.family, mtu);
 				}
 				/**
 				 * @brief Переигрывается только фиксация - единственная стадия, безопасная для
@@ -45588,9 +45588,9 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Если событие было закоммичено - выполняем повторную фиксацию
 				if(committed)
 					// Выполняем фиксацию настроек события
-					result = commit(id);
+					result = io::commit(id);
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			// Если узел является сервером
 			case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -45600,7 +45600,7 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				const event::status_t status = server->state.status;
 				/**
 				 * Определяем, какие стадии подъёма сервера были пройдены до перестройки:
-				 * commit (bind), listen (::listen) и launch (включение чтения). Их и переиграем
+				 * io::commit(bind), listen (::listen) и io::launch(включение чтения). Их и переиграем
 				 */
 				// Флаг того, что событие было переведено в режим прослушивания (потоковый сервер)
 				const bool listened = ((status == event::status_t::SUCCESS) || (status == event::status_t::LISTENING));
@@ -45631,7 +45631,7 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 					/**
 					 * Название устройства берём из состояния узла, а не у системы
 					 *
-					 * @warning `getIface()` при неназванном устройстве отвечает интерфейсом
+					 * @warning `iface::get()` при неназванном устройстве отвечает интерфейсом
 					 *          маршрута по умолчанию: узел после всякой перестройки оказывался
 					 *          привязан к устройству, какого никто не называл. Состояние же
 					 *          узла ведёт ровно заказанное - пустое, если заказа не было
@@ -45639,15 +45639,15 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 					 */
 					iface = server->iface;
 					// Снимаем размер буфера приёма
-					readBuffer = getBufferSize(id, event::action_t::READ);
+					readBuffer = buffer::size::get(id, event::action_t::READ);
 					// Снимаем размер буфера отправки
-					writeBuffer = getBufferSize(id, event::action_t::WRITE);
+					writeBuffer = buffer::size::get(id, event::action_t::WRITE);
 					// Снимаем режим уведомления о перегрузке
-					ecn = getExplicitCongestionNotification(id, server->state.family);
+					ecn = qos::ecn::get(id, server->state.family);
 					// Снимаем режим обнаружения MTU
-					mtu = getMaximumTransmissionUnitDiscover(id, server->state.family);
+					mtu = mtu::discover::get(id, server->state.family);
 					// Снимаем код дифференцированного обслуживания
-					dscp = getDifferentiatedServicesCodePoint(id, server->state.family);
+					dscp = qos::dscp::get(id, server->state.family);
 				}
 				// Если действующий дескриптор присутствует
 				if(server->fd != net::invalid_socket_t){
@@ -45686,34 +45686,34 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 				// Сбрасываем запомненные опции, чтобы установка не сочла их уже выставленными
 				server->state.options = event::options::NONE;
 				// Переприменяем опции узла на новый дескриптор
-				setOptions(id, reapply);
+				options::set(id, reapply);
 				// Если состояние снималось с прежнего дескриптора
 				if(present){
 					// Восстанавливаем привязку к сетевому интерфейсу, если она была
 					if(!iface.empty())
 						// Устанавливаем сетевой интерфейс
-						setIface(id, iface);
+						iface::set(id, iface);
 					// Восстанавливаем размер буфера приёма, если он был задан
 					if(readBuffer > 0)
 						// Устанавливаем размер буфера приёма
-						setBufferSize(id, event::action_t::READ, readBuffer);
+						buffer::size::set(id, event::action_t::READ, readBuffer);
 					// Восстанавливаем размер буфера отправки, если он был задан
 					if(writeBuffer > 0)
 						// Устанавливаем размер буфера отправки
-						setBufferSize(id, event::action_t::WRITE, writeBuffer);
+						buffer::size::set(id, event::action_t::WRITE, writeBuffer);
 					// Восстанавливаем режим уведомления о перегрузке
-					setExplicitCongestionNotification(id, server->state.family, ecn);
+					qos::ecn::set(id, server->state.family, ecn);
 					// Восстанавливаем код дифференцированного обслуживания
-					setDifferentiatedServicesCodePoint(id, server->state.family, dscp);
+					qos::dscp::set(id, server->state.family, dscp);
 					// Восстанавливаем режим обнаружения MTU
-					setMaximumTransmissionUnitDiscover(id, server->state.family, mtu);
+					mtu::discover::set(id, server->state.family, mtu);
 				}
 				// Переигрываем ровно те стадии подъёма сервера, что были пройдены до перестройки
 				result = true;
 				// Если событие было закоммичено - выполняем повторную привязку
 				if(committed){
 					// Выполняем фиксацию настроек события (привязка дескриптора)
-					if((result = commit(id))){
+					if((result = io::commit(id))){
 						// Если событие было в режиме прослушивания - выполняем повторный перевод в прослушивание
 						if(listened){
 							// Переводим событие в режим прослушивания
@@ -45721,15 +45721,15 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
 							// Если событие было запущено - выполняем повторный запуск
 							if(result && running)
 								// Запускаем работу события
-								result = launch(id);
+								result = io::launch(id);
 						// Если событие было запущено - выполняем повторный запуск
 						} else if(running)
 							// Запускаем работу события
-							result = launch(id);
+							result = io::launch(id);
 					}
 				}
 				// Пинаем цикл событий, чтобы применить отложенные изменения kqueue
-				kick();
+				io::kick();
 			} break;
 			/**
 			 * Прочие типы узлов перестройке дескриптора не подлежат:
@@ -45767,7 +45767,7 @@ bool awh::engine::rebuild(const event::id_t id) noexcept {
  * @return   сетевой интерфейс события
  *
  */
-string awh::engine::getIface(const event::id_t id) noexcept {
+string awh::engine::iface::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -45793,7 +45793,7 @@ string awh::engine::getIface(const event::id_t id) noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем сетевой интерфейс связанного события
-						return getIface(mediator->dest);
+						return iface::get(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -46036,7 +46036,7 @@ string awh::engine::getIface(const event::id_t id) noexcept {
  * @return     результат выполнения установки
  *
  */
-bool awh::engine::setIface(const event::id_t id, string_view name) noexcept {
+bool awh::engine::iface::set(const event::id_t id, string_view name) noexcept {
 	// Результат выполнения функции
 	bool result = false;
 	/**
@@ -46085,7 +46085,7 @@ bool awh::engine::setIface(const event::id_t id, string_view name) noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем сетевой интерфейс связанного события
-						return setIface(mediator->dest, name);
+						return iface::set(mediator->dest, name);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -46126,7 +46126,7 @@ bool awh::engine::setIface(const event::id_t id, string_view name) noexcept {
 								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
 								 *          рассылки и лишь до заведения сокета. Назови устройство
 								 *          прежде режима - имя терялось, и режим забирал его у
-								 *          `getIface()`, а тот при неназванном устройстве отвечает
+								 *          `iface::get()`, а тот при неназванном устройстве отвечает
 								 *          интерфейсом маршрута по умолчанию
 								 *
 								 */
@@ -46214,7 +46214,7 @@ bool awh::engine::setIface(const event::id_t id, string_view name) noexcept {
 								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
 								 *          рассылки и лишь до заведения сокета. Назови устройство
 								 *          прежде режима - имя терялось, и режим забирал его у
-								 *          `getIface()`, а тот при неназванном устройстве отвечает
+								 *          `iface::get()`, а тот при неназванном устройстве отвечает
 								 *          интерфейсом маршрута по умолчанию
 								 *
 								 */
@@ -46455,7 +46455,7 @@ bool awh::engine::setIface(const event::id_t id, string_view name) noexcept {
  * @return   внутренний порт события
  *
  */
-uint16_t awh::engine::getSourcePort(const event::id_t id) noexcept {
+uint16_t awh::engine::source::port::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -46485,7 +46485,7 @@ uint16_t awh::engine::getSourcePort(const event::id_t id) noexcept {
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Извлекаем внутренний порт связанного события
-								return getSourcePort(mediator->dest);
+								return source::port::get(mediator->dest);
 						} break;
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
@@ -46694,7 +46694,7 @@ uint16_t awh::engine::getSourcePort(const event::id_t id) noexcept {
  * @return     результат выполнения установки
  *
  */
-bool awh::engine::setSourcePort(const event::id_t id, const uint16_t port) noexcept {
+bool awh::engine::source::port::set(const event::id_t id, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -46724,7 +46724,7 @@ bool awh::engine::setSourcePort(const event::id_t id, const uint16_t port) noexc
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Устанавливаем внутренний порт связанного события рекурсивно
-								return setSourcePort(mediator->dest, port);
+								return source::port::set(mediator->dest, port);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -46856,7 +46856,7 @@ bool awh::engine::setSourcePort(const event::id_t id, const uint16_t port) noexc
  * @return   порт назначения события
  *
  */
-uint16_t awh::engine::getTargetPort(const event::id_t id) noexcept {
+uint16_t awh::engine::target::port::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -46886,7 +46886,7 @@ uint16_t awh::engine::getTargetPort(const event::id_t id) noexcept {
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Извлекаем порт связанного события
-								return getTargetPort(mediator->dest);
+								return target::port::get(mediator->dest);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -46948,7 +46948,7 @@ uint16_t awh::engine::getTargetPort(const event::id_t id) noexcept {
  * @return     результат выполнения установки
  *
  */
-bool awh::engine::setTargetPort(const event::id_t id, const uint16_t port) noexcept {
+bool awh::engine::target::port::set(const event::id_t id, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -46978,7 +46978,7 @@ bool awh::engine::setTargetPort(const event::id_t id, const uint16_t port) noexc
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Устанавливаем порт связанного события рекурсивно
-								return setTargetPort(mediator->dest, port);
+								return target::port::set(mediator->dest, port);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -47061,7 +47061,7 @@ bool awh::engine::setTargetPort(const event::id_t id, const uint16_t port) noexc
  * @return   адрес хоста целевой машины
  *
  */
-string awh::engine::getTarget(const event::id_t id) noexcept {
+string awh::engine::target::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -47721,7 +47721,7 @@ string awh::engine::getTarget(const event::id_t id) noexcept {
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setTarget(const event::id_t id, string_view target) noexcept {
+bool awh::engine::target::set(const event::id_t id, string_view target) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -48438,7 +48438,7 @@ bool awh::engine::setTarget(const event::id_t id, string_view target) noexcept {
  * @return       результат выполнения извлечения адреса хоста целевой машины
  *
  */
-bool awh::engine::getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) noexcept {
+bool awh::engine::target::get(const event::id_t id, unique_ptr <net::addr_t> & target) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -49148,7 +49148,7 @@ bool awh::engine::getTarget(const event::id_t id, unique_ptr <net::addr_t> & tar
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setTarget(const event::id_t id, const net::addr_t * target) noexcept {
+bool awh::engine::target::set(const event::id_t id, const net::addr_t * target) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -49519,7 +49519,7 @@ bool awh::engine::setTarget(const event::id_t id, const net::addr_t * target) no
  * @return        значение адреса события
  *
  */
-string awh::engine::getAddress(const event::id_t id, const event::address_t address) noexcept {
+string awh::engine::address::get(const event::id_t id, const event::address_t address) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -49974,7 +49974,7 @@ string awh::engine::getAddress(const event::id_t id, const event::address_t addr
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Возвращаем запрошенный адрес связанного события
-								return getAddress(mediator->dest, address);
+								return address::get(mediator->dest, address);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -50896,7 +50896,7 @@ string awh::engine::getAddress(const event::id_t id, const event::address_t addr
  * @return        результат выполнения установки
  *
  */
-bool awh::engine::setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept {
+bool awh::engine::address::set(const event::id_t id, const event::address_t address, string_view value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -51180,7 +51180,7 @@ bool awh::engine::setAddress(const event::id_t id, const event::address_t addres
 										// Если идентификатор связанного события установлен
 										if(mediator->dest != 0)
 											// Устанавливаем полученный MAC-адрес в связанное событие
-											return setAddress(mediator->dest, address, value);
+											return address::set(mediator->dest, address, value);
 									} break;
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -52689,7 +52689,7 @@ bool awh::engine::setAddress(const event::id_t id, const event::address_t addres
 								// Если идентификатор связанного события установлен
 								if(mediator->dest != 0)
 									// Устанавливаем адрес сети для связанного события
-									return setAddress(mediator->dest, address, value);
+									return address::set(mediator->dest, address, value);
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -53264,7 +53264,7 @@ bool awh::engine::setAddress(const event::id_t id, const event::address_t addres
  * @return        результат выполнения извлечения адреса события
  *
  */
-bool awh::engine::getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) noexcept {
+bool awh::engine::address::get(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -53729,7 +53729,7 @@ bool awh::engine::getAddress(const event::id_t id, const event::address_t addres
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Возвращаем запрошенный адрес связанного события
-								return getAddress(mediator->dest, address, value);
+								return address::get(mediator->dest, address, value);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -54684,7 +54684,7 @@ bool awh::engine::getAddress(const event::id_t id, const event::address_t addres
  * @return        результат выполнения установки
  *
  */
-bool awh::engine::setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept {
+bool awh::engine::address::set(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -54910,7 +54910,7 @@ bool awh::engine::setAddress(const event::id_t id, const event::address_t addres
 										// Если идентификатор связанного события установлен
 										if(mediator->dest != 0)
 											// Устанавливаем полученный MAC-адрес в связанное событие
-											return setAddress(mediator->dest, address, value);
+											return address::set(mediator->dest, address, value);
 									} break;
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -56099,7 +56099,7 @@ bool awh::engine::setAddress(const event::id_t id, const event::address_t addres
  * @return   MTU сетевого интерфейса
  *
  */
-uint32_t awh::engine::getMaximumTransmissionUnit(const event::id_t id) noexcept {
+uint32_t awh::engine::mtu::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -56159,7 +56159,7 @@ uint32_t awh::engine::getMaximumTransmissionUnit(const event::id_t id) noexcept 
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем MTU связанного события
-						return getMaximumTransmissionUnit(mediator->dest);
+						return mtu::get(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -56402,7 +56402,7 @@ uint32_t awh::engine::getMaximumTransmissionUnit(const event::id_t id) noexcept 
  * @return    результат установки MTU сетевого интерфейса
  *
  */
-bool awh::engine::setMaximumTransmissionUnit(const event::id_t id, const uint32_t mtu) noexcept {
+bool awh::engine::mtu::set(const event::id_t id, const uint32_t mtu) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -56462,7 +56462,7 @@ bool awh::engine::setMaximumTransmissionUnit(const event::id_t id, const uint32_
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем MTU связанного события
-						return setMaximumTransmissionUnit(mediator->dest, mtu);
+						return mtu::set(mediator->dest, mtu);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -56714,7 +56714,7 @@ bool awh::engine::setMaximumTransmissionUnit(const event::id_t id, const uint32_
  * @return       признак выдачи системой отметок перегрузки пути
  *
  */
-bool awh::engine::availableExplicitCongestionNotification(const event::family_t family) noexcept {
+bool awh::engine::qos::ecn::available(const event::family_t family) noexcept {
 	/**
 	 * Определяем семейство протоколов
 	 */
@@ -56763,7 +56763,7 @@ bool awh::engine::availableExplicitCongestionNotification(const event::family_t 
  * @return       значение DSCP
  *
  */
-awh::event::dscp_t awh::engine::getDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family) noexcept {
+awh::event::dscp_t awh::engine::qos::dscp::get(const event::id_t id, const event::family_t family) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -56785,7 +56785,7 @@ awh::event::dscp_t awh::engine::getDifferentiatedServicesCodePoint(const event::
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем значение поля Differentiated Services Code Point (DSCP) связанного события
-						return getDifferentiatedServicesCodePoint(mediator->dest, family);
+						return qos::dscp::get(mediator->dest, family);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -56838,7 +56838,7 @@ awh::event::dscp_t awh::engine::getDifferentiatedServicesCodePoint(const event::
  * @return       результат работы функции
  *
  */
-bool awh::engine::setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) noexcept {
+bool awh::engine::qos::dscp::set(const event::id_t id, const event::family_t family, const event::dscp_t dscp) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -56860,7 +56860,7 @@ bool awh::engine::setDifferentiatedServicesCodePoint(const event::id_t id, const
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем значения поля Differentiated Services Code Point (DSCP) связанного события
-						return setDifferentiatedServicesCodePoint(mediator->dest, family, dscp);
+						return qos::dscp::set(mediator->dest, family, dscp);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -56917,7 +56917,7 @@ bool awh::engine::setDifferentiatedServicesCodePoint(const event::id_t id, const
  * @return       значение ECN
  *
  */
-awh::event::ecn_t awh::engine::getExplicitCongestionNotification(const event::id_t id, const event::family_t family) noexcept {
+awh::event::ecn_t awh::engine::qos::ecn::get(const event::id_t id, const event::family_t family) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -56939,7 +56939,7 @@ awh::event::ecn_t awh::engine::getExplicitCongestionNotification(const event::id
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем значение поля Explicit Congestion Notification (ECN) связанного события
-						return getExplicitCongestionNotification(mediator->dest, family);
+						return qos::ecn::get(mediator->dest, family);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -57028,7 +57028,7 @@ awh::event::ecn_t awh::engine::getExplicitCongestionNotification(const event::id
  * @return       результат работы функции
  *
  */
-bool awh::engine::setExplicitCongestionNotification(const event::id_t id, const event::family_t family, const event::ecn_t ecn) noexcept {
+bool awh::engine::qos::ecn::set(const event::id_t id, const event::family_t family, const event::ecn_t ecn) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -57050,7 +57050,7 @@ bool awh::engine::setExplicitCongestionNotification(const event::id_t id, const 
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем значение поля Explicit Congestion Notification (ECN) связанного события
-						return setExplicitCongestionNotification(mediator->dest, family, ecn);
+						return qos::ecn::set(mediator->dest, family, ecn);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -57151,7 +57151,7 @@ bool awh::engine::setExplicitCongestionNotification(const event::id_t id, const 
  * @return       режим обнаружения максимального размера пакета (MTU)
  *
  */
-awh::event::mtu_discover_t awh::engine::getMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family) noexcept {
+awh::event::mtu_discover_t awh::engine::mtu::discover::get(const event::id_t id, const event::family_t family) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -57173,7 +57173,7 @@ awh::event::mtu_discover_t awh::engine::getMaximumTransmissionUnitDiscover(const
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем значение поля обнаружения максимального размера пакета (MTU) связанного события
-						return getMaximumTransmissionUnitDiscover(mediator->dest, family);
+						return mtu::discover::get(mediator->dest, family);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -57226,7 +57226,7 @@ awh::event::mtu_discover_t awh::engine::getMaximumTransmissionUnitDiscover(const
  * @return       результат работы функции
  *
  */
-bool awh::engine::setMaximumTransmissionUnitDiscover(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) noexcept {
+bool awh::engine::mtu::discover::set(const event::id_t id, const event::family_t family, const event::mtu_discover_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -57248,7 +57248,7 @@ bool awh::engine::setMaximumTransmissionUnitDiscover(const event::id_t id, const
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем значения поля обнаружения максимального размера пакета (MTU) связанного события
-						return setMaximumTransmissionUnitDiscover(mediator->dest, family, mode);
+						return mtu::discover::set(mediator->dest, family, mode);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -57304,7 +57304,7 @@ bool awh::engine::setMaximumTransmissionUnitDiscover(const event::id_t id, const
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
+bool awh::engine::multicast::membership(const event::id_t id, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -57977,7 +57977,7 @@ bool awh::engine::membership(const event::id_t id, const event::mode_t mode, str
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::membership(const event::id_t id, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
+bool awh::engine::multicast::membership(const event::id_t id, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -58394,7 +58394,7 @@ bool awh::engine::membership(const event::id_t id, const event::mode_t mode, con
  * @return    результат привязки (false - ключ занят другой сессией)
  *
  */
-bool awh::engine::bind(const event::id_t id, const net::origin_key_t & key) noexcept {
+bool awh::engine::multicast::bind(const event::id_t id, const net::origin_key_t & key) noexcept {
 	// Если ключ сессии пустой
 	if(key.size == 0)
 		// Выводим отрицательный результат
@@ -58466,7 +58466,7 @@ bool awh::engine::bind(const event::id_t id, const net::origin_key_t & key) noex
  * @return    результат снятия
  *
  */
-bool awh::engine::unbind(const event::id_t id, const net::origin_key_t & key) noexcept {
+bool awh::engine::multicast::unbind(const event::id_t id, const net::origin_key_t & key) noexcept {
 	// Если ключ сессии пустой
 	if(key.size == 0)
 		// Выводим отрицательный результат
@@ -58551,7 +58551,7 @@ bool awh::engine::unbind(const event::id_t id, const net::origin_key_t & key) no
  * @return   предельное количество одновременных подключений
  *
  */
-uint32_t awh::engine::getMaxConnections(const event::id_t id) noexcept {
+uint32_t awh::engine::connection::max::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -58602,7 +58602,7 @@ uint32_t awh::engine::getMaxConnections(const event::id_t id) noexcept {
  * @return    результат установки
  *
  */
-bool awh::engine::setMaxConnections(const event::id_t id, const uint32_t max) noexcept {
+bool awh::engine::connection::max::set(const event::id_t id, const uint32_t max) noexcept {
 	// Если предел одновременных подключений не задан
 	if(max == 0)
 		// Выводим отрицательный результат - предел в ноль подключений лишает событие смысла
@@ -58668,7 +58668,7 @@ bool awh::engine::setMaxConnections(const event::id_t id, const uint32_t max) no
  * @return   результат выполнения удаления
  *
  */
-bool awh::engine::destroy(const event::id_t id) noexcept {
+bool awh::engine::io::destroy(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -58734,7 +58734,7 @@ bool awh::engine::destroy(const event::id_t id) noexcept {
  * @return         пара идентификаторов созданных событий
  *
  */
-array <event::id_t, 2> awh::engine::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+array <event::id_t, 2> awh::engine::io::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
 	array <event::id_t, 2> result = {0, 0};
 	/**
@@ -58937,7 +58937,7 @@ array <event::id_t, 2> awh::engine::events(const event::family_t family, const e
 					}
 				}
 			}
-			// Для IPC-пары (PIPE/UDS) связываем оба узла ссылками друг на друга - это позволяет перестроить пару целиком (см. rebuild())
+			// Для IPC-пары (PIPE/UDS) связываем оба узла ссылками друг на друга - это позволяет перестроить пару целиком (см. io::rebuild())
 			if((family == event::family_t::PIPE) || (family == event::family_t::UDS)){
 				// Выполняем поиск первого узла пары
 				auto n0 = ::__awh_nodes__.find(result[0]);
@@ -58987,7 +58987,7 @@ array <event::id_t, 2> awh::engine::events(const event::family_t family, const e
  * @return         идентификатор созданного события
  *
  */
-awh::event::id_t awh::engine::event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+awh::event::id_t awh::engine::io::event(const event::node_t node, const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -59900,7 +59900,7 @@ awh::event::id_t awh::engine::event(const event::node_t node, const event::famil
  * @return     смещение в файле события
  *
  */
-size_t awh::engine::getSeek(const event::id_t id, const event::seek_t seek) noexcept {
+size_t awh::engine::file::seek::get(const event::id_t id, const event::seek_t seek) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -59990,7 +59990,7 @@ size_t awh::engine::getSeek(const event::id_t id, const event::seek_t seek) noex
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setSeek(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept {
+bool awh::engine::file::seek::set(const event::id_t id, const event::seek_t seek, const size_t offset) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -60082,7 +60082,7 @@ bool awh::engine::setSeek(const event::id_t id, const event::seek_t seek, const 
  * @return   опции события
  *
  */
-uint16_t awh::engine::getOptions(const event::id_t id) noexcept {
+uint16_t awh::engine::options::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -60122,7 +60122,7 @@ uint16_t awh::engine::getOptions(const event::id_t id) noexcept {
  * @return        результат выполнения установки
  *
  */
-bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexcept {
+bool awh::engine::options::set(const event::id_t id, const uint16_t options) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -60189,7 +60189,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем опции для связанного события
-						return setOptions(mediator->dest, options);
+						return options::set(mediator->dest, options);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -60383,7 +60383,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 											}
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -60453,7 +60453,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 											}
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -60471,7 +60471,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 												eth::socket::setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 								}
 							}
@@ -60569,7 +60569,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 												eth::socket::setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 									// Если узел является клиентом
 									case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -60638,7 +60638,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 												eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 									// Если узел является сервером
 									case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -60671,7 +60671,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
 												eth::socket::setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 										}
 										// Выполняем "пинок" для применения изменений
-										isSetup = kick();
+										isSetup = io::kick();
 									} break;
 								}
 							}
@@ -61156,7 +61156,7 @@ bool awh::engine::setOptions(const event::id_t id, const uint16_t options) noexc
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept {
+bool awh::engine::options::set(const event::id_t id, const uint16_t option, const bool mode) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -61223,7 +61223,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем опции для связанного события
-						return setOption(mediator->dest, option, mode);
+						return options::set(mediator->dest, option, mode);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -61370,7 +61370,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 													}
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 											// Если узел является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -61440,7 +61440,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 													}
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -61458,7 +61458,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 														eth::socket::setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 										}
 									}
@@ -61547,7 +61547,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 														eth::socket::setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 											// Если узел является клиентом
 											case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -61616,7 +61616,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 														eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 											// Если узел является сервером
 											case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -61649,7 +61649,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
 														eth::socket::setTimeout(server->fd, net::socket_event_t::WRITE, server->timeouts.write.delay);
 												}
 												// Выполняем "пинок" для применения изменений
-												return kick();
+												return io::kick();
 											}
 										}
 									}
@@ -62061,7 +62061,7 @@ bool awh::engine::setOption(const event::id_t id, const uint16_t option, const b
  * @return   результат выполнения запуска
  *
  */
-bool awh::engine::launch(const event::id_t id) noexcept {
+bool awh::engine::io::launch(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -62328,7 +62328,7 @@ bool awh::engine::launch(const event::id_t id) noexcept {
 									} else eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.connect.delay);
 								}
 								// Выполняем "пинок" для применения изменений
-								return kick();
+								return io::kick();
 							}
 							// Для остальных типов сокетов
 							default: {
@@ -62454,7 +62454,7 @@ bool awh::engine::launch(const event::id_t id) noexcept {
 								// Активируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED);
 								// Выполняем "пинок" для применения изменений
-								return kick();
+								return io::kick();
 							}
 							// Для остальных типов сокетов
 							default: {
@@ -62611,7 +62611,7 @@ bool awh::engine::launch(const event::id_t id) noexcept {
  * @return   результат выполнения отключения
  *
  */
-bool awh::engine::disconnect(const event::id_t id) noexcept {
+bool awh::engine::io::disconnect(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -62725,7 +62725,7 @@ bool awh::engine::disconnect(const event::id_t id) noexcept {
  * @return    результат выполнения подключения
  *
  */
-bool awh::engine::connect(const vector <event::id_t> & ids) noexcept {
+bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -63716,7 +63716,7 @@ bool awh::engine::connect(const vector <event::id_t> & ids) noexcept {
  * @return    результат выполнения перевода в режим прослушивания
  *
  */
-bool awh::engine::listen(const event::id_t id, const uint32_t max) noexcept {
+bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -64646,7 +64646,7 @@ bool awh::engine::listen(const event::id_t id, const uint32_t max) noexcept {
  * @return   результат получения данных
  *
  */
-bool awh::engine::recv(const event::id_t id) noexcept {
+bool awh::engine::io::recv(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -64687,7 +64687,7 @@ bool awh::engine::recv(const event::id_t id) noexcept {
  * @return       количество байт данных, отправленных событием
  *
  */
-size_t awh::engine::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
+size_t awh::engine::io::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	/**
@@ -65023,7 +65023,7 @@ size_t awh::engine::send(const event::id_t id, const void * buffer, const size_t
  * @return       количество принятых на перенаправление байт
  *
  */
-size_t awh::engine::relay(const event::id_t id, const void * buffer, const size_t size) noexcept {
+size_t awh::engine::io::relay(const event::id_t id, const void * buffer, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -65098,7 +65098,7 @@ size_t awh::engine::relay(const event::id_t id, const void * buffer, const size_
 						 */
 						while(result < size){
 							// Выполняем перенос очередной части данных
-							const size_t count = relay(id, static_cast <const uint8_t *> (buffer) + result, ::min(portion, size - result));
+							const size_t count = io::relay(id, static_cast <const uint8_t *> (buffer) + result, ::min(portion, size - result));
 							// Если часть данных перенести не удалось
 							if(count == 0)
 								// Прекращаем перенос
@@ -65293,7 +65293,7 @@ size_t awh::engine::relay(const event::id_t id, const void * buffer, const size_
  * @return     результат выполнения объединения
  *
  */
-bool awh::engine::splice(const event::id_t eid, const event::id_t dest) noexcept {
+bool awh::engine::io::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -66290,7 +66290,7 @@ bool awh::engine::splice(const event::id_t eid, const event::id_t dest) noexcept
  * @return         результат подъёма события из снимка
  *
  */
-bool awh::engine::restore(const event::id_t id, const void * snapshot, const size_t size) noexcept {
+bool awh::engine::io::restore(const event::id_t id, const void * snapshot, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -66391,7 +66391,7 @@ bool awh::engine::restore(const event::id_t id, const void * snapshot, const siz
 		 *       своими руками, два пути разошлись бы на первой же правке фиксации
 		 *
 		 */
-		if(!(result = commit(id))){
+		if(!(result = io::commit(id))){
 			// Записываем ошибку в лог
 			log::print("%s: event %llu restored from the snapshot cannot be committed", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
 			// Выводим результат
@@ -66450,7 +66450,7 @@ bool awh::engine::restore(const event::id_t id, const void * snapshot, const siz
  * @return         результат снятия снимка события
  *
  */
-bool awh::engine::snapshot(const event::id_t id, const event::id_t dest, vector <uint8_t> & snapshot) noexcept {
+bool awh::engine::io::snapshot(const event::id_t id, const event::id_t dest, vector <uint8_t> & snapshot) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Очищаем буфер снимка от того, что оставил прежний вызов
@@ -66598,7 +66598,7 @@ bool awh::engine::snapshot(const event::id_t id, const event::id_t dest, vector 
  * @param adaptive флаг адаптивной глубины очереди принятия входящих соединений
  *
  */
-void awh::engine::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
+void awh::engine::connection::backlog(const event::id_t id, const uint16_t depth, const bool adaptive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -66665,7 +66665,7 @@ void awh::engine::backlog(const event::id_t id, const uint16_t depth, const bool
  * @return       размер буфера события
  *
  */
-size_t awh::engine::getBufferSize(const event::id_t id, const event::action_t action) noexcept {
+size_t awh::engine::buffer::size::get(const event::id_t id, const event::action_t action) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -66985,7 +66985,7 @@ size_t awh::engine::getBufferSize(const event::id_t id, const event::action_t ac
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
+bool awh::engine::buffer::size::set(const event::id_t id, const event::action_t action, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -67275,7 +67275,7 @@ bool awh::engine::setBufferSize(const event::id_t id, const event::action_t acti
  * @param bandwidth пропускная способность события для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
  *
  */
-void awh::engine::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
+void awh::engine::io::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -67367,7 +67367,7 @@ void awh::engine::bandwidth(const event::limiting_t limiting, string_view bandwi
  * @return          результат выполнения установки
  *
  */
-bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept {
+bool awh::engine::io::bandwidth(const event::id_t id, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -67456,7 +67456,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return kick();
+								return io::kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -67537,7 +67537,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
 											}
 										}
 										// Устанавливаем результат выполнения операции
-										return kick();
+										return io::kick();
 									}
 									// Если режим ограничения пропускной способности является входящим
 									case static_cast <uint8_t> (event::limiting_t::INGRESS): {
@@ -67594,7 +67594,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
 					// Выполняем установку пропускной способности для узла-посредника, используя его конечную точку назначения
-					return engine::bandwidth(awh_cast <::io::mediator_t *> (i->second.get())->dest, limiting, bandwidth);
+					return engine::io::bandwidth(awh_cast <::io::mediator_t *> (i->second.get())->dest, limiting, bandwidth);
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
@@ -67669,7 +67669,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return kick();
+								return io::kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -67768,7 +67768,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
 									} break;
 								}
 								// Устанавливаем результат выполнения операции
-								return kick();
+								return io::kick();
 							}
 							// Для других семейств событий
 							default: {
@@ -67850,7 +67850,7 @@ bool awh::engine::bandwidth(const event::id_t id, const event::limiting_t limiti
  * @return   режим трансляции пакетов (unicast, multicast, broadcast)
  *
  */
-awh::event::delivery_mode_t awh::engine::getDelivery(const event::id_t id) noexcept {
+awh::event::delivery_mode_t awh::engine::delivery::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -67890,7 +67890,7 @@ awh::event::delivery_mode_t awh::engine::getDelivery(const event::id_t id) noexc
  * @return         результат выполнения установки
  *
  */
-bool awh::engine::setDelivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
+bool awh::engine::delivery::set(const event::id_t id, const event::delivery_mode_t delivery) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -67926,7 +67926,7 @@ bool awh::engine::setDelivery(const event::id_t id, const event::delivery_mode_t
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем режим трансляции пакетов для связанного события
-						return setDelivery(mediator->dest, delivery);
+						return delivery::set(mediator->dest, delivery);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -67950,7 +67950,7 @@ bool awh::engine::setDelivery(const event::id_t id, const event::delivery_mode_t
 					 *       установке устройства - когда режим назвали прежде него
 					 *
 					 *
-					 * @warning Устройство берётся из НАЗВАННОГО событию, а не из `getIface()`.
+					 * @warning Устройство берётся из НАЗВАННОГО событию, а не из `iface::get()`.
 					 *          Тот при неназванном устройстве отвечает интерфейсом маршрута по
 					 *          умолчанию - и рассылка уходила туда, куда пользователь её не
 					 *          посылал: на машине с VPN устройством выхода назначался туннель,
@@ -68032,7 +68032,7 @@ bool awh::engine::setDelivery(const event::id_t id, const event::delivery_mode_t
  * @return   метаданные последнего принятого дейтаграммного пакета
  *
  */
-awh::net::dgram_info_t awh::engine::getTrafficInfo(const event::id_t id) noexcept {
+awh::net::dgram_info_t awh::engine::io::trafficInfo(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68083,7 +68083,7 @@ awh::net::dgram_info_t awh::engine::getTrafficInfo(const event::id_t id) noexcep
  * @return   количество хопов последнего принятого пакета
  *
  */
-uint8_t awh::engine::getCountHops(const event::id_t id) noexcept {
+uint8_t awh::engine::hops::count::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68139,7 +68139,7 @@ uint8_t awh::engine::getCountHops(const event::id_t id) noexcept {
  * @return     результат выполнения установки
  *
  */
-bool awh::engine::setCountHops(const event::id_t id, const uint8_t hops) noexcept {
+bool awh::engine::hops::count::set(const event::id_t id, const uint8_t hops) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -68219,7 +68219,7 @@ bool awh::engine::setCountHops(const event::id_t id, const uint8_t hops) noexcep
 					// Получаем текущее значение объекта посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 					// Если идентификатор связанного события установлен
-					if((mediator->dest != 0) && (result = setCountHops(mediator->dest, hops))){
+					if((mediator->dest != 0) && (result = hops::count::set(mediator->dest, hops))){
 						// Если количество хопов равно нулю
 						if(hops == 0)
 							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
@@ -68362,7 +68362,7 @@ bool awh::engine::setCountHops(const event::id_t id, const uint8_t hops) noexcep
  * @return   максимальное количество хопов
  *
  */
-awh::event::hops_t awh::engine::getHops(const event::id_t id) noexcept {
+awh::event::hops_t awh::engine::hops::get(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68402,7 +68402,7 @@ awh::event::hops_t awh::engine::getHops(const event::id_t id) noexcept {
  * @return     результат работы функции
  *
  */
-bool awh::engine::setHops(const event::id_t id, const event::hops_t hops) noexcept {
+bool awh::engine::hops::set(const event::id_t id, const event::hops_t hops) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -68440,7 +68440,7 @@ bool awh::engine::setHops(const event::id_t id, const event::hops_t hops) noexce
 					// Получаем текущее значение объекта посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 					// Если идентификатор связанного события установлен
-					if((mediator->dest != 0) && (result = setHops(mediator->dest, hops)))
+					if((mediator->dest != 0) && (result = hops::set(mediator->dest, hops)))
 						// Устанавливаем максимальное количество хопов для события
 						mediator->state.hops = hops;
 				} break;
@@ -68520,7 +68520,7 @@ bool awh::engine::setHops(const event::id_t id, const event::hops_t hops) noexce
  * @return   режим использования таймаута для обработки события чтения
  *
  */
-awh::event::usage_t awh::engine::getUsageReadTimeout(const event::id_t id) noexcept {
+awh::event::usage_t awh::engine::timer::usage(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68579,7 +68579,7 @@ awh::event::usage_t awh::engine::getUsageReadTimeout(const event::id_t id) noexc
  * @param usage режим использования таймаута для обработки события чтения (reusable или disposable)
  *
  */
-void awh::engine::setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept {
+void awh::engine::timer::usage(const event::id_t id, const event::usage_t usage) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68643,7 +68643,7 @@ void awh::engine::setUsageReadTimeout(const event::id_t id, const event::usage_t
  * @return       значение таймаута в миллисекундах
  *
  */
-uint32_t awh::engine::getTimeout(const event::id_t id, const event::action_t action) noexcept {
+uint32_t awh::engine::timer::timeout(const event::id_t id, const event::action_t action) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -68705,7 +68705,7 @@ uint32_t awh::engine::getTimeout(const event::id_t id, const event::action_t act
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Возвращаем значение таймаута для связанного события
-						return getTimeout(mediator->dest, action);
+						return timer::timeout(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -68798,7 +68798,7 @@ uint32_t awh::engine::getTimeout(const event::id_t id, const event::action_t act
  * @param timeout значение таймаута в миллисекундах
  *
  */
-void awh::engine::setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
+void awh::engine::timer::timeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -69008,7 +69008,7 @@ void awh::engine::setTimeout(const event::id_t id, const event::action_t action,
 						}
 					}
 					// Выполняем "пинок" для применения изменений
-					kick();
+					io::kick();
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -69066,7 +69066,7 @@ void awh::engine::setTimeout(const event::id_t id, const event::action_t action,
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем значение таймаута для связанного события
-						setTimeout(mediator->dest, action, timeout);
+						timer::timeout(mediator->dest, action, timeout);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -69230,7 +69230,7 @@ void awh::engine::setTimeout(const event::id_t id, const event::action_t action,
 						}
 					}
 					// Выполняем "пинок" для применения изменений
-					kick();
+					io::kick();
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -69349,7 +69349,7 @@ void awh::engine::setTimeout(const event::id_t id, const event::action_t action,
  * @return       результат продолжения ожидания
  *
  */
-bool awh::engine::rearmTimeout(const event::id_t id, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::engine::timer::rearm(const event::id_t id, const event::action_t action, const uint32_t delay) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -69396,7 +69396,7 @@ bool awh::engine::rearmTimeout(const event::id_t id, const event::action_t actio
 					// Выводим отрицательный результат продолжения ожидания
 					return false;
 				// Выполняем продолжение ожидания у связанного события
-				return rearmTimeout(mediator->dest, action, delay);
+				return timer::rearm(mediator->dest, action, delay);
 			}
 			/**
 			 * Если узел является одноранговым либо исходящим узлом
@@ -69572,7 +69572,7 @@ bool awh::engine::rearmTimeout(const event::id_t id, const event::action_t actio
  * @return       режим действия события
  *
  */
-awh::event::mode_t awh::engine::getAction(const event::id_t id, const event::action_t action) noexcept {
+awh::event::mode_t awh::engine::action::get(const event::id_t id, const event::action_t action) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -69922,7 +69922,7 @@ awh::event::mode_t awh::engine::getAction(const event::id_t id, const event::act
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Извлекаем режим действия для связанного события
-						return getAction(mediator->dest, action);
+						return action::get(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -70066,7 +70066,7 @@ awh::event::mode_t awh::engine::getAction(const event::id_t id, const event::act
  * @return       результат выполнения установки
  *
  */
-bool awh::engine::setAction(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
+bool awh::engine::action::set(const event::id_t id, const event::action_t action, const event::mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -70260,7 +70260,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						::events::add(::move(event));
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -70457,7 +70457,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						::events::add(::move(event));
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC): {
@@ -70527,7 +70527,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
@@ -70705,7 +70705,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -70869,7 +70869,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -70939,7 +70939,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -70948,7 +70948,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем действие для связанного события
-						return setAction(mediator->dest, action, mode);
+						return action::set(mediator->dest, action, mode);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -71240,7 +71240,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -71378,7 +71378,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
 						} break;
 					}
 					// Выполняем "пинок" для применения изменений
-					return kick();
+					return io::kick();
 				}
 			}
 		}
@@ -71413,7 +71413,7 @@ bool awh::engine::setAction(const event::id_t id, const event::action_t action, 
  * @return      результат выполнения установки
  *
  */
-bool awh::engine::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
+bool awh::engine::connection::keepalive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -71463,7 +71463,7 @@ bool awh::engine::keepAlive(const event::id_t id, const int32_t cnt, const int32
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем параметры keep-alive для связанного события
-						return keepAlive(mediator->dest, cnt, idle, intvl);
+						return connection::keepalive(mediator->dest, cnt, idle, intvl);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
@@ -71509,7 +71509,7 @@ bool awh::engine::keepAlive(const event::id_t id, const int32_t cnt, const int32
  * @return   результат выполнения приостановки
  *
  */
-bool awh::engine::pause(const event::id_t id) noexcept {
+bool awh::engine::io::pause(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -71539,7 +71539,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 						// Деактивируем событие на чтение данных из сокета
 						::events::read(ipc->transfer.fd, ipc,  event::mode_t::DISABLED, event::rate_t::INSTANT);
 						// Выполняем "пинок" для применения изменений
-						result = kick();
+						result = io::kick();
 						/**
 						 * Извещаем потребителя о входе узла в паузу
 						 *
@@ -71578,7 +71578,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71618,7 +71618,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71706,7 +71706,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 								eth::socket::setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71768,7 +71768,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 								}
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71796,7 +71796,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Устанавливаем паузу для связанного события
-						return pause(mediator->dest);
+						return io::pause(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -71874,7 +71874,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 								eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71945,7 +71945,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
 								eth::socket::setTimeout(server->fd, net::socket_event_t::WRITE, 0);
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 							/**
 							 * Извещаем потребителя о входе узла в паузу
 							 *
@@ -71996,7 +71996,7 @@ bool awh::engine::pause(const event::id_t id) noexcept {
  * @return   результат выполнения возобновления
  *
  */
-bool awh::engine::resume(const event::id_t id) noexcept {
+bool awh::engine::io::resume(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -72026,7 +72026,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 							// Активируем событие на чтение данных из сокета
 							::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED);
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является директорией
@@ -72079,7 +72079,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 								::events::add(::move(event));
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является файловой системой
@@ -72132,7 +72132,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 								::events::add(::move(event));
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является одноранговым узлом
@@ -72206,7 +72206,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 									eth::socket::setTimeout(peer->transfer.fd, net::socket_event_t::WRITE, peer->timeouts.write.delay);
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является одноранговым узлом-источником
@@ -72268,7 +72268,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 								}
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является посредником
@@ -72278,7 +72278,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 						// Если идентификатор связанного события установлен
 						if(mediator->dest != 0)
 							// Устанавливаем возобновление для связанного события
-							return resume(mediator->dest);
+							return io::resume(mediator->dest);
 					} break;
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -72351,7 +72351,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 									eth::socket::setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 					// Если узел является сервером
@@ -72402,7 +72402,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
 								}
 							}
 							// Выполняем "пинок" для применения изменений
-							result = kick();
+							result = io::kick();
 						}
 					} break;
 				}
@@ -72436,7 +72436,7 @@ bool awh::engine::resume(const event::id_t id) noexcept {
  * @return   состояние события
  *
  */
-bool awh::engine::isAlive(const event::id_t id) noexcept {
+bool awh::engine::io::isAlive(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -72485,7 +72485,7 @@ bool awh::engine::isAlive(const event::id_t id) noexcept {
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
 						// Выполняем проверку состояния связанного события
-						return isAlive(mediator->dest);
+						return io::isAlive(mediator->dest);
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -72537,7 +72537,7 @@ bool awh::engine::isAlive(const event::id_t id) noexcept {
  * @brief Функция очистки сетевого движка
  *
  */
-void awh::engine::clear() noexcept {
+void awh::engine::io::clear() noexcept {
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
 		/**
@@ -72566,7 +72566,7 @@ void awh::engine::clear() noexcept {
 				// Выходим из цикла завершения удалений
 				break;
 			// Выполняем пинок Kqueue для обработки отложенных пользовательских событий
-			(void) kick();
+			(void) io::kick();
 		}
 		/**
 		 * Выполняем перебор всех активных узлов
@@ -72578,7 +72578,7 @@ void awh::engine::clear() noexcept {
 			 * @warning Условие «состояние отлично от NONE» стояло здесь прежде, и оно
 			 *          теряло описатели. Догадка, на какую оно опиралось, такова: сокет
 			 *          заводится фиксацией, и узел со состоянием NONE живого сокета
-			 *          держать не может. Догадка НЕВЕРНА: `rebuild()` закрывает прежний
+			 *          держать не может. Догадка НЕВЕРНА: `io::rebuild()` закрывает прежний
 			 *          описатель, сбрасывает состояние в NONE и СЛЕДОМ заводит новый
 			 *          сокет, состояния больше не трогая. Узел законно живёт в NONE с
 			 *          живым описателем, пока вызывающий не зафиксирует его заново, а
@@ -72590,7 +72590,7 @@ void awh::engine::clear() noexcept {
 			 *
 			 * @note Доказано щупом: гнездо, заведённое
 			 *       перестройкой, переживало `clear()` («ПЕРЕЖИЛО гнездо 588»). У
-			 *       `deinitialize()` своя ветвь разбора, где условия на состояние нет
+			 *       `io::deinitialize()` своя ветвь разбора, где условия на состояние нет
 			 *       вовсе, — оттого щуп, сворачивавший движок через неё, утечки не
 			 *       видел ни разу
 			 *
@@ -73184,7 +73184,7 @@ void awh::engine::clear() noexcept {
  * @return результат выполнения операции
  *
  */
-bool awh::engine::kick() noexcept {
+bool awh::engine::io::kick() noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -73234,7 +73234,7 @@ bool awh::engine::kick() noexcept {
  * @return результат выполнения инициализации
  *
  */
-bool awh::engine::initialize() noexcept {
+bool awh::engine::io::initialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -73382,7 +73382,7 @@ bool awh::engine::initialize() noexcept {
  * @return результат выполнения реинициализации
  *
  */
-bool awh::engine::reinitialize() noexcept {
+bool awh::engine::io::reinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -73390,7 +73390,7 @@ bool awh::engine::reinitialize() noexcept {
 		// Если процесс является родительским
 		if(::__awh_pid__ == ::getpid())
 			// Выполняем пинок Kqueue для разблокировки ожидания событий
-			kick();
+			io::kick();
 		// Если события для обработки подготовлены
 		if(!::local::change.empty())
 			// Выполняем очистку списка подготовленных изменений
@@ -73506,7 +73506,7 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						commit(i->first);
+						io::commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -73520,7 +73520,7 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						commit(i->first);
+						io::commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
@@ -73528,9 +73528,9 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						i->second->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						if(commit(i->first))
+						if(io::commit(i->first))
 							// Устанавливаем статус события в состояние паузы
-							pause(i->first);
+							io::pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -73557,7 +73557,7 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						dir->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						commit(i->first);
+						io::commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
@@ -73565,9 +73565,9 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						dir->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						if(commit(i->first))
+						if(io::commit(i->first))
 							// Устанавливаем статус события в состояние паузы
-							pause(i->first);
+							io::pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -73590,7 +73590,7 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						fs->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						commit(i->first);
+						io::commit(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если событие поставлено на паузу
@@ -73598,9 +73598,9 @@ bool awh::engine::reinitialize() noexcept {
 						// Выполняем сброс статуса ожидания события
 						fs->state.status = event::status_t::NONE;
 						// Выполняем фиксацию события заново
-						if(commit(i->first))
+						if(io::commit(i->first))
 							// Устанавливаем статус события в состояние паузы
-							pause(i->first);
+							io::pause(i->first);
 						// Увеличиваем значение итератора
 						++i;
 					// Если необходимо выполнить удаление события
@@ -74030,7 +74030,7 @@ bool awh::engine::reinitialize() noexcept {
  * @return результат выполнения деинициализации
  *
  */
-bool awh::engine::deinitialize() noexcept {
+bool awh::engine::io::deinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -74080,7 +74080,7 @@ bool awh::engine::deinitialize() noexcept {
 				// Выходим из цикла завершения удалений
 				break;
 			// Выполняем пинок Kqueue для обработки отложенных пользовательских событий
-			(void) kick();
+			(void) io::kick();
 		}
 	}
 	// Если после деинициализации остались активные узлы
@@ -74402,7 +74402,7 @@ bool awh::engine::deinitialize() noexcept {
  * @return состояние инициализации
  *
  */
-bool awh::engine::isInitialized() noexcept {
+bool awh::engine::io::isInitialized() noexcept {
 	// Возвращаем результат проверки состояния инициализации
 	return (::__awh_kq__ != net::invalid_socket_t);
 }
@@ -74412,7 +74412,7 @@ bool awh::engine::isInitialized() noexcept {
  * @return количество событий
  *
  */
-size_t awh::engine::eventsCount() noexcept {
+size_t awh::engine::io::eventsCount() noexcept {
 	// Возвращаем количество событий в сетевом движке
 	return ::__awh_nodes__.size();
 }
@@ -74422,7 +74422,7 @@ size_t awh::engine::eventsCount() noexcept {
  * @return тип таймера для событий сетевого движка
  *
  */
-awh::event::timer_t awh::engine::getInternalTimer() noexcept {
+awh::event::timer_t awh::engine::timer::internal::get() noexcept {
 	// Возвращаем тип таймера для событий сетевого движка
 	return ::__awh_internal_timer__;
 }
@@ -74432,7 +74432,7 @@ awh::event::timer_t awh::engine::getInternalTimer() noexcept {
  * @param timer тип таймера для событий сетевого движка
  *
  */
-void awh::engine::setInternalTimer(const event::timer_t timer) noexcept {
+void awh::engine::timer::internal::set(const event::timer_t timer) noexcept {
 	// Если тип таймера для событий сетевого движка не совпадает с новым типом таймера
 	if(::__awh_internal_timer__ != timer){
 		/**
@@ -74511,7 +74511,7 @@ void awh::engine::setInternalTimer(const event::timer_t timer) noexcept {
  * @return   размер файла
  *
  */
-size_t awh::engine::size(const event::id_t id) noexcept {
+size_t awh::engine::file::size(const event::id_t id) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	/**
@@ -74614,7 +74614,7 @@ size_t awh::engine::size(const event::id_t id) noexcept {
  * @return   количество байт, доступных для записи
  *
  */
-size_t awh::engine::available(const event::id_t id) noexcept {
+size_t awh::engine::buffer::available(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74725,7 +74725,7 @@ size_t awh::engine::available(const event::id_t id) noexcept {
  * @return   тип события
  *
  */
-awh::event::type_t awh::engine::type(const event::id_t id) noexcept {
+awh::event::type_t awh::engine::io::type(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74764,7 +74764,7 @@ awh::event::type_t awh::engine::type(const event::id_t id) noexcept {
  * @return   тип узла события
  *
  */
-awh::event::node_t awh::engine::node(const event::id_t id) noexcept {
+awh::event::node_t awh::engine::io::node(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74803,7 +74803,7 @@ awh::event::node_t awh::engine::node(const event::id_t id) noexcept {
  * @return   семейство адресов
  *
  */
-awh::event::family_t awh::engine::family(const event::id_t id) noexcept {
+awh::event::family_t awh::engine::io::family(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74842,7 +74842,7 @@ awh::event::family_t awh::engine::family(const event::id_t id) noexcept {
  * @return   статус события
  *
  */
-awh::event::status_t awh::engine::status(const event::id_t id) noexcept {
+awh::event::status_t awh::engine::io::status(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74881,7 +74881,7 @@ awh::event::status_t awh::engine::status(const event::id_t id) noexcept {
  * @return   протокол события
  *
  */
-awh::event::protocol_t awh::engine::protocol(const event::id_t id) noexcept {
+awh::event::protocol_t awh::engine::io::protocol(const event::id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -74920,7 +74920,7 @@ awh::event::protocol_t awh::engine::protocol(const event::id_t id) noexcept {
  * @return        результат выполнения опроса
  *
  */
-bool awh::engine::poll(const int32_t timeout) noexcept {
+bool awh::engine::io::poll(const int32_t timeout) noexcept {
 	// Результат выполнения опроса
 	bool result = false;
 	// Если Kqueue инициализирован
@@ -75590,7 +75590,7 @@ bool awh::engine::poll(const int32_t timeout) noexcept {
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::read_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::read_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -75684,7 +75684,7 @@ void awh::engine::on(const event::id_t id, engine::callback::read_t cb) noexcept
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::write_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::write_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -75778,7 +75778,7 @@ void awh::engine::on(const event::id_t id, engine::callback::write_t cb) noexcep
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::spool_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::spool_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -75867,7 +75867,7 @@ void awh::engine::on(const event::id_t id, engine::callback::spool_t cb) noexcep
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::event_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::event_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -75971,7 +75971,7 @@ void awh::engine::on(const event::id_t id, engine::callback::event_t cb) noexcep
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::error_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::error_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76087,7 +76087,7 @@ void awh::engine::on(const event::id_t id, engine::callback::error_t cb) noexcep
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::vnode_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::vnode_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76156,7 +76156,7 @@ void awh::engine::on(const event::id_t id, engine::callback::vnode_t cb) noexcep
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::inject_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::inject_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76235,7 +76235,7 @@ void awh::engine::on(const event::id_t id, engine::callback::inject_t cb) noexce
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::status_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::status_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76351,7 +76351,7 @@ void awh::engine::on(const event::id_t id, engine::callback::status_t cb) noexce
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::accept_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::accept_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76419,7 +76419,7 @@ void awh::engine::on(const event::id_t id, engine::callback::accept_t cb) noexce
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::origin_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::origin_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76479,7 +76479,7 @@ void awh::engine::on(const event::id_t id, engine::callback::origin_t cb) noexce
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::traffic_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::traffic_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76548,7 +76548,7 @@ void awh::engine::on(const event::id_t id, engine::callback::traffic_t cb) noexc
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::connect_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::connect_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76612,7 +76612,7 @@ void awh::engine::on(const event::id_t id, engine::callback::connect_t cb) noexc
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76676,7 +76676,7 @@ void awh::engine::on(const event::id_t id, engine::callback::tuninfo_t cb) noexc
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::timeout_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::timeout_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76750,7 +76750,7 @@ void awh::engine::on(const event::id_t id, engine::callback::timeout_t cb) noexc
  * @param cb функция обратного вызова источника данных
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::source_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::source_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -76850,7 +76850,7 @@ void awh::engine::on(const event::id_t id, engine::callback::source_t cb) noexce
  * @param cb функция обратного вызова
  *
  */
-void awh::engine::on(const event::id_t id, engine::callback::available_t cb) noexcept {
+void awh::engine::io::on(const event::id_t id, engine::callback::available_t cb) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */

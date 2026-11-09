@@ -18,7 +18,7 @@
  *          чтобы проверить весь ход целиком:
  *
  *          - `STREAM` с выключенными границами: файл уходит ОДНИМ обращением
- *            `engine::send()`. Очередь потоковая, она принимает сколько влезло, а
+ *            `engine::io::send()`. Очередь потоковая, она принимает сколько влезло, а
  *            остаток досылается по освобождению места. Границ записей нет;
  *          - `STREAM` с включёнными границами: файл уходит кусками через
  *            `engine::sctp::send()`, признак завершения ставится лишь на последнем. У
@@ -197,7 +197,7 @@ static bool load(const string & filename, vector <uint8_t> & result) noexcept {
  */
 static bool complete(const event::id_t eid) noexcept {
 	// Выводим результат проверки
-	return (__sending__.queued && (engine::available(eid) >= __sending__.capacity));
+	return (__sending__.queued && (engine::buffer::available(eid) >= __sending__.capacity));
 }
 
 /**
@@ -240,7 +240,7 @@ static void feed(const event::id_t eid) noexcept {
 			// Выполняем отправку куска вместе с метаданными
 			accepted = engine::sctp::send(eid, buffer, length, info, end);
 		// Иначе отправляем остаток целиком: очередь возьмёт сколько влезет
-		} else accepted = engine::send(eid, buffer, rest);
+		} else accepted = engine::io::send(eid, buffer, rest);
 		// Если очередь не приняла ничего, ждём её освобождения
 		if(accepted == 0)
 			// Выходим из функции
@@ -321,41 +321,41 @@ int32_t main(int32_t argc, char * argv[]){
 	log::print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", log::flag_t::INFO,
 		total, records, static_cast <unsigned long long> (digest(__sending__.payload.data(), total)));
 	// Создаём событие клиента
-	event::id_t eid = engine::event(
+	event::id_t eid = engine::io::event(
 		event::node_t::CLIENT, event::family_t::IPV4,
 		(__sending__.stream ? event::type_t::STREAM : event::type_t::SEQPACKET),
 		event::protocol_t::SCTP
 	);
 	// Устанавливаем порт удалённого сервера
-	engine::setTargetPort(eid, port);
+	engine::target::port::set(eid, port);
 	// Если завести движок не удалось
-	if(!engine::initialize()){
+	if(!engine::io::initialize()){
 		// Выводим сообщение об ошибке
 		log::print("Движок завести не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем опции события клиента
-	engine::setOptions(eid,
+	engine::options::set(eid,
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC
 	);
 	// Если установить локальный адрес не удалось
-	if(!engine::setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
+	if(!engine::address::set(eid, event::address_t::IPV4, "0.0.0.0")){
 		// Выводим сообщение об ошибке
 		log::print("Локальный адрес установить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если установить адрес удалённого сервера не удалось
-	if(!engine::setTarget(eid, target)){
+	if(!engine::target::set(eid, target)){
 		// Выводим сообщение об ошибке
 		log::print("Адрес удалённого сервера установить не удалось: %s", log::flag_t::CRITICAL, target.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик подключения
-	engine::on(eid, static_cast <engine::callback::connect_t> ([](const event::id_t eid, const bool ok) noexcept -> void {
+	engine::io::on(eid, static_cast <engine::callback::connect_t> ([](const event::id_t eid, const bool ok) noexcept -> void {
 		// Если подключиться не удалось
 		if(!ok){
 			// Выводим сообщение об ошибке
@@ -376,14 +376,14 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выводим предупреждение
 			log::print("Границы записи система не поддерживает: файл уйдёт несколькими записями", log::flag_t::WARNING);
 		// Запоминаем свободное место очереди при пустой очереди
-		__sending__.capacity = engine::available(eid);
+		__sending__.capacity = engine::buffer::available(eid);
 		// Запоминаем идентификатор события отправки
 		__event__ = eid;
 		// Выполняем отправку файла
 		feed(eid);
 	}));
 	// Устанавливаем отклик состояния события
-	engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+	engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 		/**
 		 * Определяем состояние события
 		 */
@@ -402,21 +402,21 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	});
 	// Если зафиксировать настройки события не удалось
-	if(!engine::commit(eid)){
+	if(!engine::io::commit(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Настройки события зафиксировать не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если подключиться к серверу не удалось
-	if(!engine::connect(eid)){
+	if(!engine::io::connect(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Подключение к серверу выполнить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
-	if(!engine::launch(eid)){
+	if(!engine::io::launch(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Событие запустить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
@@ -428,7 +428,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Проверка стоит в цикле, а не в отклике: отклик освобождения очереди
 	 *       приходит лишь вслед за её переполнением, а короткие файлы её не переполняют
 	 */
-	while(engine::poll(100) && !__done__){
+	while(engine::io::poll(100) && !__done__){
 		// Если отправка ещё не завершена
 		if((__event__ == 0) || !complete(__event__))
 			// Продолжаем оборот цикла
@@ -441,12 +441,12 @@ int32_t main(int32_t argc, char * argv[]){
 		 * @note Цикл событий продолжает крутиться: закрытие тут же оборвало бы хвост,
 		 *       ещё лежащий в буфере ядра
 		 */
-		for(uint32_t i = 0; (i < __linger__) && engine::poll(100); i += 100);
+		for(uint32_t i = 0; (i < __linger__) && engine::io::poll(100); i += 100);
 		// Устанавливаем признак завершения работы
 		__done__ = true;
 	}
 	// Выполняем очистку движка, закрывая подключение
-	engine::clear();
+	engine::io::clear();
 	// Выходим успешно
 	return EXIT_SUCCESS;
 }

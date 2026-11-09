@@ -40,7 +40,7 @@ int main(int argc, char ** argv){
 	awh::log::level(awh::log::level_t::NONE);
 	// Объект асинхронного движка ввода-вывода
 	// Выполняем инициализацию движка
-	if(!awh::engine::initialize()){
+	if(!awh::engine::io::initialize()){
 		// Сообщаем о неудачной инициализации
 		::printf("движок не инициализирован\n");
 		// Выходим с признаком ошибки
@@ -56,11 +56,11 @@ int main(int argc, char ** argv){
 		awh::event::options::TCP_NO_DELAY
 	);
 	// Добавляем событие сервера
-	const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Устанавливаем опции события сервера
-	awh::engine::setOptions(server, options);
+	awh::engine::options::set(server, options);
 	// Устанавливаем адрес события сервера
-	awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
+	awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1");
 	// Подбираем свободный порт временным сокетом
 	uint16_t number = 45000;
 	{
@@ -90,55 +90,55 @@ int main(int argc, char ** argv){
 		}
 	}
 	// Устанавливаем порт события сервера
-	awh::engine::setSourcePort(server, number);
+	awh::engine::source::port::set(server, number);
 	// Количество принятых сервером подключений
 	size_t accepted = 0;
 	// Устанавливаем функцию обратного вызова на принятие входящего подключения
-	awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted, options](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
+	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted, options](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
 		// Устанавливаем опции принятого подключения
-		awh::engine::setOptions(cid, options);
+		awh::engine::options::set(cid, options);
 		// Считаем принятое подключение
 		accepted++;
 		// Подписываем принятое подключение на готовность к чтению
-		awh::engine::on(cid, [](const awh::event::id_t, const uint8_t *, const size_t) noexcept -> void {});
+		awh::engine::io::on(cid, [](const awh::event::id_t, const uint8_t *, const size_t) noexcept -> void {});
 	}));
 	// Выполняем фиксацию настроек события сервера
-	awh::engine::commit(server);
+	awh::engine::io::commit(server);
 	/**
 	 * Очередь ожидающих подключений берётся с запасом: клиенты подключаются все
 	 * разом, до первого оборота опроса, и очередь по умолчанию переполнилась бы
 	 */
-	awh::engine::listen(server, 16384);
+	awh::engine::io::listen(server, 16384);
 	// Запускаем событие сервера
-	awh::engine::launch(server);
+	awh::engine::io::launch(server);
 	/**
 	 * Выполняем создание требуемого количества клиентских подключений
 	 */
 	for(size_t i = 0; i < count; i++){
 		// Добавляем новое событие клиента
-		const awh::event::id_t cid = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t cid = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Устанавливаем порт назначения события клиента
-		awh::engine::setTargetPort(cid, number);
+		awh::engine::target::port::set(cid, number);
 		// Устанавливаем опции события клиента
-		awh::engine::setOptions(cid, options);
+		awh::engine::options::set(cid, options);
 		// Устанавливаем адрес привязки события клиента
-		awh::engine::setAddress(cid, awh::event::address_t::IPV4, "0.0.0.0");
+		awh::engine::address::set(cid, awh::event::address_t::IPV4, "0.0.0.0");
 		// Устанавливаем адрес назначения события клиента
-		awh::engine::setTarget(cid, "127.0.0.1");
+		awh::engine::target::set(cid, "127.0.0.1");
 		// Подписываем клиента на готовность к чтению
-		awh::engine::on(cid, [](const awh::event::id_t, const uint8_t *, const size_t) noexcept -> void {});
+		awh::engine::io::on(cid, [](const awh::event::id_t, const uint8_t *, const size_t) noexcept -> void {});
 		// Выполняем фиксацию настроек события клиента
-		awh::engine::commit(cid);
+		awh::engine::io::commit(cid);
 		// Выполняем подключение клиента к серверу
-		awh::engine::connect(cid);
+		awh::engine::io::connect(cid);
 		// Запускаем событие клиента
-		awh::engine::launch(cid);
+		awh::engine::io::launch(cid);
 	}
 	/**
 	 * Крутим опрос, пока сервер не примет все подключения
 	 */
 	for(size_t turn = 0; (accepted < count) && (turn < 20000000); turn++)
-		awh::engine::poll();
+		awh::engine::io::poll();
 	// Если приняты не все подключения
 	if(accepted < count){
 		// Сообщаем, сколько подключений удалось принять
@@ -156,7 +156,7 @@ int main(int argc, char ** argv){
 		::printf("%zu %zu\n", count, static_cast <size_t> (usage.ru_maxrss));
 	}
 	// Выполняем деинициализацию движка
-	awh::engine::deinitialize();
+	awh::engine::io::deinitialize();
 	// Выводим успешный результат
 	return 0;
 }

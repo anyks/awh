@@ -270,32 +270,32 @@ namespace adaptive_probe {
 		// Принятый и ожидаемый потоки данных
 		std::string received, expected;
 		// Выполняем инициализацию движка
-		::adaptive_probe::require(awh::engine::initialize(), "integration initialize");
+		::adaptive_probe::require(awh::engine::io::initialize(), "integration initialize");
 		// Сервер получает свободный порт от системы без предварительного резервирования
-		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		::adaptive_probe::require(server > 0, "integration server event");
 		// Набор опций неблокирующего TCP-подключения
 		const uint16_t options = (awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY);
 		// Настраиваем слушающее событие на локальном интерфейсе
-		::adaptive_probe::require(awh::engine::setOptions(server, options), "integration server options");
-		::adaptive_probe::require(awh::engine::setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"), "integration server address");
-		::adaptive_probe::require(awh::engine::setSourcePort(server, 0), "integration ephemeral port");
+		::adaptive_probe::require(awh::engine::options::set(server, options), "integration server options");
+		::adaptive_probe::require(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"), "integration server address");
+		::adaptive_probe::require(awh::engine::source::port::set(server, 0), "integration ephemeral port");
 		// Устанавливаем обработчик принятого подключения
-		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Сохраняем принятое подключение
 			peer = cid;
 			// Применяем опции к принятому подключению
-			configured = awh::engine::setOptions(cid, options);
+			configured = awh::engine::options::set(cid, options);
 			// Принимаем данные публичным обработчиком
-			awh::engine::on(cid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::engine::io::on(cid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 				// Проверка ниже сравнивает поток целиком, включая границы предыдущих отправок
 				received.append(reinterpret_cast <const char *> (buffer), size);
 			});
 		}));
 		// Запускаем слушающее событие
-		::adaptive_probe::require(awh::engine::commit(server), "integration server commit");
-		::adaptive_probe::require(awh::engine::listen(server, 8), "integration server listen");
-		::adaptive_probe::require(awh::engine::launch(server), "integration server launch");
+		::adaptive_probe::require(awh::engine::io::commit(server), "integration server commit");
+		::adaptive_probe::require(awh::engine::io::listen(server, 8), "integration server listen");
+		::adaptive_probe::require(awh::engine::io::launch(server), "integration server launch");
 		// Находим узел слушающего события для запроса назначенного порта
 		auto listener = ::__awh_nodes__.find(server);
 		::adaptive_probe::require(listener != ::__awh_nodes__.end(), "integration listener node");
@@ -306,23 +306,23 @@ namespace adaptive_probe {
 		// Получаем порт, выбранный системой
 		::adaptive_probe::require(::getsockname(static_cast <SOCKET> (::io::descriptor(listener->second.get())), reinterpret_cast <struct sockaddr *> (&address), &length) == 0, "integration listener port");
 		// Клиент подключается через публичный интерфейс движка
-		const awh::event::id_t client = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		::adaptive_probe::require(client > 0, "integration client event");
 		// Настраиваем неблокирующее подключение к назначенному порту
-		::adaptive_probe::require(awh::engine::setOptions(client, options), "integration client options");
-		::adaptive_probe::require(awh::engine::setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"), "integration client address");
-		::adaptive_probe::require(awh::engine::setTarget(client, "127.0.0.1"), "integration client target");
-		::adaptive_probe::require(awh::engine::setTargetPort(client, ::ntohs(address.sin_port)), "integration client port");
+		::adaptive_probe::require(awh::engine::options::set(client, options), "integration client options");
+		::adaptive_probe::require(awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0"), "integration client address");
+		::adaptive_probe::require(awh::engine::target::set(client, "127.0.0.1"), "integration client target");
+		::adaptive_probe::require(awh::engine::target::port::set(client, ::ntohs(address.sin_port)), "integration client port");
 		// Запускаем клиентское подключение
-		::adaptive_probe::require(awh::engine::commit(client), "integration client commit");
-		::adaptive_probe::require(awh::engine::connect(client), "integration client connect");
-		::adaptive_probe::require(awh::engine::launch(client), "integration client launch");
+		::adaptive_probe::require(awh::engine::io::commit(client), "integration client commit");
+		::adaptive_probe::require(awh::engine::io::connect(client), "integration client connect");
+		::adaptive_probe::require(awh::engine::io::launch(client), "integration client launch");
 		// Начало ограниченного ожидания принятия подключения
 		const auto connected = std::chrono::steady_clock::now();
 		// Ожидаем принятия подключения не дольше установленного срока
 		while((peer == 0) && ((std::chrono::steady_clock::now() - connected) < std::chrono::seconds(10)))
 			// Ожидание ограничено независимо от появления сетевых событий
-			::adaptive_probe::require(awh::engine::poll(10), "integration connect poll");
+			::adaptive_probe::require(awh::engine::io::poll(10), "integration connect poll");
 		::adaptive_probe::require((peer > 0) && configured, "integration accepted peer");
 		// Находим узел принятого подключения
 		auto node = ::__awh_nodes__.find(peer);
@@ -363,7 +363,7 @@ namespace adaptive_probe {
 					}
 				}
 				// Разбираем события, необходимые для новой подачи
-				::adaptive_probe::require(awh::engine::poll(1), "integration rearm poll");
+				::adaptive_probe::require(awh::engine::io::poll(1), "integration rearm poll");
 			}
 			// Завершаем проверку отказом при истечении срока
 			::adaptive_probe::require(false, "integration receive rearm deadline");
@@ -400,13 +400,13 @@ namespace adaptive_probe {
 				// Если остались неотправленные данные
 				if(sent < size){
 					// Передаём оставшийся хвост
-					const size_t accepted = awh::engine::send(client, payload.data() + sent, size - sent);
+					const size_t accepted = awh::engine::io::send(client, payload.data() + sent, size - sent);
 					// Проверяем и учитываем принятый объём
 					::adaptive_probe::require(accepted <= (size - sent), "integration send size");
 					sent += accepted;
 				}
 				// Разбираем завершения отправки и приёма
-				::adaptive_probe::require(awh::engine::poll(1), "integration transfer poll");
+				::adaptive_probe::require(awh::engine::io::poll(1), "integration transfer poll");
 			}
 			// Проверяем полную доставку и побайтное совпадение потока
 			::adaptive_probe::require((sent == size) && (received == expected), "integration byte integrity and deadline");
@@ -443,10 +443,10 @@ namespace adaptive_probe {
 			}
 		}
 		// Уничтожаем события и обработчики до разрушения захваченных данных
-		::adaptive_probe::require(awh::engine::destroy(client), "integration destroy client");
-		::adaptive_probe::require(awh::engine::destroy(peer), "integration destroy peer");
-		::adaptive_probe::require(awh::engine::destroy(server), "integration destroy server");
-		::adaptive_probe::require(awh::engine::deinitialize(), "integration deinitialize");
+		::adaptive_probe::require(awh::engine::io::destroy(client), "integration destroy client");
+		::adaptive_probe::require(awh::engine::io::destroy(peer), "integration destroy peer");
+		::adaptive_probe::require(awh::engine::io::destroy(server), "integration destroy server");
+		::adaptive_probe::require(awh::engine::io::deinitialize(), "integration deinitialize");
 		// Сообщаем об успешном завершении интеграционной проверки
 		::fprintf(stdout, "ADAPTIVE_INTEGRATION_OK: completion, next submit, growth, shrink, integrity\n");
 	}

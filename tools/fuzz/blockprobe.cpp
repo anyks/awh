@@ -91,7 +91,7 @@ int main(int argc, char * argv[]) noexcept {
 	awh::log::level(awh::log::level_t::ALL);
 	// Объект сетевого движка
 	// Выполняем заведение сетевого движка
-	if(!awh::engine::initialize()){
+	if(!awh::engine::io::initialize()){
 		// Сообщаем, что движок завести не удалось
 		::fprintf(stderr, "Сетевой движок завести не удалось\n");
 		// Выходим с кодом ошибки
@@ -105,36 +105,36 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	if(mode == 3){
 		// Заводим узел дейтаграммного сервера
-		const awh::event::id_t srv = awh::engine::event(
+		const awh::event::id_t srv = awh::engine::io::event(
 			awh::event::node_t::SERVER, awh::event::family_t::IPV4,
 			awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 		);
 		// Назначаем серверу адрес привязки
-		static_cast <void> (awh::engine::setAddress(srv, awh::event::address_t::IPV4, "127.0.0.1"));
+		static_cast <void> (awh::engine::address::set(srv, awh::event::address_t::IPV4, "127.0.0.1"));
 		// Назначаем серверу порт привязки
-		static_cast <void> (awh::engine::setSourcePort(srv, static_cast <uint16_t> (20000 + (::getpid() % 30000))));
+		static_cast <void> (awh::engine::source::port::set(srv, static_cast <uint16_t> (20000 + (::getpid() % 30000))));
 		// Сообщаем об итоге фиксации
-		::fprintf(stderr, "Дейтаграммный сервер: фиксация %s\n", (awh::engine::commit(srv) ? "принята" : "ОТВЕРГНУТА"));
+		::fprintf(stderr, "Дейтаграммный сервер: фиксация %s\n", (awh::engine::io::commit(srv) ? "принята" : "ОТВЕРГНУТА"));
 		// Выполняем запуск сервера
-		static_cast <void> (awh::engine::launch(srv));
+		static_cast <void> (awh::engine::io::launch(srv));
 		// Выполняем обороты опроса, не подавая серверу ни одной датаграммы
 		for(uint8_t i = 0; i < 6; i++)
 			// Выполняем оборот опроса
-			static_cast <void> (awh::engine::poll(100));
+			static_cast <void> (awh::engine::io::poll(100));
 		// Уничтожаем узел сервера
 		::fprintf(stderr, "Сносим узел сервера\n");
-		static_cast <void> (awh::engine::destroy(srv));
+		static_cast <void> (awh::engine::io::destroy(srv));
 		// Выполняем обороты опроса после сноса узла
 		for(uint8_t i = 0; i < 4; i++)
 			// Выполняем оборот опроса
-			static_cast <void> (awh::engine::poll(100));
+			static_cast <void> (awh::engine::io::poll(100));
 		// Уничтожаем все узлы движка
-		static_cast <void> (awh::engine::deinitialize());
+		static_cast <void> (awh::engine::io::deinitialize());
 		// Выходим с успешным кодом
 		return EXIT_SUCCESS;
 	}
 	// Заводим клиентский узел потоковой передачи
-	const awh::event::id_t id = awh::engine::event(
+	const awh::event::id_t id = awh::engine::io::event(
 		awh::event::node_t::CLIENT,
 		awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM,
@@ -150,18 +150,18 @@ int main(int argc, char * argv[]) noexcept {
 	// Если блокировку у узла требуется снять
 	if(mode == 1)
 		// Снимаем блокировку ввода-вывода у узла
-		static_cast <void> (awh::engine::setOption(id, awh::event::options::NO_IO_BLOCK, true));
+		static_cast <void> (awh::engine::options::set(id, awh::event::options::NO_IO_BLOCK, true));
 	// Если блокировку у узла требуется назначить явно
 	else if(mode == 2)
 		// Назначаем узлу блокирующий ввод-вывод
-		static_cast <void> (awh::engine::setOption(id, awh::event::options::NO_IO_BLOCK, false));
+		static_cast <void> (awh::engine::options::set(id, awh::event::options::NO_IO_BLOCK, false));
 	/**
 	 * Адрес заведомо недостижимый: он назначен документом RFC 5737 под примеры и
 	 * в сети не маршрутизируется, оттого подключение к нему не завершится никогда
 	 */
-	static_cast <void> (awh::engine::setTarget(id, "192.0.2.1"));
+	static_cast <void> (awh::engine::target::set(id, "192.0.2.1"));
 	// Назначаем порт удалённой стороны
-	static_cast <void> (awh::engine::setTargetPort(id, 80));
+	static_cast <void> (awh::engine::target::port::set(id, 80));
 	// Итог фиксации настроек узла
 	/**
 	 * Подписываемся на отклик об ошибке события
@@ -169,12 +169,12 @@ int main(int argc, char * argv[]) noexcept {
 	 * @note Без подписки договор проверяется наполовину: видно, что разбор дошёл до
 	 *       вызова отклика, но не видно, что отклик доходит ДО ПОТРЕБИТЕЛЯ
 	 */
-	awh::engine::on(id, [](const awh::event::id_t id, const awh::event::error_t code, const std::string & text) noexcept -> void {
+	awh::engine::io::on(id, [](const awh::event::id_t id, const awh::event::error_t code, const std::string & text) noexcept -> void {
 		// Сообщаем о полученном отклике потребителя
 		::fprintf(stderr, "ПОТРЕБИТЕЛЬ ПОЛУЧИЛ ОТКЛИК: узел %u, код %u, причина: %s\n",
 		 id, static_cast <uint32_t> (code), text.c_str());
 	});
-	const bool committed = awh::engine::commit(id);
+	const bool committed = awh::engine::io::commit(id);
 	// Сообщаем об итоге фиксации
 	::fprintf(stderr, "Фиксация: %s\n", (committed ? "принята" : "ОТВЕРГНУТА"));
 	// Сообщаем о начале опыта
@@ -184,7 +184,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Взводим сторожевой срок на подключение и опрос
 	::guard(5000);
 	// Итог подключения узла
-	const bool connected = awh::engine::connect(id);
+	const bool connected = awh::engine::io::connect(id);
 	// Снимаем сторожевой срок на время печати
 	::guard(0);
 	// Сообщаем об итоге подключения
@@ -196,13 +196,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем обороты опроса
 	for(uint8_t i = 0; i < 8; i++)
 		// Выполняем оборот опроса
-		static_cast <void> (awh::engine::poll(100));
+		static_cast <void> (awh::engine::io::poll(100));
 	// Снимаем сторожевой срок
 	::guard(0);
 	// Сообщаем, что управление вернулось
 	::fprintf(stderr, "Управление вернулось: цикл не встал\n");
 	// Уничтожаем все узлы движка
-	static_cast <void> (awh::engine::deinitialize());
+	static_cast <void> (awh::engine::io::deinitialize());
 	// Выходим с успешным кодом
 	return EXIT_SUCCESS;
 }

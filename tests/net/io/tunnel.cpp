@@ -360,15 +360,15 @@ static void tunnelPinDriver([[maybe_unused]] const tunnel_driver_t driver) noexc
 			// Если запрошен драйвер Wintun
 			case static_cast <uint8_t> (tunnel_driver_t::WINTUN):
 				// Закрепляем драйвер Wintun
-				awh::engine::setDriver(awh::eth::iface::driver_t::WINTUN);
+				awh::engine::driver::set(awh::eth::iface::driver_t::WINTUN);
 			break;
 			// Если запрошен драйвер tap-windows6
 			case static_cast <uint8_t> (tunnel_driver_t::TAP):
 				// Закрепляем драйвер tap-windows6
-				awh::engine::setDriver(awh::eth::iface::driver_t::TAP);
+				awh::engine::driver::set(awh::eth::iface::driver_t::TAP);
 			break;
 			// Для всех прочих случаев отдаём выбор модулю
-			default: awh::engine::setDriver(awh::eth::iface::driver_t::AUTO);
+			default: awh::engine::driver::set(awh::eth::iface::driver_t::AUTO);
 		}
 	#endif
 }
@@ -456,7 +456,7 @@ struct TunnelGuard {
 		// Если узел туннеля заведён
 		if(this->id > 0)
 			// Сносим узел туннеля вместе с его настройкой
-			awh::engine::destroy(this->id);
+			awh::engine::io::destroy(this->id);
 	}
 };
 
@@ -554,7 +554,7 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Проходим оборот жизни устройства дважды
 	 */
@@ -569,7 +569,7 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 		 *       движок не записал узла, а отказ заведения устройства спрашивается ниже,
 		 *       у commit
 		 */
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
@@ -581,15 +581,15 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 		 *          путём с каталогами, файлами и каналами, а тот отвечал отказом
 		 *          10038 - «дескриптор не является сокетом». Туннель им и не является
 		 */
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER)) << sign;
 		// Фиксируем событие туннеля
 		// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
-		ASSERT_TRUE(awh::engine::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
 		// Запускаем событие туннеля
-		ASSERT_TRUE(awh::engine::launch(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(tid)) << sign;
 		/**
 		 * Спрашиваем адрес У САМОЙ СИСТЕМЫ, а не у согласия движка
 		 *
@@ -608,7 +608,7 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 		 */
 		{
 			// Получаем название заведённого устройства туннеля
-			const std::string iface = awh::engine::getIface(tid);
+			const std::string iface = awh::engine::iface::get(tid);
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << sign;
 			// Создаём объект работы с сетью
@@ -660,12 +660,12 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 		 */
 		const auto start = std::chrono::steady_clock::now();
 		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 300))
-			ASSERT_TRUE(awh::engine::poll(50)) << sign;
+			ASSERT_TRUE(awh::engine::io::poll(50)) << sign;
 		// Снимаем событие туннеля
-		ASSERT_TRUE(awh::engine::destroy(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::destroy(tid)) << sign;
 	}
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -721,27 +721,27 @@ TEST_F(IoFixture, IoTunnelDeinitializeReleasesAddressTest){
 		// Закрепляем драйвер туннельных устройств
 		tunnelPinDriver(tunnel_driver_t::TAP);
 		// Выполняем инициализацию движка
-		ASSERT_TRUE(awh::engine::initialize()) << sign;
+		ASSERT_TRUE(awh::engine::io::initialize()) << sign;
 		// Заводим узел туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Узел обязан завестись
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		// Устанавливаем настройки узла
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER)) << sign;
 		/**
 		 * Фиксируем настройки: здесь заводится устройство и ставится адрес
 		 *
 		 * @note Отказ ВТОРОГО захода и есть искомый признак: адрес остался числиться
 		 *       за устройством прежнего захода, и система отдать его отказывается
 		 */
-		ASSERT_TRUE(awh::engine::commit(tid))
+		ASSERT_TRUE(awh::engine::io::commit(tid))
 			<< sign << ": устройство с адресом " << TUNNEL_LOCAL << " не заведено"
 			<< ((round > 0) ? " - адрес не снят свёртыванием прошлого захода" : "");
 		// Запускаем событие туннеля
-		ASSERT_TRUE(awh::engine::launch(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(tid)) << sign;
 		/**
 		 * Сличаем, за каким устройством система числит поставленный адрес
 		 *
@@ -751,7 +751,7 @@ TEST_F(IoFixture, IoTunnelDeinitializeReleasesAddressTest){
 		 */
 		{
 			// Получаем название заведённого устройства
-			const std::string iface = awh::engine::getIface(tid);
+			const std::string iface = awh::engine::iface::get(tid);
 			// Устройство обязано быть заведено
 			ASSERT_FALSE(iface.empty()) << sign << ": движок не назвал заведённое устройство";
 			// Объект работы с сетевыми устройствами
@@ -776,7 +776,7 @@ TEST_F(IoFixture, IoTunnelDeinitializeReleasesAddressTest){
 		 *
 		 * @warning Сноса узла здесь нет НАМЕРЕННО - в нём вся суть проверки
 		 */
-		ASSERT_TRUE(awh::engine::deinitialize()) << sign;
+		ASSERT_TRUE(awh::engine::io::deinitialize()) << sign;
 	}
 }
 
@@ -803,7 +803,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Заводим событие туннеля
 	 *
@@ -811,42 +811,42 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	 *       настроек. Пустой опознаватель означает, что движок не записал
 	 *       узла, а отказ заведения устройства спрашивается ниже, у commit
 	 */
-	const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+	const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(tid);
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Заводим событие посредника
-	const awh::event::id_t mid = awh::engine::event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
+	const awh::event::id_t mid = awh::engine::io::event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
 	ASSERT_GT(mid, 0u);
 	// Заводим событие сервера несущей связи
-	const awh::event::id_t sid = awh::engine::event(
+	const awh::event::id_t sid = awh::engine::io::event(
 		awh::event::node_t::SERVER, awh::event::family_t::IPV4,
 		awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 	);
 	ASSERT_GT(sid, 0u);
 	// Заводим событие клиента несущей связи
-	const awh::event::id_t cid = awh::engine::event(
+	const awh::event::id_t cid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 	);
 	ASSERT_GT(cid, 0u);
 	// Устанавливаем опции событий
-	ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
-	ASSERT_TRUE(awh::engine::setOptions(sid, awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
-	ASSERT_TRUE(awh::engine::setOptions(cid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	ASSERT_TRUE(awh::engine::options::set(sid, awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем адреса концов туннеля
-	ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-	ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+	ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+	ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 	// Устанавливаем встречную сторону посреднику
-	ASSERT_TRUE(awh::engine::setTarget(mid, TUNNEL_PEER));
+	ASSERT_TRUE(awh::engine::target::set(mid, TUNNEL_PEER));
 	// Устанавливаем адрес и порт несущей связи
-	ASSERT_TRUE(awh::engine::setAddress(sid, awh::event::address_t::IPV4, "127.0.0.1"));
-	ASSERT_TRUE(awh::engine::setSourcePort(sid, bearer));
-	ASSERT_TRUE(awh::engine::setTarget(cid, "127.0.0.1"));
-	ASSERT_TRUE(awh::engine::setTargetPort(cid, bearer));
+	ASSERT_TRUE(awh::engine::address::set(sid, awh::event::address_t::IPV4, "127.0.0.1"));
+	ASSERT_TRUE(awh::engine::source::port::set(sid, bearer));
+	ASSERT_TRUE(awh::engine::target::set(cid, "127.0.0.1"));
+	ASSERT_TRUE(awh::engine::target::port::set(cid, bearer));
 	// Связываем посредника с клиентом несущей связи
-	ASSERT_TRUE(awh::engine::splice(mid, cid));
+	ASSERT_TRUE(awh::engine::io::splice(mid, cid));
 	/**
 	 * Считаем прочитанное посредником
 	 *
@@ -858,7 +858,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	 * @note Сличается именно ВИД прочитанного, а не его размер: пакет собирает система, и
 	 *       утверждать его длину значило бы утверждать поведение системы
 	 */
-	awh::engine::on(mid, static_cast <awh::engine::callback::read_t> (
+	awh::engine::io::on(mid, static_cast <awh::engine::callback::read_t> (
 		[&carried, &addressed]([[maybe_unused]] const awh::event::id_t mid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Считаем дошедший пакет
 			carried++;
@@ -870,10 +870,10 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	));
 	// Фиксируем события
 	// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
-	ASSERT_TRUE(awh::engine::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
-	ASSERT_TRUE(awh::engine::commit(sid));
-	ASSERT_TRUE(awh::engine::commit(cid));
-	ASSERT_TRUE(awh::engine::commit(mid));
+	ASSERT_TRUE(awh::engine::io::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+	ASSERT_TRUE(awh::engine::io::commit(sid));
+	ASSERT_TRUE(awh::engine::io::commit(cid));
+	ASSERT_TRUE(awh::engine::io::commit(mid));
 	/**
 	 * Подключаем несущую связь к своему же серверу
 	 *
@@ -881,16 +881,16 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	 *       очередь принимает данные и отчитывается об отправке, а наружу не уходит
 	 *       ничего
 	 */
-	ASSERT_TRUE(awh::engine::connect(cid));
+	ASSERT_TRUE(awh::engine::io::connect(cid));
 	/**
 	 * Запускаем события
 	 *
 	 * @note Посредник запуску вручную НЕ подлежит и отвечает на него отказом: ведёт его
 	 *       та связь, с которой он соединён, и своей жизни у него нет
 	 */
-	ASSERT_TRUE(awh::engine::launch(sid));
-	ASSERT_TRUE(awh::engine::launch(cid));
-	ASSERT_TRUE(awh::engine::launch(tid));
+	ASSERT_TRUE(awh::engine::io::launch(sid));
+	ASSERT_TRUE(awh::engine::io::launch(cid));
+	ASSERT_TRUE(awh::engine::io::launch(tid));
 	/**
 	 * Поднимаем устройство туннеля
 	 *
@@ -902,7 +902,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	 */
 	{
 		// Получаем название устройства туннеля
-		const std::string iface = awh::engine::getIface(tid);
+		const std::string iface = awh::engine::iface::get(tid);
 		// Название устройства обязано быть известно
 		ASSERT_FALSE(iface.empty());
 		// Создаём объект работы с сетью
@@ -946,7 +946,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 			// Запоминаем код отказа отправки
 			failure = errno;
 		// Выполняем оборот опроса
-		ASSERT_TRUE(awh::engine::poll(100));
+		ASSERT_TRUE(awh::engine::io::poll(100));
 	}
 	// Закрываем сокет отправки
 	::closesocket(fd);
@@ -986,7 +986,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	// Если пакет не дошёл, а система назвала запрет либо недостижимость
 	if((carried == 0) && forbidden){
 		// Сворачиваем движок
-		awh::engine::deinitialize();
+		awh::engine::io::deinitialize();
 		// Пропускаем проверку
 		GTEST_SKIP() << "система запретила пакету идти в устройство туннеля (" << ::strerror(failure) << "): заслон либо отсутствие маршрута";
 	}
@@ -995,7 +995,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	// Дошедшее обязано оказаться пакетом IPv4
 	ASSERT_TRUE(addressed) << sign;
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -1037,22 +1037,22 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие туннеля
-	const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+	const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(tid);
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Устанавливаем опции события
-	ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 	// Устанавливаем адреса концов туннеля
-	ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-	ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+	ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+	ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 	// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
-	ASSERT_TRUE(awh::engine::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+	ASSERT_TRUE(awh::engine::io::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
 	// Запускаем событие туннеля
-	ASSERT_TRUE(awh::engine::launch(tid));
+	ASSERT_TRUE(awh::engine::io::launch(tid));
 	/**
 	 * Поднимаем устройство туннеля
 	 *
@@ -1061,7 +1061,7 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	 */
 	{
 		// Получаем название устройства туннеля
-		const std::string iface = awh::engine::getIface(tid);
+		const std::string iface = awh::engine::iface::get(tid);
 		// Название устройства обязано быть известно
 		ASSERT_FALSE(iface.empty());
 		// Создаём объект работы с сетью
@@ -1233,9 +1233,9 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 			// Прекращаем ожидание: до устройства не доходит ничего
 			break;
 		// Вписываем собранный пакет в устройство туннеля
-		written = (awh::engine::send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)) > 0) || written;
+		written = (awh::engine::io::send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)) > 0) || written;
 		// Выполняем оборот опроса
-		ASSERT_TRUE(awh::engine::poll(100));
+		ASSERT_TRUE(awh::engine::io::poll(100));
 		// Буфер под принятое приёмником
 		char buffer[64] = {0};
 		// Выполняем чтение принятого приёмником
@@ -1270,7 +1270,7 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	// Если пакет не дошёл, а система назвала запрет либо недостижимость
 	if(!accepted && forbidden){
 		// Сворачиваем движок
-		awh::engine::deinitialize();
+		awh::engine::io::deinitialize();
 		// Пропускаем проверку
 		GTEST_SKIP() << "система запретила пакету идти в устройство туннеля (" << ::strerror(failure) << "): заслон либо отсутствие маршрута";
 	}
@@ -1279,7 +1279,7 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	// Вписанный пакет обязан дойти до стека IP своей же машины
 	ASSERT_TRUE(accepted) << "движок принял пакет, а устройство его не отдало системе: направление записи туннеля не работает";
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -1321,24 +1321,24 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие туннеля
-	const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+	const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(tid);
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Устанавливаем опции события
-	ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 	// Устанавливаем адреса концов туннеля
-	ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-	ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+	ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+	ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 	// Устройство заводится фиксацией настроек
-	ASSERT_TRUE(awh::engine::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+	ASSERT_TRUE(awh::engine::io::commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
 	// Запускаем событие туннеля
-	ASSERT_TRUE(awh::engine::launch(tid));
+	ASSERT_TRUE(awh::engine::io::launch(tid));
 	// Получаем название устройства туннеля
-	const std::string iface = awh::engine::getIface(tid);
+	const std::string iface = awh::engine::iface::get(tid);
 	// Название устройства обязано быть известно
 	ASSERT_FALSE(iface.empty());
 	// Создаём объект работы с сетью
@@ -1365,7 +1365,7 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 			ready = ((actual != nullptr) && (actual->size == 4) &&
 			         (awh_cast <const awh::net::addr_net_ipv4_t *> (actual.get())->address == ::inet_addr(TUNNEL_LOCAL)));
 			// Выполняем оборот опроса
-			ASSERT_TRUE(awh::engine::poll(100));
+			ASSERT_TRUE(awh::engine::io::poll(100));
 		}
 		// Адрес обязан встать: без него проверять доставку бессмысленно
 		ASSERT_TRUE(ready) << "система так и не показала адреса на устройстве туннеля: проверять доставку нечем";
@@ -1474,7 +1474,7 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	 *          прикрывала дефект - второй пакет застаёт очередь непустой и уходит
 	 *          в устройство сам, а потеря первого остаётся незамеченной
 	 */
-	ASSERT_GT(awh::engine::send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)), 0u)
+	ASSERT_GT(awh::engine::io::send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)), 0u)
 		<< "движок отказался вписать пакет в устройство туннеля";
 	// Признак того, что вписанный пакет дошёл до стека IP
 	bool accepted = false;
@@ -1485,7 +1485,7 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 5000) && !accepted){
 		// Выполняем оборот опроса
-		ASSERT_TRUE(awh::engine::poll(100));
+		ASSERT_TRUE(awh::engine::io::poll(100));
 		// Буфер под принятое приёмником
 		char buffer[64] = {0};
 		// Выполняем чтение принятого приёмником
@@ -1505,14 +1505,14 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	// Если пакет не дошёл, а система назвала запрет либо недостижимость
 	if(!accepted && forbidden){
 		// Сворачиваем движок
-		awh::engine::deinitialize();
+		awh::engine::io::deinitialize();
 		// Пропускаем проверку
 		GTEST_SKIP() << "система запретила пакету идти в устройство туннеля (" << ::strerror(failure) << "): заслон либо отсутствие маршрута";
 	}
 	// Первый же вписанный пакет обязан дойти
 	ASSERT_TRUE(accepted) << "потерян ПЕРВЫЙ вписанный пакет: отдача приняла его, а устройству он не достался";
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -1568,7 +1568,7 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Проходим оборот жизни устройства дважды
 	 */
@@ -1582,20 +1582,20 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		 *       настроек. Пустой опознаватель означает, что движок не записал
 		 *       узла, а отказ заведения устройства спрашивается ниже, у commit
 		 */
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV6, TUNNEL_LOCAL6)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER6)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV6, TUNNEL_LOCAL6)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER6)) << sign;
 		/**
 		 * Считаем отклики ошибки, отдельно отмечая объявления подмены адреса
 		 */
-		awh::engine::on(tid, static_cast <awh::engine::callback::error_t> (
+		awh::engine::io::on(tid, static_cast <awh::engine::callback::error_t> (
 			[&errors, &attacks, &reason, &stage]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 				// Считаем отклик ошибки
 				errors++;
@@ -1611,9 +1611,9 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		));
 		// Фиксируем настройки события туннеля
 		// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
-		ASSERT_TRUE(awh::engine::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
 		// Запускаем событие туннеля
-		ASSERT_TRUE(awh::engine::launch(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(tid)) << sign;
 		/**
 		 * Поднимаем устройство туннеля
 		 *
@@ -1621,7 +1621,7 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		 *       адрес связи и начинает оповещения лишь на поднятом устройстве. Опыт
 		 *       на опущенном устройстве не поставить - там тихо всегда
 		 */
-		const std::string iface = awh::engine::getIface(tid);
+		const std::string iface = awh::engine::iface::get(tid);
 		ASSERT_FALSE(iface.empty()) << sign;
 		{
 			// Создаём объект работы с сетью
@@ -1639,11 +1639,11 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		stage = "опрос";
 		const auto start = std::chrono::steady_clock::now();
 		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1500))
-			ASSERT_TRUE(awh::engine::poll(50)) << sign;
+			ASSERT_TRUE(awh::engine::io::poll(50)) << sign;
 		// Отмечаем миг работы: снятие узла
 		stage = "снятие";
 		// Снимаем событие туннеля
-		ASSERT_TRUE(awh::engine::destroy(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::destroy(tid)) << sign;
 	}
 	// Роспись итога для сообщений об отказе
 	const std::string sign = std::string("отказов=") + std::to_string(errors) + " подмен=" + std::to_string(attacks) +
@@ -1663,7 +1663,7 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 	// Отказов при служебном обмене не возникает вовсе
 	ASSERT_EQ(errors, 0) << sign;
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -1709,7 +1709,7 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Проходим оборот жизни устройства дважды
 	 */
@@ -1723,20 +1723,20 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 		 *       настроек. Пустой опознаватель означает, что движок не записал
 		 *       узла, а отказ заведения устройства спрашивается ниже, у commit
 		 */
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER)) << sign;
 		/**
 		 * Считаем отклики ошибки, отдельно отмечая объявления подмены адреса
 		 */
-		awh::engine::on(tid, static_cast <awh::engine::callback::error_t> (
+		awh::engine::io::on(tid, static_cast <awh::engine::callback::error_t> (
 			[&errors, &attacks, &reason, &stage]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 				// Считаем отклик ошибки
 				errors++;
@@ -1752,16 +1752,16 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 		));
 		// Фиксируем настройки события туннеля
 		// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
-		ASSERT_TRUE(awh::engine::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << sign << ": права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
 		// Запускаем событие туннеля
-		ASSERT_TRUE(awh::engine::launch(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(tid)) << sign;
 		/**
 		 * Поднимаем устройство туннеля
 		 *
 		 * @note Без признака UP служебного обмена не возникает вовсе: ядро заводит
 		 *       адреса и начинает оповещения лишь на поднятом устройстве
 		 */
-		const std::string iface = awh::engine::getIface(tid);
+		const std::string iface = awh::engine::iface::get(tid);
 		ASSERT_FALSE(iface.empty()) << sign;
 		{
 			// Создаём объект работы с сетью
@@ -1775,11 +1775,11 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 		stage = "опрос";
 		const auto start = std::chrono::steady_clock::now();
 		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1500))
-			ASSERT_TRUE(awh::engine::poll(50)) << sign;
+			ASSERT_TRUE(awh::engine::io::poll(50)) << sign;
 		// Отмечаем миг работы: снятие узла
 		stage = "снятие";
 		// Снимаем событие туннеля
-		ASSERT_TRUE(awh::engine::destroy(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::destroy(tid)) << sign;
 	}
 	// Роспись итога для сообщений об отказе
 	const std::string sign = std::string("отказов=") + std::to_string(errors) + " подмен=" + std::to_string(attacks) +
@@ -1797,7 +1797,7 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 	// Отказов при служебном обмене не возникает вовсе
 	ASSERT_EQ(errors, 0) << sign;
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -1898,7 +1898,7 @@ TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
 	// Докладываем выбранный драйвер: на разных машинах проверка идёт разными путями
 	SCOPED_TRACE(std::string("драйвер устройств: ") + driver);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Проходим оборот подъёма ДВАЖДЫ
 	 *
@@ -1917,22 +1917,22 @@ TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
 		 */
 		for(uint16_t i = 0; i < TUNNEL_MANY; i++){
 			// Заводим узел туннеля
-			const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 			// Узел обязан завестись
 			ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля " << (i + 1);
 			// Записываем узел в перечень до всякой проверки: снос обязан пройти и при отказе
 			raised.push_back(tid);
 			// Устанавливаем опции события туннеля
-			ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+			ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
 			// Отводим туннелю свою подсеть, разную на разных оборотах
 			const std::string local = ("10." + std::to_string(70 + round) + "." + std::to_string(i + 1) + ".1");
 			// Устанавливаем адреса концов туннеля
-			ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, local)) << sign;
-			ASSERT_TRUE(awh::engine::setTarget(tid, ("10." + std::to_string(70 + round) + "." + std::to_string(i + 1) + ".2"))) << sign;
+			ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, local)) << sign;
+			ASSERT_TRUE(awh::engine::target::set(tid, ("10." + std::to_string(70 + round) + "." + std::to_string(i + 1) + ".2"))) << sign;
 			// Фиксация настроек обязана пройти: устройство заводится именно ею
-			ASSERT_TRUE(awh::engine::commit(tid)) << sign << ": туннель " << (i + 1) << " из " << TUNNEL_MANY << " не поднялся";
+			ASSERT_TRUE(awh::engine::io::commit(tid)) << sign << ": туннель " << (i + 1) << " из " << TUNNEL_MANY << " не поднялся";
 			// Получаем имя заведённого устройства
-			const std::string name = awh::engine::getIface(tid);
+			const std::string name = awh::engine::iface::get(tid);
 			// Имя заведённого устройства обязано быть известно
 			ASSERT_FALSE(name.empty()) << sign << ": движок не назвал устройство туннеля " << (i + 1);
 			/**
@@ -1954,7 +1954,7 @@ TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
 		 */
 		for(const awh::event::id_t tid : raised)
 			// Сносим узел туннеля
-			awh::engine::destroy(tid);
+			awh::engine::io::destroy(tid);
 	}
 }
 
@@ -2004,7 +2004,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 	// Докладываем выбранный драйвер: на разных машинах проверка идёт разными путями
 	SCOPED_TRACE(std::string("драйвер устройств: ") + driver);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	// Число дошедшего по каждому туннелю
 	std::array <uint16_t, TUNNEL_FLOWS> carried{};
 	// Код отказа отправки по каждому туннелю
@@ -2026,10 +2026,10 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 		// Отводим несущей связи свой порт
 		const uint16_t bearer = tunnelPort();
 		// Заводим узлы туннеля и его несущей связи
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
-		const awh::event::id_t mid = awh::engine::event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
-		const awh::event::id_t sid = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
-		const awh::event::id_t cid = awh::engine::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t mid = awh::engine::io::event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
+		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		const awh::event::id_t cid = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 		// Узлы обязаны завестись
 		ASSERT_GT(tid, 0u) << sign;
 		ASSERT_GT(mid, 0u) << sign;
@@ -2040,21 +2040,21 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 		// Запоминаем адрес встречной стороны
 		peers.push_back(peer);
 		// Устанавливаем опции событий
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
-		ASSERT_TRUE(awh::engine::setOptions(sid, awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK)) << sign;
-		ASSERT_TRUE(awh::engine::setOptions(cid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(sid, awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK)) << sign;
+		ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK)) << sign;
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, local)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(tid, peer)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, local)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(tid, peer)) << sign;
 		// Устанавливаем встречную сторону посреднику
-		ASSERT_TRUE(awh::engine::setTarget(mid, peer)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(mid, peer)) << sign;
 		// Устанавливаем адрес и порт несущей связи
-		ASSERT_TRUE(awh::engine::setAddress(sid, awh::event::address_t::IPV4, "127.0.0.1")) << sign;
-		ASSERT_TRUE(awh::engine::setSourcePort(sid, bearer)) << sign;
-		ASSERT_TRUE(awh::engine::setTarget(cid, "127.0.0.1")) << sign;
-		ASSERT_TRUE(awh::engine::setTargetPort(cid, bearer)) << sign;
+		ASSERT_TRUE(awh::engine::address::set(sid, awh::event::address_t::IPV4, "127.0.0.1")) << sign;
+		ASSERT_TRUE(awh::engine::source::port::set(sid, bearer)) << sign;
+		ASSERT_TRUE(awh::engine::target::set(cid, "127.0.0.1")) << sign;
+		ASSERT_TRUE(awh::engine::target::port::set(cid, bearer)) << sign;
 		// Связываем посредника с клиентом несущей связи
-		ASSERT_TRUE(awh::engine::splice(mid, cid)) << sign;
+		ASSERT_TRUE(awh::engine::io::splice(mid, cid)) << sign;
 		/**
 		 * Считаем прочитанное посредником ИМЕННО ЭТОГО туннеля
 		 *
@@ -2062,7 +2062,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 		 *       сервера отклик этот не заводится вовсе, а посредник как раз и держит то,
 		 *       что прочитано из туннеля
 		 */
-		awh::engine::on(mid, static_cast <awh::engine::callback::read_t> (
+		awh::engine::io::on(mid, static_cast <awh::engine::callback::read_t> (
 			[&carried, i]([[maybe_unused]] const awh::event::id_t mid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Считаем дошедшее по этому туннелю
 				if((data != nullptr) && (size > 0))
@@ -2071,16 +2071,16 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 			}
 		));
 		// Фиксируем настройки узлов
-		ASSERT_TRUE(awh::engine::commit(tid)) << sign << ": устройство не заведено";
-		ASSERT_TRUE(awh::engine::commit(sid)) << sign;
-		ASSERT_TRUE(awh::engine::commit(cid)) << sign;
-		ASSERT_TRUE(awh::engine::commit(mid)) << sign;
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << sign << ": устройство не заведено";
+		ASSERT_TRUE(awh::engine::io::commit(sid)) << sign;
+		ASSERT_TRUE(awh::engine::io::commit(cid)) << sign;
+		ASSERT_TRUE(awh::engine::io::commit(mid)) << sign;
 		// Подключаем несущую связь к своему же серверу
-		ASSERT_TRUE(awh::engine::connect(cid)) << sign;
+		ASSERT_TRUE(awh::engine::io::connect(cid)) << sign;
 		// Запускаем события
-		ASSERT_TRUE(awh::engine::launch(sid)) << sign;
-		ASSERT_TRUE(awh::engine::launch(cid)) << sign;
-		ASSERT_TRUE(awh::engine::launch(tid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(sid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(cid)) << sign;
+		ASSERT_TRUE(awh::engine::io::launch(tid)) << sign;
 		/**
 		 * Поднимаем устройство туннеля
 		 *
@@ -2090,7 +2090,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 		 */
 		{
 			// Получаем название устройства туннеля
-			const std::string iface = awh::engine::getIface(tid);
+			const std::string iface = awh::engine::iface::get(tid);
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << sign;
 			// Создаём объект работы с сетью
@@ -2136,7 +2136,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 				done++;
 		}
 		// Выполняем оборот опроса
-		ASSERT_TRUE(awh::engine::poll(100));
+		ASSERT_TRUE(awh::engine::io::poll(100));
 	}
 	// Закрываем сокет отправки
 	::closesocket(fd);
@@ -2161,7 +2161,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 	 */
 	for(const awh::event::id_t tid : raised)
 		// Сносим узел туннеля
-		awh::engine::destroy(tid);
+		awh::engine::io::destroy(tid);
 	/**
 	 * Отказ окружения по ВСЕМ туннелям означает негодное окружение, а не дефект движка
 	 *
@@ -2201,7 +2201,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	tunnelPinDriver(tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	// Итог фиксации настроек и образец адреса, на котором отказ воспроизвёлся
 	bool committed = true;
 	std::string sample;
@@ -2219,13 +2219,13 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	for(uint8_t i = 0; (i < (sizeof(TUNNEL_REFUSED) / sizeof(TUNNEL_REFUSED[0]))) && committed && (orphans == 0); i++){
 		// Заводим событие туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		/**
 		 * Ставим адрес, назначить который система откажется
 		 *
@@ -2233,16 +2233,16 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 *       которое проверяется, и до дефекта дело не дошло бы вовсе. Такой
 		 *       образец не годится, берём следующий
 		 */
-		if(!awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_REFUSED[i]))
+		if(!awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_REFUSED[i]))
 			// Переходим к следующему образцу адреса
 			continue;
 		// Устанавливаем адрес встречной стороны
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 		/**
 		 * Считаем отклики ошибки, отдельно отмечая доклад о неназначенном адресе
 		 * и объявление подмены адреса
 		 */
-		awh::engine::on(tid, static_cast <awh::engine::callback::error_t> (
+		awh::engine::io::on(tid, static_cast <awh::engine::callback::error_t> (
 			[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 				// Считаем отклик ошибки
 				errors++;
@@ -2263,7 +2263,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Запоминаем образец адреса, которым ставился опыт
 		sample = TUNNEL_REFUSED[i];
 		// Снимаем итог фиксации настроек события туннеля
-		committed = awh::engine::commit(tid);
+		committed = awh::engine::io::commit(tid);
 	}
 	/**
 	 * Перебираем образцы адресов IPv6, покуда система не откажет назначением
@@ -2278,21 +2278,21 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	for(uint8_t i = 0; (i < (sizeof(TUNNEL_REFUSED6) / sizeof(TUNNEL_REFUSED6[0]))) && committed && (orphans == 0); i++){
 		// Заводим событие туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись
 		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля IPv6";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Ставим адрес, назначить который система откажется
-		if(!awh::engine::setAddress(tid, awh::event::address_t::IPV6, TUNNEL_REFUSED6[i]))
+		if(!awh::engine::address::set(tid, awh::event::address_t::IPV6, TUNNEL_REFUSED6[i]))
 			// Переходим к следующему образцу адреса
 			continue;
 		// Устанавливаем адрес встречной стороны
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER6));
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER6));
 		// Считаем отклики ошибки тем же счётчиком
-		awh::engine::on(tid, static_cast <awh::engine::callback::error_t> (
+		awh::engine::io::on(tid, static_cast <awh::engine::callback::error_t> (
 			[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 				// Считаем отклик ошибки
 				errors++;
@@ -2313,7 +2313,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Запоминаем образец адреса, которым ставился опыт
 		sample = TUNNEL_REFUSED6[i];
 		// Снимаем итог фиксации настроек события туннеля
-		committed = awh::engine::commit(tid);
+		committed = awh::engine::io::commit(tid);
 	}
 	/**
 	 * Второй способ создать условие: ЗАНЯТОСТЬ адреса, а не его негодность
@@ -2334,36 +2334,36 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	if(committed && (orphans == 0)){
 		// Заводим первый узел туннеля - тот, что займёт адрес
-		const awh::event::id_t owner = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t owner = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника занимающего узла
 		const TunnelGuard holder(owner);
 		// Узел обязан завестись
 		ASSERT_GT(owner, 0u) << "движок не записал узел туннеля, занимающий адрес";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(owner, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-		ASSERT_TRUE(awh::engine::setTarget(owner, TUNNEL_PEER));
+		ASSERT_TRUE(awh::engine::address::set(owner, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+		ASSERT_TRUE(awh::engine::target::set(owner, TUNNEL_PEER));
 		/**
 		 * Занимающий узел обязан подняться: без него занятости не возникнет
 		 *
 		 * @note Отказ здесь означает, что окружение к опыту не готово - устройства
 		 *       туннеля нет вовсе, - и судить по такому прогону нельзя
 		 */
-		if(awh::engine::commit(owner)){
+		if(awh::engine::io::commit(owner)){
 			// Заводим второй узел туннеля - тот, что попросит ЗАНЯТЫЙ адрес
-			const awh::event::id_t rival = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			const awh::event::id_t rival = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 			// Ставим охранника соперничающего узла
 			const TunnelGuard contender(rival);
 			// Узел обязан завестись
 			ASSERT_GT(rival, 0u) << "движок не записал узел туннеля, просящий занятый адрес";
 			// Устанавливаем опции события туннеля
-			ASSERT_TRUE(awh::engine::setOptions(rival, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			ASSERT_TRUE(awh::engine::options::set(rival, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 			// Просим ТОТ ЖЕ адрес, что уже занят первым узлом
-			ASSERT_TRUE(awh::engine::setAddress(rival, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-			ASSERT_TRUE(awh::engine::setTarget(rival, TUNNEL_PEER));
+			ASSERT_TRUE(awh::engine::address::set(rival, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+			ASSERT_TRUE(awh::engine::target::set(rival, TUNNEL_PEER));
 			// Считаем отклики ошибки соперничающего узла тем же счётчиком
-			awh::engine::on(rival, static_cast <awh::engine::callback::error_t> (
+			awh::engine::io::on(rival, static_cast <awh::engine::callback::error_t> (
 				[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 					// Считаем отклик ошибки
 					errors++;
@@ -2389,13 +2389,13 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			 *          движка на занятый адрес, а непоставленный опыт
 			 */
 			// Снимаем итог фиксации настроек соперничающего узла
-			committed = awh::engine::commit(rival);
+			committed = awh::engine::io::commit(rival);
 			/**
 			 * Имена спрашиваются ПОСЛЕ фиксации: устройство заводится именно ею, и
 			 * прежде неё имя соперничающего узла пусто всегда
 			 */
 			sample = std::string("занятость адреса ") + TUNNEL_LOCAL +
-			         " (занял «" + awh::engine::getIface(owner) + "», просит «" + awh::engine::getIface(rival) + "»)";
+			         " (занял «" + awh::engine::iface::get(owner) + "», просит «" + awh::engine::iface::get(rival) + "»)";
 		}
 	}
 	/**
@@ -2414,36 +2414,36 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	if(committed && (orphans == 0)){
 		// Заводим первый узел туннеля IPv6 - тот, что займёт адрес
-		const awh::event::id_t owner = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+		const awh::event::id_t owner = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
 		// Ставим охранника занимающего узла
 		const TunnelGuard holder(owner);
 		// Узел обязан завестись
 		ASSERT_GT(owner, 0u) << "движок не записал узел туннеля IPv6, занимающий адрес";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(owner, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
-		ASSERT_TRUE(awh::engine::setTarget(owner, TUNNEL_PEER6));
+		ASSERT_TRUE(awh::engine::address::set(owner, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
+		ASSERT_TRUE(awh::engine::target::set(owner, TUNNEL_PEER6));
 		/**
 		 * Занимающий узел обязан подняться: без него занятости не возникнет
 		 *
 		 * @note Отказ здесь означает, что окружение к опыту не готово - стека IPv6 у
 		 *       машины нет вовсе, - и судить по такому прогону нельзя
 		 */
-		if(awh::engine::commit(owner)){
+		if(awh::engine::io::commit(owner)){
 			// Заводим второй узел туннеля - тот, что попросит ЗАНЯТЫЙ адрес IPv6
-			const awh::event::id_t rival = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+			const awh::event::id_t rival = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
 			// Ставим охранника соперничающего узла
 			const TunnelGuard contender(rival);
 			// Узел обязан завестись
 			ASSERT_GT(rival, 0u) << "движок не записал узел туннеля IPv6, просящий занятый адрес";
 			// Устанавливаем опции события туннеля
-			ASSERT_TRUE(awh::engine::setOptions(rival, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			ASSERT_TRUE(awh::engine::options::set(rival, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 			// Просим ТОТ ЖЕ адрес, что уже занят первым узлом
-			ASSERT_TRUE(awh::engine::setAddress(rival, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
-			ASSERT_TRUE(awh::engine::setTarget(rival, TUNNEL_PEER6));
+			ASSERT_TRUE(awh::engine::address::set(rival, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
+			ASSERT_TRUE(awh::engine::target::set(rival, TUNNEL_PEER6));
 			// Считаем отклики ошибки соперничающего узла тем же счётчиком
-			awh::engine::on(rival, static_cast <awh::engine::callback::error_t> (
+			awh::engine::io::on(rival, static_cast <awh::engine::callback::error_t> (
 				[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
 					// Считаем отклик ошибки
 					errors++;
@@ -2462,12 +2462,12 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 				}
 			));
 			// Снимаем итог фиксации настроек соперничающего узла
-			committed = awh::engine::commit(rival);
+			committed = awh::engine::io::commit(rival);
 			/**
 			 * Имена спрашиваются ПОСЛЕ фиксации по тому же доводу, что и у IPv4 выше
 			 */
 			sample = std::string("занятость адреса ") + TUNNEL_LOCAL6 +
-			         " (занял «" + awh::engine::getIface(owner) + "», просит «" + awh::engine::getIface(rival) + "»)";
+			         " (занял «" + awh::engine::iface::get(owner) + "», просит «" + awh::engine::iface::get(rival) + "»)";
 		}
 	}
 	/**
@@ -2502,7 +2502,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	// Подмены адреса при неназначенном адресе движок объявлять не может
 	ASSERT_EQ(attacks, 0) << sign << ": причина названа не та - вместо неназначенного адреса объявлено нападение";
 	// Сворачиваем движок
-	ASSERT_TRUE(awh::engine::deinitialize());
+	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 /**
@@ -2694,7 +2694,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 				critical->emplace_back(text);
 		});
 		// Выполняем инициализацию движка
-		ASSERT_TRUE(awh::engine::initialize());
+		ASSERT_TRUE(awh::engine::io::initialize());
 		// Закрепляем драйвер tap-windows6 ЯВНО: у Wintun заказ имени значит другое
 		tunnelPinDriver(tunnel_driver_t::TAP);
 		// Адреса второго туннеля: свои, чтобы не спорить с первым за один адрес
@@ -2705,42 +2705,42 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Сетевое название устройства, освобождаемого под пересоздание
 		std::string alias;
 		// Заводим событие первого туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись
 		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адреса концов первого туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 		// Фиксация настроек первого туннеля обязана пройти
-		ASSERT_TRUE(awh::engine::commit(tid)) << "устройство первого туннеля не заведено";
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << "устройство первого туннеля не заведено";
 		// Запускаем событие первого туннеля
-		ASSERT_TRUE(awh::engine::launch(tid));
+		ASSERT_TRUE(awh::engine::io::launch(tid));
 		// Запоминаем устройство, взятое движком под первый туннель
-		first = awh::engine::getIface(tid);
+		first = awh::engine::iface::get(tid);
 		// Название устройства обязано быть известно
 		ASSERT_FALSE(first.empty()) << "движок не назвал устройство первого туннеля";
 		{
 			// Заводим событие второго туннеля: он нужен лишь затем, чтобы ЗАНЯТЬ другое устройство
-			const awh::event::id_t next = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			const awh::event::id_t next = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 			// Узел обязан завестись
 			ASSERT_GT(next, 0u) << "движок не записал узел второго туннеля";
 			// Устанавливаем опции события второго туннеля
-			ASSERT_TRUE(awh::engine::setOptions(next, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			ASSERT_TRUE(awh::engine::options::set(next, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 			// Устанавливаем адреса концов второго туннеля
-			ASSERT_TRUE(awh::engine::setAddress(next, awh::event::address_t::IPV4, SECOND_LOCAL));
-			ASSERT_TRUE(awh::engine::setTarget(next, SECOND_PEER));
+			ASSERT_TRUE(awh::engine::address::set(next, awh::event::address_t::IPV4, SECOND_LOCAL));
+			ASSERT_TRUE(awh::engine::target::set(next, SECOND_PEER));
 			// Снимаем итог фиксации настроек второго туннеля
-			const bool committed = awh::engine::commit(next);
+			const bool committed = awh::engine::io::commit(next);
 			// Запоминаем устройство, взятое движком под второй туннель
-			second = awh::engine::getIface(next);
+			second = awh::engine::iface::get(next);
 			// Спрашиваем сетевое название взятого устройства, пока узел жив
 			alias = tunnelAliasByGuid(second);
 			// Сносим узел второго туннеля: устройство его освобождается под пересоздание
-			awh::engine::destroy(next);
+			awh::engine::io::destroy(next);
 			/**
 			 * Отступаем ЧЕСТНО, если второго свободного устройства на машине нет
 			 *
@@ -2756,7 +2756,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			ASSERT_FALSE(alias.empty()) << "система не назвала сетевое имя устройства «" << second << "»";
 		}
 		// Заказываем узлу первого туннеля устройство, освобождённое вторым
-		ASSERT_TRUE(awh::engine::setIface(tid, alias)) << "движок не принял заказ устройства «" << alias << "»";
+		ASSERT_TRUE(awh::engine::iface::set(tid, alias)) << "движок не принял заказ устройства «" << alias << "»";
 		/**
 		 * Пересоздание обязано ПРОЙТИ
 		 *
@@ -2764,10 +2764,10 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 *       система отвечала «address is already assigned to another interface», и
 		 *       заказанное устройство доставалось узлу без адреса
 		 */
-		ASSERT_TRUE(awh::engine::rebuild(tid)) << "пересоздание на устройство «" << alias << "» отказало";
+		ASSERT_TRUE(awh::engine::io::rebuild(tid)) << "пересоздание на устройство «" << alias << "» отказало";
 		// Устройство узла обязано смениться на заказанное
-		ASSERT_EQ(awh::engine::getIface(tid), second)
-			<< "заказано устройство «" << alias << "» («" << second << "»), а узел остался на «" << awh::engine::getIface(tid) << "»";
+		ASSERT_EQ(awh::engine::iface::get(tid), second)
+			<< "заказано устройство «" << alias << "» («" << second << "»), а узел остался на «" << awh::engine::iface::get(tid) << "»";
 		/**
 		 * Адрес обязан ПЕРЕЕХАТЬ на заказанное устройство
 		 *
@@ -2785,7 +2785,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		ASSERT_NE(tunnelOwnerOf(TUNNEL_LOCAL), first)
 			<< "узел переехал с «" << first << "», а адрес " << TUNNEL_LOCAL << " остался числиться за ним";
 		// Сворачиваем движок
-		ASSERT_TRUE(awh::engine::deinitialize());
+		ASSERT_TRUE(awh::engine::io::deinitialize());
 		/**
 		 * Записей о беде за всё пересоздание быть не должно
 		 *
@@ -2841,23 +2841,23 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			// Пропускаем проверку
 			GTEST_SKIP() << "драйвер Wintun на машине недоступен: библиотека wintun.dll не загружается";
 		// Выполняем инициализацию движка
-		ASSERT_TRUE(awh::engine::initialize());
+		ASSERT_TRUE(awh::engine::io::initialize());
 		// Закрепляем драйвер Wintun ЯВНО: выбор по умолчанию увёл бы проверку на другой путь
 		tunnelPinDriver(tunnel_driver_t::WINTUN);
 		// Название заведённого устройства туннеля
 		std::string iface;
 		{
 			// Заводим событие туннеля
-			const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 			// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 			const TunnelGuard guard(tid);
 			// Узел обязан завестись
 			ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 			// Устанавливаем опции события туннеля
-			ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 			// Устанавливаем адреса концов туннеля
-			ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-			ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+			ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+			ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 			/**
 			 * Фиксация настроек обязана ПРОЙТИ
 			 *
@@ -2865,11 +2865,11 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			 *       отказ здесь есть дефект движка, а не свойство машины. Отступление
 			 *       решено выше, до движка
 			 */
-			ASSERT_TRUE(awh::engine::commit(tid)) << "драйвер Wintun доступен, а устройство не заведено";
+			ASSERT_TRUE(awh::engine::io::commit(tid)) << "драйвер Wintun доступен, а устройство не заведено";
 			// Запускаем событие туннеля
-			ASSERT_TRUE(awh::engine::launch(tid));
+			ASSERT_TRUE(awh::engine::io::launch(tid));
 			// Получаем название заведённого устройства туннеля
-			iface = awh::engine::getIface(tid);
+			iface = awh::engine::iface::get(tid);
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << "движок не назвал устройство туннеля";
 			// Создаём объект работы с сетью
@@ -2915,7 +2915,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 *       устройство, либо смотреть после ПОЛНОГО сноса
 		 */
 		// Сворачиваем движок
-		ASSERT_TRUE(awh::engine::deinitialize());
+		ASSERT_TRUE(awh::engine::io::deinitialize());
 	}
 
 	// Адреса концов туннеля работника: свои, чтобы не спорить с прочими проверками
@@ -2946,37 +2946,37 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			// Пропускаем проверку
 			GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 		// Выполняем инициализацию движка
-		ASSERT_TRUE(awh::engine::initialize());
+		ASSERT_TRUE(awh::engine::io::initialize());
 		// Поручаем выбор драйвера модулю
-		awh::engine::setDriver(awh::eth::iface::driver_t::AUTO);
+		awh::engine::driver::set(awh::eth::iface::driver_t::AUTO);
 		// До заведения устройства выбора ещё нет, и отвечать движку нечем
-		ASSERT_EQ(awh::engine::getDriver(), awh::eth::iface::driver_t::AUTO)
+		ASSERT_EQ(awh::engine::driver::get(), awh::eth::iface::driver_t::AUTO)
 			<< "движок назвал драйвер прежде, чем устройство завелось";
 		// Заводим событие туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(tid);
 		// Узел обязан завестись
 		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
-		ASSERT_TRUE(awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		ASSERT_TRUE(awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адреса концов туннеля
-		ASSERT_TRUE(awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
-		ASSERT_TRUE(awh::engine::setTarget(tid, TUNNEL_PEER));
+		ASSERT_TRUE(awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+		ASSERT_TRUE(awh::engine::target::set(tid, TUNNEL_PEER));
 		// Фиксация настроек туннеля обязана пройти
-		ASSERT_TRUE(awh::engine::commit(tid)) << "устройство туннеля не заведено";
+		ASSERT_TRUE(awh::engine::io::commit(tid)) << "устройство туннеля не заведено";
 		/**
 		 * Выбор, сделанный модулем, обязан быть назван
 		 *
 		 * @note Утверждение стоит на ОТЛИЧИИ от AUTO, а не на конкретном драйвере: какой
 		 *       из двух будет выбран, решает состав машины, а не замысел проверки
 		 */
-		ASSERT_NE(awh::engine::getDriver(), awh::eth::iface::driver_t::AUTO)
+		ASSERT_NE(awh::engine::driver::get(), awh::eth::iface::driver_t::AUTO)
 			<< "устройство заведено, а движок драйвера так и не назвал";
 		// Сносим узел туннеля
-		ASSERT_TRUE(awh::engine::destroy(tid));
+		ASSERT_TRUE(awh::engine::io::destroy(tid));
 		// Сворачиваем движок
-		ASSERT_TRUE(awh::engine::deinitialize());
+		ASSERT_TRUE(awh::engine::io::deinitialize());
 	}
 
 	/**
@@ -3035,25 +3035,25 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			// Выходим с меткой отступления: родитель обязан пропустить проверку
 			::_exit(3);
 		// Если инициализация движка не удалась
-		if(!awh::engine::initialize())
+		if(!awh::engine::io::initialize())
 			// Выходим с меткой отступления
 			::_exit(3);
 		// Закрепляем драйвер tap-windows6 ЯВНО: у Wintun адаптер исчезает сам, и остатку взяться неоткуда
 		tunnelPinDriver(tunnel_driver_t::TAP);
 		// Заводим событие туннеля
-		const awh::event::id_t tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Если узел туннеля не записан
 		if(tid == 0)
 			// Выходим с меткой отступления
 			::_exit(3);
 		// Устанавливаем опции события туннеля
-		awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
+		awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
 		// Если адреса концов туннеля установить не удалось
-		if(!awh::engine::setAddress(tid, awh::event::address_t::IPV4, WORKER_LOCAL) || !awh::engine::setTarget(tid, WORKER_PEER))
+		if(!awh::engine::address::set(tid, awh::event::address_t::IPV4, WORKER_LOCAL) || !awh::engine::target::set(tid, WORKER_PEER))
 			// Выходим с меткой отступления
 			::_exit(3);
 		// Если устройство туннеля завести не удалось
-		if(!awh::engine::commit(tid) || !awh::engine::launch(tid))
+		if(!awh::engine::io::commit(tid) || !awh::engine::io::launch(tid))
 			// Выходим с меткой отступления
 			::_exit(3);
 		/**
@@ -3242,20 +3242,20 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 	// Опознаватель узла туннеля, заведённого откликом
 	awh::event::id_t tid = 0;
 	// Добавляем событие интервала
-	const awh::event::id_t interval = awh::engine::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	const awh::event::id_t interval = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
 	// Событие обязано завестись
 	ASSERT_GT(interval, 0u);
 	// Устанавливаем задержку интервала
-	awh::engine::setTimeout(interval, awh::event::action_t::NONE, 50);
+	awh::engine::timer::timeout(interval, awh::event::action_t::NONE, 50);
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	// Выполняем фиксацию настроек события интервала
-	ASSERT_TRUE(awh::engine::commit(interval));
+	ASSERT_TRUE(awh::engine::io::commit(interval));
 	/**
 	 * Отклик заводит туннель ИЗ ЦИКЛА - то есть ровно так, как это делает
 	 * настоящий потребитель, а не тело проверки
 	 */
-	awh::engine::on(interval, [this, &inside, &raised, &handled, &started, &tid, &options, &address, &target]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+	awh::engine::io::on(interval, [this, &inside, &raised, &handled, &started, &tid, &options, &address, &target]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если статус события не успешен либо отклик уже отработал
 		if((status != awh::event::status_t::SUCCESS) || started)
 			// Выходим из отклика
@@ -3265,7 +3265,7 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 		// Запоминаем, идёт ли отклик внутри волокна
 		inside = (awh::fiber::current() != nullptr);
 		// Заводим узел туннеля
-		tid = awh::engine::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		tid = awh::engine::io::event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Если узел туннеля не заведён
 		if(tid == 0){
 			// Отмечаем отклик отработавшим
@@ -3274,21 +3274,21 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 			return;
 		}
 		// Устанавливаем опции события туннеля
-		options = awh::engine::setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
+		options = awh::engine::options::set(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
 		// Устанавливаем адреса концов туннеля
-		address = awh::engine::setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL);
-		target = awh::engine::setTarget(tid, TUNNEL_PEER);
+		address = awh::engine::address::set(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL);
+		target = awh::engine::target::set(tid, TUNNEL_PEER);
 		// Выполняем фиксацию настроек туннеля прямо из отклика
-		raised = awh::engine::commit(tid);
+		raised = awh::engine::io::commit(tid);
 		// Отмечаем отклик отработавшим: до сюда управление доходит уже ПОСЛЕ сна волокна
 		handled = true;
 	});
 	// Выполняем запуск события интервала
-	ASSERT_TRUE(awh::engine::launch(interval));
+	ASSERT_TRUE(awh::engine::io::launch(interval));
 	// Определяем срок ожидания отработки отклика
 	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(30));
 	// Выполняем опрос событий до отработки отклика
-	while(!handled && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__));
+	while(!handled && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Отклик обязан был отработать, иначе проверка ничего не проверяет
 	ASSERT_TRUE(handled) << "отклик не сработал - проверка стала холостой";
 	// Отклик обязан идти внутри волокна
@@ -3301,7 +3301,7 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 	 * @note Сличение это отделяет одну разницу от другой. Пройди фиксация здесь и
 	 *       откажи в отклике - виновата обстановка вызова, а не узел и не окружение
 	 */
-	const bool outside = (raised ? false : awh::engine::commit(tid));
+	const bool outside = (raised ? false : awh::engine::io::commit(tid));
 	/**
 	 * Устройство обязано было завестись
 	 *
@@ -3323,8 +3323,8 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 			return result;
 		}();
 	// Сносим заведённые узлы
-	awh::engine::destroy(tid);
-	awh::engine::destroy(interval);
+	awh::engine::io::destroy(tid);
+	awh::engine::io::destroy(interval);
 }
 #endif
 

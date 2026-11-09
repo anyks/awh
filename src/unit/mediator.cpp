@@ -108,9 +108,9 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 	 */
 	try {
 		// Выполняем фиксацию параметров события посредника
-		if(!(result = engine::commit(eid))){
+		if(!(result = engine::io::commit(eid))){
 			// Удаляем событие посредника
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 			// Выполняем поиск идентификатора события посредника в списке событий посредника
 			auto i = this->_events.find(eid);
 			// Если идентификатор события посредника найден в списке событий посредника
@@ -166,7 +166,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
  */
 size_t awh::unit::Mediator::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных посредником
-	return engine::send(eid, buffer, size);
+	return engine::io::send(eid, buffer, size);
 }
 /**
  * @brief Метод перемещения данных между посредником и другим событием
@@ -178,7 +178,7 @@ size_t awh::unit::Mediator::send(const event::id_t eid, const void * buffer, con
  */
 bool awh::unit::Mediator::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Выполняем перемещение данных между событием посредника и другим событием
-	return engine::splice(eid, dest);
+	return engine::io::splice(eid, dest);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -189,7 +189,7 @@ bool awh::unit::Mediator::splice(const event::id_t eid, const event::id_t dest) 
  */
 string awh::unit::Mediator::getTarget(const event::id_t eid) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события посредника
-	return engine::getTarget(eid);
+	return engine::target::get(eid);
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -201,7 +201,7 @@ string awh::unit::Mediator::getTarget(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Mediator::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события посредника
-	return engine::setTarget(eid, target);
+	return engine::target::set(eid, target);
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -213,7 +213,7 @@ bool awh::unit::Mediator::setTarget(const event::id_t eid, string_view target) n
  */
 bool awh::unit::Mediator::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события посредника
-	return engine::setTarget(eid, target);
+	return engine::target::set(eid, target);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -225,7 +225,7 @@ bool awh::unit::Mediator::setTarget(const event::id_t eid, const net::addr_t * t
  */
 bool awh::unit::Mediator::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события посредника
-	return engine::getTarget(eid, target);
+	return engine::target::get(eid, target);
 }
 /**
  * @brief Метод получения адреса посредника
@@ -237,7 +237,7 @@ bool awh::unit::Mediator::getTarget(const event::id_t eid, unique_ptr <net::addr
  */
 string awh::unit::Mediator::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Выполняем получение адреса посредника для события посредника
-	return engine::getAddress(eid, address);
+	return engine::address::get(eid, address);
 }
 /**
  * @brief Метод установки адреса посредника
@@ -250,7 +250,7 @@ string awh::unit::Mediator::getAddress(const event::id_t eid, const event::addre
  */
 bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Выполняем установку адреса посредника для события посредника
-	return engine::setAddress(eid, address, value);
+	return engine::address::set(eid, address, value);
 }
 /**
  * @brief Метод установки адреса посредника
@@ -263,7 +263,7 @@ bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address
  */
 bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Выполняем установку адреса посредника для события посредника
-	return engine::setAddress(eid, address, value);
+	return engine::address::set(eid, address, value);
 }
 /**
  * @brief Метод получения адреса посредника
@@ -276,7 +276,7 @@ bool awh::unit::Mediator::setAddress(const event::id_t eid, const event::address
  */
 bool awh::unit::Mediator::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Выполняем получение адреса посредника для события посредника
-	return engine::getAddress(eid, address, value);
+	return engine::address::get(eid, address, value);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -302,7 +302,7 @@ void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
  */
 void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие посредника
-	engine::destroy(eid);
+	engine::io::destroy(eid);
 }
 /**
  * @brief Метод получения идентификатора посредника для перехвата пакетов тоннеля
@@ -319,17 +319,17 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 	 */
 	try {
 		// Добавляем новое событие посредника для перехвата пакетов тоннеля
-		result = engine::event(event::node_t::MEDIATOR, family);
+		result = engine::io::event(event::node_t::MEDIATOR, family);
 		// Если событие посредника успешно создано
 		if(result > 0){
 			// Устанавливаем функцию обратного вызова на событие изменения действий посредника
-			engine::on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения данных
-			engine::on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса посредника
-			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			engine::on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
 			// Добавляем идентификатор события посредника в список событий посредника
 			this->_events.emplace(result);
 		}
@@ -373,15 +373,15 @@ awh::unit::Mediator::~Mediator() noexcept {
 		 */
 		for(const auto & eid : events){
 			// Снимаем функцию обратного вызова на событие чтения данных
-			engine::on(eid, static_cast <engine::callback::read_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::read_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(eid, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения действий посредника
-			engine::on(eid, static_cast <engine::callback::event_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::event_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения статуса посредника
-			engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Удаляем событие посредника
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 		}
 	}
 }

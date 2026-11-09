@@ -167,7 +167,7 @@ int32_t main(){
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Добавляем новое событие клиента ICMP
-		eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
+		eid = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -175,31 +175,31 @@ int32_t main(){
 		// Если пользователь является привилигированным
 		if(::getuid())
 			// Добавляем новое событие клиента ICMP
-			eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::ICMP);
+			eid = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::ICMP);
 		// Добавляем новое событие клиента ICMP
-		else eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
+		else eid = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	#endif
 	// Устанавливаем порт события
-	engine::setTargetPort(eid, 2222);
+	engine::target::port::set(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Устананавливаем опции события
-		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC))
+		if(engine::options::set(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(engine::setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(engine::address::set(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(engine::setTarget(eid, "8.8.8.8")){
+			if(engine::target::set(eid, "8.8.8.8")){
 				// Устанавливаем функцию обратного вызова на запись в событие
-				engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::io::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				engine::on(eid, [&addr](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::io::on(eid, [&addr](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные пришли с IP-заголовком
 					if((size >= 20) && ((data[0] & 0xF0) == 0x40)){
 						// Если размер данных меньше размера заголовка IP
@@ -240,7 +240,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -298,7 +298,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				engine::on(eid, static_cast <engine::callback::connect_t> ([](const event::id_t eid, const bool ok) noexcept -> void {
+				engine::io::on(eid, static_cast <engine::callback::connect_t> ([](const event::id_t eid, const bool ok) noexcept -> void {
 					// Записываем в лог сообщение о принятии события
 					log::print("Событие подключения: ID=%u, результат: %s", log::flag_t::INFO, eid, ok ? "YES" : "NO");
 					// Если подключение успешно
@@ -306,7 +306,7 @@ int32_t main(){
 						// Текст исходящего сообщения
 						const string message("Hello from async client!");
 						// Отправляем данные обратно клиенту
-						if(engine::send(eid, message.c_str(), message.size()))
+						if(engine::io::send(eid, message.c_str(), message.size()))
 							// Если данные успешно отправлены
 							log::print("Отправлено: ID=%u, %zu байт", log::flag_t::INFO, eid, message.size());
 						// Если данные не отправлены
@@ -314,7 +314,7 @@ int32_t main(){
 					}
 				}));
 				// Устанавливаем функцию обратного вызова на общее событие
-				engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -382,11 +382,11 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем таймаут события на запись
-				engine::setTimeout(eid, event::action_t::WRITE, 3000);
+				engine::timer::timeout(eid, event::action_t::WRITE, 3000);
 				// Устанавливаем таймаут события на чтение
-				engine::setTimeout(eid, event::action_t::READ, 10000);
+				engine::timer::timeout(eid, event::action_t::READ, 10000);
 				// Выполняем фиксацию настроек события сервера
-				if(engine::commit(eid) && engine::launch(eid)){
+				if(engine::io::commit(eid) && engine::io::launch(eid)){
 					// Выполняем инициализацию генератора
 					std::random_device randev;
 					// Подключаем устройство генератора
@@ -433,9 +433,9 @@ int32_t main(){
 						// Запоминаем текущее значение времени в миллисекундах
 						const uint64_t mseconds = chrono.timestamp(chrono_t::type_t::MILLISECONDS);
 						// Отправляем сообщение серверу
-						if(engine::send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp))){
+						if(engine::io::send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp))){
 							// Выполняем чтение ответа
-							if(engine::recv(eid)){
+							if(engine::io::recv(eid)){
 								// Выполняем подсчёт количество прошедшего времени
 								cout << "Response: " << (chrono.timestamp(chrono_t::type_t::MILLISECONDS) - mseconds) << " msec." << endl;
 								// Увеличиваем последовательность запроса

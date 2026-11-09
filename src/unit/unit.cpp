@@ -317,7 +317,7 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
  */
 bool awh::unit::Unit::kick() noexcept {
 	// Выполняем принудительный пинок базе событий
-	return engine::kick();
+	return engine::io::kick();
 }
 /**
  * @brief Метод определения мастер-процесса
@@ -345,7 +345,7 @@ bool awh::unit::Unit::working() const noexcept {
  */
 void awh::unit::Unit::clear() noexcept {
 	// Выполняем очистку базы событий
-	engine::clear();
+	engine::io::clear();
 }
 /**
  * @brief Метод реинициализации базы событий
@@ -353,7 +353,7 @@ void awh::unit::Unit::clear() noexcept {
  */
 void awh::unit::Unit::reinit() noexcept {
 	// Выполняем реинициализацию базы событий, если реинициализация не выполнена
-	if(!engine::reinitialize()){
+	if(!engine::io::reinitialize()){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -377,7 +377,7 @@ void awh::unit::Unit::reinit() noexcept {
  */
 size_t awh::unit::Unit::events() const noexcept {
 	// Возвращаем количество событий в базе событий
-	return engine::eventsCount();
+	return engine::io::eventsCount();
 }
 /**
  * @brief Метод остановки юнита
@@ -416,7 +416,7 @@ void awh::unit::Unit::stop() noexcept {
 				// Выполняем остановку работы цикла базы событий
 				::__awh_working__.store(false, std::memory_order_release);
 				// Разблокируем работу базы событий
-				engine::kick();
+				engine::io::kick();
 			// Если базу событий запустил не этот юнит
 			} else {
 				// Устанавливаем флаг статуса остановки работы юнита
@@ -491,7 +491,7 @@ void awh::unit::Unit::start() noexcept {
 				/**
 				 * Выполняем опрос базы событий
 				 */
-				if(!engine::poll(this->_timeout)){
+				if(!engine::io::poll(this->_timeout)){
 					// Если таймаут установлен очень низкий
 					if((this->_timeout > -1) && (this->_timeout <= 10))
 						/**
@@ -544,7 +544,7 @@ void awh::unit::Unit::start() noexcept {
  */
 bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
 	// Пересоздаём дескриптор события, сохраняя само событие (его идентификатор, коллбэки, параметры)
-	return engine::rebuild(eid);
+	return engine::io::rebuild(eid);
 }
 /**
  * @brief Метод получения типа события
@@ -555,7 +555,7 @@ bool awh::unit::Unit::rebuild(const event::id_t eid) noexcept {
  */
 awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
 	// Возвращаем тип события
-	return engine::type(eid);
+	return engine::io::type(eid);
 }
 /**
  * @brief Метод получения типа узла события
@@ -566,7 +566,7 @@ awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
  */
 awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
 	// Возвращаем тип узла события
-	return engine::node(eid);
+	return engine::io::node(eid);
 }
 /**
  * @brief Метод получения семейства события
@@ -577,7 +577,7 @@ awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
  */
 awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
 	// Возвращаем семейство адресов
-	return engine::family(eid);
+	return engine::io::family(eid);
 }
 /**
  * @brief Метод получения статуса события
@@ -588,7 +588,7 @@ awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexce
  */
 awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
 	// Возвращаем статус события
-	return engine::status(eid);
+	return engine::io::status(eid);
 }
 /**
  * @brief Метод получения протокола события
@@ -599,7 +599,7 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
  */
 awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noexcept {
 	// Возвращаем протокол события
-	return engine::protocol(id);
+	return engine::io::protocol(id);
 }
 /**
  * @brief Метод получения типа внутренних таймеров
@@ -609,7 +609,7 @@ awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noe
  */
 awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
 	// Возвращаем тип таймера для событий сетевого движка
-	return engine::getInternalTimer();
+	return engine::timer::internal::get();
 }
 /**
  * @brief Метод установки типа внутренних таймеров
@@ -619,7 +619,7 @@ awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
  */
 void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
 	// Устанавливаем тип таймера для событий сетевого движка
-	engine::setInternalTimer(timer);
+	engine::timer::internal::set(timer);
 }
 /**
  * @brief Метод установки пропускной способности события
@@ -630,7 +630,7 @@ void awh::unit::Unit::setInternalTimer(const event::timer_t timer) noexcept {
  */
 void awh::unit::Unit::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Выполняем установку пропускной способности события для события
-	engine::bandwidth(limiting, bandwidth);
+	engine::io::bandwidth(limiting, bandwidth);
 }
 /**
  * @brief Метод установки времени блокировки базы событий в ожидании событий
@@ -696,9 +696,9 @@ awh::unit::Unit::Unit() noexcept :
  _status(event::status_t::NONE), _signals(),
  _callback() {
 	// Если база событий не инициализированна
-	if(!engine::isInitialized()){
+	if(!engine::io::isInitialized()){
 		// Инициализируем базу событий
-		if(!engine::initialize()){
+		if(!engine::io::initialize()){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -732,6 +732,6 @@ awh::unit::Unit::~Unit() noexcept {
 		// Останавливаем работу цикла обработки базы событий
 		this->stop();
 		// Выполняем деинициализацию базы событий
-		engine::deinitialize();
+		engine::io::deinitialize();
 	}
 }

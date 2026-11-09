@@ -58,11 +58,11 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Добавляем новое событие сервера
-	event::id_t eid = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t eid = engine::io::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	engine::setSourcePort(eid, 2222);
+	engine::source::port::set(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Регистрируем объект транспортного уровня безопасности
 		tls::coder::id_t cts = tls::coder::context(event::node_t::SERVER, event::protocol_t::UDP);
 		// Устанавливаем ALPN протоколы TLS
@@ -81,15 +81,15 @@ int32_t main(){
 			log::print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Устананавливаем опции события
-		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
+		if(engine::options::set(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(engine::setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(engine::address::set(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на изменение статуса события
-			engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+			engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
 				 * Обрабатываем статус события
 				 */
@@ -162,9 +162,9 @@ int32_t main(){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
-			engine::on(eid, static_cast <engine::callback::accept_t> ([cts](const event::id_t eid, const event::id_t cid) noexcept -> void {
+			engine::io::on(eid, static_cast <engine::callback::accept_t> ([cts](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Записываем в лог сообщение о принятии события
-				log::print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log::flag_t::INFO, eid, cid, engine::getAddress(cid, event::address_t::IPV4).c_str(), engine::getSourcePort(cid));
+				log::print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log::flag_t::INFO, eid, cid, engine::address::get(cid, event::address_t::IPV4).c_str(), engine::source::port::get(cid));
 				// Создаём идентификатор транспортного уровня DTLS
 				tls::coder::id_t ctl = tls::coder::transport(cts);
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
@@ -236,7 +236,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем клиента DTLS для события
-				tls::coder::peer(ctl, engine::getAddress(cid, event::address_t::IPV4), engine::getSourcePort(cid));
+				tls::coder::peer(ctl, engine::address::get(cid, event::address_t::IPV4), engine::source::port::get(cid));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				tls::coder::on(ctl, [cid](const tls::coder::id_t id, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -246,7 +246,7 @@ int32_t main(){
 						// Если событие шифрования данных DTLS
 						case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 							// Отправляем данные обратно клиенту
-							if(engine::send(cid, reinterpret_cast <const char *> (buffer), size))
+							if(engine::io::send(cid, reinterpret_cast <const char *> (buffer), size))
 								// Если данные успешно отправлены
 								log::print("Отправлено зашифрованных данных: ID=%u, %zu байт", log::flag_t::INFO, cid, size);
 							// Если данные не отправлены
@@ -268,7 +268,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на изменение статуса события
-				engine::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::io::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -341,12 +341,12 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				engine::on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::io::on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				engine::on(cid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::io::on(cid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы DTLS
 					if(tls::coder::decrypt(ctl, data, size)){
 						// Записываем в лог сообщение об успешном дешифровании данных DTLS
@@ -361,7 +361,7 @@ int32_t main(){
 					} else log::print("Ошибка дешифрования: ID=%u", log::flag_t::CRITICAL, eid);
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				engine::on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::io::on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -419,7 +419,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
-				engine::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::io::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -488,7 +488,7 @@ int32_t main(){
 				});
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
-			engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+			engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 				/**
 				 * Обрабатываем действие события
 				 */
@@ -556,19 +556,19 @@ int32_t main(){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			// engine::setTimeout(eid, event::action_t::READ, 5000);
+			// engine::timer::timeout(eid, event::action_t::READ, 5000);
 			// Устанавливаем таймаут события на запись
-			engine::setTimeout(eid, event::action_t::WRITE, 5000);
+			engine::timer::timeout(eid, event::action_t::WRITE, 5000);
 			// Выполняем фиксацию настроек события сервера
-			if(engine::commit(eid)){
+			if(engine::io::commit(eid)){
 				// Выполняем запуск события
-				if(engine::launch(eid)){
+				if(engine::io::launch(eid)){
 					// Записываем в лог сообщение об успешном запуске события
 					cout << " Событие успешно запущено!" << endl;
 					/**
 					 * Запускаем опрос событий
 					 */
-					while(engine::poll());
+					while(engine::io::poll());
 				// Записываем ошибку в лог запуска события
 				} else cout << " Ошибка запуска события!" << endl;
 			}

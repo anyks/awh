@@ -48,7 +48,7 @@ void IoFixture::TearDown(){
 	 * порядком проверок
 	 */
 	// Устанавливаем простой тип таймера для событий сетевого движка
-	awh::engine::setInternalTimer(awh::event::timer_t::SIMPLE);
+	awh::engine::timer::internal::set(awh::event::timer_t::SIMPLE);
 	// Выполняем деинициализацию движка: событие проверки своего хвоста не оставляет
-	awh::engine::deinitialize();
+	awh::engine::io::deinitialize();
 }

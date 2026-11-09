@@ -59,11 +59,11 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Добавляем новое событие файла
-	event::id_t eid = engine::event(event::node_t::FILE, event::family_t::FSYS);
+	event::id_t eid = engine::io::event(event::node_t::FILE, event::family_t::FSYS);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Устанавливаем функцию обратного вызова на изменение статуса события
-		engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -113,9 +113,9 @@ int32_t main(){
 					// Записываем в лог сообщение о выполнении события в ожидании
 					log::print("Событие в ожидании: ID=%u", log::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
-					// engine::setSeek(eid, 1024);
+					// engine::file::seek::set(eid, 1024);
 					// Отправляем тестовое сообщение в файл
-					engine::send(eid, "Hello World!!!", 14);
+					engine::io::send(eid, "Hello World!!!", 14);
 				} break;
 				// Если статус подключения события
 				case static_cast <uint8_t> (event::status_t::CONNECTED):
@@ -140,19 +140,19 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на запись в событие
-		engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+		engine::io::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 			// Записываем в лог сообщение о записи данных
 			log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		engine::on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Текст входящего сообщения
 			const string message(reinterpret_cast <const char *> (data), size);
 			// Записываем в лог сообщение о чтении данных
 			log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 		});
 		// Устанавливаем функцию обратного вызова на ошибку события
-		engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 			/**
 			 * Обрабатываем статус события
 			 */
@@ -205,7 +205,7 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на общее событие
-		engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+		engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Обрабатываем действие события
 			 */
@@ -258,25 +258,25 @@ int32_t main(){
 			}
 		});
 		// Устанавливаем путь к отслеживаемому файлу
-		if(engine::setAddress(eid, event::address_t::FS, "../README2.md")){
+		if(engine::address::set(eid, event::address_t::FS, "../README2.md")){
 			// Выполняем фиксацию настроек события сервера
-			if(engine::commit(eid)){
+			if(engine::io::commit(eid)){
 				// Устананавливаем опции события
-				if(engine::setOptions(eid, event::options::AUTO_FOLLOW))
+				if(engine::options::set(eid, event::options::AUTO_FOLLOW))
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Записываем ошибку в лог установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Отключаем событие на чтение
-				// engine::setAction(eid, event::action_t::READ, event::mode_t::DISABLED);
+				// engine::action::set(eid, event::action_t::READ, event::mode_t::DISABLED);
 				// Выполняем запуск события
-				if(engine::launch(eid)){
+				if(engine::io::launch(eid)){
 					// Записываем в лог сообщение об успешном запуске события
 					cout << " Событие успешно запущено!" << endl;
 					/**
 					 * Запускаем опрос событий
 					 */
-					while(engine::poll());
+					while(engine::io::poll());
 				// Записываем ошибку в лог запуска события
 				} else cout << " Ошибка запуска события!" << endl;
 			}

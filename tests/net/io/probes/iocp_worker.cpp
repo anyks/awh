@@ -151,23 +151,23 @@ namespace {
 		// Проверяем настоящий fallback таймера внутри IO::poll при занятом пуле
 		uint8_t fired = 0;
 		bool outside = false;
-		const auto interval = awh::engine::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+		const auto interval = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
 		::require(interval > 0, "fallback interval");
-		awh::engine::setTimeout(interval, awh::event::action_t::NONE, 10);
-		::require(awh::engine::commit(interval), "fallback commit");
-		awh::engine::on(interval, [&](const awh::event::id_t, const awh::event::status_t status) noexcept {
+		awh::engine::timer::timeout(interval, awh::event::action_t::NONE, 10);
+		::require(awh::engine::io::commit(interval), "fallback commit");
+		awh::engine::io::on(interval, [&](const awh::event::id_t, const awh::event::status_t status) noexcept {
 			// Учитываем только успешную доставку таймера
 			if(status == awh::event::status_t::SUCCESS){
 				fired++;
 				outside = (awh::fiber::current() == nullptr);
 			}
 		});
-		::require(awh::engine::launch(interval), "fallback launch");
+		::require(awh::engine::io::launch(interval), "fallback launch");
 		const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(5));
 		while((fired == 0) && (std::chrono::steady_clock::now() < deadline))
-			::require(awh::engine::poll(1), "fallback poll");
+			::require(awh::engine::io::poll(1), "fallback poll");
 		::require((fired == 1) && outside, "actual timer fallback once outside fiber");
-		::require(awh::engine::destroy(interval), "fallback destroy");
+		::require(awh::engine::io::destroy(interval), "fallback destroy");
 		// Очистка не должна сносить ни одного занятого worker
 		::fibers::clear();
 		::require(::fibers::pool.size() == contexts.size(), "clear preserves suspended workers");
@@ -194,7 +194,7 @@ namespace {
 			held = awh::fiber::current();
 			::require(held != nullptr, "teardown inside fiber");
 			// Разбираем движок с текущего рабочего стека
-			::require(awh::engine::deinitialize(), "deinitialize from callback");
+			::require(awh::engine::io::deinitialize(), "deinitialize from callback");
 			::require((::fibers::pool.size() == 1) && ::fibers::pool.front()->busy, "current worker survives deinitialize");
 			stage++;
 			awh::fiber::yield();
@@ -208,11 +208,11 @@ namespace {
 		::fibers::clear();
 		::require(::fibers::pool.empty(), "teardown final cleanup");
 		// Повторное заведение и опрос не должны доставлять старые callbacks
-		::require(awh::engine::initialize(), "reinitialize");
+		::require(awh::engine::io::initialize(), "reinitialize");
 		for(uint8_t index = 0; index < 16; index++)
-			::require(awh::engine::poll(0), "poll after reinitialize");
+			::require(awh::engine::io::poll(0), "poll after reinitialize");
 		::require(stage == 2, "no late callback");
-		::require(awh::engine::deinitialize(), "final deinitialize");
+		::require(awh::engine::io::deinitialize(), "final deinitialize");
 	}
 };
 
@@ -225,7 +225,7 @@ namespace {
 int main() {
 	// Инициализируем память и настоящий движок
 	awh::fmk::initialize();
-	::require(awh::engine::initialize(), "initialize");
+	::require(awh::engine::io::initialize(), "initialize");
 	::lifetime();
 	::exhaustion();
 	::teardown();

@@ -703,7 +703,7 @@ void awh::unit::NTP::keepWaiting(const event::id_t eid) noexcept {
 		// Выходим из функции
 		return;
 	// Выполняем продолжение прерванного чужим пакетом ожидания
-	engine::rearmTimeout(eid, event::action_t::READ);
+	engine::timer::rearm(eid, event::action_t::READ);
 }
 /**
  * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
@@ -819,7 +819,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 		// Увеличиваем количество попыток получения ответа от NTP-сервера
 		this->_transfer.attempt++;
 		// Пересоздаём клиента со следующим NTP-сервером (setTarget на запущенном клиенте не работает)
-		if(!this->init(engine::family(this->_client.eid))){
+		if(!this->init(engine::io::family(this->_client.eid))){
 			// Снимаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = false;
 			// Уничтожаем событие NTP-клиента
@@ -843,7 +843,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 		// Запоминаем доли секунды метки отправки заданного вопроса
 		this->_transfer.origFrac = origFrac;
 		// Отправляем повторный запрос; send == 0 — клиент сломан (EAGAIN в движке не доходит сюда), уничтожаем событие
-		if(engine::send(this->_client.eid, &packet, sizeof(packet)) == 0){
+		if(engine::io::send(this->_client.eid, &packet, sizeof(packet)) == 0){
 			// Снимаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = false;
 			// Уничтожаем событие NTP-клиента
@@ -903,11 +903,11 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		// Если событие NTP-клиента уже существует
 		if(this->_client.eid > 0)
 			// Удаляем событие NTP-клиента
-			engine::destroy(this->_client.eid);
+			engine::io::destroy(this->_client.eid);
 		// Добавляем новое событие клиента UDP
-		this->_client.eid = engine::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+		this->_client.eid = engine::io::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем порт события
-		if((result = engine::setTargetPort(this->_client.eid, this->_client.port))){
+		if((result = engine::target::port::set(this->_client.eid, this->_client.port))){
 			/**
 			 * Определяем семейство события
 			 */
@@ -921,13 +921,13 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						// Если IP-адрес из переменной окружения получен
 						if(env != nullptr){
 							// Устанавливаем адрес сервера назначения
-							result = engine::setTarget(this->_client.eid, env);
+							result = engine::target::set(this->_client.eid, env);
 							// Выходим из условия
 							break;
 						}
 					}
 					// Устанавливаем адрес сервера назначения
-					result = engine::setTarget(this->_client.eid, this->_client.servers.get(family));
+					result = engine::target::set(this->_client.eid, this->_client.servers.get(family));
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -938,13 +938,13 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						// Если IP-адрес из переменной окружения получен
 						if(env != nullptr){
 							// Устанавливаем адрес сервера назначения
-							result = engine::setTarget(this->_client.eid, env);
+							result = engine::target::set(this->_client.eid, env);
 							// Выходим из условия
 							break;
 						}
 					}
 					// Устанавливаем адрес сервера назначения
-					result = engine::setTarget(this->_client.eid, this->_client.servers.get(family));
+					result = engine::target::set(this->_client.eid, this->_client.servers.get(family));
 				} break;
 			}
 			// Если адрес сервера назначения установлен
@@ -958,29 +958,29 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):
 							// Устанавливаем IP-адрес события
-							result = engine::setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
+							result = engine::address::set(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
 						break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6):
 							// Устанавливаем IP-адрес события
-							result = engine::setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
+							result = engine::address::set(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
 						break;
 					}
 				}
 				// Если все параметры события установлены
 				if(result){
 					// Устанавливаем время ожидания ответа от NTP-сервера
-					engine::setTimeout(this->_client.eid, event::action_t::READ, this->_client.delay);
+					engine::timer::timeout(this->_client.eid, event::action_t::READ, this->_client.delay);
 					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					engine::on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+					engine::io::on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие чтения данных
-					engine::on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
+					engine::io::on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
 					// Устанавливаем функцию обратного вызова на событие таймаута
-					engine::on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (ntp_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&ntp_t::timeout), this, _1, _2, _3)));
+					engine::io::on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (ntp_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&ntp_t::timeout), this, _1, _2, _3)));
 					// Если опции события не установлены
-					if(!(result = engine::setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))){
+					if(!(result = engine::options::set(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))){
 						// Удаляем событие NTP-клиента
-						engine::destroy(this->_client.eid);
+						engine::io::destroy(this->_client.eid);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -1001,9 +1001,9 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						::exit(EXIT_FAILURE);
 					}
 					// Фиксируем параметры события и запускаем его
-					if(!(result = engine::commit(this->_client.eid) && engine::launch(this->_client.eid))){
+					if(!(result = engine::io::commit(this->_client.eid) && engine::io::launch(this->_client.eid))){
 						// Удаляем событие NTP-клиента
-						engine::destroy(this->_client.eid);
+						engine::io::destroy(this->_client.eid);
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -1101,7 +1101,7 @@ void awh::unit::NTP::setPrefixEnvironment(string_view prefix) noexcept {
  */
 awh::event::type_t awh::unit::NTP::type() const noexcept {
 	// Получаем тип события
-	return engine::type(this->_client.eid);
+	return engine::io::type(this->_client.eid);
 }
 /**
  * @brief Метод получения типа узла события
@@ -1111,7 +1111,7 @@ awh::event::type_t awh::unit::NTP::type() const noexcept {
  */
 awh::event::node_t awh::unit::NTP::node() const noexcept {
 	// Получаем тип узла события
-	return engine::node(this->_client.eid);
+	return engine::io::node(this->_client.eid);
 }
 /**
  * @brief Метод получения семейства события
@@ -1121,7 +1121,7 @@ awh::event::node_t awh::unit::NTP::node() const noexcept {
  */
 awh::event::family_t awh::unit::NTP::family() const noexcept {
 	// Получаем семейство события
-	return engine::family(this->_client.eid);
+	return engine::io::family(this->_client.eid);
 }
 /**
  * @brief Метод получения статуса события
@@ -1131,7 +1131,7 @@ awh::event::family_t awh::unit::NTP::family() const noexcept {
  */
 awh::event::status_t awh::unit::NTP::status() const noexcept {
 	// Получаем статус события
-	return engine::status(this->_client.eid);
+	return engine::io::status(this->_client.eid);
 }
 /**
  * @brief Метод получения порта NTP-сервера
@@ -1984,7 +1984,7 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 			// Запоминаем доли секунды метки отправки заданного вопроса
 			this->_transfer.origFrac = origFrac;
 			// Отправляем запрос на NTP-сервер для синхронизации времени
-			if(engine::send(this->_client.eid, &packet, sizeof(packet)) > 0)
+			if(engine::io::send(this->_client.eid, &packet, sizeof(packet)) > 0)
 				// Возвращаем положительный результат
 				return true;
 			// Снимаем флаг ожидания ответа от NTP-сервера
@@ -2049,12 +2049,12 @@ awh::unit::NTP::~NTP() noexcept {
 	// Если событие NTP-клиента активно
 	if(this->_client.eid > 0){
 		// Снимаем функцию обратного вызова на событие чтения данных
-		engine::on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
+		engine::io::on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
 		// Снимаем функцию обратного вызова на событие получения ошибок
-		engine::on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
+		engine::io::on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
 		// Снимаем функцию обратного вызова на событие таймаута
-		engine::on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
+		engine::io::on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
 		// Удаляем событие NTP-клиента
-		engine::destroy(this->_client.eid);
+		engine::io::destroy(this->_client.eid);
 	}
 }

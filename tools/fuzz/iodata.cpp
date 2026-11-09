@@ -211,7 +211,7 @@ static ssize_t deliver(const int32_t peer, const uint8_t * buffer, const size_t 
 		// Взводим сторожевой срок оборота опроса
 		::alarm(__awh_poll_limit__);
 		// Выполняем оборот цикла событий, разбирая накопленное
-		static_cast <void> (awh::engine::poll(1));
+		static_cast <void> (awh::engine::io::poll(1));
 		// Снимаем сторожевой срок
 		::alarm(0);
 		// Считаем оборот опроса
@@ -262,7 +262,7 @@ int main(int argc, char * argv[]) noexcept {
 	const set <int32_t> before = ::descriptors();
 	// Объект сетевого движка
 	// Выполняем заведение сетевого движка
-	if(!awh::engine::initialize()){
+	if(!awh::engine::io::initialize()){
 		// Сообщаем, что движок завести не удалось
 		::fprintf(stderr, "Сетевой движок завести не удалось\n");
 		// Выходим из приложения с кодом ошибки
@@ -286,7 +286,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		const bool stream = ((random() % 2) == 0);
 		// Заводим событие сервера домена UNIX
-		const awh::event::id_t server = awh::engine::event(awh::event::node_t::SERVER, awh::event::family_t::UDS,
+		const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS,
 		 (stream ? awh::event::type_t::STREAM : awh::event::type_t::DATAGRAM));
 		// Если событие завести не удалось, круг пропускается
 		if(server == 0){
@@ -321,42 +321,42 @@ int main(int argc, char * argv[]) noexcept {
 			parts.push_back(size);
 		};
 		// Устанавливаем функцию обратного вызова на принятие подключения
-		awh::engine::on(server, static_cast <awh::engine::callback::accept_t> ([&receive]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+		awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&receive]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
 			// Выставляем принятому узлу неблокирующий обмен
-			static_cast <void> (awh::engine::setOptions(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			static_cast <void> (awh::engine::options::set(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 			// Устанавливаем функцию обратного вызова на чтение данных принятым узлом
-			awh::engine::on(pid, static_cast <awh::engine::callback::read_t> ([&receive]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			awh::engine::io::on(pid, static_cast <awh::engine::callback::read_t> ([&receive]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 				// Принимаем данные принятым узлом
 				receive(buffer, size);
 			}));
 		}));
 		// Устанавливаем функцию обратного вызова на чтение данных сервером
-		awh::engine::on(server, static_cast <awh::engine::callback::read_t> ([&receive]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		awh::engine::io::on(server, static_cast <awh::engine::callback::read_t> ([&receive]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 			// Принимаем данные сервером
 			receive(buffer, size);
 		}));
 		// Выставляем узлу сервера путь и настройки
-		static_cast <void> (awh::engine::setAddress(server, awh::event::address_t::UDS, uds));
-		static_cast <void> (awh::engine::setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		static_cast <void> (awh::engine::address::set(server, awh::event::address_t::UDS, uds));
+		static_cast <void> (awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		// Если настройки узла приняты не были, круг пропускается
-		if(!awh::engine::commit(server)){
+		if(!awh::engine::io::commit(server)){
 			// Считаем круг пропущенным
 			::totals.skipped++;
 			// Сносим заведённый узел
-			awh::engine::destroy(server);
+			awh::engine::io::destroy(server);
 			// Переходим к следующему кругу
 			continue;
 		}
 		// Объявляем слушание у связного вида: дейтаграммный сервер слушания не объявляет
 		if(stream)
 			// Выполняем объявление слушания
-			static_cast <void> (awh::engine::listen(server, 16));
+			static_cast <void> (awh::engine::io::listen(server, 16));
 		// Если запустить узел сервера не удалось, круг пропускается
-		if(!awh::engine::launch(server)){
+		if(!awh::engine::io::launch(server)){
 			// Считаем круг пропущенным
 			::totals.skipped++;
 			// Сносим заведённый узел
-			awh::engine::destroy(server);
+			awh::engine::io::destroy(server);
 			// Переходим к следующему кругу
 			continue;
 		}
@@ -373,7 +373,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Считаем круг пропущенным
 			::totals.skipped++;
 			// Сносим заведённый узел
-			awh::engine::destroy(server);
+			awh::engine::io::destroy(server);
 			// Переходим к следующему кругу
 			continue;
 		}
@@ -427,7 +427,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Закрываем сокет встречной стороны
 			::close(peer);
 			// Сносим заведённый узел
-			awh::engine::destroy(server);
+			awh::engine::io::destroy(server);
 			// Переходим к следующему кругу
 			continue;
 		}
@@ -436,7 +436,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Взводим сторожевой срок оборота опроса
 			::alarm(__awh_poll_limit__);
 			// Выполняем оборот цикла событий
-			static_cast <void> (awh::engine::poll(5));
+			static_cast <void> (awh::engine::io::poll(5));
 			// Снимаем сторожевой срок
 			::alarm(0);
 			// Считаем оборот опроса
@@ -553,7 +553,7 @@ int main(int argc, char * argv[]) noexcept {
 						// Взводим сторожевой срок оборота опроса
 						::alarm(__awh_poll_limit__);
 						// Выполняем оборот цикла событий
-						static_cast <void> (awh::engine::poll(1));
+						static_cast <void> (awh::engine::io::poll(1));
 						// Снимаем сторожевой срок
 						::alarm(0);
 						// Считаем оборот опроса
@@ -588,7 +588,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Взводим сторожевой срок оборота опроса
 			::alarm(__awh_poll_limit__);
 			// Выполняем оборот цикла событий
-			static_cast <void> (awh::engine::poll(5));
+			static_cast <void> (awh::engine::io::poll(5));
 			// Снимаем сторожевой срок
 			::alarm(0);
 			// Считаем оборот опроса
@@ -661,13 +661,13 @@ int main(int argc, char * argv[]) noexcept {
 			}
 		}
 		// Сносим заведённый узел
-		awh::engine::destroy(server);
+		awh::engine::io::destroy(server);
 		// Даём движку довести снос до конца
 		for(uint8_t i = 0; i < 3; i++){
 			// Взводим сторожевой срок оборота опроса
 			::alarm(__awh_poll_limit__);
 			// Выполняем оборот цикла событий
-			static_cast <void> (awh::engine::poll(5));
+			static_cast <void> (awh::engine::io::poll(5));
 			// Снимаем сторожевой срок
 			::alarm(0);
 			// Считаем оборот опроса
@@ -675,7 +675,7 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	}
 	// Сворачиваем движок
-	static_cast <void> (awh::engine::deinitialize());
+	static_cast <void> (awh::engine::io::deinitialize());
 	// Убираем путь узла движка и путь встречной стороны
 	::unlink(uds.c_str());
 	::unlink((uds + ".peer").c_str());

@@ -207,13 +207,13 @@
 		// Обнуляем длину принятого кадра
 		__awh_xdp_len__ = 0;
 		// Инициализируем асинхронный движок ввода-вывода
-		ASSERT_TRUE(engine::initialize());
+		ASSERT_TRUE(engine::io::initialize());
 		// Заводим узел датапути AF_XDP на приёмнике (redirect, generic SKB)
 		const event::id_t id = engine::xdp::create(veth.rx().c_str(), 0, true);
 		// Проверяем, что узел заведён
 		ASSERT_NE(id, 0u);
 		// Подписываемся на чтение узла: кадры приходят штатным колбэком
-		engine::on(id, static_cast <engine::callback::read_t> ([](const event::id_t, const uint8_t * buffer, const size_t size) noexcept -> void {
+		engine::io::on(id, static_cast <engine::callback::read_t> ([](const event::id_t, const uint8_t * buffer, const size_t size) noexcept -> void {
 			// Отмечаем приём кадра
 			__awh_xdp_got__ = true;
 			// Запоминаем длину принятого кадра с ограничением буфера
@@ -262,7 +262,7 @@
 		// Проверяем, что кадр впрыснут
 		ASSERT_GT(sent, 0);
 		// Крутим цикл событий: готовность узла -> readXdp -> колбэк чтения
-		engine::poll(2000);
+		engine::io::poll(2000);
 		// Признак совпадения полезной нагрузки принятого кадра
 		bool match = false;
 		// Если кадр принят целиком, сверяем полезную нагрузку
@@ -315,7 +315,7 @@
 			// Пропускаем проверку без veth-пары
 			GTEST_SKIP() << "IoXdp: cannot create veth pair";
 		// Инициализируем асинхронный движок ввода-вывода
-		ASSERT_TRUE(engine::initialize());
+		ASSERT_TRUE(engine::io::initialize());
 		// Пробуем поддержку нулевого копирования приёмником
 		const bool zc = engine::xdp::zerocopySupported(veth.rx(), 0);
 		// Заводим узел в нативном режиме с нулевым копированием

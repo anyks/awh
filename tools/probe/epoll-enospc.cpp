@@ -71,46 +71,46 @@ int main(int argc, char * argv[]){
 	// Оборот опроса, на котором предел возвращён
 	int restoredAt = -1;
 
-	const auto events = awh::engine::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	if((events[0] == 0) || (events[1] == 0)){
 		::printf("PROBE: события не созданы\n");
 		return 2;
 	}
-	awh::engine::setTargetPort(events[0], port);
-	awh::engine::setSourcePort(events[1], port);
+	awh::engine::target::port::set(events[0], port);
+	awh::engine::source::port::set(events[1], port);
 
-	if(!awh::engine::initialize()){
+	if(!awh::engine::io::initialize()){
 		::printf("PROBE: движок не инициализирован\n");
 		return 2;
 	}
 	for(uint8_t i = 0; i < 2; i++)
-		awh::engine::setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE |
+		awh::engine::options::set(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE |
 		 awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
 
 	// Серверное событие: принимает подключение и отвечает эхом
-	awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1");
-	awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+	awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1");
+	awh::engine::io::on(events[1], static_cast <awh::engine::callback::accept_t> ([](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 		::printf("PROBE: подключение принято\n");
-		awh::engine::on(cid, [](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-			awh::engine::send(eid, reinterpret_cast <const char *> (data), size);
+		awh::engine::io::on(cid, [](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::io::send(eid, reinterpret_cast <const char *> (data), size);
 		});
-		awh::engine::commit(cid);
-		awh::engine::launch(cid);
+		awh::engine::io::commit(cid);
+		awh::engine::io::launch(cid);
 	}));
-	awh::engine::commit(events[1]);
-	awh::engine::listen(events[1], 100);
-	awh::engine::launch(events[1]);
+	awh::engine::io::commit(events[1]);
+	awh::engine::io::listen(events[1], 100);
+	awh::engine::io::launch(events[1]);
 
 	// Клиентское событие: подключается и шлёт сообщение
-	awh::engine::setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0");
-	awh::engine::setTarget(events[0], "127.0.0.1");
-	awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([](const awh::event::id_t eid, const bool ok) noexcept -> void {
+	awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0");
+	awh::engine::target::set(events[0], "127.0.0.1");
+	awh::engine::io::on(events[0], static_cast <awh::engine::callback::connect_t> ([](const awh::event::id_t eid, const bool ok) noexcept -> void {
 		if(ok){
 			const std::string message("PING");
-			awh::engine::send(eid, message.c_str(), message.size());
+			awh::engine::io::send(eid, message.c_str(), message.size());
 		}
 	}));
-	awh::engine::on(events[0], [&delivered](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	awh::engine::io::on(events[0], [&delivered](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		::printf("PROBE: получен ответ %zu байт\n", size);
 		delivered = true;
 	});
@@ -122,9 +122,9 @@ int main(int argc, char * argv[]){
 	}
 	::printf("PROBE: предел наблюдений опущен до 1\n");
 
-	awh::engine::commit(events[0]);
-	awh::engine::connect(events[0]);
-	awh::engine::launch(events[0]);
+	awh::engine::io::commit(events[0]);
+	awh::engine::io::connect(events[0]);
+	awh::engine::io::launch(events[0]);
 
 	// Крутим опрос: первые обороты под опущенным пределом, затем предел возвращаем
 	for(int turn = 0; (turn < 400) && !delivered; turn++){
@@ -133,14 +133,14 @@ int main(int argc, char * argv[]){
 			restoredAt = turn;
 			::printf("PROBE: предел наблюдений возвращён на обороте %d\n", turn);
 		}
-		if(!awh::engine::poll(25)){
+		if(!awh::engine::io::poll(25)){
 			::printf("PROBE: опрос отказал на обороте %d\n", turn);
 			break;
 		}
 	}
 	// Возвращаем предел в любом случае
 	setWatches(saved);
-	awh::engine::deinitialize();
+	awh::engine::io::deinitialize();
 
 	::printf("PROBE: доставлено=%s, предел возвращён на обороте=%d\n", delivered ? "ДА" : "НЕТ", restoredAt);
 	return (delivered ? 0 : 1);

@@ -2418,7 +2418,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			 */
 			if((attachedIt == this->_transfer.attached.end()) || (attachedIt->second != id)){
 				// Выполняем продолжение прерванного ожидания ответа
-				engine::rearmTimeout(eid, event::action_t::READ);
+				engine::timer::rearm(eid, event::action_t::READ);
 				// Игнорируем неподтверждённый ответ
 				return;
 			}
@@ -2866,7 +2866,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если сервер DNS не смог интерпретировать запрос
 			case 1: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = fmk::format("DNS query format error to nameserver %s for domain %s", engine::getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS query format error to nameserver %s for domain %s", engine::target::get(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2893,7 +2893,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если проблемы возникли на DNS-сервере
 			case 2: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = fmk::format("DNS server failure %s for domain %s", engine::getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS server failure %s for domain %s", engine::target::get(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2920,7 +2920,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если доменное имя, указанное в запросе, не существует
 			case 3: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = fmk::format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), engine::getTarget(eid).c_str());
+				const string error = fmk::format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), engine::target::get(eid).c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2947,7 +2947,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если DNS-сервер не поддерживает подобный тип запросов
 			case 4: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = fmk::format("DNS server is not implemented at %s for domain %s", engine::getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS server is not implemented at %s for domain %s", engine::target::get(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2974,7 +2974,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если DNS-сервер отказался выполнять наш запрос (например, по политическим причинам)
 			case 5: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = fmk::format("DNS request is refused to nameserver %s for domain %s", engine::getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS request is refused to nameserver %s for domain %s", engine::target::get(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -3029,7 +3029,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						// Удаляем пакет из очереди на отправку
 						this->_transfer.packets.pop();
 						// Отправляем DNS-запрос
-						engine::send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+						engine::io::send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 						// Выходим из функции
 						return;
 					}
@@ -3125,9 +3125,9 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 							// Если следующий DNS-сервер доступен
 							if(const net::addr_t * server = this->_resolver.nameServers.get(family))
 								// Переключаем DNS-резолвер на следующий сервер
-								engine::setTarget(eid, server);
+								engine::target::set(eid, server);
 							// Повторно отправляем DNS-запрос
-							engine::send(eid, j->second.payload.buffer.get(), j->second.payload.size);
+							engine::io::send(eid, j->second.payload.buffer.get(), j->second.payload.size);
 							// Продолжаем ожидание ответа
 							return false;
 						}
@@ -3174,7 +3174,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 									// Удаляем пакет из очереди на отправку
 									this->_transfer.packets.pop();
 									// Отправляем DNS-запрос
-									engine::send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+									engine::io::send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 									// Продолжаем ожидание ответа
 									return false;
 								}
@@ -5154,17 +5154,17 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 		// Если путь к файлу дампа кэша указан
 		if(!filename.empty()){
 			// Добавляем новое событие файла для мониторинга изменений в файле локальных хостов
-			::__awh_cache__.fid = engine::event(event::node_t::FILE, event::family_t::FSYS);
+			::__awh_cache__.fid = engine::io::event(event::node_t::FILE, event::family_t::FSYS);
 			// Устанавливаем функцию обратного вызова на чтение из события
-			engine::on(::__awh_cache__.fid, static_cast <engine::callback::read_t> (std::bind(&dns_t::hosts, this, _1, _2, _3)));
+			engine::io::on(::__awh_cache__.fid, static_cast <engine::callback::read_t> (std::bind(&dns_t::hosts, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			engine::on(::__awh_cache__.fid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+			engine::io::on(::__awh_cache__.fid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 			// Устанавливаем путь к отслеживаемому файлу
-			if(engine::setAddress(::__awh_cache__.fid, event::address_t::FS, filename)){
+			if(engine::address::set(::__awh_cache__.fid, event::address_t::FS, filename)){
 				// Выполняем фиксацию настроек события сервера
-				if(engine::commit(::__awh_cache__.fid)){
+				if(engine::io::commit(::__awh_cache__.fid)){
 					// Устанавливаем опции события
-					if(!engine::setOptions(::__awh_cache__.fid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+					if(!engine::options::set(::__awh_cache__.fid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -5184,7 +5184,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 					// Если мы успешно установили опции события
 					} else {
 						// Если событие запущено успешно
-						if(engine::launch(::__awh_cache__.fid))
+						if(engine::io::launch(::__awh_cache__.fid))
 							// Выходим из функции
 							return;
 					}
@@ -5206,7 +5206,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 				#endif
 			}
 			// Удаляем событие
-			engine::destroy(::__awh_cache__.fid);
+			engine::io::destroy(::__awh_cache__.fid);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5308,7 +5308,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 					// Если интервал времени сохранения дампа кэша не совпадает с новым интервалом, то удаляем старый интервал
 					if(::__awh_cache__.interval != interval)
 						// Удаляем старый интервал
-						engine::destroy(::__awh_cache__.tid);
+						engine::io::destroy(::__awh_cache__.tid);
 					// Если интервал времени сохранения дампа кэша совпадает с новым интервалом, то просто выходим из функции
 					else return;
 				}
@@ -5317,17 +5317,17 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				// Устанавливаем путь к файлу дампа кэша
 				::__awh_cache__.filename = filename;
 				// Добавляем новое событие интервала
-				::__awh_cache__.tid = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
+				::__awh_cache__.tid = engine::io::event(event::node_t::INTERVAL, event::family_t::TIMER);
 				// Устанавливаем таймаут таймера
-				engine::setTimeout(::__awh_cache__.tid, event::action_t::NONE, ::__awh_cache__.interval);
+				engine::timer::timeout(::__awh_cache__.tid, event::action_t::NONE, ::__awh_cache__.interval);
 				// Устанавливаем обработчик события таймера для сохранения дампа кэша
-				engine::on(::__awh_cache__.tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::dumping, this, _1, _2)));
+				engine::io::on(::__awh_cache__.tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::dumping, this, _1, _2)));
 				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				engine::on(::__awh_cache__.tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+				engine::io::on(::__awh_cache__.tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 				// Если не удалось установить интервал сохранения дампа кэша, то удаляем событие интервала
-				if(!(engine::commit(::__awh_cache__.tid) && engine::launch(::__awh_cache__.tid))){
+				if(!(engine::io::commit(::__awh_cache__.tid) && engine::io::launch(::__awh_cache__.tid))){
 					// Удаляем событие интервала
-					engine::destroy(::__awh_cache__.tid);
+					engine::io::destroy(::__awh_cache__.tid);
 					// Сбрасываем идентификатор события интервала
 					::__awh_cache__.tid = 0;
 					// Сбрасываем интервал сохранения дампа кэша
@@ -5355,7 +5355,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		// Если путь к файлу дампа не указан, но интервал сохранения задан, снимаем прежний таймер
 		} else if(interval > 0) {
 			// Удаляем событие интервала
-			engine::destroy(::__awh_cache__.tid);
+			engine::io::destroy(::__awh_cache__.tid);
 			// Сбрасываем идентификатор события интервала
 			::__awh_cache__.tid = 0;
 			// Сбрасываем интервал сохранения дампа кэша
@@ -5402,7 +5402,7 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 			 */
 			for(auto & eid : this->_resolver.idv4)
 				// Устанавливаем время ожидания ответа от DNS-сервера
-				engine::setTimeout(eid, event::action_t::READ, this->_resolver.delay);
+				engine::timer::timeout(eid, event::action_t::READ, this->_resolver.delay);
 		}
 		// Если DNS-резолверы IPv6 уже инициализированы
 		if(!this->_resolver.idv6.empty()){
@@ -5411,7 +5411,7 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 			 */
 			for(auto & eid : this->_resolver.idv6)
 				// Устанавливаем время ожидания ответа от DNS-сервера
-				engine::setTimeout(eid, event::action_t::READ, this->_resolver.delay);
+				engine::timer::timeout(eid, event::action_t::READ, this->_resolver.delay);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5510,7 +5510,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Удаляем идентификатор события из очереди свободных резолверов
 						this->_resolver.queue.remove(* i);
 						// Удаляем событие DNS-резолвера
-						engine::destroy(* i);
+						engine::io::destroy(* i);
 						// Удаляем идентификатор события DNS-резолвера из списка идентификаторов
 						i = this->_resolver.idv4.erase(i);
 					}
@@ -5526,13 +5526,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Сбрасываем результат инициализации текущего резолвера
 						result = false;
 						// Добавляем новое событие клиента UDP
-						this->_resolver.idv4[i] = engine::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+						this->_resolver.idv4[i] = engine::io::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 						// Если опции события установлены
-						if(engine::setOptions(this->_resolver.idv4[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+						if(engine::options::set(this->_resolver.idv4[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(engine::setTargetPort(this->_resolver.idv4[i], this->_resolver.port)){
+							if(engine::target::port::set(this->_resolver.idv4[i], this->_resolver.port)){
 								// Устанавливаем время ожидания ответа от DNS-сервера
-								engine::setTimeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.delay);
+								engine::timer::timeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
@@ -5540,33 +5540,33 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 									// Если IP-адрес из переменной окружения получен
 									if(env != nullptr)
 										// Устанавливаем адрес сервера назначения
-										result = engine::setTarget(this->_resolver.idv4[i], env);
+										result = engine::target::set(this->_resolver.idv4[i], env);
 								}
 								// Если адрес сервера назначения не установлен из переменной окружения
 								if(!result)
 									// Устанавливаем адрес сервера назначения
-									result = engine::setTarget(this->_resolver.idv4[i], this->_resolver.nameServers.get(family));
+									result = engine::target::set(this->_resolver.idv4[i], this->_resolver.nameServers.get(family));
 								// Если адрес сервера назначения установлен
 								if(result){
 									// Если адрес сети для выполнения запроса установлен
 									if((this->_resolver.sourceIPv4 != nullptr) && (this->_resolver.sourceIPv4->size == 4))
 										// Добавляем DNS-сервер в список
-										engine::setAddress(this->_resolver.idv4[i], event::address_t::IPV4, this->_resolver.sourceIPv4.get());
+										engine::address::set(this->_resolver.idv4[i], event::address_t::IPV4, this->_resolver.sourceIPv4.get());
 									// Устанавливаем функцию обратного вызова на событие получения ошибок
-									engine::on(this->_resolver.idv4[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv4[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 									// Устанавливаем функцию обратного вызова на событие чтения данных
-									engine::on(this->_resolver.idv4[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv4[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
 									// Устанавливаем функцию обратного вызова на событие таймаута
-									engine::on(this->_resolver.idv4[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv4[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
 									// Выполняем фиксацию параметров события и его запуск
-									result = (engine::commit(this->_resolver.idv4[i]) && engine::launch(this->_resolver.idv4[i]));
+									result = (engine::io::commit(this->_resolver.idv4[i]) && engine::io::launch(this->_resolver.idv4[i]));
 								}
 							}
 						}
 						// Если не удалось запустить событие DNS-резолвера, то удаляем
 						if(!result){
 							// Удаляем событие DNS-резолвера
-							engine::destroy(this->_resolver.idv4[i]);
+							engine::io::destroy(this->_resolver.idv4[i]);
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								/**
@@ -5605,7 +5605,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Удаляем идентификатор события из очереди свободных резолверов
 						this->_resolver.queue.remove(* i);
 						// Удаляем событие DNS-резолвера
-						engine::destroy(* i);
+						engine::io::destroy(* i);
 						// Удаляем идентификатор события DNS-резолвера из списка идентификаторов
 						i = this->_resolver.idv6.erase(i);
 					}
@@ -5621,13 +5621,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Сбрасываем результат инициализации текущего резолвера
 						result = false;
 						// Добавляем новое событие клиента UDP
-						this->_resolver.idv6[i] = engine::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+						this->_resolver.idv6[i] = engine::io::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 						// Если опции события установлены
-						if(engine::setOptions(this->_resolver.idv6[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+						if(engine::options::set(this->_resolver.idv6[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(engine::setTargetPort(this->_resolver.idv6[i], this->_resolver.port)){
+							if(engine::target::port::set(this->_resolver.idv6[i], this->_resolver.port)){
 								// Устанавливаем время ожидания ответа от DNS-сервера
-								engine::setTimeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.delay);
+								engine::timer::timeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
@@ -5635,33 +5635,33 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 									// Если IP-адрес из переменной окружения получен
 									if(env != nullptr)
 										// Устанавливаем адрес сервера назначения
-										result = engine::setTarget(this->_resolver.idv6[i], env);
+										result = engine::target::set(this->_resolver.idv6[i], env);
 								}
 								// Если адрес сервера назначения не установлен из переменной окружения
 								if(!result)
 									// Устанавливаем адрес сервера назначения
-									result = engine::setTarget(this->_resolver.idv6[i], this->_resolver.nameServers.get(family));
+									result = engine::target::set(this->_resolver.idv6[i], this->_resolver.nameServers.get(family));
 								// Если адрес сервера назначения установлен
 								if(result){
 									// Если адрес сети для выполнения запроса установлен
 									if((this->_resolver.sourceIPv6 != nullptr) && (this->_resolver.sourceIPv6->size == 16))
 										// Добавляем DNS-сервер в список
-										engine::setAddress(this->_resolver.idv6[i], event::address_t::IPV6, this->_resolver.sourceIPv6.get());
+										engine::address::set(this->_resolver.idv6[i], event::address_t::IPV6, this->_resolver.sourceIPv6.get());
 									// Устанавливаем функцию обратного вызова на событие получения ошибок
-									engine::on(this->_resolver.idv6[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv6[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
 									// Устанавливаем функцию обратного вызова на событие чтения данных
-									engine::on(this->_resolver.idv6[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv6[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
 									// Устанавливаем функцию обратного вызова на событие таймаута
-									engine::on(this->_resolver.idv6[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
+									engine::io::on(this->_resolver.idv6[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
 									// Выполняем фиксацию параметров события и его запуск
-									result = (engine::commit(this->_resolver.idv6[i]) && engine::launch(this->_resolver.idv6[i]));
+									result = (engine::io::commit(this->_resolver.idv6[i]) && engine::io::launch(this->_resolver.idv6[i]));
 								}
 							}
 						}
 						// Если не удалось запустить событие DNS-резолвера, то удаляем
 						if(!result){
 							// Удаляем событие DNS-резолвера
-							engine::destroy(this->_resolver.idv6[i]);
+							engine::io::destroy(this->_resolver.idv6[i]);
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								/**
@@ -6898,7 +6898,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 				// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 				else this->_transfer.attached.emplace(eid, id);
 				// Отправляем DNS-запрос
-				return (engine::send(eid, ::dns::buffer, size) > 0);
+				return (engine::io::send(eid, ::dns::buffer, size) > 0);
 			}
 		}
 	/**
@@ -7116,7 +7116,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 			// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 			else this->_transfer.attached.emplace(eid, id);
 			// Отправляем DNS-запрос
-			return (engine::send(eid, ::dns::buffer, size) > 0);
+			return (engine::io::send(eid, ::dns::buffer, size) > 0);
 		}
 	/**
 	 * Если возникает ошибка
@@ -7422,7 +7422,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 				// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 				else this->_transfer.attached.emplace(eid, id);
 				// Отправляем DNS-запрос
-				return (engine::send(eid, ::dns::buffer, size) > 0);
+				return (engine::io::send(eid, ::dns::buffer, size) > 0);
 			}
 		}
 	/**
@@ -7580,11 +7580,11 @@ awh::unit::DNS::~DNS() noexcept {
 	// Если событие таймера для периодической очистки кэша активно
 	if(::__awh_cache__.tid > 0)
 		// Удаляем событие таймера для периодической очистки кэша
-		engine::destroy(::__awh_cache__.tid);
+		engine::io::destroy(::__awh_cache__.tid);
 	// Если событие таймера для периодической очистки кэша активно
 	if(::__awh_cache__.fid > 0)
 		// Удаляем событие таймера для периодической очистки кэша
-		engine::destroy(::__awh_cache__.fid);
+		engine::io::destroy(::__awh_cache__.fid);
 	// Если список DNS-резолверов IPv4 не пустой
 	if(!this->_resolver.idv4.empty()){
 		/**
@@ -7592,13 +7592,13 @@ awh::unit::DNS::~DNS() noexcept {
 		 */
 		for(auto i = this->_resolver.idv4.begin(); i != this->_resolver.idv4.end(); ++i){
 			// Снимаем функцию обратного вызова на событие чтения данных
-			engine::on(* i, static_cast <engine::callback::read_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::read_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(* i, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие таймаута
-			engine::on(* i, static_cast <engine::callback::timeout_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::timeout_t> (nullptr));
 			// Удаляем событие DNS-резолвера
-			engine::destroy(* i);
+			engine::io::destroy(* i);
 		}
 	}
 	// Если список DNS-резолверов IPv6 не пустой
@@ -7608,13 +7608,13 @@ awh::unit::DNS::~DNS() noexcept {
 		 */
 		for(auto i = this->_resolver.idv6.begin(); i != this->_resolver.idv6.end(); ++i){
 			// Снимаем функцию обратного вызова на событие чтения данных
-			engine::on(* i, static_cast <engine::callback::read_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::read_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(* i, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие таймаута
-			engine::on(* i, static_cast <engine::callback::timeout_t> (nullptr));
+			engine::io::on(* i, static_cast <engine::callback::timeout_t> (nullptr));
 			// Удаляем событие DNS-резолвера
-			engine::destroy(* i);
+			engine::io::destroy(* i);
 		}
 	}
 }

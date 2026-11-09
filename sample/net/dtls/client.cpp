@@ -58,11 +58,11 @@ int32_t main(){
 	// Устанавливаем уровень логирования
 	// log::level(log::level_t::NONE);
 	// Добавляем новое событие клиента
-	event::id_t eid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t eid = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	engine::setTargetPort(eid, 2222);
+	engine::target::port::set(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Регистрируем объект транспортного уровня безопасности
 		tls::coder::id_t cts = tls::coder::context(event::node_t::CLIENT, event::protocol_t::UDP);
 		// Устанавливаем ALPN протоколы TLS
@@ -158,7 +158,7 @@ int32_t main(){
 				// Если событие шифрования данных DTLS
 				case static_cast <uint8_t> (tls::coder::event_t::ENCRYPTION): {
 					// Отправляем данные обратно клиенту
-					if(engine::send(eid, reinterpret_cast <const char *> (buffer), size))
+					if(engine::io::send(eid, reinterpret_cast <const char *> (buffer), size))
 						// Если данные успешно отправлены
 						log::print("Отправлено зашифрованных данных: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 					// Если данные не отправлены
@@ -174,17 +174,17 @@ int32_t main(){
 			}
 		});
 		// Устананавливаем опции события
-		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		if(engine::options::set(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Устанавливаем IP-адрес события
-		if(engine::setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
+		if(engine::address::set(eid, event::address_t::IPV4, "0.0.0.0")){
 			// Устанавливаем адрес сервера назначения
-			if(engine::setTarget(eid, "127.0.0.1")){
+			if(engine::target::set(eid, "127.0.0.1")){
 				// Устанавливаем функцию обратного вызова на изменение статуса события
-				engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -257,12 +257,12 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+				engine::io::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 					// Записываем в лог сообщение о записи данных
 					log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				engine::on(eid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::io::on(eid, [ctl](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы DTLS
 					if(tls::coder::decrypt(ctl, data, size))
 						// Записываем в лог сообщение об успешном дешифровании данных DTLS
@@ -271,7 +271,7 @@ int32_t main(){
 					else log::print("Ошибка дешифрования: ID=%u", log::flag_t::CRITICAL, eid);
 				});
 				// Устанавливаем функцию обратного вызова на ошибку события
-				engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+				engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -329,7 +329,7 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на общее событие
-				engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+				engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 					/**
 					 * Обрабатываем действие события
 					 */
@@ -397,13 +397,13 @@ int32_t main(){
 					}
 				});
 				// Устанавливаем таймаут события на чтение
-				// engine::setTimeout(eid, event::action_t::READ, 3000);
+				// engine::timer::timeout(eid, event::action_t::READ, 3000);
 				// Устанавливаем таймаут события на запись
-				engine::setTimeout(eid, event::action_t::WRITE, 3000);
+				engine::timer::timeout(eid, event::action_t::WRITE, 3000);
 				// Выполняем фиксацию настроек события сервера
-				if(engine::commit(eid)){
+				if(engine::io::commit(eid)){
 					// Выполняем запуск события
-					if(engine::launch(eid)){
+					if(engine::io::launch(eid)){
 						// Записываем в лог сообщение об успешном запуске события
 						cout << " Событие успешно запущено!" << endl;
 						// Если рукопожатие DTLS успешно
@@ -415,7 +415,7 @@ int32_t main(){
 						/**
 						 * Запускаем опрос событий
 						 */
-						while(engine::poll());
+						while(engine::io::poll());
 					// Записываем ошибку в лог запуска события
 					} else cout << " Ошибка запуска события!" << endl;
 				}

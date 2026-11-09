@@ -114,7 +114,7 @@ void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t a
  */
 void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие файловой системы
-	engine::destroy(eid);
+	engine::io::destroy(eid);
 }
 /**
  * @brief Метод создания события файловой системы
@@ -133,12 +133,12 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 		// Если тип файловой системы является наблюдателем за каталогами
 		case static_cast <uint8_t> (type_t::DIR):
 			// Выполняем создание события файловой системы для узла каталога
-			result = engine::event(event::node_t::DIR, event::family_t::FSYS);
+			result = engine::io::event(event::node_t::DIR, event::family_t::FSYS);
 		break;
 		// Если тип файловой системы является наблюдателем за файлами
 		case static_cast <uint8_t> (type_t::FILE):
 			// Выполняем создание события файловой системы для узла файла
-			result = engine::event(event::node_t::FILE, event::family_t::FSYS);
+			result = engine::io::event(event::node_t::FILE, event::family_t::FSYS);
 		break;
 		// Для неизвестного типа файловой системы
 		default: {
@@ -164,16 +164,16 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 		// Если тип файловой системы является наблюдателем за файлами
 		if(type == type_t::FILE){
 			// Устанавливаем функцию обратного вызова на событие записи сообщений
-			engine::on(result, static_cast <engine::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения сообщений
-			engine::on(result, static_cast <engine::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
 		}
 		// Устанавливаем функцию обратного вызова на событие изменения статуса
-		engine::on(result, static_cast <engine::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
+		engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
+		engine::io::on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
-		engine::on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
+		engine::io::on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
 		// Добавляем идентификатор события файловой системы в список событий файловой системы
 		this->_events.emplace(result);
 	// Если событие файловой системы не может быть создано
@@ -206,7 +206,7 @@ awh::unit::Filesystem::type_t awh::unit::Filesystem::type(const event::id_t eid)
 	/**
 	 * Определяем тип узла события файловой системы
 	 */
-	switch(static_cast <uint8_t> (engine::node(eid))){
+	switch(static_cast <uint8_t> (engine::io::node(eid))){
 		// Если тип узла события является каталогом
 		case static_cast <uint8_t> (event::node_t::DIR):
 			// Устанавливаем результат типа ноды файловой системы как каталог
@@ -246,7 +246,7 @@ void awh::unit::Filesystem::callback(const callback_t & callback) noexcept {
  */
 string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
 	// Выполняем получение адреса события
-	return engine::getAddress(eid, event::address_t::FS);
+	return engine::address::get(eid, event::address_t::FS);
 }
 /**
  * @brief Метод установки адреса события
@@ -258,11 +258,11 @@ string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & value) noexcept {
 	// Переменная результата
-	bool result = engine::setAddress(eid, event::address_t::FS, value);
+	bool result = engine::address::set(eid, event::address_t::FS, value);
 	// Если результат выполнения установки адреса события является успешным
 	if(result)
 		// Выполняем запуск события файловой системы
-		result = (engine::commit(eid) && engine::launch(eid));
+		result = (engine::io::commit(eid) && engine::io::launch(eid));
 	// Выполняем результат
 	return result;
 }
@@ -277,7 +277,7 @@ bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & val
  */
 size_t awh::unit::Filesystem::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных в файл
-	return engine::send(eid, buffer, size);
+	return engine::io::send(eid, buffer, size);
 }
 /**
  * @brief Метод получения смещения в файле события
@@ -289,7 +289,7 @@ size_t awh::unit::Filesystem::send(const event::id_t eid, const void * buffer, c
  */
 size_t awh::unit::Filesystem::getSeek(const event::id_t eid, const event::seek_t seek) noexcept {
 	// Выполняем получение смещения в файле события
-	return engine::getSeek(eid, seek);
+	return engine::file::seek::get(eid, seek);
 }
 /**
  * @brief Метод установки смещения в файле события
@@ -302,7 +302,7 @@ size_t awh::unit::Filesystem::getSeek(const event::id_t eid, const event::seek_t
  */
 bool awh::unit::Filesystem::setSeek(const event::id_t eid, const event::seek_t seek, const size_t offset) noexcept {
 	// Выполняем установку смещения в файле события
-	return engine::setSeek(eid, seek, offset);
+	return engine::file::seek::set(eid, seek, offset);
 }
 /**
  * @brief Метод получения опций события
@@ -313,7 +313,7 @@ bool awh::unit::Filesystem::setSeek(const event::id_t eid, const event::seek_t s
  */
 uint16_t awh::unit::Filesystem::getOptions(const event::id_t eid) const noexcept {
 	// Выполняем получение опций события
-	return engine::getOptions(eid);
+	return engine::options::get(eid);
 }
 /**
  * @brief Метод установки опций события
@@ -325,7 +325,7 @@ uint16_t awh::unit::Filesystem::getOptions(const event::id_t eid) const noexcept
  */
 bool awh::unit::Filesystem::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Выполняем установку опций события
-	return engine::setOptions(eid, options);
+	return engine::options::set(eid, options);
 }
 /**
  * @brief Метод установки опции события
@@ -338,7 +338,7 @@ bool awh::unit::Filesystem::setOptions(const event::id_t eid, const uint16_t opt
  */
 bool awh::unit::Filesystem::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Выполняем установку опции события
-	return engine::setOption(eid, option, mode);
+	return engine::options::set(eid, option, mode);
 }
 /**
  * @brief Метод получения размера буфера события
@@ -350,7 +350,7 @@ bool awh::unit::Filesystem::setOption(const event::id_t eid, const uint16_t opti
  */
 size_t awh::unit::Filesystem::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Выполняем получение размера буфера события
-	return engine::getBufferSize(eid, action);
+	return engine::buffer::size::get(eid, action);
 }
 /**
  * @brief Метод установки размера буфера события
@@ -363,7 +363,7 @@ size_t awh::unit::Filesystem::getBufferSize(const event::id_t eid, const event::
  */
 bool awh::unit::Filesystem::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Выполняем установку размера буфера события
-	return engine::setBufferSize(eid, action, size);
+	return engine::buffer::size::set(eid, action, size);
 }
 /**
  * @brief Конструктор
@@ -384,20 +384,20 @@ awh::unit::Filesystem::~Filesystem() noexcept {
 		 */
 		for(const auto & eid : events){
 			// Если тип файловой системы является наблюдателем за файлами
-			if(event::node_t::FILE == engine::node(eid)){
+			if(event::node_t::FILE == engine::io::node(eid)){
 				// Снимаем функцию обратного вызова на событие записи сообщений
-				engine::on(eid, static_cast <engine::callback::write_t> (nullptr));
+				engine::io::on(eid, static_cast <engine::callback::write_t> (nullptr));
 				// Снимаем функцию обратного вызова на событие чтения сообщений
-				engine::on(eid, static_cast <engine::callback::read_t> (nullptr));
+				engine::io::on(eid, static_cast <engine::callback::read_t> (nullptr));
 			}
 			// Снимаем функцию обратного вызова на событие изменения статуса
-			engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(eid, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения состояния каталога
-			engine::on(eid, static_cast <engine::callback::vnode_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::vnode_t> (nullptr));
 			// Удаляем событие файловой системы
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 		}
 	}
 }

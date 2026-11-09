@@ -115,7 +115,7 @@ class Executor {
 					// Записываем в лог сообщение об возрождении события
 					log::print("SCTP client rebirthed: ID=%u", log::flag_t::INFO, eid);
 					// Выполняем подписку на SCTP события
-					engine::sctp::eventsSubscribe(eid, {
+					engine::sctp::subscription(eid, {
 						net::sctp::event_type_t::ASSOC_CHANGE,
 						net::sctp::event_type_t::SHUTDOWN_EVENT,
 						net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -358,7 +358,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Выполняем подписку на SCTP события
-	engine::sctp::eventsSubscribe(eid, {
+	engine::sctp::subscription(eid, {
 		net::sctp::event_type_t::ASSOC_CHANGE,
 		net::sctp::event_type_t::SHUTDOWN_EVENT,
 		net::sctp::event_type_t::SEND_FAILED_EVENT,

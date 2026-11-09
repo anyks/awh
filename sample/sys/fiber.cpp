@@ -75,7 +75,7 @@ class Executor {
 			// Сбрасываем прежний ответ
 			this->_answer.clear();
 			// Отправляем запрос серверу
-			if(engine::send(this->_client, message.data(), message.size()) == 0){
+			if(engine::io::send(this->_client, message.data(), message.size()) == 0){
 				// Записываем ошибку в лог
 				log::print("Запрос отправить не удалось", log::flag_t::CRITICAL);
 				// Выводим пустой ответ
@@ -188,76 +188,76 @@ int32_t main(){
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY
 	);
 	// Добавляем событие сервера
-	const event::id_t server = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t server = engine::io::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Добавляем событие клиента
-	const event::id_t client = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t client = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события сервера
-	engine::setSourcePort(server, PORT);
+	engine::source::port::set(server, PORT);
 	// Устанавливаем порт назначения события клиента
-	engine::setTargetPort(client, PORT);
+	engine::target::port::set(client, PORT);
 	// Инициализируем движок
-	if(!engine::initialize()){
+	if(!engine::io::initialize()){
 		// Записываем ошибку в лог
 		log::print("Движок инициализировать не удалось", log::flag_t::CRITICAL);
 		// Выходим из приложения
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем опции события сервера
-	engine::setOptions(server, OPTIONS);
+	engine::options::set(server, OPTIONS);
 	// Устанавливаем опции события клиента
-	engine::setOptions(client, OPTIONS);
+	engine::options::set(client, OPTIONS);
 	// Устанавливаем адрес события сервера
-	engine::setAddress(server, event::address_t::IPV4, "127.0.0.1");
+	engine::address::set(server, event::address_t::IPV4, "127.0.0.1");
 	/**
 	 * Заводим встроенный эхо-сервер: он возвращает принятое обратно
 	 *
 	 * @note Сервер нужен образцу лишь затем, чтобы обмен был настоящим. Всё
 	 *       существенное происходит на стороне клиента, в волокне
 	 */
-	engine::on(server, static_cast <engine::callback::accept_t> ([]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
+	engine::io::on(server, static_cast <engine::callback::accept_t> ([]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Записываем в лог сообщение о принятом подключении
 		log::print("Сервер принял подключение", log::flag_t::INFO);
 		// Устанавливаем функцию обратного вызова на чтение данных сервером
-		engine::on(cid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		engine::io::on(cid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Возвращаем принятое обратно отправителю
-			engine::send(eid, data, size);
+			engine::io::send(eid, data, size);
 		});
 	}));
 	// Выполняем фиксацию настроек события сервера
-	engine::commit(server);
+	engine::io::commit(server);
 	// Переводим событие сервера в режим прослушивания
-	engine::listen(server, 16);
+	engine::io::listen(server, 16);
 	// Запускаем событие сервера
-	engine::launch(server);
+	engine::io::launch(server);
 	// Создаём объект исполнителя
 	Executor executor(client);
 	// Устанавливаем адрес назначения события клиента
-	engine::setTarget(client, "127.0.0.1");
+	engine::target::set(client, "127.0.0.1");
 	// Устанавливаем функцию обратного вызова на чтение данных клиентом
-	engine::on(client, [&executor](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	engine::io::on(client, [&executor](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Выполняем обработку чтения данных
 		executor.read(eid, data, size);
 	});
 	// Устанавливаем функцию обратного вызова на подключение к серверу
-	engine::on(client, static_cast <engine::callback::connect_t> ([&executor]([[maybe_unused]] const event::id_t eid, const bool ok) noexcept -> void {
+	engine::io::on(client, static_cast <engine::callback::connect_t> ([&executor]([[maybe_unused]] const event::id_t eid, const bool ok) noexcept -> void {
 		// Выполняем обработку подключения
 		executor.connect(ok);
 	}));
 	// Выполняем фиксацию настроек события клиента
-	engine::commit(client);
+	engine::io::commit(client);
 	// Выполняем подключение к серверу
-	engine::connect(client);
+	engine::io::connect(client);
 	// Запускаем событие клиента
-	engine::launch(client);
+	engine::io::launch(client);
 	/**
 	 * Крутим цикл опроса событий
 	 *
 	 * @note Цикл здесь самый обычный, ничем не отличающийся от любого другого.
 	 *       Волокна ему не требуют НИЧЕГО: ни вложенных вызовов, ни потоков
 	 */
-	while(!executor.done() && engine::poll(100));
+	while(!executor.done() && engine::io::poll(100));
 	// Уничтожаем все события
-	engine::deinitialize();
+	engine::io::deinitialize();
 	// Выводим результат
 	return EXIT_SUCCESS;
 }

@@ -3861,39 +3861,6 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ bool disconnect(const event::id_t id) noexcept;
 				/**
 				 * \~russian
-				 * @brief Шаблон функции мультиподключения события к удалённым хостам
-				 *
-				 * @tparam Args список идентификаторов событий для подключения
-				 *
-				 * \~english
-				 * @brief Template of the function of the multi-connection of an event to the remote hosts
-				 *
-				 * @tparam Args list of the identifiers of the events to connect
-				 *
-				 * \~
-				 */
-				template <typename... Args>
-				/**
-				 * \~russian
-				 * @brief Функция мультиподключения события к удалённым хостам
-				 *
-				 * @param args список идентификаторов событий для подключения
-				 * @return     результат выполнения подключения
-				 *
-				 * \~english
-				 * @brief Function of the multi-connection of an event to the remote hosts
-				 *
-				 * @param args list of the identifiers of the events to connect
-				 * @return     result of the performance of the connection
-				 *
-				 * \~
-				 */
-				bool connect(Args&&... args) noexcept {
-					// Выполняем подключение к списку удалённых серверов
-					return connect({args...});
-				}
-				/**
-				 * \~russian
 				 * @brief Функция мультиподключения события к удалённым хостам
 				 *
 				 * @details Начинает подключение и **возвращается сразу**, не дожидаясь его
@@ -4016,6 +3983,39 @@ namespace awh {
 				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ bool connect(const vector <event::id_t> & ids) noexcept;
+				/**
+				 * \~russian
+				 * @brief Шаблон функции мультиподключения события к удалённым хостам
+				 *
+				 * @tparam Args список идентификаторов событий для подключения
+				 *
+				 * \~english
+				 * @brief Template of the function of the multi-connection of an event to the remote hosts
+				 *
+				 * @tparam Args list of the identifiers of the events to connect
+				 *
+				 * \~
+				 */
+				template <typename... Args>
+				/**
+				 * \~russian
+				 * @brief Функция мультиподключения события к удалённым хостам
+				 *
+				 * @param args список идентификаторов событий для подключения
+				 * @return     результат выполнения подключения
+				 *
+				 * \~english
+				 * @brief Function of the multi-connection of an event to the remote hosts
+				 *
+				 * @param args list of the identifiers of the events to connect
+				 * @return     result of the performance of the connection
+				 *
+				 * \~
+				 */
+				bool connect(Args&&... args) noexcept {
+					// Выполняем подключение к списку удалённых серверов
+					return connect({args...});
+				}
 				/**
 				 * \~russian
 				 * @brief Функция перевода события в режим прослушивания входящих соединений

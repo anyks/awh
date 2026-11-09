@@ -330,7 +330,7 @@ namespace {
 					 */
 					while(this->_offset < data.size()){
 						// Выполняем отправку остатка сообщения
-						const size_t accepted = engine::send(this->_cid, data.data() + this->_offset, (data.size() - this->_offset));
+						const size_t accepted = engine::io::send(this->_cid, data.data() + this->_offset, (data.size() - this->_offset));
 						// Если к отправке не принято ничего
 						if(accepted == 0){
 							// Увеличиваем количество ожиданий освобождения очереди
@@ -374,31 +374,31 @@ namespace {
 			 */
 			result_t run(const uint32_t timeout = WATCHDOG_TIMEOUT) noexcept {
 				// Создаём событие сервера SCTP
-				this->_sid = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
+				this->_sid = engine::io::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 				// Устанавливаем порт прослушивания сервера
-				engine::setSourcePort(this->_sid, this->_port);
+				engine::source::port::set(this->_sid, this->_port);
 				// Если завести движок не удалось
-				if(!engine::initialize()){
+				if(!engine::io::initialize()){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
 					return this->_result;
 				}
 				// Устанавливаем опции события сервера
-				engine::setOptions(this->_sid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
+				engine::options::set(this->_sid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
 				// Если адрес прослушивания сервера установить не удалось
-				if(!engine::setAddress(this->_sid, event::address_t::IPV4, "127.0.0.1")){
+				if(!engine::address::set(this->_sid, event::address_t::IPV4, "127.0.0.1")){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
 					return this->_result;
 				}
 				// Устанавливаем функцию обратного вызова на принятие подключения
-				engine::on(this->_sid, static_cast <engine::callback::accept_t> ([this](const event::id_t sid, const event::id_t cid) noexcept -> void {
+				engine::io::on(this->_sid, static_cast <engine::callback::accept_t> ([this](const event::id_t sid, const event::id_t cid) noexcept -> void {
 					// Запоминаем идентификатор события принятого узла
 					this->_pid = cid;
 					// Устанавливаем опции события принятого узла
-					engine::setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
+					engine::options::set(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
 					/**
 					 * Если данные выдаются вместе с метаданными
 					 */
@@ -409,49 +409,49 @@ namespace {
 							this->receive(eid, data, size, &info);
 						}));
 					// Устанавливаем функцию обратного вызова на чтение данных
-					} else engine::on(cid, [this](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					} else engine::io::on(cid, [this](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Выполняем приём сообщения сервером
 						this->receive(eid, data, size, nullptr);
 					});
 				}));
 				// Если зафиксировать настройки события сервера не удалось
-				if(!engine::commit(this->_sid) || !engine::listen(this->_sid, 16) || !engine::launch(this->_sid)){
+				if(!engine::io::commit(this->_sid) || !engine::io::listen(this->_sid, 16) || !engine::io::launch(this->_sid)){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
 					return this->_result;
 				}
 				// Создаём событие клиента SCTP
-				this->_cid = engine::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
+				this->_cid = engine::io::event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 				// Запоминаем, несёт ли система явную границу записи при отправке по частям
 				this->_result.partial = engine::sctp::partialSupported(this->_cid);
 				// Устанавливаем порт удалённого сервера
-				engine::setTargetPort(this->_cid, this->_port);
+				engine::target::port::set(this->_cid, this->_port);
 				// Если локальный адрес клиента установить не удалось
-				if(!engine::setAddress(this->_cid, event::address_t::IPV4, "0.0.0.0")){
+				if(!engine::address::set(this->_cid, event::address_t::IPV4, "0.0.0.0")){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
 					return this->_result;
 				}
 				// Устанавливаем опции события клиента
-				engine::setOptions(this->_cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
+				engine::options::set(this->_cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC);
 				// Если адрес удалённого сервера установить не удалось
-				if(!engine::setTarget(this->_cid, "127.0.0.1")){
+				if(!engine::target::set(this->_cid, "127.0.0.1")){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
 					return this->_result;
 				}
 				// Устанавливаем функцию обратного вызова на изменение статуса клиента
-				engine::on(this->_cid, [this](const event::id_t eid, const event::status_t status) noexcept -> void {
+				engine::io::on(this->_cid, [this](const event::id_t eid, const event::status_t status) noexcept -> void {
 					// Если очередь отправки освободилась
 					if(status == event::status_t::QUEUE_AVAILABLE)
 						// Продолжаем отправку сообщения с места остановки
 						this->transmit();
 				});
 				// Устанавливаем функцию обратного вызова на подключение к серверу
-				engine::on(this->_cid, static_cast <engine::callback::connect_t> ([this](const event::id_t eid, const bool ok) noexcept -> void {
+				engine::io::on(this->_cid, static_cast <engine::callback::connect_t> ([this](const event::id_t eid, const bool ok) noexcept -> void {
 					// Если подключение к серверу не удалось
 					if(!ok){
 						// Помечаем отказ заведения стенда
@@ -465,7 +465,7 @@ namespace {
 					this->transmit();
 				}));
 				// Устанавливаем функцию обратного вызова на чтение отражённых сервером данных
-				engine::on(this->_cid, [this](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				engine::io::on(this->_cid, [this](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Дописываем принятый кусок в собираемое отражённое сообщение
 					this->_echo.append(reinterpret_cast <const char *> (data), size);
 					/**
@@ -490,7 +490,7 @@ namespace {
 					else this->transmit();
 				});
 				// Если зафиксировать настройки события клиента не удалось
-				if(!engine::commit(this->_cid) || !engine::connect(this->_cid) || !engine::launch(this->_cid)){
+				if(!engine::io::commit(this->_cid) || !engine::io::connect(this->_cid) || !engine::io::launch(this->_cid)){
 					// Помечаем отказ заведения стенда
 					this->_result.broken = true;
 					// Выводим итоги прогона
@@ -503,9 +503,9 @@ namespace {
 				// Запускаем цикл событий в фоновом потоке
 				std::thread worker([this, &finished]() noexcept {
 					// Выполняем опрос событий до завершения прогона
-					while(engine::poll(100) && !this->_done);
+					while(engine::io::poll(100) && !this->_done);
 					// Выполняем снос всех событий движка
-					engine::clear();
+					engine::io::clear();
 					// Сигнализируем завершение работы фонового потока
 					finished.set_value();
 				});
@@ -537,7 +537,7 @@ namespace {
 				// Дожидаемся завершения фонового потока
 				worker.join();
 				// Выполняем деинициализацию движка
-				engine::deinitialize();
+				engine::io::deinitialize();
 				// Выводим итоги прогона
 				return this->_result;
 			}
@@ -613,7 +613,7 @@ namespace {
 					return;
 				}
 				// Выполняем отражение принятого сообщения обратно клиенту
-				engine::send(eid, message.data.data(), message.data.size());
+				engine::io::send(eid, message.data.data(), message.data.size());
 			}
 		public:
 			/**

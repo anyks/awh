@@ -160,22 +160,22 @@ int32_t main(int32_t argc, char * argv[]){
 	// Определяем адрес прослушивания
 	const string address = ((argc > 3) ? argv[3] : "0.0.0.0");
 	// Создаём событие сервера
-	event::id_t eid = engine::event(
+	event::id_t eid = engine::io::event(
 		event::node_t::SERVER, event::family_t::IPV4,
 		(stream ? event::type_t::STREAM : event::type_t::SEQPACKET),
 		event::protocol_t::SCTP
 	);
 	// Устанавливаем порт прослушивания
-	engine::setSourcePort(eid, port);
+	engine::source::port::set(eid, port);
 	// Если завести движок не удалось
-	if(!engine::initialize()){
+	if(!engine::io::initialize()){
 		// Выводим сообщение об ошибке
 		log::print("Движок завести не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем опции события сервера
-	engine::setOptions(eid,
+	engine::options::set(eid,
 		event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 		event::options::REUSE_ADDR | event::options::REUSE_PORT |
 		event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC
@@ -186,26 +186,26 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Подписка нужна не ради самих событий, а ради сведений о сообщении: у части
 	 *       систем метаданные приходят только по ней
 	 */
-	engine::sctp::eventsSubscribe(eid, {
+	engine::sctp::subscription(eid, {
 		net::sctp::event_type_t::DATA_IO,
 		net::sctp::event_type_t::ASSOC_CHANGE,
 		net::sctp::event_type_t::SHUTDOWN_EVENT
 	});
 	// Если установить адрес прослушивания не удалось
-	if(!engine::setAddress(eid, event::address_t::IPV4, address)){
+	if(!engine::address::set(eid, event::address_t::IPV4, address)){
 		// Выводим сообщение об ошибке
 		log::print("Адрес прослушивания установить не удалось: %s", log::flag_t::CRITICAL, address.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик принятия подключения
-	engine::on(eid, static_cast <engine::callback::accept_t> ([](const event::id_t sid, const event::id_t cid) noexcept -> void {
+	engine::io::on(eid, static_cast <engine::callback::accept_t> ([](const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Выводим сообщение о принятом подключении
 		log::print("Принято подключение: %u", log::flag_t::INFO, cid);
 		// Заводим учёт по принятому подключению
 		__counters__.emplace(cid, counter_t());
 		// Устанавливаем опции принятого подключения
-		engine::setOptions(cid,
+		engine::options::set(cid,
 			event::options::NO_SIGILL | event::options::NO_SIGPIPE |
 			event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC
 		);
@@ -236,7 +236,7 @@ int32_t main(int32_t argc, char * argv[]){
 				i->second.records++;
 		}));
 		// Устанавливаем отклик состояния принятого подключения
-		engine::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::io::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Определяем состояние события
 			 */
@@ -250,7 +250,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устанавливаем отклик действий принятого подключения
-		engine::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+		engine::io::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Определяем действие события
 			 */
@@ -265,21 +265,21 @@ int32_t main(int32_t argc, char * argv[]){
 		});
 	}));
 	// Если зафиксировать настройки события не удалось
-	if(!engine::commit(eid)){
+	if(!engine::io::commit(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Настройки события зафиксировать не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если включить прослушивание не удалось
-	if(!engine::listen(eid, 64)){
+	if(!engine::io::listen(eid, 64)){
 		// Выводим сообщение об ошибке
 		log::print("Прослушивание включить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
-	if(!engine::launch(eid)){
+	if(!engine::io::launch(eid)){
 		// Выводим сообщение об ошибке
 		log::print("Событие запустить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
@@ -289,7 +289,7 @@ int32_t main(int32_t argc, char * argv[]){
 	log::print("Сервер запущен: %s:%u вид сокета %s", log::flag_t::INFO,
 		address.c_str(), port, (stream ? "STREAM" : "SEQPACKET"));
 	// Крутим цикл событий
-	while(engine::poll());
+	while(engine::io::poll());
 	// Выходим успешно
 	return EXIT_SUCCESS;
 }

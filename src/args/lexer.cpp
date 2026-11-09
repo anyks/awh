@@ -80,7 +80,7 @@ namespace {
 	 * @return         признак продолжения разбора
 	 *
 	 */
-	static constexpr bool notify(const lexer_t::failure_t & failure, const args::error_t error, const args::location_t & location) noexcept {
+	static __AWH_INLINE__ bool notify(const lexer_t::failure_t & failure, const args::error_t error, const args::location_t & location) noexcept {
 		// Если отзыв извещения об отказе установлен
 		if(failure != nullptr)
 			// Выполняем извещение об отказе разбора

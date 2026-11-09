@@ -63,32 +63,32 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Добавляем новое событие сервера
-	event::id_t eid = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
+	event::id_t eid = engine::io::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	engine::setSourcePort(eid, 5000);
+	engine::source::port::set(eid, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Устанавливаем мультикастовый режим события
-		if(engine::setDelivery(eid, event::delivery_mode_t::MULTICAST)){
+		if(engine::delivery::set(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем TTL для мультикастового события
-			if(engine::setHops(eid, event::hops_t::NETWORK)){
+			if(engine::hops::set(eid, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
-				if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK))
+				if(engine::options::set(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK))
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 				// Записываем ошибку в лог установки опций события
 				else cout << " Ошибка установки опций события!" << endl;
 				// Можно установить сетевой интерфейс через который пойдёт трафик
 				// Или сначала установить IP-адрес который висит на сетевом интерфейсе, тогда он будет активирован, а потом установить группу мультикаста
-				// engine::setIface(eid, "en0");
+				// engine::iface::set(eid, "en0");
 				// Устанавливаем IP-адрес события
-				if(engine::setAddress(eid, event::address_t::IPV4, "239.1.2.3")){
+				if(engine::address::set(eid, event::address_t::IPV4, "239.1.2.3")){
 					// Устанавливаем адрес сервера назначения
-					if(engine::membership(eid, event::mode_t::ENABLED, "239.1.2.3", "0.0.0.0")){
+					if(engine::multicast::membership(eid, event::mode_t::ENABLED, "239.1.2.3", "0.0.0.0")){
 						// Выполняем фиксацию настроек события сервера
-						if(engine::commit(eid)){
+						if(engine::io::commit(eid)){
 							// Устанавливаем функцию обратного вызова на событие сервера
-							engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+							engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 								/**
 								 * Обрабатываем статус события
 								 */
@@ -161,11 +161,11 @@ int32_t main(){
 								}
 							});
 							// Устанавливаем функцию обратного вызова на подключение нового клиента
-							engine::on(eid, static_cast <engine::callback::accept_t> ([](const event::id_t eid, const event::id_t cid) noexcept -> void {
+							engine::io::on(eid, static_cast <engine::callback::accept_t> ([](const event::id_t eid, const event::id_t cid) noexcept -> void {
 								// Записываем в лог сообщение о принятии события
-								log::print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log::flag_t::INFO, eid, cid, engine::getAddress(cid, event::address_t::IPV4).c_str(), engine::getSourcePort(cid));
+								log::print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log::flag_t::INFO, eid, cid, engine::address::get(cid, event::address_t::IPV4).c_str(), engine::source::port::get(cid));
 								// Устанавливаем функцию обратного вызова на изменение статуса события
-								engine::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+								engine::io::on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 									/**
 									 * Обрабатываем статус события
 									 */
@@ -238,14 +238,14 @@ int32_t main(){
 									}
 								});
 								// Устанавливаем функцию обратного вызова на запись в событие
-								engine::on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+								engine::io::on(cid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 									// Записываем в лог сообщение о записи данных
 									log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 								}));
 								// Флаг отправки сообщений
 								static bool sending = false;
 								// Устанавливаем функцию обратного вызова на чтение из события
-								engine::on(cid, [eid](const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
+								engine::io::on(cid, [eid](const event::id_t cid, const uint8_t * data, const size_t size) noexcept -> void {
 									// Текст входящего сообщения
 									string message(reinterpret_cast <const char *> (data), size);
 									// Записываем в лог сообщение о чтении данных
@@ -257,7 +257,7 @@ int32_t main(){
 										// Помечаем сообщение
 										message.append("1");
 										// Отправляем данные обратно клиенту
-										if(engine::send(eid, message.c_str(), message.length()))
+										if(engine::io::send(eid, message.c_str(), message.length()))
 											// Если данные успешно отправлены
 											log::print("Отправлено в группу: ID=%u, %zu байт", log::flag_t::INFO, eid, message.length());
 										// Если данные не отправлены
@@ -265,7 +265,7 @@ int32_t main(){
 										// Помечаем сообщение
 										message.append("2");
 										// Отправляем данные обратно клиенту
-										if(engine::send(cid, message.c_str(), message.length()))
+										if(engine::io::send(cid, message.c_str(), message.length()))
 											// Если данные успешно отправлены
 											log::print("Отправлено клиенту: ID=%u, %zu байт", log::flag_t::INFO, cid, message.length());
 										// Если данные не отправлены
@@ -273,7 +273,7 @@ int32_t main(){
 									}
 								});
 								// Устанавливаем функцию обратного вызова на ошибку события
-								engine::on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+								engine::io::on(cid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 									/**
 									 * Обрабатываем статус события
 									 */
@@ -331,7 +331,7 @@ int32_t main(){
 									}
 								});
 								// Устанавливаем функцию обратного вызова на общее событие
-								engine::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+								engine::io::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 									/**
 									 * Обрабатываем действие события
 									 */
@@ -400,12 +400,12 @@ int32_t main(){
 								});
 							}));
 							// Устанавливаем функцию обратного вызова на запись в событие
-							engine::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
+							engine::io::on(eid, static_cast <engine::callback::write_t> ([](const event::id_t eid, const size_t size) noexcept -> void {
 								// Записываем в лог сообщение о записи данных
 								log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 							}));
 							// Устанавливаем функцию обратного вызова на ошибку события
-							engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+							engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 								/**
 								 * Обрабатываем статус события
 								 */
@@ -463,7 +463,7 @@ int32_t main(){
 								}
 							});
 							// Устанавливаем функцию обратного вызова на общее событие
-							engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+							engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 								/**
 								 * Обрабатываем действие события
 								 */
@@ -531,17 +531,17 @@ int32_t main(){
 								}
 							});
 							// Устанавливаем таймаут события на чтение
-							// engine::setTimeout(eid, event::action_t::READ, 5000);
+							// engine::timer::timeout(eid, event::action_t::READ, 5000);
 							// Устанавливаем таймаут события на запись
-							// engine::setTimeout(eid, event::action_t::WRITE, 5000);
+							// engine::timer::timeout(eid, event::action_t::WRITE, 5000);
 							// Выполняем запуск события сервера и таймера
-							if(engine::launch(eid)){
+							if(engine::io::launch(eid)){
 								// Записываем в лог сообщение об успешном запуске события
 								cout << " Событие успешно запущено!" << endl;
 								/**
 								 * Запускаем опрос событий
 								 */
-								while(engine::poll());
+								while(engine::io::poll());
 							// Записываем ошибку в лог запуска события
 							} else cout << " Ошибка запуска события!" << endl;
 						}

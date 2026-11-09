@@ -110,9 +110,9 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 	 */
 	try {
 		// Выполняем фиксацию параметров события и его запуск
-		if(!(result = (engine::commit(eid) && engine::launch(eid)))){
+		if(!(result = (engine::io::commit(eid) && engine::io::launch(eid)))){
 			// Удаляем событие туннеля
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 			// Выполняем поиск идентификатора события туннеля в списке событий туннеля
 			auto i = this->_events.find(eid);
 			// Если идентификатор события туннеля найден в списке событий туннеля
@@ -138,7 +138,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 		// Если функция обратного вызова установлена
 		} else if(this->_callback.is("info"))
 			// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
-			engine::on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
+			engine::io::on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -171,7 +171,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
  */
 size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Выполняем отправку данных через туннель
-	return engine::send(eid, buffer, size);
+	return engine::io::send(eid, buffer, size);
 }
 /**
  * @brief Метод получения опций туннеля
@@ -182,7 +182,7 @@ size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const
  */
 uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
 	// Выполняем получение опций для события туннеля
-	return engine::getOptions(eid);
+	return engine::options::get(eid);
 }
 /**
  * @brief Метод установки опций туннеля
@@ -194,7 +194,7 @@ uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Выполняем установку опций для события туннеля
-	return engine::setOptions(eid, options);
+	return engine::options::set(eid, options);
 }
 /**
  * @brief Метод установки опции туннеля
@@ -207,7 +207,7 @@ bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options
  */
 bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Выполняем установку опции для события туннеля
-	return engine::setOption(eid, option, mode);
+	return engine::options::set(eid, option, mode);
 }
 /**
  * @brief Метод получения сетевого интерфейса туннеля
@@ -218,7 +218,7 @@ bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, 
  */
 string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
 	// Выполняем получение сетевого интерфейса для события туннеля
-	return engine::getIface(eid);
+	return engine::iface::get(eid);
 }
 /**
  * @brief Метод установки сетевого интерфейса туннеля
@@ -230,7 +230,7 @@ string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexcept {
 	// Выполняем установку сетевого интерфейса для события туннеля
-	return engine::setIface(eid, name);
+	return engine::iface::set(eid, name);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -241,7 +241,7 @@ bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexce
  */
 string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события туннеля
-	return engine::getTarget(eid);
+	return engine::target::get(eid);
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -253,7 +253,7 @@ string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события туннеля
-	return engine::setTarget(eid, target);
+	return engine::target::set(eid, target);
 }
 /**
  * @brief Метод установки адреса хоста целевой машины
@@ -265,7 +265,7 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noe
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Выполняем установку адреса хоста целевой машины для события туннеля
-	return engine::setTarget(eid, target);
+	return engine::target::set(eid, target);
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -277,7 +277,7 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * tar
  */
 bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Выполняем получение адреса хоста целевой машины для события туннеля
-	return engine::getTarget(eid, target);
+	return engine::target::get(eid, target);
 }
 /**
  * @brief Метод получения адреса туннеля
@@ -289,7 +289,7 @@ bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t
  */
 string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Выполняем получение адреса туннеля для события туннеля
-	return engine::getAddress(eid, address);
+	return engine::address::get(eid, address);
 }
 /**
  * @brief Метод установки адреса туннеля
@@ -302,7 +302,7 @@ string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Выполняем установку адреса туннеля для события туннеля
-	return engine::setAddress(eid, address, value);
+	return engine::address::set(eid, address, value);
 }
 /**
  * @brief Метод установки адреса туннеля
@@ -315,7 +315,7 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Выполняем установку адреса туннеля для события туннеля
-	return engine::setAddress(eid, address, value);
+	return engine::address::set(eid, address, value);
 }
 /**
  * @brief Метод получения адреса туннеля
@@ -328,7 +328,7 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  */
 bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Выполняем получение адреса туннеля для события туннеля
-	return engine::getAddress(eid, address, value);
+	return engine::address::get(eid, address, value);
 }
 /**
  * @brief Метод получения MTU сетевого интерфейса
@@ -339,7 +339,7 @@ bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t
  */
 uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Выполняем получение MTU сетевого интерфейса для события туннеля
-	return engine::getMaximumTransmissionUnit(eid);
+	return engine::mtu::get(eid);
 }
 /**
  * @brief Метод установки MTU сетевого интерфейса
@@ -351,7 +351,7 @@ uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) co
  */
 bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const uint32_t mtu) const noexcept {
 	// Выполняем установку MTU сетевого интерфейса для события туннеля
-	return engine::setMaximumTransmissionUnit(eid, mtu);
+	return engine::mtu::set(eid, mtu);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -377,7 +377,7 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
  */
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие туннеля
-	engine::destroy(eid);
+	engine::io::destroy(eid);
 }
 /**
  * @brief Метод получения идентификатора туннеля
@@ -394,15 +394,15 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 	 */
 	try {
 		// Добавляем новое событие туннеля
-		result = engine::event(event::node_t::TUNNEL, family);
+		result = engine::io::event(event::node_t::TUNNEL, family);
 		// Если событие туннеля успешно создано
 		if(result > 0){
 			// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
-			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			engine::on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
-			engine::on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
 			// Добавляем идентификатор события туннеля в список событий туннеля
 			this->_events.emplace(result);
 		}
@@ -446,15 +446,15 @@ awh::unit::Tunnel::~Tunnel() noexcept {
 		 */
 		for(const auto & eid : events){
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(eid, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения статуса туннеля
-			engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения информации о пакетах в туннеле
-			engine::on(eid, static_cast <engine::callback::tuninfo_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::tuninfo_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
-			engine::on(eid, static_cast <engine::callback::available_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие туннеля
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 		}
 	}
 }

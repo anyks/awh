@@ -88,7 +88,7 @@ int main(int argc, char * argv[]) noexcept {
 	awh::log::level(awh::log::level_t::ALL);
 	// Объект сетевого движка
 	// Выполняем заведение сетевого движка
-	if(!awh::engine::initialize()){
+	if(!awh::engine::io::initialize()){
 		// Сообщаем об отказе заведения движка
 		::fprintf(stderr, "Движок завести не удалось\n");
 		// Выходим с кодом ошибки
@@ -105,25 +105,25 @@ int main(int argc, char * argv[]) noexcept {
 	// Взводим сторожевой срок на ВЕСЬ прогон: встать он может где угодно, не только в подключении
 	::guard(20000);
 	// Заводим узел сервера потоковой передачи
-	const awh::event::id_t srv = awh::engine::event(
+	const awh::event::id_t srv = awh::engine::io::event(
 		awh::event::node_t::SERVER, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
 	// Назначаем серверу адрес привязки
-	static_cast <void> (awh::engine::setAddress(srv, awh::event::address_t::IPV4, "127.0.0.1"));
+	static_cast <void> (awh::engine::address::set(srv, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Назначаем серверу порт привязки
-	static_cast <void> (awh::engine::setSourcePort(srv, port));
+	static_cast <void> (awh::engine::source::port::set(srv, port));
 	// Ограничиваем очередь принятия одним подключением
-	static_cast <void> (awh::engine::setMaxConnections(srv, 1));
+	static_cast <void> (awh::engine::connection::max::set(srv, 1));
 	// Если фиксация настроек сервера отвергнута
-	if(!awh::engine::commit(srv)){
+	if(!awh::engine::io::commit(srv)){
 		// Сообщаем об отказе фиксации сервера
 		::fprintf(stderr, "Фиксация сервера ОТВЕРГНУТА\n");
 		// Выходим с кодом ошибки
 		return EXIT_FAILURE;
 	}
 	// Выполняем запуск сервера
-	static_cast <void> (awh::engine::launch(srv));
+	static_cast <void> (awh::engine::io::launch(srv));
 	// Сообщаем о поднятом сервере
 	::fprintf(stderr, "Сервер поднят на 127.0.0.1:%u, очередь 1, принимать не будем\n", port);
 	/**
@@ -134,14 +134,14 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	for(uint16_t i = 1; i <= 64; i++){
 		// Заводим узел клиента потоковой передачи
-		const awh::event::id_t cli = awh::engine::event(
+		const awh::event::id_t cli = awh::engine::io::event(
 			awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 			awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 		);
 		// Назначаем клиенту адрес назначения
-		static_cast <void> (awh::engine::setTarget(cli, "127.0.0.1"));
+		static_cast <void> (awh::engine::target::set(cli, "127.0.0.1"));
 		// Назначаем клиенту порт назначения
-		static_cast <void> (awh::engine::setTargetPort(cli, port));
+		static_cast <void> (awh::engine::target::port::set(cli, port));
 		/**
 		 * Назначаем узлу набор опций ЦЕЛИКОМ, а не поштучно
 		 *
@@ -151,7 +151,7 @@ int main(int argc, char * argv[]) noexcept {
 		 *          затирающего умолчание, - именно так его и получил ворошитель. Число
 		 *          взято из пойманного случая дословно (зерно 5029)
 		 */
-		static_cast <void> (awh::engine::setOptions(cli, 41424));
+		static_cast <void> (awh::engine::options::set(cli, 41424));
 		/**
 		 * Если срок требуется назначить действием подключения
 		 *
@@ -160,7 +160,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		if(deadline == 1)
 			// Назначаем узлу срок установления подключения
-			awh::engine::setTimeout(cli, awh::event::action_t::CONNECT, 2000);
+			awh::engine::timer::timeout(cli, awh::event::action_t::CONNECT, 2000);
 		/**
 		 * Если срок требуется назначить действием записи
 		 *
@@ -169,13 +169,13 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		else if(deadline == 2)
 			// Назначаем узлу срок записи
-			awh::engine::setTimeout(cli, awh::event::action_t::WRITE, 2000);
+			awh::engine::timer::timeout(cli, awh::event::action_t::WRITE, 2000);
 		// Фиксируем настройки клиента
-		static_cast <void> (awh::engine::commit(cli));
+		static_cast <void> (awh::engine::io::commit(cli));
 		// Взводим сторожевой срок на подключение
 		::guard(8000);
 		// Выполняем подключение клиента
-		const bool started = awh::engine::connect(cli);
+		const bool started = awh::engine::io::connect(cli);
 		// Снимаем сторожевой срок
 		::guard(0);
 		// Сообщаем об итоге подключения
@@ -186,7 +186,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Сообщаем, что круг замкнуть не удалось
 	::fprintf(stderr, "64 подключения прошли, цикл не встал\n");
 	// Уничтожаем все узлы движка
-	static_cast <void> (awh::engine::deinitialize());
+	static_cast <void> (awh::engine::io::deinitialize());
 	// Выходим с успешным кодом
 	return EXIT_SUCCESS;
 }

@@ -120,15 +120,15 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 	// Сообщение, гоняемое в обе стороны
 	const std::string message = "AWH blocking socket exchange";
 	// Получаем пару событий для обмена по протоколу TCP
-	const auto events = awh::engine::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Выполняем проверку, что события созданы
 	for(uint8_t i = 0; i < 2; i++)
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт назначения клиенту и порт источника серверу
-	ASSERT_TRUE(awh::engine::setTargetPort(events[0], port));
-	ASSERT_TRUE(awh::engine::setSourcePort(events[1], port));
+	ASSERT_TRUE(awh::engine::target::port::set(events[0], port));
+	ASSERT_TRUE(awh::engine::source::port::set(events[1], port));
 	// Выполняем инициализацию движка
-	ASSERT_TRUE(awh::engine::initialize());
+	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Признаки узлов НАМЕРЕННО без `NO_IO_BLOCK`: сокеты остаются блокирующими,
 	 * как и задумано умолчанием движка. Ради этого проверка и заведена
@@ -139,15 +139,15 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 		awh::event::options::TCP_NO_DELAY
 	);
 	for(uint8_t i = 0; i < 2; i++)
-		ASSERT_TRUE(awh::engine::setOptions(events[i], options));
+		ASSERT_TRUE(awh::engine::options::set(events[i], options));
 	// Устанавливаем адрес прослушивания серверу
-	ASSERT_TRUE(awh::engine::setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+	ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем функцию обратного вызова принятия подключения
-	awh::engine::on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
+	awh::engine::io::on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
 		// Принятому узлу признаки ставятся те же, блокирующие
-		EXPECT_TRUE(awh::engine::setOptions(cid, options));
+		EXPECT_TRUE(awh::engine::options::set(cid, options));
 		// Устанавливаем функцию обратного вызова получения данных
-		awh::engine::on(cid, [&delivered](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		awh::engine::io::on(cid, [&delivered](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Отмечаем доставку данных серверу
 			delivered.store(true);
 			/**
@@ -159,18 +159,18 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 			if(::getenv("AWH_TEST_STALL_READ") != nullptr)
 				::sleep(30);
 			// Отправляем полученные данные обратно клиенту
-			awh::engine::send(eid, reinterpret_cast <const char *> (data), size);
+			awh::engine::io::send(eid, reinterpret_cast <const char *> (data), size);
 		});
 	}));
 	// Выполняем закрепление настроек сервера и его запуск
-	ASSERT_TRUE(awh::engine::commit(events[1]));
-	ASSERT_TRUE(awh::engine::listen(events[1], 100));
-	ASSERT_TRUE(awh::engine::launch(events[1]));
+	ASSERT_TRUE(awh::engine::io::commit(events[1]));
+	ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
+	ASSERT_TRUE(awh::engine::io::launch(events[1]));
 	// Устанавливаем адрес и цель клиенту
-	ASSERT_TRUE(awh::engine::setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
-	ASSERT_TRUE(awh::engine::setTarget(events[0], "127.0.0.1"));
+	ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
 	// Устанавливаем функцию обратного вызова подключения клиента
-	awh::engine::on(events[0], static_cast <awh::engine::callback::connect_t> ([&message](const awh::event::id_t eid, const bool ok) noexcept -> void {
+	awh::engine::io::on(events[0], static_cast <awh::engine::callback::connect_t> ([&message](const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Если подключение удалось, отправляем сообщение серверу
 		/**
 		 * Глушение отправки переменной среды заведено НАМЕРЕННО и оставлено:
@@ -179,17 +179,17 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 		 * осталось бы украшением - оно ведь ни разу не срабатывало
 		 */
 		if(ok && (::getenv("AWH_TEST_MUTE_SEND") == nullptr))
-			awh::engine::send(eid, message.c_str(), message.size());
+			awh::engine::io::send(eid, message.c_str(), message.size());
 	}));
 	// Устанавливаем функцию обратного вызова получения ответа сервера
-	awh::engine::on(events[0], [&echoed, &message](const awh::event::id_t, const uint8_t * data, const size_t size) noexcept -> void {
+	awh::engine::io::on(events[0], [&echoed, &message](const awh::event::id_t, const uint8_t * data, const size_t size) noexcept -> void {
 		// Отмечаем возврат сообщения, сличая его с отправленным
 		echoed.store(message.compare(0, message.size(), reinterpret_cast <const char *> (data), size) == 0);
 	});
 	// Выполняем закрепление настроек клиента, подключение и запуск
-	ASSERT_TRUE(awh::engine::commit(events[0]));
-	ASSERT_TRUE(awh::engine::connect(events[0]));
-	ASSERT_TRUE(awh::engine::launch(events[0]));
+	ASSERT_TRUE(awh::engine::io::commit(events[0]));
+	ASSERT_TRUE(awh::engine::io::connect(events[0]));
+	ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	/**
 	 * Ставим обработчик пробуждающего сигнала БЕЗ `SA_RESTART`: только так
 	 * застрявший в ядре приём вернёт EINTR, а не продолжится после сигнала
@@ -261,7 +261,7 @@ TEST_F(IoFixture, IoBlockingExchangeTest){
 	// Срок на весь обмен, проверяемый между оборотами опроса
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(12);
 	// Крутим цикл событий до получения ответа сервера либо истечения срока
-	while(!echoed.load() && (std::chrono::steady_clock::now() < deadline) && awh::engine::poll(__AWH_TEST_POLL_SLICE__))
+	while(!echoed.load() && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__))
 		// Отмечаем оборот опроса: по этому счётчику сторож судит о живости цикла
 		__awh_rounds__.fetch_add(1);
 	// Отмечаем завершение обмена и дожидаемся сторожа

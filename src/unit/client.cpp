@@ -62,7 +62,7 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 				 */
 				for(const auto & eid : events)
 					// Удаляем событие клиента
-					engine::destroy(eid);
+					engine::io::destroy(eid);
 				// Очищаем список событий клиента
 				this->_events.clear();
 			}
@@ -238,9 +238,9 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 		// Если событие клиента является актуальным
 		if(this->isActual(eid)){
 			// Выполняем фиксацию параметров события
-			if(!(result = engine::commit(eid))){
+			if(!(result = engine::io::commit(eid))){
 				// Удаляем событие клиента
-				engine::destroy(eid);
+				engine::io::destroy(eid);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -297,9 +297,9 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 		// Если событие клиента является актуальным
 		if(this->isActual(eid)){
 			// Выполняем запуск работы клиента
-			if(!(result = engine::launch(eid))){
+			if(!(result = engine::io::launch(eid))){
 				// Удаляем событие клиента
-				engine::destroy(eid);
+				engine::io::destroy(eid);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -350,7 +350,7 @@ bool awh::unit::Client::pause(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем приостановку работы клиента
-		return engine::pause(eid);
+		return engine::io::pause(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -365,7 +365,7 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем возобновление работы клиента
-		return engine::resume(eid);
+		return engine::io::resume(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -380,7 +380,7 @@ bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем отключение клиента от удалённого узла
-		return engine::disconnect(eid);
+		return engine::io::disconnect(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -405,7 +405,7 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 			// Возвращаем значение по умолчанию
 			return false;
 	// Выполняем подключение клиента к удалённому узлу
-	return engine::connect(ids);
+	return engine::io::connect(ids);
 }
 /**
  * @brief Метод получения данных от удалённого узла
@@ -418,7 +418,7 @@ bool awh::unit::Client::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение данных от удалённого узла
-		return engine::recv(eid);
+		return engine::io::recv(eid);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -435,7 +435,7 @@ size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем отправку данных удалённому узлу
-		return engine::send(eid, buffer, size);
+		return engine::io::send(eid, buffer, size);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -450,7 +450,7 @@ void awh::unit::Client::source(const event::id_t eid, engine::callback::source_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Устанавливаем функцию обратного вызова источника данных
-		engine::on(eid, source);
+		engine::io::on(eid, source);
 }
 /**
  * @brief Метод объединения потоков данных между двумя событиями
@@ -464,7 +464,7 @@ bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) no
 	// Объединение возможно только когда оба события актуальны
 	if(this->isActual(eid) && this->isActual(dest))
 		// Выполняем объединение потоков данных между событиями
-		return engine::splice(eid, dest);
+		return engine::io::splice(eid, dest);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -479,7 +479,7 @@ uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение опций для события клиента
-		return engine::getOptions(eid);
+		return engine::options::get(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -495,7 +495,7 @@ bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опций для события клиента
-		return engine::setOptions(eid, options);
+		return engine::options::set(eid, options);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -512,7 +512,7 @@ bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку опции для события клиента
-		return engine::setOption(eid, option, mode);
+		return engine::options::set(eid, option, mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -527,7 +527,7 @@ awh::net::dgram_info_t awh::unit::Client::getTrafficInfo(const event::id_t eid) 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события клиента
-		return engine::getTrafficInfo(eid);
+		return engine::io::trafficInfo(eid);
 	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
@@ -542,7 +542,7 @@ uint8_t awh::unit::Client::getCountHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события клиента
-		return engine::getCountHops(eid);
+		return engine::hops::count::get(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -558,7 +558,7 @@ bool awh::unit::Client::setCountHops(const event::id_t eid, const uint8_t hops) 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события клиента
-		return engine::setCountHops(eid, hops);
+		return engine::hops::count::set(eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -573,7 +573,7 @@ awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexc
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события клиента
-		return engine::getHops(eid);
+		return engine::hops::get(eid);
 	// Возвращаем значение по умолчанию
 	return event::hops_t::LOOPBACK;
 }
@@ -589,7 +589,7 @@ bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops)
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события клиента
-		return engine::setHops(eid, hops);
+		return engine::hops::set(eid, hops);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -604,7 +604,7 @@ string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события клиента
-		return engine::getIface(eid);
+		return engine::iface::get(eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -620,7 +620,7 @@ bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexce
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события клиента
-		return engine::setIface(eid, name);
+		return engine::iface::set(eid, name);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -635,7 +635,7 @@ uint16_t awh::unit::Client::getSourcePort(const event::id_t eid) const noexcept 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение внутреннего порта для события клиента
-		return engine::getSourcePort(eid);
+		return engine::source::port::get(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -651,7 +651,7 @@ bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку внутреннего порта для события клиента
-		return engine::setSourcePort(eid, port);
+		return engine::source::port::set(eid, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -666,7 +666,7 @@ uint16_t awh::unit::Client::getTargetPort(const event::id_t eid) const noexcept 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение порта удалённого узла для события клиента
-		return engine::getTargetPort(eid);
+		return engine::target::port::get(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -682,7 +682,7 @@ bool awh::unit::Client::setTargetPort(const event::id_t eid, const uint16_t port
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку порта удалённого узла для события клиента
-		return engine::setTargetPort(eid, port);
+		return engine::target::port::set(eid, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -697,7 +697,7 @@ string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
-		return engine::getTarget(eid);
+		return engine::target::get(eid);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -713,7 +713,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noe
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
-		return engine::setTarget(eid, target);
+		return engine::target::set(eid, target);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -729,7 +729,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * tar
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
-		return engine::setTarget(eid, target);
+		return engine::target::set(eid, target);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -745,7 +745,7 @@ bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
-		return engine::getTarget(eid, target);
+		return engine::target::get(eid, target);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -761,7 +761,7 @@ string awh::unit::Client::getAddress(const event::id_t eid, const event::address
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
-		return engine::getAddress(eid, address);
+		return engine::address::get(eid, address);
 	// Возвращаем значение по умолчанию
 	return "";
 }
@@ -778,7 +778,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
-		return engine::setAddress(eid, address, value);
+		return engine::address::set(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -795,7 +795,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
-		return engine::setAddress(eid, address, value);
+		return engine::address::set(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -812,7 +812,7 @@ bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
-		return engine::getAddress(eid, address, value);
+		return engine::address::get(eid, address, value);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -827,7 +827,7 @@ uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) co
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события клиента
-		return engine::getMaximumTransmissionUnit(eid);
+		return engine::mtu::get(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -843,7 +843,7 @@ bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события клиента
-		return engine::setMaximumTransmissionUnit(eid, mtu);
+		return engine::mtu::set(eid, mtu);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -858,7 +858,7 @@ awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов клиента для события клиента
-		return engine::getDelivery(eid);
+		return engine::delivery::get(eid);
 	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
@@ -874,7 +874,7 @@ bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов клиента для события клиента
-		return engine::setDelivery(eid, delivery);
+		return engine::delivery::set(eid, delivery);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -890,7 +890,7 @@ size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::acti
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера клиента для события клиента
-		return engine::getBufferSize(eid, action);
+		return engine::buffer::size::get(eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -907,7 +907,7 @@ bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера клиента для события клиента
-		return engine::setBufferSize(eid, action, size);
+		return engine::buffer::size::set(eid, action, size);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -922,7 +922,7 @@ awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события клиента
-		return engine::getUsageReadTimeout(eid);
+		return engine::timer::usage(eid);
 	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
@@ -937,7 +937,7 @@ void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима использования таймаута на чтение события для события клиента
-		engine::setUsageReadTimeout(eid, usage);
+		engine::timer::usage(eid, usage);
 }
 /**
  * @brief Метод получения таймаута клиента
@@ -951,7 +951,7 @@ uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::actio
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для клиента
-		return engine::getTimeout(eid, action);
+		return engine::timer::timeout(eid, action);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -967,7 +967,7 @@ void awh::unit::Client::setTimeout(const event::id_t eid, const event::action_t 
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров таймаута для клиента
-		engine::setTimeout(eid, action, timeout);
+		engine::timer::timeout(eid, action, timeout);
 }
 /**
  * @brief Метод установки пропускной способности клиента
@@ -982,7 +982,7 @@ bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для клиента
-		return engine::bandwidth(eid, limiting, bandwidth);
+		return engine::io::bandwidth(eid, limiting, bandwidth);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1000,7 +1000,7 @@ bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, cons
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для клиента
-		return engine::keepAlive(eid, cnt, idle, intvl);
+		return engine::connection::keepalive(eid, cnt, idle, intvl);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1015,7 +1015,7 @@ awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const e
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для клиента
-		return engine::getDifferentiatedServicesCodePoint(eid, engine::family(eid));
+		return engine::qos::dscp::get(eid, engine::io::family(eid));
 	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
@@ -1031,7 +1031,7 @@ bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для клиента
-		return engine::setDifferentiatedServicesCodePoint(eid, engine::family(eid), dscp);
+		return engine::qos::dscp::set(eid, engine::io::family(eid), dscp);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1046,7 +1046,7 @@ awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение режима обнаружения MTU для клиента
-		return engine::getMaximumTransmissionUnitDiscover(eid, engine::family(eid));
+		return engine::mtu::discover::get(eid, engine::io::family(eid));
 	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
@@ -1062,7 +1062,7 @@ bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку режима обнаружения MTU для клиента
-		return engine::setMaximumTransmissionUnitDiscover(eid, engine::family(eid), mode);
+		return engine::mtu::discover::set(eid, engine::io::family(eid), mode);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1081,7 +1081,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
-		return engine::membership(eid, mode, group, source, port);
+		return engine::multicast::membership(eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1100,7 +1100,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
-		return engine::membership(eid, mode, group, source, port);
+		return engine::multicast::membership(eid, mode, group, source, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1171,7 +1171,7 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие клиента
-	engine::destroy(eid);
+	engine::io::destroy(eid);
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
 		// Выполняем поиск идентификатора события клиента в списке событий клиента
@@ -1199,29 +1199,29 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 	 */
 	try {
 		// Добавляем новое событие клиента
-		result = engine::event(event::node_t::CLIENT, family, type, protocol);
+		result = engine::io::event(event::node_t::CLIENT, family, type, protocol);
 		// Если событие клиента успешно создано
 		if(result > 0){
 			// Устанавливаем функцию обратного вызова на событие записи данных
-			engine::on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения данных
-			engine::on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-			engine::on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-			engine::on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
-			engine::on(result, static_cast <engine::callback::traffic_t> (std::bind(&client_t::traffic, this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::traffic_t> (std::bind(&client_t::traffic, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			engine::on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-			engine::on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-			engine::on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
+			engine::io::on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
 			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-			engine::on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
+			engine::io::on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому узлу
-			engine::on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
+			engine::io::on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
 			// Добавляем идентификатор события клиента в список событий клиента
 			this->_events.emplace(result);
 		}
@@ -1265,27 +1265,27 @@ awh::unit::Client::~Client() noexcept {
 		 */
 		for(const auto & eid : events){
 			// Снимаем функцию обратного вызова на событие чтения данных
-			engine::on(eid, static_cast <engine::callback::read_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::read_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения ошибок
-			engine::on(eid, static_cast <engine::callback::error_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::error_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие неотправленных данных клиента
-			engine::on(eid, static_cast <engine::callback::spool_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::spool_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения действий клиента
-			engine::on(eid, static_cast <engine::callback::event_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::event_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие записи данных
-			engine::on(eid, static_cast <engine::callback::write_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::write_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие изменения статуса клиента
-			engine::on(eid, static_cast <engine::callback::status_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
-			engine::on(eid, static_cast <engine::callback::traffic_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::traffic_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие истечения таймаута клиента
-			engine::on(eid, static_cast <engine::callback::timeout_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::timeout_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие подключения клиента к удалённому узлу
-			engine::on(eid, static_cast <engine::callback::connect_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::connect_t> (nullptr));
 			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-			engine::on(eid, static_cast <engine::callback::available_t> (nullptr));
+			engine::io::on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие клиента
-			engine::destroy(eid);
+			engine::io::destroy(eid);
 		}
 	}
 }

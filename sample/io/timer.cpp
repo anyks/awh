@@ -58,29 +58,29 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Устанавливаем тип таймера как простой
-	engine::setInternalTimer(event::timer_t::SIMPLE);
+	engine::timer::internal::set(event::timer_t::SIMPLE);
 	// Устанавливаем тип таймера как сложный
-	// engine::setInternalTimer(event::timer_t::DIFFICULT);
+	// engine::timer::internal::set(event::timer_t::DIFFICULT);
 	// Добавляем новое событие таймера
-	event::id_t eid1 = engine::event(event::node_t::TIMEOUT, event::family_t::TIMER);
+	event::id_t eid1 = engine::io::event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие интервала
-	event::id_t eid2 = engine::event(event::node_t::INTERVAL, event::family_t::TIMER);
+	event::id_t eid2 = engine::io::event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Устанавливаем таймаут таймера
-	engine::setTimeout(eid1, event::action_t::NONE, 12000);
+	engine::timer::timeout(eid1, event::action_t::NONE, 12000);
 	// Устанавливаем таймаут интервала
-	engine::setTimeout(eid2, event::action_t::NONE, 5000);
+	engine::timer::timeout(eid2, event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Выполняем фиксацию настроек события таймера
-		engine::commit(eid1);
+		engine::io::commit(eid1);
 		// Выполняем фиксацию настроек события интервала
-		engine::commit(eid2);
+		engine::io::commit(eid2);
 		// Замеряем время начала работы для таймера
 		chrono::time_point <chrono::system_clock> ts = chrono::system_clock::now();
 		// Замеряем время начала работы для интервала времени
 		chrono::time_point <chrono::system_clock> is = chrono::system_clock::now();
 		// Устанавливаем функцию обратного вызова на событие таймера
-		engine::on(eid1, [&ts](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::io::on(eid1, [&ts](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
@@ -91,7 +91,7 @@ int32_t main(){
 		// Количество срабатываний интервала
 		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на событие интервала
-		engine::on(eid2, [&count, &is](const event::id_t eid, const event::status_t status) noexcept -> void {
+		engine::io::on(eid2, [&count, &is](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
@@ -107,13 +107,13 @@ int32_t main(){
 			}
 		});
 		// Выполняем запуск события
-		if(engine::launch(eid1) && engine::launch(eid2)){
+		if(engine::io::launch(eid1) && engine::io::launch(eid2)){
 			// Записываем в лог сообщение об успешном запуске события
 			cout << " Событие успешно запущено!" << endl;
 			/**
 			 * Запускаем опрос событий
 			 */
-			while(engine::poll());
+			while(engine::io::poll());
 		// Записываем ошибку в лог запуска события
 		} else cout << " Ошибка запуска события!" << endl;
 	}

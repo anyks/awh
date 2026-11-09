@@ -59,28 +59,28 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	fmk::initialize();
 	// Добавляем новое событие сервера SCTP
-	event::id_t eid = engine::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	event::id_t eid = engine::io::event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устанавливаем порт события
-	engine::setSourcePort(eid, 2222);
+	engine::source::port::set(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
-	if(engine::initialize()){
+	if(engine::io::initialize()){
 		// Устананавливаем опции события
-		if(engine::setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		if(engine::options::set(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Создаём объект управления SCTP-протоколом
 		// Устанавливаем ключ аутентификации SCTP-сокета
-		engine::sctp::authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef");
+		engine::sctp::auth::key(eid, 1, "0123456789abcdef0123456789abcdef");
 		// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-		engine::sctp::authenticateKey(eid, event::mode_t::ENABLED, 1);
+		engine::sctp::auth::key(eid, event::mode_t::ENABLED, 1);
 		// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-		engine::sctp::authenticateSupportAlgorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
+		engine::sctp::auth::algorithms(eid, {net::sctp::auth_type_t::HMAC_SHA1, net::sctp::auth_type_t::HMAC_SHA256});
 		// Устанавливаем чанки аутентификации SCTP-сокета
-		engine::sctp::authenticateChunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
+		engine::sctp::auth::chunks(eid, {net::sctp::auth_chunk_t::DATA, net::sctp::auth_chunk_t::SHUTDOWN});
 		// Выполняем подписку на SCTP события
-		engine::sctp::eventsSubscribe(eid, {
+		engine::sctp::subscription(eid, {
 			net::sctp::event_type_t::ASSOC_CHANGE,
 			net::sctp::event_type_t::SHUTDOWN_EVENT,
 			net::sctp::event_type_t::SEND_FAILED_EVENT,
@@ -90,7 +90,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Извлекаем чанки аутентификации SCTP-сокета
 		vector <net::sctp::auth_chunk_t> chunks;
 		// Выполняем извлечение чанков аутентификации SCTP-сокета
-		engine::sctp::authenticateChunks(eid, event::origin_t::LOCAL, chunks);
+		engine::sctp::auth::chunks(eid, event::origin_t::LOCAL, chunks);
 		/**
 		 * Перебираем все извлечённые чанки
 		 */
@@ -98,13 +98,13 @@ int32_t main(int32_t argc, char * argv[]){
 			// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 		// Устанавливаем таймаут heartbeat SCTP-сокета
-		engine::sctp::setTimeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
+		engine::sctp::timeout(eid, net::sctp::timeout_t::HEARTBEAT, 3000);
 		// Возвращаем heartbeat timeout SCTP-сокета
-		cout << " TIMEOUT: " << engine::sctp::getTimeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+		cout << " TIMEOUT: " << engine::sctp::timeout(eid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 		// Устанавливаем IP-адрес события
-		if(engine::setAddress(eid, event::address_t::IPV4, "127.0.0.1")){
+		if(engine::address::set(eid, event::address_t::IPV4, "127.0.0.1")){
 			// Устанавливаем функцию обратного вызова на изменение статуса события
-			engine::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
+			engine::io::on(eid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 				/**
 				 * Обрабатываем статус события
 				 */
@@ -177,7 +177,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на ошибку события
-			engine::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+			engine::io::on(eid, [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 				/**
 				 * Обрабатываем статус события
 				 */
@@ -235,7 +235,7 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			engine::on(eid, static_cast <engine::callback::accept_t> ([&chunks](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			engine::io::on(eid, static_cast <engine::callback::accept_t> ([&chunks](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = engine::sctp::messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета
@@ -258,7 +258,7 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				engine::sctp::authenticateChunks(cid, event::origin_t::REMOTE, chunks);
+				engine::sctp::auth::chunks(cid, event::origin_t::REMOTE, chunks);
 				/**
 				 * Перебираем все извлечённые чанки
 				 */
@@ -266,10 +266,10 @@ int32_t main(int32_t argc, char * argv[]){
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
-				engine::sctp::setTimeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
+				engine::sctp::timeout(cid, net::sctp::timeout_t::HEARTBEAT, 3000);
 				// Возвращаем heartbeat timeout SCTP-сокета
-				cout << " TIMEOUT PEER: " << engine::sctp::getTimeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
-				cout << " TIMEOUT SERVER: " << engine::sctp::getTimeout(sid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT PEER: " << engine::sctp::timeout(cid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
+				cout << " TIMEOUT SERVER: " << engine::sctp::timeout(sid, net::sctp::timeout_t::HEARTBEAT) << " ms" << endl;
 				// Записываем в лог сообщение о принятии события
 				log::print("Событие принято: ID=%u, Клиентский ID=%u", log::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -346,24 +346,24 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устананавливаем опции события
-				if(engine::setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
+				if(engine::options::set(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 					// Записываем в лог сообщение об успешной установке опций события
 					cout << " Успешно установлены опции события!" << endl;
 					// Устанавливаем функцию обратного вызова на чтение из события
-					engine::on(cid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					engine::io::on(cid, [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о чтении данных
 						log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 						// Отправляем данные обратно клиенту
-						if(engine::send(eid, reinterpret_cast <const char *> (data), size))
+						if(engine::io::send(eid, reinterpret_cast <const char *> (data), size))
 							// Если данные успешно отправлены
 							log::print("Отправлено: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 						// Если данные не отправлены
 						else log::print("Ошибка отправки: ID=%u", log::flag_t::CRITICAL, eid);
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					engine::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+					engine::io::on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -434,7 +434,7 @@ int32_t main(int32_t argc, char * argv[]){
 				} else cout << " Ошибка установки опций события!" << endl;
 			}));
 			// Устанавливаем функцию обратного вызова на общее событие
-			engine::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
+			engine::io::on(eid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 				/**
 				 * Обрабатываем действие события
 				 */
@@ -502,11 +502,11 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем таймаут события на чтение
-			engine::setTimeout(eid, event::action_t::READ, 10000);
+			engine::timer::timeout(eid, event::action_t::READ, 10000);
 			// Устанавливаем таймаут события на запись
-			engine::setTimeout(eid, event::action_t::WRITE, 7000);
+			engine::timer::timeout(eid, event::action_t::WRITE, 7000);
 			// Выполняем фиксацию настроек события сервера
-			if(engine::commit(eid)){
+			if(engine::io::commit(eid)){
 				// Текст инициализационных сообщений SCTP
 				net::sctp::initmsg_t initmsg;
 				// Устанавливаем количество попыток подключения SCTP
@@ -518,15 +518,15 @@ int32_t main(int32_t argc, char * argv[]){
 				// Инициализируем сообщения SCTP
 				engine::sctp::initMessages(eid, initmsg);
 				// Если прослушивание события успешно
-				if(engine::listen(eid, 100)){
+				if(engine::io::listen(eid, 100)){
 					// Выполняем запуск события
-					if(engine::launch(eid)){
+					if(engine::io::launch(eid)){
 						// Записываем в лог сообщение об успешном запуске события
 						cout << " Событие успешно запущено!" << endl;
 						/**
 						 * Запускаем опрос событий
 						 */
-						while(engine::poll());
+						while(engine::io::poll());
 					// Записываем ошибку в лог запуска события
 					} else cout << " Ошибка запуска события!" << endl;
 				}

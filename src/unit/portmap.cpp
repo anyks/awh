@@ -240,7 +240,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					 *       ответов ни пришло, отказ наступит в свой черёд
 					 *
 					 */
-					engine::rearmTimeout(eid, event::action_t::READ);
+					engine::timer::rearm(eid, event::action_t::READ);
 					// Ожидаем ответа на свою просьбу
 					return;
 				}
@@ -296,7 +296,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 					 *       первое же чужое сообщение оставило бы отыскание без срока
 					 *
 					 */
-					engine::rearmTimeout(eid, event::action_t::READ);
+					engine::timer::rearm(eid, event::action_t::READ);
 					// Ожидаем ответа пригодного устройства
 					return;
 				}
@@ -305,7 +305,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 */
 				if(!proto::portmap::ssdp::suitable(response, proto::portmap::ssdp::TARGET_GATEWAY)){
 					// Выполняем продолжение прерванного ожидания ответа
-					engine::rearmTimeout(eid, event::action_t::READ);
+					engine::timer::rearm(eid, event::action_t::READ);
 					// Ожидаем ответа пригодного устройства
 					return;
 				}
@@ -329,7 +329,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				 */
 				if(exchange.eid > 0){
 					// Выполняем удаление события рассылки
-					engine::destroy(exchange.eid);
+					engine::io::destroy(exchange.eid);
 					// Сбрасываем идентификатор события рассылки
 					exchange.eid = 0;
 				}
@@ -429,7 +429,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 				   (response.proto != ((this->_mapping.proto == proto_t::TCP) ?
 				    proto::portmap::natpmp::proto_t::TCP : proto::portmap::natpmp::proto_t::UDP))){
 					// Выполняем продолжение прерванного ожидания ответа
-					engine::rearmTimeout(eid, event::action_t::READ);
+					engine::timer::rearm(eid, event::action_t::READ);
 					// Ожидаем ответа на свою просьбу
 					return;
 				}
@@ -837,7 +837,7 @@ bool awh::unit::Portmap::client(const event::id_t eid, uint8_t * address) noexce
 	/**
 	 * Если внутренний адрес машины получить не удалось
 	 */
-	if(!engine::getAddress(eid, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), value) || (value == nullptr))
+	if(!engine::address::get(eid, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), value) || (value == nullptr))
 		// Выводим отрицательный результат получения адреса
 		return false;
 	// Выполняем размещение полученного адреса
@@ -973,7 +973,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	 */
 	if(!six)
 		// Выполняем вступление в группу обнаружения устройств
-		return engine::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "0.0.0.0");
+		return engine::multicast::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "0.0.0.0");
 	// Получаем сетевое устройство, которым ведётся обмен
 	const string & iface = this->iface();
 	/**
@@ -985,7 +985,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	 */
 	if(iface.empty())
 		// Выполняем вступление в группу обнаружения устройств
-		return engine::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "::");
+		return engine::multicast::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, group, "::");
 	/**
 	 * Получаем адрес сетевого устройства, которым ведётся обмен
 	 *
@@ -1008,7 +1008,7 @@ bool awh::unit::Portmap::membership(const string & group, const bool six) noexce
 	// Получаем групповой адрес обнаружения устройств
 	const unique_ptr <net::addr_t> value = this->_addr.source();
 	// Выполняем вступление в группу обнаружения устройств
-	return engine::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, value.get(), address.get());
+	return engine::multicast::membership(this->_exchangeUPNP.eid, event::mode_t::ENABLED, value.get(), address.get());
 }
 /**
  * @brief Метод проверки принадлежности адреса локальной сети
@@ -1150,9 +1150,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		// Если событие обмена уже заведено
 		if(this->_exchangeUPNP.eid > 0)
 			// Выполняем удаление события обмена
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 		// Выполняем заведение события рассылки
-		this->_exchangeUPNP.eid = engine::event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
+		this->_exchangeUPNP.eid = engine::io::event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
 		/**
 		 * Если сетевое устройство обмена задано
 		 *
@@ -1177,9 +1177,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 			 *       узнавал никак
 			 *
 			 */
-			if(!engine::setIface(this->_exchangeUPNP.eid, this->iface()) && !this->_iface.empty()){
+			if(!engine::iface::set(this->_exchangeUPNP.eid, this->iface()) && !this->_iface.empty()){
 				// Выполняем удаление события рассылки
-				engine::destroy(this->_exchangeUPNP.eid);
+				engine::io::destroy(this->_exchangeUPNP.eid);
 				// Сбрасываем идентификатор события рассылки
 				this->_exchangeUPNP.eid = 0;
 				// Выводим отрицательный результат начала отыскания устройства
@@ -1189,9 +1189,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если групповой режим события установить не удалось
 		 */
-		if(!engine::setDelivery(this->_exchangeUPNP.eid, event::delivery_mode_t::MULTICAST)){
+		if(!engine::delivery::set(this->_exchangeUPNP.eid, event::delivery_mode_t::MULTICAST)){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1207,9 +1207,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 *       просьбу наружу вовсе
 		 *
 		 */
-		if(!engine::setHops(this->_exchangeUPNP.eid, this->_hops)){
+		if(!engine::hops::set(this->_exchangeUPNP.eid, this->_hops)){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1218,9 +1218,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если порт обнаружения устройств установить не удалось
 		 */
-		if(!engine::setTargetPort(this->_exchangeUPNP.eid, proto::portmap::ssdp::PORT)){
+		if(!engine::target::port::set(this->_exchangeUPNP.eid, proto::portmap::ssdp::PORT)){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1229,28 +1229,28 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если групповой адрес обнаружения устройств установить не удалось
 		 */
-		if(!engine::setTarget(this->_exchangeUPNP.eid, target)){
+		if(!engine::target::set(this->_exchangeUPNP.eid, target)){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
 			return false;
 		}
 		// Устанавливаем срок ожидания ответа устройства
-		engine::setTimeout(this->_exchangeUPNP.eid, event::action_t::READ, this->_delay);
+		engine::timer::timeout(this->_exchangeUPNP.eid, event::action_t::READ, this->_delay);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(this->_exchangeUPNP.eid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+		engine::io::on(this->_exchangeUPNP.eid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		engine::on(this->_exchangeUPNP.eid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::response, this, _1, _2, _3)));
+		engine::io::on(this->_exchangeUPNP.eid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::response, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие истечения срока ожидания
-		engine::on(this->_exchangeUPNP.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
+		engine::io::on(this->_exchangeUPNP.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
 		/**
 		 * Если опции события рассылки установить не удалось
 		 */
-		if(!engine::setOptions(this->_exchangeUPNP.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
+		if(!engine::options::set(this->_exchangeUPNP.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1270,9 +1270,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если запустить событие рассылки не удалось
 		 */
-		if(!(engine::commit(this->_exchangeUPNP.eid) && engine::launch(this->_exchangeUPNP.eid))){
+		if(!(engine::io::commit(this->_exchangeUPNP.eid) && engine::io::launch(this->_exchangeUPNP.eid))){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1283,9 +1283,9 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если просьбу разослать не удалось
 		 */
-		if(engine::send(this->_exchangeUPNP.eid, message.data(), message.length()) == 0){
+		if(engine::io::send(this->_exchangeUPNP.eid, message.data(), message.length()) == 0){
 			// Выполняем удаление события рассылки
-			engine::destroy(this->_exchangeUPNP.eid);
+			engine::io::destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
 			this->_exchangeUPNP.eid = 0;
 			// Выводим отрицательный результат начала отыскания устройства
@@ -1334,7 +1334,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		// Если потоковое событие обмена уже заведено
 		if(this->_stream > 0)
 			// Выполняем удаление потокового события обмена
-			engine::destroy(this->_stream);
+			engine::io::destroy(this->_stream);
 		// Выполняем подготовку объекта разбора к чтению ответа устройства
 		this->prepare();
 		// Снимаем признак того, что потоковое событие подключено
@@ -1350,13 +1350,13 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 */
 		const bool six = (this->_addr.parse(address) && (this->_addr.type() == net_addr_t::type_t::IPV6));
 		// Выполняем заведение потокового события обмена
-		this->_stream = engine::event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::STREAM, event::protocol_t::TCP);
+		this->_stream = engine::io::event(event::node_t::CLIENT, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::STREAM, event::protocol_t::TCP);
 		/**
 		 * Если порт устройства установить не удалось
 		 */
-		if(!engine::setTargetPort(this->_stream, port)){
+		if(!engine::target::port::set(this->_stream, port)){
 			// Выполняем удаление потокового события обмена
-			engine::destroy(this->_stream);
+			engine::io::destroy(this->_stream);
 			// Сбрасываем идентификатор потокового события обмена
 			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
@@ -1365,16 +1365,16 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		/**
 		 * Если адрес устройства установить не удалось
 		 */
-		if(!engine::setTarget(this->_stream, address)){
+		if(!engine::target::set(this->_stream, address)){
 			// Выполняем удаление потокового события обмена
-			engine::destroy(this->_stream);
+			engine::io::destroy(this->_stream);
 			// Сбрасываем идентификатор потокового события обмена
 			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
 			return false;
 		}
 		// Устанавливаем срок ожидания ответа устройства
-		engine::setTimeout(this->_stream, event::action_t::READ, this->_delay);
+		engine::timer::timeout(this->_stream, event::action_t::READ, this->_delay);
 		/**
 		 * Устанавливаем срок ожидания подключения к устройству
 		 *
@@ -1382,7 +1382,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *       система, и обмен молчит вместо того, чтобы завершиться отказом
 		 *
 		 */
-		engine::setTimeout(this->_stream, event::action_t::CONNECT, this->_delay);
+		engine::timer::timeout(this->_stream, event::action_t::CONNECT, this->_delay);
 		/**
 		 * Разрешаем событию самостоятельное переподключение
 		 *
@@ -1392,7 +1392,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *       обратный прочим действиям: отрицательным попытка прерывается
 		 *
 		 */
-		engine::setAction(this->_stream, event::action_t::RECONNECT, event::mode_t::ENABLED);
+		engine::action::set(this->_stream, event::action_t::RECONNECT, event::mode_t::ENABLED);
 		/**
 		 * Устанавливаем паузу перед повторной попыткой подключения
 		 *
@@ -1401,21 +1401,21 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 *       не терпением
 		 *
 		 */
-		engine::setTimeout(this->_stream, event::action_t::RECONNECT, RECONNECT_DELAY);
+		engine::timer::timeout(this->_stream, event::action_t::RECONNECT, RECONNECT_DELAY);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(this->_stream, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+		engine::io::on(this->_stream, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие подключения к устройству
-		engine::on(this->_stream, static_cast <engine::callback::connect_t> (std::bind(&portmap_t::connected, this, _1, _2)));
+		engine::io::on(this->_stream, static_cast <engine::callback::connect_t> (std::bind(&portmap_t::connected, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		engine::on(this->_stream, static_cast <engine::callback::read_t> (std::bind(&portmap_t::incoming, this, _1, _2, _3)));
+		engine::io::on(this->_stream, static_cast <engine::callback::read_t> (std::bind(&portmap_t::incoming, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие истечения срока ожидания
-		engine::on(this->_stream, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
+		engine::io::on(this->_stream, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
 		/**
 		 * Если опции потокового события обмена установить не удалось
 		 */
-		if(!engine::setOptions(this->_stream, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
+		if(!engine::options::set(this->_stream, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::AUTO_RECONNECT)){
 			// Выполняем удаление потокового события обмена
-			engine::destroy(this->_stream);
+			engine::io::destroy(this->_stream);
 			// Сбрасываем идентификатор потокового события обмена
 			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
@@ -1424,9 +1424,9 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		/**
 		 * Если запустить потоковое событие обмена не удалось
 		 */
-		if(!(engine::commit(this->_stream) && engine::connect(this->_stream) && engine::launch(this->_stream))){
+		if(!(engine::io::commit(this->_stream) && engine::io::connect(this->_stream) && engine::io::launch(this->_stream))){
 			// Выполняем удаление потокового события обмена
-			engine::destroy(this->_stream);
+			engine::io::destroy(this->_stream);
 			// Сбрасываем идентификатор потокового события обмена
 			this->_stream = 0;
 			// Выводим отрицательный результат заведения потокового события обмена
@@ -1515,7 +1515,7 @@ void awh::unit::Portmap::connected(const event::id_t eid, const bool ok) noexcep
 	/**
 	 * Если запрос отправить не удалось
 	 */
-	if(engine::send(this->_stream, this->_request.data(), this->_request.length()) == 0)
+	if(engine::io::send(this->_stream, this->_request.data(), this->_request.length()) == 0)
 		// Выполняем завершение обмена отказом
 		this->failure(type_t::UPNP, error_t::NO_RESPONSE);
 }
@@ -1592,7 +1592,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 			 *       целиком, а не на каждый его кусок порознь
 			 *
 			 */
-			engine::rearmTimeout(eid, event::action_t::READ);
+			engine::timer::rearm(eid, event::action_t::READ);
 			// Ожидаем поступления остатка ответа
 			return;
 		}
@@ -1963,7 +1963,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 *       маршрутизатор не может: указывать его обязан просящий
 				 *
 				 */
-				pinhole.internalClient = engine::getAddress(this->_stream, event::address_t::IPV6);
+				pinhole.internalClient = engine::address::get(this->_stream, event::address_t::IPV6);
 				// Если внутренний адрес машины получить не удалось
 				if(pinhole.internalClient.empty())
 					// Выводим отрицательный результат начала вызова действия службы
@@ -1995,7 +1995,7 @@ bool awh::unit::Portmap::control() noexcept {
 			 *       машину и видит
 			 *
 			 */
-			mapping.internalClient = engine::getAddress(this->_stream, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4));
+			mapping.internalClient = engine::address::get(this->_stream, ((this->_family == family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4));
 			// Если внутренний адрес машины получить не удалось
 			if(mapping.internalClient.empty())
 				// Выводим отрицательный результат начала вызова действия службы
@@ -2112,7 +2112,7 @@ bool awh::unit::Portmap::control() noexcept {
 		// Выполняем подготовку объекта разбора к чтению ответа устройства
 		this->prepare();
 		// Если запрос устройству отправить удалось
-		if(engine::send(this->_stream, this->_request.data(), this->_request.length()) > 0)
+		if(engine::io::send(this->_stream, this->_request.data(), this->_request.length()) > 0)
 			// Выводим положительный результат начала вызова действия службы
 			return true;
 		// Снимаем признак того, что потоковое событие подключено
@@ -2424,15 +2424,15 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		// Если событие обмена уже заведено
 		if(exchange.eid > 0)
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 		// Выполняем заведение события обмена
-		exchange.eid = engine::event(event::node_t::CLIENT, ((this->_family == family_t::IPV6) ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
+		exchange.eid = engine::io::event(event::node_t::CLIENT, ((this->_family == family_t::IPV6) ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
 		/**
 		 * Если порт маршрутизатора установить не удалось
 		 */
-		if(!engine::setTargetPort(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp::PORT : proto::portmap::natpmp::PORT))){
+		if(!engine::target::port::set(exchange.eid, ((type == type_t::PCP) ? proto::portmap::pcp::PORT : proto::portmap::natpmp::PORT))){
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 			// Сбрасываем идентификатор события обмена
 			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
@@ -2441,28 +2441,28 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		/**
 		 * Если адрес маршрутизатора установить не удалось
 		 */
-		if(!engine::setTarget(exchange.eid, this->_address.get())){
+		if(!engine::target::set(exchange.eid, this->_address.get())){
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 			// Сбрасываем идентификатор события обмена
 			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
 			return false;
 		}
 		// Устанавливаем срок ожидания ответа маршрутизатора
-		engine::setTimeout(exchange.eid, event::action_t::READ, this->_delay);
+		engine::timer::timeout(exchange.eid, event::action_t::READ, this->_delay);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(exchange.eid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+		engine::io::on(exchange.eid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие чтения данных
-		engine::on(exchange.eid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::response, this, _1, _2, _3)));
+		engine::io::on(exchange.eid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::response, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие истечения срока ожидания
-		engine::on(exchange.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
+		engine::io::on(exchange.eid, static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (portmap_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&portmap_t::timeout), this, _1, _2, _3)));
 		/**
 		 * Если опции события обмена установить не удалось
 		 */
-		if(!engine::setOptions(exchange.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+		if(!engine::options::set(exchange.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 			// Сбрасываем идентификатор события обмена
 			exchange.eid = 0;
 			// Выводим отрицательный результат заведения события обмена
@@ -2471,9 +2471,9 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		/**
 		 * Если запустить событие обмена не удалось
 		 */
-		if(!(result = (engine::commit(exchange.eid) && engine::launch(exchange.eid)))){
+		if(!(result = (engine::io::commit(exchange.eid) && engine::io::launch(exchange.eid)))){
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 			// Сбрасываем идентификатор события обмена
 			exchange.eid = 0;
 		}
@@ -2512,7 +2512,7 @@ void awh::unit::Portmap::discard(const type_t type) noexcept {
 	 */
 	if(exchange.eid > 0){
 		// Выполняем удаление события обмена
-		engine::destroy(exchange.eid);
+		engine::io::destroy(exchange.eid);
 		// Сбрасываем идентификатор события обмена
 		exchange.eid = 0;
 	}
@@ -2648,7 +2648,7 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 		/**
 		 * Если просьбу отправить не удалось
 		 */
-		if(engine::send(exchange.eid, &buffer[0], size) == 0){
+		if(engine::io::send(exchange.eid, &buffer[0], size) == 0){
 			// Выполняем прекращение заведённого события обмена
 			this->discard(type);
 			// Выводим отрицательный результат отправки просьбы
@@ -2938,16 +2938,16 @@ void awh::unit::Portmap::accepted([[maybe_unused]] const event::id_t eid, const 
 	 */
 	if(this->_announcers.size() >= MAX_ANNOUNCERS){
 		// Выполняем удаление самого давнего события отправителя объявлений
-		engine::destroy(this->_announcers.front());
+		engine::io::destroy(this->_announcers.front());
 		// Выполняем удаление самого давнего события из списка отправителей
 		this->_announcers.erase(this->_announcers.begin());
 	}
 	// Запоминаем событие отправителя объявлений
 	this->_announcers.push_back(oid);
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	engine::on(oid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+	engine::io::on(oid, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие чтения объявления
-	engine::on(oid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::announced, this, _1, _2, _3)));
+	engine::io::on(oid, static_cast <engine::callback::read_t> (std::bind(&portmap_t::announced, this, _1, _2, _3)));
 }
 /**
  * @brief Метод приёма объявления, разосланного маршрутизатором
@@ -2973,7 +2973,7 @@ void awh::unit::Portmap::announced(const event::id_t eid, const uint8_t * data, 
 	 *       работающей на этой же машине, - отбрасывать его значило бы отвергать своё
 	 *
 	 */
-	const string & host = engine::getTarget(eid);
+	const string & host = engine::target::get(eid);
 	// Если отправитель объявления принадлежит внешней сети, выходим
 	if(host.empty() || !this->_addr.parse(host) || (this->_addr.own() == net_addr_t::own_t::WAN)) return;
 	/**
@@ -3073,7 +3073,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 */
 		for(const event::id_t oid : this->_announcers)
 			// Выполняем удаление события отправителя объявлений
-			engine::destroy(oid);
+			engine::io::destroy(oid);
 		// Выполняем очистку списка событий отправителей объявлений
 		this->_announcers.clear();
 		/**
@@ -3081,7 +3081,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 */
 		if(this->_announcer > 0){
 			// Выполняем удаление события приёма объявлений
-			engine::destroy(this->_announcer);
+			engine::io::destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
 			this->_announcer = 0;
 		}
@@ -3098,7 +3098,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 *
 		 */
 		// Выполняем заведение события приёма объявлений
-		this->_announcer = engine::event(event::node_t::SERVER, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
+		this->_announcer = engine::io::event(event::node_t::SERVER, (six ? event::family_t::IPV6 : event::family_t::IPV4), event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Если событие приёма объявлений завести не удалось, выводим отрицательный результат
 		if(this->_announcer == 0) return false;
 		/**
@@ -3109,9 +3109,9 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 *       адресу самой машины, не сумело бы
 		 *
 		 */
-		if(!engine::setAddress(this->_announcer, (six ? event::address_t::IPV6 : event::address_t::IPV4), (six ? "::" : "0.0.0.0"))){
+		if(!engine::address::set(this->_announcer, (six ? event::address_t::IPV6 : event::address_t::IPV4), (six ? "::" : "0.0.0.0"))){
 			// Выполняем удаление события приёма объявлений
-			engine::destroy(this->_announcer);
+			engine::io::destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
 			this->_announcer = 0;
 			// Выводим отрицательный результат включения приёма объявлений
@@ -3120,18 +3120,18 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		/**
 		 * Если порт приёма объявлений установить не удалось
 		 */
-		if(!engine::setSourcePort(this->_announcer, proto::portmap::natpmp::ANNOUNCE_PORT)){
+		if(!engine::source::port::set(this->_announcer, proto::portmap::natpmp::ANNOUNCE_PORT)){
 			// Выполняем удаление события приёма объявлений
-			engine::destroy(this->_announcer);
+			engine::io::destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
 			this->_announcer = 0;
 			// Выводим отрицательный результат включения приёма объявлений
 			return false;
 		}
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		engine::on(this->_announcer, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
+		engine::io::on(this->_announcer, static_cast <engine::callback::error_t> (std::bind(&portmap_t::error, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на приём отправителя объявлений
-		engine::on(this->_announcer, static_cast <engine::callback::accept_t> (std::bind(&portmap_t::accepted, this, _1, _2)));
+		engine::io::on(this->_announcer, static_cast <engine::callback::accept_t> (std::bind(&portmap_t::accepted, this, _1, _2)));
 		/**
 		 * Если опции события приёма объявлений установить не удалось
 		 *
@@ -3140,9 +3140,9 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 *       перенаправления - без переиспользования приём не завёлся бы рядом с ней
 		 *
 		 */
-		if(!engine::setOptions(this->_announcer, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
+		if(!engine::options::set(this->_announcer, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::MULTICAST_LOOPBACK)){
 			// Выполняем удаление события приёма объявлений
-			engine::destroy(this->_announcer);
+			engine::io::destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
 			this->_announcer = 0;
 			// Выводим отрицательный результат включения приёма объявлений
@@ -3151,9 +3151,9 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		/**
 		 * Если запустить событие приёма объявлений не удалось
 		 */
-		if(!(engine::commit(this->_announcer) && engine::launch(this->_announcer))){
+		if(!(engine::io::commit(this->_announcer) && engine::io::launch(this->_announcer))){
 			// Выполняем удаление события приёма объявлений
-			engine::destroy(this->_announcer);
+			engine::io::destroy(this->_announcer);
 			// Сбрасываем идентификатор события приёма объявлений
 			this->_announcer = 0;
 			// Выводим отрицательный результат включения приёма объявлений
@@ -3231,7 +3231,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		// Если событие обмена заведено
 		if(exchange.eid > 0)
 			// Выполняем удаление события обмена
-			engine::destroy(exchange.eid);
+			engine::io::destroy(exchange.eid);
 		// Сбрасываем идентификатор события обмена
 		exchange.eid = 0;
 		/**
@@ -3241,7 +3241,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 			// Если потоковое событие обмена заведено
 			if(this->_stream > 0)
 				// Выполняем удаление потокового события обмена
-				engine::destroy(this->_stream);
+				engine::io::destroy(this->_stream);
 			// Сбрасываем идентификатор потокового события обмена
 			this->_stream = 0;
 			// Сбрасываем шаг обмена по договору UPnP
@@ -3326,7 +3326,7 @@ void awh::unit::Portmap::cancel() noexcept {
 		 */
 		if(exchange->eid > 0){
 			// Выполняем удаление события обмена
-			engine::destroy(exchange->eid);
+			engine::io::destroy(exchange->eid);
 			// Сбрасываем идентификатор события обмена
 			exchange->eid = 0;
 		}
@@ -3336,7 +3336,7 @@ void awh::unit::Portmap::cancel() noexcept {
 	 */
 	if(this->_stream > 0){
 		// Выполняем удаление потокового события обмена
-		engine::destroy(this->_stream);
+		engine::io::destroy(this->_stream);
 		// Сбрасываем идентификатор потокового события обмена
 		this->_stream = 0;
 	}
