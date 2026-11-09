@@ -1,0 +1,28 @@
+--- a/src/libc_override_gcc_and_weak.h
++++ b/src/libc_override_gcc_and_weak.h
+@@ -235,7 +235,7 @@
+   struct mallinfo2 mallinfo2(void) __THROW        ALIAS(tc_mallinfo2);
+ #endif
+   size_t malloc_size(void* p) __THROW             ALIAS(tc_malloc_size);
+-#if defined(__ANDROID__)
++#if defined(__ANDROID__) || defined(__DragonFly__)
+   size_t malloc_usable_size(const void* p) __THROW
+          ALIAS(tc_malloc_size);
+ #else
+--- a/src/getpc.h
++++ b/src/getpc.h
+@@ -61,6 +61,14 @@
+ typedef ucontext ucontext_t;
+ #endif
+ 
++// On illumos the register constants (REG_PC / REG_RIP) live in <sys/regset.h>,
++// which its <ucontext.h> does not pull in.  Without it every platform
++// specialization in getpc-inl.h compiles out, and the inheritance chain ends at
++// Empty, which has no Get member: 'Get' is not a member of g_...
++#if defined(__sun) || defined(__SOLARIS__)
++#include <sys/regset.h>
++#endif
++
+ namespace tcmalloc {
+ namespace getpc {
+ 
