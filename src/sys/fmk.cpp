@@ -4950,66 +4950,89 @@ const std::set <string> & awh::Framework::domainZones() const noexcept {
  * @param locale локализация приложения
  */
 void awh::Framework::setLocale(const string & locale) noexcept {
-	// Устанавливаем локаль
-	if(!locale.empty()){
+	// Устанавливаем локализацию приложения по умолчанию
+	string name = AWH_LOCALE;
+	// Если локализация приложения передана
+	if(!locale.empty())
+		// Устанавливаем локализацию приложения
+		name.assign(locale.begin(), locale.end());
+	/**
+	 * Если локализация приложения передана
+	 */
+	if(!name.empty()){
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем установку локализации приложения
+		 *
+		 * @note Разряд LC_ALL включает в себя и LC_CTYPE, и LC_COLLATE: отдельные их
+		 *       установки той же строкой ничего не меняли бы
+		 *
 		 */
-		try {
-			// Создаём новую локаль
-			// ::locale loc(locale.c_str());
-			// Устанавливапм локализацию приложения
-			::setlocale(LC_ALL, locale.c_str());
-			::setlocale(LC_CTYPE, locale.c_str());
-			::setlocale(LC_COLLATE, locale.c_str());
-			// Устанавливаем локаль системы
-			// this->_locale = ::locale::global(loc);
-			this->_locale = ::locale(locale.c_str());
+		const bool established = (::setlocale(LC_ALL, name.c_str()) != nullptr);
+		/**
+		 * Если локализацию приложения установить не удалось
+		 *
+		 * @details Отказ приходит возвращённым нулевым указателем, а не исключением:
+		 *          setlocale - функция языка C, и бросать ей нечего. Прежде отказ
+		 *          ловился здесь перехватом исключения, потому что локализация
+		 *          строилась объектом std::locale; объекта того не стало, а перехват
+		 *          остался и с тех пор не срабатывал ни разу.
+		 *
+		 * @warning Отказ ловится не всюду: библиотека UCRT у MS Windows принимает любое
+		 *          название, включая заведомо вздорное, и отвечает успехом. Там
+		 *          неверная локализация останется незамеченной, и поделать с этим
+		 *          нечего - сообщить об отказе системе нечем
+		 *
+		 */
+		if(!established){
 			/**
-			 * Для операционной системы MS Windows
+			 * Если запрошенная локализация общепринятой не является
 			 */
-			#if _WIN32 || _WIN64
-				// Параметры устанавливаемого шрифта
-				CONSOLE_FONT_INFOEX fontInfo = {0};
-				// Устанавливаем размер буфера шрифта
-				fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
-				// Формируем параметры шрифта
-				fontInfo.nFont = 1;
-				fontInfo.dwFontSize.X = 7;
-				fontInfo.dwFontSize.Y = 12;
-				fontInfo.FontWeight = 500;
-				fontInfo.FontFamily = FF_DONTCARE;
-				// Выполняем установку шрифта Lucida Console
-				::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
-				// Применяем шрифт
-				::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
-				// Устанавливаем кодировку ввода текстовых данных в консоле 65001
-				::SetConsoleCP(CP_UTF8);
-				// Устанавливаем кодировку вывода текстовых данных из консоли
-				::SetConsoleOutputCP(CP_UTF8);
-			#endif
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если локаль не дефолтная
-			if(locale.compare("C") != 0)
-				// Устанавливаем локаль повторно
-				this->setLocale("C");
+			if(name.compare("C") != 0)
+				// Выполняем установку общепринятой локализации приложения
+				::setlocale(LC_ALL, "C");
+			// Собираемое сообщение об ошибке установки локализации
+			const string & message = this->format("Locale \"%s\" is not supported by the system, the \"C\" locale is set instead", name.c_str());
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s (%s)\n\n", __PRETTY_FUNCTION__, error.what(), locale.c_str());
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message.c_str());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
 				// Выводим сообщение об ошибке
-				::fprintf(stderr, "ERROR! %s (%s)\n\n", error.what(), locale.c_str());
+				::fprintf(stderr, "ERROR! %s\n\n", message.c_str());
 			#endif
 		}
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Параметры устанавливаемого шрифта
+			CONSOLE_FONT_INFOEX fontInfo = {};
+			// Устанавливаем размер буфера шрифта
+			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
+			// Формируем параметры шрифта
+			fontInfo.nFont = 1;
+			// Задаём ширину символа шрифта
+			fontInfo.dwFontSize.X = 7;
+			// Задаём высоту символа шрифта
+			fontInfo.dwFontSize.Y = 12;
+			// Задаём насыщенность шрифта
+			fontInfo.FontWeight = 500;
+			// Задаём семейство шрифта
+			fontInfo.FontFamily = FF_DONTCARE;
+			// Выполняем установку шрифта Lucida Console
+			::lstrcpyW(fontInfo.FaceName, L"Lucida Console");
+			// Применяем шрифт
+			::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &fontInfo);
+			// Устанавливаем кодировку ввода текстовых данных в консоле 65001
+			::SetConsoleCP(CP_UTF8);
+			// Устанавливаем кодировку вывода текстовых данных из консоли
+			::SetConsoleOutputCP(CP_UTF8);
+		#endif
 	}
 }
 /**

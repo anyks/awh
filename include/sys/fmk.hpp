@@ -134,9 +134,6 @@ namespace awh {
 			// Объект парсинга nwt адреса
 			nwt_t _nwt;
 		private:
-			// Устанавливаем локаль по умолчанию
-			locale _locale;
-		private:
 			// Объект регулярного выражения
 			regexp_t _regexp;
 		private:
