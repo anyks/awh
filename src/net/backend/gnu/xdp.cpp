@@ -59,10 +59,6 @@
 	 * Используем стандартное пространство имён
 	 */
 	using namespace std;
-	/**
-	 * Используем пространство имён AWH
-	 */
-	using namespace awh;
 
 	/**
 	 * @brief Основное пространство имён
@@ -108,13 +104,16 @@
 					struct xsk_umem * umem;
 					// Сокет AF_XDP глазами libxdp
 					struct xsk_socket * xsk;
+					// Режим датапути, в котором сокет заведён
+					mode_t mode = mode_t::GENERIC;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Socket() noexcept :
 					 size(0), rx{}, tx{}, fill{}, comp{},
-					 area(nullptr), umem(nullptr), xsk(nullptr) {}
+					 area(nullptr), umem(nullptr),
+					 xsk(nullptr), mode(mode_t::GENERIC) {}
 				} socket_t;
 			};
 		};
@@ -128,6 +127,11 @@
 	 *
 	 */
 	namespace {
+		/**
+		 * Используем пространство имён AWH
+		 */
+		using namespace awh;
+
 		/**
 		 * @brief Число кадров области UMEM (вдвое больше кольца, чтобы кадры оставались и на отправку)
 		 *
@@ -257,6 +261,28 @@
 		return false;
 	}
 	/**
+	 * @brief Функция уничтожения сокета AF_XDP
+	 *
+	 * @details Освобождает сокет, кольца и область UMEM, заведённые create(),
+	 *          и освобождает само состояние.
+	 *
+	 * @param state состояние сокета
+	 * @return      признак успешного уничтожения
+	 *
+	 */
+	bool awh::eth::xdp::destroy(net::xdp::socket_t * state) noexcept {
+		// Если состояние не подано
+		if(state == nullptr)
+			// Возвращаем отказ уничтожения
+			return false;
+		// Освобождаем ресурсы сокета
+		release(* state);
+		// Освобождаем само состояние
+		delete state;
+		// Возвращаем успешный результат уничтожения
+		return true;
+	}
+	/**
 	 * @brief Функция получения описателя сокета AF_XDP
 	 *
 	 * @details Описатель пригоден для опроса готовности (poll/epoll): по нему движок
@@ -276,72 +302,49 @@
 		return static_cast <net::socket_t> (::xsk_socket__fd(state->xsk));
 	}
 	/**
-	 * @brief Функция уничтожения сокета AF_XDP
+	 * @brief Функция получения режима заведённого сокета AF_XDP
 	 *
-	 * @details Освобождает сокет, кольца и область UMEM, заведённые create(), и освобождает
-	 *          само состояние.
+	 * @details Возвращает режим, в котором сокет заведён успешно; при пустом
+	 *          состоянии отвечает обобщённым режимом.
 	 *
 	 * @param state состояние сокета
-	 * @return      признак успешного уничтожения
+	 * @return      режим датапути, либо обобщённый при пустом состоянии
 	 *
 	 */
-	bool awh::eth::xdp::destroy(net::xdp::socket_t * state) noexcept {
+	net::xdp::mode_t awh::eth::xdp::mode(const net::xdp::socket_t * state) noexcept {
 		// Если состояние не подано
 		if(state == nullptr)
-			// Возвращаем отказ уничтожения
-			return false;
-		// Освобождаем ресурсы сокета
-		release(* state);
-		// Освобождаем само состояние
-		delete state;
-		// Возвращаем успешный результат уничтожения
-		return true;
+			// Возвращаем обобщённый режим
+			return net::xdp::mode_t::GENERIC;
+		// Возвращаем режим заведённого сокета
+		return state->mode;
 	}
 	/**
-	 * @brief Функция приёма одной датаграммы из кольца RX
+	 * @brief Функция проверки поддержки нулевого копирования устройством
 	 *
-	 * @details Снимает с кольца приёма ровно один готовый кадр, копирует его датаграмму
-	 *          в поданный буфер, возвращает кадр в пул свободных и дочитывает кольцо
-	 *          наполнения. Прочие готовые кадры остаются в кольце: движок дозовёт их
-	 *          следующими вызовами, потому датаграммы не теряются.
+	 * @details Пробует завести сокет в нативном режиме с нулевым копированием на
+	 *          поданном устройстве и очереди и сразу его уничтожает. Успех заведения
+	 *          означает, что драйвер несёт zero-copy; отказ (в том числе по праву)
+	 *          значит, что проба поддержку не подтвердила. Программа BPF не крепится,
+	 *          трафик не перенаправляется. Требует привилегии CAP_NET_ADMIN.
 	 *
-	 * @param state  состояние сокета
-	 * @param buffer буфер под принятую датаграмму
-	 * @param size   размер буфера в байтах
-	 * @return       число принятых байт, ноль если датаграмм нет, минус единица при отказе
+	 * @param iface название сетевого устройства
+	 * @param queue номер очереди устройства
+	 * @return      признак поддержки нулевого копирования устройством
 	 *
 	 */
-	int32_t awh::eth::xdp::receive(net::xdp::socket_t * state, uint8_t * buffer, const uint32_t size) noexcept {
-		// Если состояние не подано
-		if(state == nullptr)
-			// Возвращаем отказ приёма
-			return -1;
-		// Индекс первой готовой ячейки кольца приёма
-		uint32_t idx = 0;
-		// Снимаем готовность ровно одного кадра приёма
-		const uint32_t got = ::xsk_ring_cons__peek(&state->rx, 1, &idx);
-		// Если готовых кадров нет
-		if(got == 0)
-			// Возвращаем отсутствие датаграмм
-			return 0;
-		// Дескриптор принятого кадра
-		const struct xdp_desc * desc = ::xsk_ring_cons__rx_desc(&state->rx, idx);
-		// Смещение кадра в области UMEM
-		const uint64_t addr = desc->addr;
-		// Число копируемых байт (не больше буфера)
-		const uint32_t n = std::min <uint32_t> (desc->len, size);
-		// Указатель на данные кадра
-		void * data = ::xsk_umem__get_data(state->area, addr);
-		// Копируем датаграмму в буфер
-		::memcpy(buffer, data, n);
-		// Возвращаем кадр в пул свободных
-		state->freeFrames.push_back(addr);
-		// Освобождаем ячейку кольца приёма
-		::xsk_ring_cons__release(&state->rx, 1);
-		// Дочитываем кольцо наполнения свободными кадрами
-		refillFill(* state);
-		// Возвращаем число принятых байт
-		return static_cast <int32_t> (n);
+	bool awh::eth::xdp::zerocopySupported(const string & iface, const uint32_t queue) noexcept {
+		// Пробуем завести сокет в нативном режиме с нулевым копированием
+		net::xdp::socket_t * state = create(iface, queue, false, net::xdp::mode_t::NATIVE);
+		// Если сокет заведён, драйвер несёт нулевое копирование
+		if(state != nullptr){
+			// Освобождаем пробный сокет
+			destroy(state);
+			// Возвращаем положительный результат поддержки
+			return true;
+		}
+		// Возвращаем отрицательный результат поддержки
+		return false;
 	}
 	/**
 	 * @brief Функция отправки одной датаграммы через кольцо TX
@@ -396,20 +399,69 @@
 		return true;
 	}
 	/**
+	 * @brief Функция приёма одной датаграммы из кольца RX
+	 *
+	 * @details Снимает с кольца приёма ровно один готовый кадр, копирует его датаграмму
+	 *          в поданный буфер, возвращает кадр в пул свободных и дочитывает кольцо
+	 *          наполнения. Прочие готовые кадры остаются в кольце: движок дозовёт их
+	 *          следующими вызовами, потому датаграммы не теряются.
+	 *
+	 * @param state  состояние сокета
+	 * @param buffer буфер под принятую датаграмму
+	 * @param size   размер буфера в байтах
+	 * @return       число принятых байт, ноль если датаграмм нет, минус единица при отказе
+	 *
+	 */
+	int32_t awh::eth::xdp::receive(net::xdp::socket_t * state, uint8_t * buffer, const uint32_t size) noexcept {
+		// Если состояние не подано
+		if(state == nullptr)
+			// Возвращаем отказ приёма
+			return -1;
+		// Индекс первой готовой ячейки кольца приёма
+		uint32_t idx = 0;
+		// Снимаем готовность ровно одного кадра приёма
+		const uint32_t got = ::xsk_ring_cons__peek(&state->rx, 1, &idx);
+		// Если готовых кадров нет
+		if(got == 0)
+			// Возвращаем отсутствие датаграмм
+			return 0;
+		// Дескриптор принятого кадра
+		const struct xdp_desc * desc = ::xsk_ring_cons__rx_desc(&state->rx, idx);
+		// Смещение кадра в области UMEM
+		const uint64_t addr = desc->addr;
+		// Число копируемых байт (не больше буфера)
+		const uint32_t n = std::min <uint32_t> (desc->len, size);
+		// Указатель на данные кадра
+		void * data = ::xsk_umem__get_data(state->area, addr);
+		// Копируем датаграмму в буфер
+		::memcpy(buffer, data, n);
+		// Возвращаем кадр в пул свободных
+		state->freeFrames.push_back(addr);
+		// Освобождаем ячейку кольца приёма
+		::xsk_ring_cons__release(&state->rx, 1);
+		// Дочитываем кольцо наполнения свободными кадрами
+		refillFill(* state);
+		// Возвращаем число принятых байт
+		return static_cast <int32_t> (n);
+	}
+	/**
 	 * @brief Функция заведения сокета AF_XDP
 	 *
 	 * @details Выделяет область UMEM, заводит кольца и привязывает сокет к устройству
 	 *          и очереди. Умолчанием программа BPF не крепится (признак inhibit):
 	 *          заведение не перенаправляет трафик и безопасно; признак redirect крепит
-	 *          программу перенаправления. Режим обобщённый (generic SKB).
+	 *          программу перенаправления. Режим задаётся параметром mode: обобщённый
+	 *          (generic SKB) умолчанием, нативный (driver) с нулевым копированием — по
+	 *          выбору; на устройстве без поддержки драйвера нативный режим отказывает.
 	 *
 	 * @param iface    название сетевого устройства
 	 * @param queue    номер очереди устройства
 	 * @param redirect крепить ли программу BPF-редиректа трафика в сокет
+	 * @param mode     режим датапути (обобщённый или нативный с нулевым копированием)
 	 * @return         состояние сокета, либо пустой указатель при отказе
 	 *
 	 */
-	net::xdp::socket_t * awh::eth::xdp::create(const string & iface, const uint32_t queue, const bool redirect) noexcept {
+	net::xdp::socket_t * awh::eth::xdp::create(const string & iface, const uint32_t queue, const bool redirect, const net::xdp::mode_t mode) noexcept {
 		// Состояние заводимого сокета
 		net::xdp::socket_t * state = nullptr;
 		/**
@@ -418,6 +470,8 @@
 		try {
 			// Выделяем состояние сокета
 			state = new net::xdp::socket_t();
+			// Запоминаем режим датапути, в котором заводим сокет
+			state->mode = mode;
 			// Резервируем пул свободных кадров на весь объём области
 			state->freeFrames.reserve(FRAME_COUNT);
 			// Размер области кадров памяти
@@ -460,10 +514,10 @@
 			scfg.tx_size = RING_SIZE;
 			// Крепить программу BPF лишь по признаку redirect, иначе inhibit
 			scfg.libxdp_flags = (redirect ? 0 : XSK_LIBXDP_FLAGS__INHIBIT_PROG_LOAD);
-			// Обобщённый режим generic SKB
-			scfg.xdp_flags = XDP_FLAGS_SKB_MODE;
-			// Копирующий режим привязки без нулевого копирования
-			scfg.bind_flags = XDP_COPY;
+			// Нативный режим драйвера, либо обобщённый generic SKB
+			scfg.xdp_flags = ((mode == net::xdp::mode_t::NATIVE) ? XDP_FLAGS_DRV_MODE : XDP_FLAGS_SKB_MODE);
+			// Нулевое копирование в нативном режиме, иначе копирующая привязка
+			scfg.bind_flags = ((mode == net::xdp::mode_t::NATIVE) ? XDP_ZEROCOPY : XDP_COPY);
 			// Заводим сокет AF_XDP и кольца приёма/отправки
 			if(::xsk_socket__create(&state->xsk, iface.c_str(), queue, state->umem, &state->rx, &state->tx, &scfg) != 0){
 				// Освобождаем ресурсы состояния при отказе

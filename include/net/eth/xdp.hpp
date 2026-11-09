@@ -107,6 +107,33 @@
 				 * \~
 				 */
 				typedef struct Socket socket_t;
+				/**
+				 * \~russian
+				 * @brief Режим датапути AF_XDP
+				 *
+				 * @details Обобщённый режим (generic SKB) работает на всяком устройстве,
+				 *          включая виртуальные, без поддержки драйвера: ядро копирует кадры
+				 *          между стеком и областью UMEM. Нативный режим (driver) с нулевым
+				 *          копированием требует поддержки драйвера: карта обращается к области
+				 *          UMEM прямо, без копии ядра. На устройстве без поддержки нативный
+				 *          режим отказывает, молчаливого отката к обобщённому нет.
+				 *
+				 * \~english
+				 * @brief Mode of the AF_XDP datapath
+				 *
+				 * @details The generic mode (generic SKB) works on any device, including the
+				 *          virtual ones, without the driver support: the kernel copies the frames
+				 *          between the stack and the UMEM region. The native mode (driver) with
+				 *          the zero copying requires the driver support: the card accesses the UMEM
+				 *          region directly, without the kernel copy. On a device without support
+				 *          the native mode refuses, there is no silent fallback to the generic one.
+				 *
+				 * \~
+				 */
+				enum class mode_t : uint8_t {
+					GENERIC = 0x00, // Обобщённый режим generic SKB (копия ядра)
+					NATIVE  = 0x01  // Нативный режим драйвера с нулевым копированием
+				};
 			}
 		}
 		/**
@@ -180,6 +207,28 @@
 				__AWH_SHARED_EXPORT__ bool supported() noexcept;
 				/**
 				 * \~russian
+				 * @brief Функция уничтожения сокета AF_XDP
+				 *
+				 * @details Освобождает сокет, кольца и область UMEM, заведённые create(),
+				 *          и освобождает само состояние
+				 *
+				 * @param state состояние сокета
+				 * @return      признак успешного уничтожения
+				 *
+				 * \~english
+				 * @brief Function of destroying an AF_XDP socket
+				 *
+				 * @details Frees the socket, the rings and the UMEM region created by create(),
+				 *          and frees the state itself
+				 *
+				 * @param state state of the socket
+				 * @return      sign of the successful destruction
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ bool destroy(net::xdp::socket_t * state) noexcept;
+				/**
+				 * \~russian
 				 * @brief Функция получения описателя сокета AF_XDP
 				 *
 				 * @details Описатель пригоден для опроса готовности (poll/epoll): по нему
@@ -206,26 +255,61 @@
 				__AWH_SHARED_EXPORT__ net::socket_t fd(const net::xdp::socket_t * state) noexcept;
 				/**
 				 * \~russian
-				 * @brief Функция уничтожения сокета AF_XDP
+				 * @brief Функция получения режима заведённого сокета AF_XDP
 				 *
-				 * @details Освобождает сокет, кольца и область UMEM, заведённые create(),
-				 *          и освобождает само состояние
+				 * @details Возвращает режим, в котором сокет заведён успешно: обобщённый
+				 *          или нативный с нулевым копированием. Позволяет вызывающему
+				 *          убедиться, что нулевое копирование действительно активно, а не
+				 *          только запрошено.
 				 *
 				 * @param state состояние сокета
-				 * @return      признак успешного уничтожения
+				 * @return      режим датапути, либо обобщённый при пустом состоянии
 				 *
 				 * \~english
-				 * @brief Function of destroying an AF_XDP socket
+				 * @brief Function of getting the mode of the created AF_XDP socket
 				 *
-				 * @details Frees the socket, the rings and the UMEM region created by create(),
-				 *          and frees the state itself
+				 * @details Returns the mode in which the socket is created successfully: generic
+				 *          or native with the zero copying. Lets the caller make sure that the zero
+				 *          copying is indeed active, and not only requested.
 				 *
 				 * @param state state of the socket
-				 * @return      sign of the successful destruction
+				 * @return      mode of the datapath, or generic on an empty state
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ bool destroy(net::xdp::socket_t * state) noexcept;
+				__AWH_SHARED_EXPORT__ net::xdp::mode_t mode(const net::xdp::socket_t * state) noexcept;
+				/**
+				 * \~russian
+				 * @brief Функция проверки поддержки нулевого копирования устройством
+				 *
+				 * @details Пробует завести сокет AF_XDP в нативном режиме с нулевым
+				 *          копированием на поданном устройстве и очереди: успех означает,
+				 *          что драйвер несёт zero-copy. Пробный сокет сразу уничтожается,
+				 *          программа BPF не крепится (признак inhibit), трафик не
+				 *          перенаправляется. Требует привилегии CAP_NET_ADMIN, как и
+				 *          заведение; без прав отказывает, ибо привязку не выполнить.
+				 *
+				 * @param iface название сетевого устройства
+				 * @param queue номер очереди устройства
+				 * @return      признак поддержки нулевого копирования устройством
+				 *
+				 * \~english
+				 * @brief Function of checking the zero copying support by the device
+				 *
+				 * @details Tries to create an AF_XDP socket in the native mode with the zero
+				 *          copying on the given device and queue: the success means that the
+				 *          driver carries zero-copy. The probe socket is destroyed at once,
+				 *          the BPF program is not attached (the inhibit flag), the traffic is
+				 *          not redirected. Requires the CAP_NET_ADMIN privilege, as does the
+				 *          creation; without the rights it refuses, for the bind cannot be done.
+				 *
+				 * @param iface name of the network device
+				 * @param queue number of the device queue
+				 * @return      sign of the zero copying support by the device
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ bool zerocopySupported(const string & iface, const uint32_t queue = 0) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция отправки одной датаграммы через кольцо TX
@@ -291,11 +375,14 @@
 				 *          устройству и очереди. Умолчанием программа BPF НЕ крепится (признак
 				 *          inhibit): заведение не перенаправляет трафик и потому безопасно;
 				 *          признак redirect крепит программу перенаправления трафика в сокет.
-				 *          Режим обобщённый (generic SKB). Требует привилегии CAP_NET_ADMIN
+				 *          Режим задаётся параметром mode: обобщённый (generic SKB) умолчанием,
+				 *          нативный (driver) с нулевым копированием — по выбору; на устройстве
+				 *          без поддержки драйвера нативный режим отказывает. Требует привилегии CAP_NET_ADMIN.
 				 *
 				 * @param iface    название сетевого устройства
 				 * @param queue    номер очереди устройства
 				 * @param redirect крепить ли программу BPF-редиректа трафика в сокет
+				 * @param mode     режим датапути (обобщённый или нативный с нулевым копированием)
 				 * @return         состояние сокета, либо пустой указатель при отказе
 				 *
 				 * \~english
@@ -305,16 +392,19 @@
 				 *          sending, filling and completion and binds the AF_XDP socket to the device and the queue.
 				 *          By default the BPF program is NOT attached (the inhibit flag): the creation does not redirect
 				 *          the traffic and therefore is safe; the redirect flag attaches the program of the traffic
-				 *          redirection into the socket. The mode is generic (generic SKB). Requires the CAP_NET_ADMIN privilege
+				 *          redirection into the socket. The mode is set by the mode parameter: generic (generic SKB)
+				 *          by default, native (driver) with the zero copying by choice; on a device without the driver
+				 *          support the native mode refuses. Requires the CAP_NET_ADMIN privilege.
 				 *
 				 * @param iface    name of the network device
 				 * @param queue    number of the device queue
 				 * @param redirect whether to attach the BPF program of the traffic redirection
+				 * @param mode     mode of the datapath (generic or native with the zero copying)
 				 * @return         state of the socket, or an empty pointer on refusal
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ net::xdp::socket_t * create(const string & iface, const uint32_t queue = 0, const bool redirect = false) noexcept;
+				__AWH_SHARED_EXPORT__ net::xdp::socket_t * create(const string & iface, const uint32_t queue = 0, const bool redirect = false, const net::xdp::mode_t mode = net::xdp::mode_t::GENERIC) noexcept;
 			}
 		}
 	}
