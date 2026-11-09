@@ -421,10 +421,10 @@ namespace awh {
 			 *          - **параметры ассоциации** - `initMessages()` и `status()`:
 			 *            количество потоков в каждую сторону, число попыток
 			 *            установления, и текущее состояние ассоциации;
-			 *          - **подписка на события протокола** - `eventsSubscribe()`:
+			 *          - **подписка на события протокола** - `subscription()`:
 			 *            какие уведомления протокола доставлять прикладному коду;
-			 *          - **аутентификация по RFC 4895** - `authenticateKey()`,
-			 *            `authenticateChunks()`, `authenticateSupportAlgorithms()`.
+			 *          - **аутентификация по RFC 4895** - `auth::key()`,
+			 *            `auth::chunks()`, `auth::algorithms()`.
 			 *
 			 * @note Пространство имён объявлено для Linux, FreeBSD, Solaris и illumos, но
 			 *       **отлажен и работает только под FreeBSD**. У macOS и OpenBSD
@@ -446,10 +446,10 @@ namespace awh {
 			 *       обслуживает сколько угодно событий, а порядок обращения к нему
 			 *       относительно движка не важен.
 			 *
-			 * @note Таймауты `setTimeout()` - это таймеры **самого протокола**
+			 * @note Таймауты `timeout()` - это таймеры **самого протокола**
 			 *       (`INIT`, `DATA`, `SACK`, `SHUTDOWN`, `HEARTBEAT`, `COOKIE`,
 			 *       `SHUTDOWNACK`), а не таймауты события движка. Путать их с
-			 *       `setTimeout()` нельзя: те отсчитывает движок и
+			 *       `timer::timeout()` нельзя: те отсчитывает движок и
 			 *       сообщает о них функциями обратного вызова, эти отсчитывает ядро
 			 *       и действует по ним само
 			 *
@@ -467,7 +467,7 @@ namespace awh {
 			 *     initmsg.inputStreams = 4;
 			 *     awh::engine::sctp::initMessages(client, initmsg);
 			 *     // Продлеваем таймер контрольных сообщений протокола до тридцати секунд
-			 *     awh::engine::sctp::setTimeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
+			 *     awh::engine::sctp::timeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
 			 *     // Подписываемся на метаданные принятых сообщений
 			 *     awh::engine::sctp::on(client, static_cast <awh::engine::callback::sctp::minfo_t> ([](const awh::event::id_t id, const awh::net::sctp::minfo_t & info) noexcept -> void {
 			 *         // Здесь известно, каким потоком ассоциации пришло сообщение
@@ -507,10 +507,10 @@ namespace awh {
 			 *          - **the parameters of an association** — `initMessages()` and `status()`:
 			 *            the number of the streams in each direction, the number of the attempts
 			 *            of the establishment, and the current state of the association;
-			 *          - **the subscription to the events of the protocol** — `eventsSubscribe()`:
+			 *          - **the subscription to the events of the protocol** — `subscription()`:
 			 *            which notifications of the protocol should be delivered to the application code;
-			 *          - **the authentication by RFC 4895** — `authenticateKey()`,
-			 *            `authenticateChunks()`, `authenticateSupportAlgorithms()`.
+			 *          - **the authentication by RFC 4895** — `auth::key()`,
+			 *            `auth::chunks()`, `auth::algorithms()`.
 			 *
 			 * @note The namespace is declared for Linux, FreeBSD, Solaris and illumos, but is
 			 *       **debugged and works only under FreeBSD**. macOS and OpenBSD have
@@ -532,10 +532,10 @@ namespace awh {
 			 *       serves however many events, and the order of addressing it
 			 *       relative to the engine does not matter.
 			 *
-			 * @note The `setTimeout()` timeouts are the timers **of the protocol itself**
+			 * @note The `timeout()` timeouts are the timers **of the protocol itself**
 			 *       (`INIT`, `DATA`, `SACK`, `SHUTDOWN`, `HEARTBEAT`, `COOKIE`,
 			 *       `SHUTDOWNACK`), and not the timeouts of an event of the engine. Confusing them with
-			 *       `setTimeout()` is not allowed: those the engine counts and
+			 *       `timer::timeout()` is not allowed: those the engine counts and
 			 *       reports about them by the callback functions, these the kernel counts
 			 *       and acts by them itself
 			 *
@@ -553,7 +553,7 @@ namespace awh {
 			 *     initmsg.inputStreams = 4;
 			 *     awh::engine::sctp::initMessages(client, initmsg);
 			 *     // Extending the timer of the control messages of the protocol up to thirty seconds
-			 *     awh::engine::sctp::setTimeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
+			 *     awh::engine::sctp::timeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
 			 *     // Subscribing to the metadata of the received messages
 			 *     awh::engine::sctp::on(client, static_cast <awh::engine::callback::sctp::minfo_t> ([](const awh::event::id_t id, const awh::net::sctp::minfo_t & info) noexcept -> void {
 			 *         // Here it is known by which stream of the association the message came
@@ -570,6 +570,114 @@ namespace awh {
 			 * \~
 			 */
 			namespace sctp {
+				/**
+				 * \~russian
+				 * @brief Пространство имён аутентификации SCTP (RFC 4895)
+				 *
+				 * \~english
+				 * @brief Namespace of the SCTP authentication (RFC 4895)
+				 *
+				 * \~
+				 */
+				namespace auth {
+					/**
+					 * \~russian
+					 * @brief Функция установки ключа аутентификации SCTP сокета
+					 *
+					 * @param id  идентификатор события
+					 * @param num номер ключа аутентификации
+					 * @param key ключ аутентификации
+					 * @return    результат работы функции
+					 *
+					 * \~english
+					 * @brief Function of setting the key of the authentication of an SCTP socket
+					 *
+					 * @param id  identifier of the event
+					 * @param num number of the key of the authentication
+					 * @param key key of the authentication
+					 * @return    result of the work of the function
+					 *
+					 * \~
+					 */
+					__AWH_SHARED_EXPORT__ bool key(const event::id_t id, const uint16_t num, string_view key) noexcept;
+					/**
+					 * \~russian
+					 * @brief Функция активации/деактивации ключа аутентификации SCTP сокета
+					 *
+					 * @param id   идентификатор события
+					 * @param mode режим установки действия события
+					 * @param num  номер ключа аутентификации
+					 * @return     результат работы функции
+					 *
+					 * \~english
+					 * @brief Function of the activation/deactivation of the key of the authentication of an SCTP socket
+					 *
+					 * @param id   identifier of the event
+					 * @param mode mode of the setting of the action of the event
+					 * @param num  number of the key of the authentication
+					 * @return     result of the work of the function
+					 *
+					 * \~
+					 */
+					__AWH_SHARED_EXPORT__ bool key(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
+					/**
+					 * \~russian
+					 * @brief Функция установки поддерживаемых алгоритмов аутентификации SCTP сокета
+					 *
+					 * @param id    идентификатор события
+					 * @param types список поддерживаемых алгоритмов аутентификации
+					 * @return      результат работы функции
+					 *
+					 * \~english
+					 * @brief Function of setting the supported algorithms of the authentication of an SCTP socket
+					 *
+					 * @param id    identifier of the event
+					 * @param types list of the supported algorithms of the authentication
+					 * @return      result of the work of the function
+					 *
+					 * \~
+					 */
+					__AWH_SHARED_EXPORT__ bool algorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
+					/**
+					 * \~russian
+					 * @brief Функция установки чанков аутентификации SCTP сокета
+					 *
+					 * @param id     идентификатор события
+					 * @param chunks список чанков подлежащих аутентификации
+					 * @return       результат работы функции
+					 *
+					 * \~english
+					 * @brief Function of setting the chunks of the authentication of an SCTP socket
+					 *
+					 * @param id     identifier of the event
+					 * @param chunks list of the chunks subject to the authentication
+					 * @return       result of the work of the function
+					 *
+					 * \~
+					 */
+					__AWH_SHARED_EXPORT__ bool chunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept;
+					/**
+					 * \~russian
+					 * @brief Функция извлечения чанков аутентификации SCTP сокета
+					 *
+					 * @param id     идентификатор события
+					 * @param origin источник события
+					 * @param chunks список чанков подлежащих аутентификации
+					 * @return       результат работы функции
+					 *
+					 * \~english
+					 * @brief Function of extracting the chunks of the authentication of an SCTP socket
+					 *
+					 * @param id     identifier of the event
+					 * @param origin source of the event
+					 * @param chunks list of the chunks subject to the authentication
+					 * @return       result of the work of the function
+					 *
+					 * \~
+					 */
+					__AWH_SHARED_EXPORT__ bool chunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) noexcept;	
+				};
+
 				/**
 				 * \~russian
 				 * @brief Функция получения числа адресов, уложенных в заявку подключения
@@ -599,6 +707,32 @@ namespace awh {
 				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ uint8_t addresses(const event::id_t id) noexcept;
+				/**
+				 * \~russian
+				 * @brief Функция проверки поддержки отправки сообщения по частям
+				 *
+				 * @details Отправка сообщения по частям требует от системы явного режима
+				 *          границы записи, и есть он не всюду: FreeBSD и Solaris его имеют,
+				 *          Linux не имеет вовсе. Проверять поддержку следует до отправки,
+				 *          а не по отказу.
+				 *
+				 * @param id идентификатор события
+				 * @return   результат проверки поддержки
+				 *
+				 * \~english
+				 * @brief Function of the check of the support of the sending of a message in parts
+				 *
+				 * @details The sending of a message in parts requires from the system an explicit mode
+				 *          of the boundary of a record, and it is not everywhere: FreeBSD and Solaris have it,
+				 *          Linux does not have it at all. Checking the support follows before a sending,
+				 *          and not by a refusal.
+				 *
+				 * @param id identifier of the event
+				 * @return   result of the check of the support
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ bool partialSupported(const event::id_t id) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция получения параметров статуса инициализации SCTP
@@ -678,7 +812,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ const net::sctp::event_types_t & eventsSubscribed(const event::id_t id) noexcept;
+				__AWH_SHARED_EXPORT__ const net::sctp::event_types_t & subscription(const event::id_t id) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция установки опций подписки SCTP событий
@@ -694,7 +828,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ void eventsSubscribe(const event::id_t id, const net::sctp::event_types_t & events) noexcept;
+				__AWH_SHARED_EXPORT__ void subscription(const event::id_t id, const net::sctp::event_types_t & events) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция получения таймаута SCTP события
@@ -712,7 +846,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ uint32_t getTimeout(const event::id_t id, const net::sctp::timeout_t type) noexcept;
+				__AWH_SHARED_EXPORT__ uint32_t timeout(const event::id_t id, const net::sctp::timeout_t type) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция установки таймаута SCTP события
@@ -732,129 +866,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				__AWH_SHARED_EXPORT__ bool setTimeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция установки ключа аутентификации SCTP сокета
-				 *
-				 * @param id  идентификатор события
-				 * @param num номер ключа аутентификации
-				 * @param key ключ аутентификации
-				 * @return    результат работы функции
-				 *
-				 * \~english
-				 * @brief Function of setting the key of the authentication of an SCTP socket
-				 *
-				 * @param id  identifier of the event
-				 * @param num number of the key of the authentication
-				 * @param key key of the authentication
-				 * @return    result of the work of the function
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool authenticateKey(const event::id_t id, const uint16_t num, string_view key) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция активации/деактивации ключа аутентификации SCTP сокета
-				 *
-				 * @param id   идентификатор события
-				 * @param mode режим установки действия события
-				 * @param num  номер ключа аутентификации
-				 * @return     результат работы функции
-				 *
-				 * \~english
-				 * @brief Function of the activation/deactivation of the key of the authentication of an SCTP socket
-				 *
-				 * @param id   identifier of the event
-				 * @param mode mode of the setting of the action of the event
-				 * @param num  number of the key of the authentication
-				 * @return     result of the work of the function
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool authenticateKey(const event::id_t id, const event::mode_t mode, const uint16_t num) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция установки чанков аутентификации SCTP сокета
-				 *
-				 * @param id     идентификатор события
-				 * @param chunks список чанков подлежащих аутентификации
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Function of setting the chunks of the authentication of an SCTP socket
-				 *
-				 * @param id     identifier of the event
-				 * @param chunks list of the chunks subject to the authentication
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция извлечения чанков аутентификации SCTP сокета
-				 *
-				 * @param id     идентификатор события
-				 * @param origin источник события
-				 * @param chunks список чанков подлежащих аутентификации
-				 * @return       результат работы функции
-				 *
-				 * \~english
-				 * @brief Function of extracting the chunks of the authentication of an SCTP socket
-				 *
-				 * @param id     identifier of the event
-				 * @param origin source of the event
-				 * @param chunks list of the chunks subject to the authentication
-				 * @return       result of the work of the function
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция установки поддерживаемых алгоритмов аутентификации SCTP сокета
-				 *
-				 * @param id    идентификатор события
-				 * @param types список поддерживаемых алгоритмов аутентификации
-				 * @return      результат работы функции
-				 *
-				 * \~english
-				 * @brief Function of setting the supported algorithms of the authentication of an SCTP socket
-				 *
-				 * @param id    identifier of the event
-				 * @param types list of the supported algorithms of the authentication
-				 * @return      result of the work of the function
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
-				/**
-				 * \~russian
-				 * @brief Функция проверки поддержки отправки сообщения по частям
-				 *
-				 * @details Отправка сообщения по частям требует от системы явного режима
-				 *          границы записи, и есть он не всюду: FreeBSD и Solaris его имеют,
-				 *          Linux не имеет вовсе. Проверять поддержку следует до отправки,
-				 *          а не по отказу.
-				 *
-				 * @param id идентификатор события
-				 * @return   результат проверки поддержки
-				 *
-				 * \~english
-				 * @brief Function of the check of the support of the sending of a message in parts
-				 *
-				 * @details The sending of a message in parts requires from the system an explicit mode
-				 *          of the boundary of a record, and it is not everywhere: FreeBSD and Solaris have it,
-				 *          Linux does not have it at all. Checking the support follows before a sending,
-				 *          and not by a refusal.
-				 *
-				 * @param id identifier of the event
-				 * @return   result of the check of the support
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ bool partialSupported(const event::id_t id) noexcept;
+				__AWH_SHARED_EXPORT__ bool timeout(const event::id_t id, const net::sctp::timeout_t type, const uint32_t timeout) noexcept;
 				/**
 				 * \~russian
 				 * @brief Функция отправки сообщения SCTP вместе с метаданными
