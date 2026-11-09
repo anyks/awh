@@ -87,6 +87,44 @@ $ ./certs.sh example.com
 $ ./build_third_party.sh --idn
 ```
 
+### Crypto module (A-NTS)
+
+TLS, DTLS and the hash/cipher helpers are provided by [A-NTS](https://anyks.com/nts). OpenSSL is
+not a build dependency; the only place it is still called is `certs/certs.sh`, which uses the
+system `openssl` as a tool to generate the sample certificates.
+
+`build_third_party.sh` builds A-NTS from the `main` branch of its submodule, so the build takes
+the library as it stands today. An already built copy is skipped by the stamp
+`submodules/a-nts/.stamp_done` — remove it to build the library again:
+
+```bash
+$ rm -f ./submodules/a-nts/.stamp_done
+$ ./build_third_party.sh --idn
+```
+
+The build log names the commit it used (`A-NTS commit: ...`).
+
+#### Trusted certificates
+
+`SSL_CA_FILE` (`include/sys/lib.hpp`) is the compile-time default of the CA file; the application
+overrides it with `node_t::ssl_t::ca` and `capath`. When the given file is not found, the engine
+walks the locations of the system itself: `/etc/ssl/certs/ca-certificates.crt` (Debian, Ubuntu,
+Astra, Alpine, Fedora, OpenWrt), `/etc/pki/tls/certs/ca-bundle.crt` (Red Hat, ALT),
+`/etc/ssl/ca-bundle.pem` (openSUSE), `/etc/ssl/cert.pem` (macOS, the BSD family),
+`/usr/local/share/certs/ca-root-nss.crt` (the ports tree). Where the trust is held as a directory
+of separate records rather than one bundle — NetBSD (`/etc/openssl/certs`), Solaris and illumos
+(`/etc/certs/CA`), and `/etc/ssl/certs` elsewhere — the directory is walked. On Windows the trust
+is taken from the system store (`CA`, `AuthRoot`, `ROOT`), and no bundle file is used.
+
+#### Revocation (CRL)
+
+`node_t::ssl_t::crl` is a PEM file that may hold both revocation lists and certificates; both are
+taken from it. Giving any list turns the revocation check on for the **whole** chain: every
+issuer of the chain needs a list of its own, otherwise the check fails with `MISSING`. The
+failure codes are printed with a readable reason: 15 `REVOKED`, 16 `MISSING`, 17 `OUTDATED`
+(the moment of the check is past `nextUpdate`), 18 `FORGED` (the list signature does not match
+the issuer key). A store without lists does not check revocation at all.
+
 ### Build on MacOS X, Linux, FreeBSD or Solaris
 
 ```bash

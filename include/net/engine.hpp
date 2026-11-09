@@ -319,11 +319,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 sock(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
-					 _async(false), _encrypted(false), status(status_t::DISCONNECTED),
-					 port(0), ip{""}, mac{""}, _fs(fmk, log), _ifnet(fmk, log),
-					 _socket(fmk, log), _fmk(fmk), _log(log) {}
+					explicit Address(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -350,7 +346,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Cert() noexcept :
+				explicit Cert() noexcept :
 				 ca{SSL_CA_FILE}, crl{""},
 				 key{""}, pem{""}, path{""} {}
 			} cert_t;
@@ -360,6 +356,12 @@ namespace awh {
 			 *
 			 */
 			typedef class AWH_SHARED_EXPORT Context {
+				private:
+					/**
+					 * @brief Класс внутреннего состояния связи
+					 *
+					 */
+					class Tls;
 				private:
 					/**
 					 * @brief Устанавливаем дружбу с родительским объектом двигателя
@@ -378,19 +380,16 @@ namespace awh {
 					// Протокол подключения
 					proto_t _proto;
 				private:
-					/**
-					 * @brief Класс внутреннего состояния связи
-					 *
-					 */
-					class Tls;
-				private:
 					// Состояние связи внешнего модуля шифрования (реализация — в src/net/engine.cpp)
 					std::unique_ptr <Tls> _tls;
-					// Объект подключения
-					addr_t * _addr;
+					// Первая дейтаграмма, принятая слушающим сокетом: её подаёт связи насос после заведения
+					vector <uint8_t> _greeting;
 				public:
 					// Список поддерживаемых протоколов
 					vector <uint8_t> protocols;
+				private:
+					// Объект подключения
+					addr_t * _addr;
 				private:
 					// Объект фреймворка
 					const fmk_t * _fmk;
@@ -398,42 +397,11 @@ namespace awh {
 					const log_t * _log;
 				private:
 					/**
-					 * @brief Метод вывода информации об ошибке
+					 * @brief Метод извлечения прочитанных связью байтов в буфер чтения
 					 *
-					 * @param status статус ошибки
-					 * @return       результат работы фукнции
 					 */
-					int32_t error(const int32_t status) const noexcept;
+					void drain() noexcept;
 				private:
-					/**
-					 * @brief Метод проверки временной ошибки отправки датаграммы
-					 *
-					 * @return результат проверки (true - отправку нужно повторить позже)
-					 */
-					bool retry() const noexcept;
-				private:
-					/**
-					 * @brief Метод проверки пройденности рукопожатия обеими сторонами
-					 *
-					 * @return результат проверки
-					 *
-					 */
-					bool established() const noexcept;
-					/**
-					 * @brief Метод проверки наличия байтов, которые связь должна отправить
-					 *
-					 * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
-					 *
-					 */
-					bool pending() const noexcept;
-					/**
-					 * @brief Метод перекачки байтов связи одним шагом
-					 *
-					 * @param want флаг, что прикладные данные нужны сейчас
-					 * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
-					 *
-					 */
-					int32_t pump(const bool want) noexcept;
 					/**
 					 * @brief Метод отправки накопленных связи байтов в сокет
 					 *
@@ -442,6 +410,28 @@ namespace awh {
 					 */
 					bool flush() noexcept;
 					/**
+					 * @brief Метод проверки временной ошибки отправки датаграммы
+					 *
+					 * @return результат проверки (true - отправку нужно повторить позже)
+					 */
+					bool retry() const noexcept;
+				private:
+					/**
+					 * @brief Метод проверки наличия байтов, которые связь должна отправить
+					 *
+					 * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+					 *
+					 */
+					bool pending() const noexcept;
+					/**
+					 * @brief Метод проверки пройденности рукопожатия обеими сторонами
+					 *
+					 * @return результат проверки
+					 *
+					 */
+					bool established() const noexcept;
+				private:
+					/**
 					 * @brief Метод приёма байтов из сокета и подачи их связи
 					 *
 					 * @return количество принятых байт, 0 - собеседник закрылся, -1 - данных нет, -2 - связь отвергла байты
@@ -449,22 +439,39 @@ namespace awh {
 					 */
 					int64_t feed() noexcept;
 					/**
-					 * @brief Метод извлечения прочитанных связью байтов в буфер чтения
+					 * @brief Метод перекачки байтов связи одним шагом
+					 *
+					 * @param want флаг, что прикладные данные нужны сейчас
+					 * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
 					 *
 					 */
-					void drain() noexcept;
+					int32_t pump(const bool want) noexcept;
+				private:
+					/**
+					 * @brief Метод вывода информации об ошибке
+					 *
+					 * @param status статус ошибки
+					 * @return       результат работы фукнции
+					 */
+					int32_t error(const int32_t status) const noexcept;
 				public:
 					/**
 					 * @brief Метод очистки контекста
 					 *
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * @brief Метод вывода информации о сертификате
 					 *
 					 */
 					void info() const noexcept;
+				public:
+					/**
+					 * @brief Метод выполнения шага рукопожатия без передачи данных
+					 *
+					 * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+					 */
+					int32_t negotiate() noexcept;
 				public:
 					/**
 					 * @brief Метод чтения данных из сокета
@@ -484,24 +491,17 @@ namespace awh {
 					int64_t write(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
-					 * @brief Метод выполнения шага рукопожатия без передачи данных
+					 * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
 					 *
-					 * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+					 * @return результат работы функции (false - рукопожатие не удалось)
 					 */
-					int32_t negotiate() noexcept;
-				public:
+					bool retransmit() noexcept;
 					/**
 					 * @brief Метод получения времени до перепосылки рукопожатия DTLS
 					 *
 					 * @return время в миллисекундах до срабатывания таймера DTLS (0 - таймер не запущен)
 					 */
 					uint32_t retransmission() const noexcept;
-					/**
-					 * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
-					 *
-					 * @return результат работы функции (false - рукопожатие не удалось)
-					 */
-					bool retransmit() noexcept;
 				public:
 					/**
 					 * @brief Метод проверки на то, является ли сокет заблокированным
@@ -600,7 +600,7 @@ namespace awh {
 					 * @note Реализация в src/net/engine.cpp: состояние связи описано там же,
 					 *       и разрушитель unique_ptr требует, чтобы тип был полным
 					 */
-					Context(const fmk_t * fmk, const log_t * log) noexcept;
+					explicit Context(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -649,13 +649,10 @@ namespace awh {
 			const uri_t * _uri;
 		private:
 			/**
-			 * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
+			 * @brief Метод прогрева запаса подготовленных подлинностей по зарегистрированным именам
 			 *
-			 * @param host  доменное имя
-			 * @param chain цепочка сертификатов собеседника записями DER
-			 * @return      результат проверки
 			 */
-			validate_t validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept;
+			void warm() noexcept;
 		private:
 			/**
 			 * @brief Метод инициализации запаса доверенных сертификатов
@@ -665,24 +662,25 @@ namespace awh {
 			 */
 			bool storeCA(ctx_t & target) const noexcept;
 			/**
+			 * @brief Метод инициализации запаса списков отзыва сертификатов
+			 *
+			 * @param target контекст назначения
+			 * @return       результат инициализации
+			 *
+			 */
+			bool storeCRL(ctx_t & target) const noexcept;
+			/**
 			 * @brief Метод установки подлинности стороны связи по файлам сертификатов
 			 *
-			 * Подготовленный ключ хранится в запасе движка: подготовка ключа RSA стоит
-			 * вдвое дороже самой подписи, и повторять её на каждое подключение нельзя
+			 * @details Подготовленный ключ хранится в запасе движка: подготовка ключа RSA стоит
+			 *          вдвое дороже самой подписи, и повторять её на каждое подключение нельзя.
 			 *
 			 * @param target контекст назначения
 			 * @param cert   адреса файлов сертификатов
 			 * @return       результат установки
+			 *
 			 */
 			bool credential(ctx_t & target, const cert_t & cert) noexcept;
-			/**
-			 * @brief Метод выбора подлинности сервера по имени, запрошенному клиентом (SNI)
-			 *
-			 * @param target контекст назначения
-			 * @param name   имя, предъявленное клиентом
-			 * @return       результат выбора
-			 */
-			bool sniSelect(ctx_t & target, const string & name) noexcept;
 			/**
 			 * @brief Метод заведения связи наружного модуля шифрования
 			 *
@@ -692,6 +690,15 @@ namespace awh {
 			 * @return       результат заведения связи
 			 */
 			bool wrapTLS(ctx_t & target, const type_t type, const string & host) noexcept;
+		private:
+			/**
+			 * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
+			 *
+			 * @param host  доменное имя
+			 * @param chain цепочка сертификатов собеседника записями DER
+			 * @return      результат проверки
+			 */
+			validate_t validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept;
 		public:
 			/**
 			 * @brief Метод ожидания рукопожатия
@@ -844,7 +851,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			explicit Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

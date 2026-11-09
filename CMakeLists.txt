@@ -95,12 +95,28 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     message(STATUS "Detected OS: Solaris v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
+    # Различаем линковщик по факту, а не по названию системы: Solaris 11.4 принимает
+    # --no-as-needed, а линковщик illumos (OpenIndiana Hipster 2026.04) отказывает
+    # "ld: fatal: unrecognized option '--no-as-needed'" на сборке сэмплов ip, ntp, ping и dns.
+    # Снято прогоном обеих ног 08.11.2026. Без --no-as-needed на illumos можно: его линковщик
+    # не выбрасывает библиотеки по умолчанию, поэтому -ldl остаётся в зависимостях и так.
+    # Меряем СБИРАЕМОСТЬ С ПОСЛЕДУЮЩЕЙ ЛИНКОВКОЙ: check_cxx_compiler_flag на Hipster ответил
+    # "Success" при отвергнутом линкером флаге (он не линкует), поэтому он как различитель
+    # не годится. Имя переменной новое сознательно: прежнее значение уже легло в кэш сборки.
+    INCLUDE(CheckCXXSourceCompiles)
+    SET(CMAKE_REQUIRED_LINK_OPTIONS "-Wl,--no-as-needed")
+    CHECK_CXX_SOURCE_COMPILES("int main(void){return 0;}" AWH_LINKER_NO_AS_NEEDED)
+    UNSET(CMAKE_REQUIRED_LINK_OPTIONS)
      # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
      # Используем GCC
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+        if (AWH_LINKER_NO_AS_NEEDED)
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -ldl")
+        else()
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl")
+        endif()
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)

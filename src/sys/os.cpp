@@ -28,10 +28,20 @@
 #elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
 	 * Стандартные модули
+	 *
+	 * @note Заголовка <sys/user.h> у NetBSD нет вовсе: сведения о процессе описаны
+	 *       там в заголовке настроек ядра, откуда и берутся. У FreeBSD и OpenBSD он
+	 *       есть, и подключается по-прежнему
+	 *
 	 */
 	#define _WANT_KINFO_PROC
 	#include <sys/param.h>
-	#include <sys/user.h>
+	/**
+	 * Если операционной системой не является NetBSD
+	 */
+	#if !__NetBSD__
+		#include <sys/user.h>
+	#endif
 #endif
 
 /**
@@ -593,17 +603,60 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 					// Выполняем извлечение размера пика потребляемой памяти
 					return static_cast <size_t> (info.resident_size);
 				/**
-				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
+				 * Для операционной системы FreeBSD, NetBSD и OpenBSD
+				 *
+				 * @note Сведения о процессе описаны у каждой системы своей структурой, и
+				 *       запрашиваются они по-разному. У FreeBSD запрос состоит из четырёх
+				 *       частей и отдаёт структуру kinfo_proc, где занятая память лежит в
+				 *       поле ki_rssize. У NetBSD и OpenBSD запрос состоит из шести: к
+				 *       отбору добавлены размер одной записи и их количество, - а поле
+				 *       зовётся p_vm_rssize. NetBSD вдобавок отдаёт структуру иную,
+				 *       kinfo_proc2: прежняя у него тоже есть, но заполняется не полностью
+				 *
+				 * @note Единица измерения у всех одна - страницы памяти, - поэтому перевод
+				 *       в октеты общий для всех трёх
+				 *
 				 */
 				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-					// Создаём объект информации о памяти
-					struct kinfo_proc info;
-					// Получаем размер объекта информации
-					size_t size = sizeof(info);
-					// Устанавливаем флаги для необходимых нам процессов
-					int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+					/**
+					 * Если операционной системой является NetBSD
+					 */
+					#if __NetBSD__
+						// Создаём объект информации о памяти
+						struct kinfo_proc2 info;
+						// Получаем размер объекта информации
+						size_t size = sizeof(info);
+						// Устанавливаем флаги для необходимых нам процессов
+						int32_t mib[] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+						// Количество частей запроса сведений о процессе
+						static constexpr u_int MIB_SIZE = 6;
+					/**
+					 * Для операционной системы OpenBSD
+					 */
+					#elif __OpenBSD__
+						// Создаём объект информации о памяти
+						struct kinfo_proc info;
+						// Получаем размер объекта информации
+						size_t size = sizeof(info);
+						// Устанавливаем флаги для необходимых нам процессов
+						int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+						// Количество частей запроса сведений о процессе
+						static constexpr u_int MIB_SIZE = 6;
+					/**
+					 * Для остальных систем семейства BSD
+					 */
+					#else
+						// Создаём объект информации о памяти
+						struct kinfo_proc info;
+						// Получаем размер объекта информации
+						size_t size = sizeof(info);
+						// Устанавливаем флаги для необходимых нам процессов
+						int32_t mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+						// Количество частей запроса сведений о процессе
+						static constexpr u_int MIB_SIZE = 4;
+					#endif
 					// Выполняем извлечение данных о потреблении памяти
-					if(::sysctl(mib, 4, &info, &size, nullptr, 0) != 0){
+					if(::sysctl(mib, MIB_SIZE, &info, &size, nullptr, 0) != 0){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -620,8 +673,19 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 						// Выводим пустой результат
 						return result;
 					}
-					// RSS в страницах; переводим в байты
-					return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+					/**
+					 * RSS в страницах; переводим в байты
+					 */
+					#if __NetBSD__ || __OpenBSD__
+						// Возвращаем потребление памяти в байтах
+						return (static_cast <size_t> (info.p_vm_rssize) * ::getpagesize());
+					/**
+					 * Для остальных систем
+					 */
+					#else
+						// Возвращаем потребление памяти в байтах
+						return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
+					#endif
 				/**
 				 * Для операционной системы Linux
 				 */

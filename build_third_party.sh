@@ -153,8 +153,8 @@ if [ $OS = "Darwin" ]; then
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(nproc)
-# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+# Если сборка производится в операционной системе FreeBSD, DragonFly, NetBSD или OpenBSD
+elif [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(sysctl -n hw.ncpu)
 # Если операционная система не определена
@@ -187,8 +187,8 @@ else
 	exit 1
 fi
 
-# Если сборка производится в операционной системе FreeBSD, NetBSD, OpenBSD или Solaris
-if [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ] || [ $OS = "SunOS" ]; then
+# Если сборка производится в операционной системе FreeBSD, DragonFly, NetBSD, OpenBSD или Solaris
+if [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем сборщик
 	MAKE="gmake"
 # Если сборка производится в другой операционной системе
@@ -255,21 +255,33 @@ src="$ROOT/submodules/a-nts"
 if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** A-NTS ******\n"
 	cd "$src" || exit 1
-	# Версия A-NTS задаётся записью подмодуля в суперпроекте, а не этим скриптом.
-	# Переключение на head ветви main здесь убрано намеренно: релизная сборка обязана
-	# собираться по закреплённому коммиту, а не по тому, что появилось в наружном
-	# проекте к этому часу. Тегами версия не берётся — она объявлена в самой
-	# библиотеке, в project(nts VERSION ...)
-	recorded=$(git -C "$ROOT" ls-files -s submodules/a-nts | awk '{print $2}')
-	current=$(git rev-parse HEAD)
-	echo "A-NTS commit: $current (закреплён $recorded)"
-	# Расхождение подмодуля и записи суперпроекта — отказ, а не молчаливая сборка
-	# с чужого кода: такая сборка выглядит успешной и при этом не воспроизводится
-	# по коммиту
-	if [ -n "$recorded" ] && [ "$recorded" != "$current" ]; then
-		echo "A-NTS: подмодуль стоит не на закреплённом коммите — выполните git submodule update"
-		exit 1
-	fi
+
+	# Версия A-NTS
+	# VER="1.0.0"
+
+	# A-NTS доводится под требования AWH v4 прямо сейчас, поэтому сборка берёт свежий
+	# main, а не коммит, записанный в суперпроекте: иначе правки наружной библиотеки
+	# (наборы TLS 1.2, base64, хвосты по договорам) не попадали бы в сборку, пока
+	# кто-нибудь не сдвинет указатель. Запись подмодуля при этом остаётся просто
+	# отметкой о том, на чём последний раз принимали, — вести сборку по ней не нужно
+	# Выполняем удаление предыдущей закаченной версии
+	#git tag -d nts-${VER}
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на main
+	git reset --hard origin/main
+	# Переключаемся на main
+	git checkout main
+	# Выполняем обновление данных
+	git pull origin main
+	# Удаляем старую ветку
+	#git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	#git checkout -b v${VER}-branch nts-${VER}
+	# Печатаем коммит, с которого реально собрали: по нему сверяют приёмку
+	echo "A-NTS commit: $(git rev-parse HEAD)"
 
 	# Создаём каталог сборки
 	mkdir -p "build" || exit 1
@@ -1479,6 +1491,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 	git branch -D gperftools-v${VER}-branch
 	# Выполняем переключение на указанную версию
 	git checkout -b gperftools-v${VER}-branch gperftools-${VER}
+
+	# Если сборка производится в операционной системе DragonFly или Solaris/illumos
+	if [[ $OS = "DragonFly" ]] || [[ $OS = "SunOS" ]]; then
+		# Применяем патч: на DragonFly системный malloc_np.h объявляет
+		# malloc_usable_size(const void*), а gperftools — (void*), и сборка встаёт на
+		# конфликтующем объявлении; на illumos константы регистра живут в sys/regset.h,
+		# который его ucontext.h не подключает, и все платформенные specialization ядра
+		# getpc выключаются, от чего цепочка наследования кончается без члена Get
+		apply_patch "gperftools" "gperftools.patch"
+	fi
 
 	# Создаём каталог сборки
 	mkdir -p "build_awh" || exit 1

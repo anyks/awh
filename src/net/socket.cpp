@@ -203,16 +203,23 @@ bool awh::Socket::reuseable(const SOCKET sock) const noexcept {
 		 * Если операционная система не является Linux
 		 */
 		#if !__linux__
-			// Разрешаем повторно использовать тот же host:port после отключения
-			if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on))))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим в лог информацию
-					this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
-				#endif
-			}
+			/**
+			 * Если система объявляет опцию повторного использования порта: Solaris 11.4 её
+			 * имеет, а illumos-сборка OpenIndiana Hipster 2026.04 — нет. Обе считаются
+			 * __sun__, поэтому гасить опцию по признаку платформы нельзя
+			 */
+			#ifdef SO_REUSEPORT
+				// Разрешаем повторно использовать тот же host:port после отключения
+				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим в лог информацию
+						this->_log->print("Cannot set SO_REUSEPORT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+					#endif
+				}
+			#endif
 		#endif
 	#endif
 	// Выводим результат

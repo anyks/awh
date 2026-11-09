@@ -42,14 +42,6 @@
  */
 #define AWH_ENGINE_DATAGRAM_SIZE 0x10000
 /**
- * @brief Устанавливаем наибольший размер накопленного приветствия в 65536 байт
- *
- * @note Приветствие клиента с накопленным запасом сертификатов на порядок меньше, а
- *       за этим пределом ждать продолжения нечего: байты подаём связи как есть
- *
- */
-#define AWH_ENGINE_HELLO_LIMIT 0x10000
-/**
  * @brief Устанавливаем наибольшее число приёмов канала за один шаг перекачки в 64
  *
  * @note Событие чтения краевое (EV_CLEAR), поэтому шаг обязан выбрать весь пришедший
@@ -112,7 +104,7 @@ static constexpr size_t MESSAGE_HEADER_SIZE = 4;
 /**
  * @brief Функция получения названия набора шифрования для журнала
  *
- * Названия приводятся к виду OpenSSL, чтобы журналы прежних и нынешних сборок читались одинаково
+ * @details Названия приводятся к виду OpenSSL, чтобы журналы прежних и нынешних сборок читались одинаково.
  *
  * @param suite согласованный набор шифрования
  * @return        название набора
@@ -140,6 +132,11 @@ static const char * suiteName(const nts::protect::suite_t suite) noexcept {
 		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA):        result = "ECDHE-ECDSA-AES256-CBC-SHA";      break;
 		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA):          result = "ECDHE-RSA-AES128-CBC-SHA";         break;
 		case static_cast <uint16_t> (nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA):          result = "ECDHE-RSA-AES256-CBC-SHA";         break;
+		case static_cast <uint16_t> (nts::protect::suite_t::DHE_RSA_AES_128_GCM_SHA256):         result = "DHE-RSA-AES128-GCM-SHA256";        break;
+		case static_cast <uint16_t> (nts::protect::suite_t::DHE_RSA_AES_256_GCM_SHA384):         result = "DHE-RSA-AES256-GCM-SHA384";        break;
+		case static_cast <uint16_t> (nts::protect::suite_t::DHE_RSA_CHACHA20_POLY1305_SHA256):   result = "DHE-RSA-CHACHA20-POLY1305";        break;
+		case static_cast <uint16_t> (nts::protect::suite_t::DHE_RSA_AES_128_CBC_SHA):            result = "DHE-RSA-AES128-SHA";               break;
+		case static_cast <uint16_t> (nts::protect::suite_t::DHE_RSA_AES_256_CBC_SHA):            result = "DHE-RSA-AES256-SHA";               break;
 		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_128_GCM_SHA256):             result = "AES128-GCM-SHA256";                break;
 		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_256_GCM_SHA384):             result = "AES256-GCM-SHA384";                break;
 		case static_cast <uint16_t> (nts::protect::suite_t::RSA_AES_128_CBC_SHA):                result = "AES128-SHA";                       break;
@@ -159,13 +156,13 @@ static const char * suiteName(const nts::protect::suite_t suite) noexcept {
 /**
  * @brief Функция получения короткого обозначения признака отличительного имени
  *
- * A-NTS ведёт набор обозначений строго по разделу 3 RFC 4514 и расширять его не стала:
- * признаки вне набора библиотека выводит опознавателем, отчего запись владельца
- * сертификата в сводке рукопожатия читалась как «2.5.4.15=Private Organization,
- * 1.3.6.1.4.1.311.60.2.1.2=California». Прежний OpenSSL брал обозначения из своей таблицы,
- * и сводка была читаемой. Перечень собран на стороне AWH тем же написанием, каким его
- * отдавал OpenSSL: каждая строка снята сличением одной и той же записи на двух движках
- * 07.11.2026 (стенд nts-engine-probe/run-x509-view.sh)
+ * @details A-NTS ведёт набор обозначений строго по разделу 3 RFC 4514 и расширять его не стала:
+ *          признаки вне набора библиотека выводит опознавателем, отчего запись владельца
+ *          сертификата в сводке рукопожатия читалась как «2.5.4.15=Private Organization,
+ *          1.3.6.1.4.1.311.60.2.1.2=California». Прежний OpenSSL брал обозначения из своей таблицы,
+ *          и сводка была читаемой. Перечень собран на стороне AWH тем же написанием, каким его
+ *          отдавал OpenSSL: каждая строка снята сличением одной и той же записи на двух движках
+ *          (стенд nts-engine-probe/run-x509-view.sh).
  *
  * @param oid    опознаватель признака имени точечной записью
  * @param result место, в которое помещается обозначение признака
@@ -220,8 +217,8 @@ static bool attributeName(const string & oid, string & result) noexcept {
 /**
  * @brief Функция сборки человекочитаемой записи отличительного имени
  *
- * Порядок составляющих сохраняется тот, что в сертификате, а значение, несущее разделитель
- * или знак равенства, берётся в кавычки: без этого сводка читалась бы двусмысленно
+ * @details Порядок составляющих сохраняется тот, что в сертификате, а значение, несущее разделитель
+ *          или знак равенства, берётся в кавычки: без этого сводка читалась бы двусмысленно.
  *
  * @param name   разбираемое имя владельца либо эмитента
  * @param result место, в которое помещается собранная запись
@@ -247,13 +244,13 @@ static void nameText(const nts::x509::name_t & name, string & result) noexcept {
 			// Отделяем следующий признак от уже собранного
 			if(!result.empty())
 				// Добавляем разделитель признаков
-				result += ",";
+				result.append(1, '/');
 			// Добавляем обозначение признака и знак равенства
-			result += sign + "=";
+			result.append(sign + "=");
 			// Если значение несёт разделитель или знак равенства, его берут в кавычки
 			if(item.value.find_first_of(",=\"") != string::npos){
 				// Добавляем открывающую кавычку
-				result += "\"";
+				result.append(1, '\"');
 				/**
 				 * Переход по значения признака с экранированием кавычек
 				 */
@@ -261,25 +258,25 @@ static void nameText(const nts::x509::name_t & name, string & result) noexcept {
 					// Если знак — кавычка, удваиваем её
 					if(symbol == '"')
 						// Добавляем первую из пары кавычек
-						result += "\"";
+						result.append(1, '\"');
 					// Добавляем очередной знак значения
-					result += symbol;
+					result.append(symbol);
 				}
 				// Добавляем закрывающую кавычку
-				result += "\"";
+				result.append(1, '\"');
 			// Простое значение добавляется как есть
-			} else result += item.value;
+			} else result.append(item.value);
 		}
 	}
 }
 /**
  * @brief Функция разбора названия набора шифрования из списка настроек
  *
- * Принимаются и названия OpenSSL («ECDHE-RSA-AES256-GCM-SHA384»), и правила IANA
- * («TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384»), и шестнадцатеричный код («0xC030»). Названия CBC-
- * наборов ведутся двумя написаниями: OpenSSL понимает только каноническое
- * («ECDHE-RSA-AES128-SHA256»), а список настроек прежних сборок держал написание через «CBC»
- * («ECDHE-RSA-AES128-CBC-SHA256») — без обоих строк из конфигурации набор терялся молча
+ * @details Принимаются и названия OpenSSL («ECDHE-RSA-AES256-GCM-SHA384»), и правила IANA
+ *          («TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384»), и шестнадцатеричный код («0xC030»). Названия CBC-
+ *          наборов ведутся двумя написаниями: OpenSSL понимает только каноническое
+ *          («ECDHE-RSA-AES128-SHA256»), а список настроек прежних сборок держал написание через «CBC»
+ *          («ECDHE-RSA-AES128-CBC-SHA256») — без обоих строк из конфигурации набор терялся молча.
  *
  * @param name  название набора шифрования
  * @param suite место, в которое помещается разобранный набор
@@ -307,6 +304,11 @@ static bool suiteByName(const string & name, nts::protect::suite_t & suite) noex
 		{"ECDHE-ECDSA-AES256-SHA",          nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA},
 		{"ECDHE-RSA-AES128-SHA",            nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA},
 		{"ECDHE-RSA-AES256-SHA",            nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA},
+		{"DHE-RSA-AES128-GCM-SHA256",       nts::protect::suite_t::DHE_RSA_AES_128_GCM_SHA256},
+		{"DHE-RSA-AES256-GCM-SHA384",       nts::protect::suite_t::DHE_RSA_AES_256_GCM_SHA384},
+		{"DHE-RSA-CHACHA20-POLY1305",       nts::protect::suite_t::DHE_RSA_CHACHA20_POLY1305_SHA256},
+		{"DHE-RSA-AES128-SHA",              nts::protect::suite_t::DHE_RSA_AES_128_CBC_SHA},
+		{"DHE-RSA-AES256-SHA",              nts::protect::suite_t::DHE_RSA_AES_256_CBC_SHA},
 		{"AES128-GCM-SHA256",               nts::protect::suite_t::RSA_AES_128_GCM_SHA256},
 		{"AES256-GCM-SHA384",               nts::protect::suite_t::RSA_AES_256_GCM_SHA384},
 		{"AES128-SHA",                      nts::protect::suite_t::RSA_AES_128_CBC_SHA},
@@ -328,6 +330,11 @@ static bool suiteByName(const string & name, nts::protect::suite_t & suite) noex
 		{"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA", nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA},
 		{"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA},
 		{"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA", nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA},
+		{"TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", nts::protect::suite_t::DHE_RSA_AES_128_GCM_SHA256},
+		{"TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", nts::protect::suite_t::DHE_RSA_AES_256_GCM_SHA384},
+		{"TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256", nts::protect::suite_t::DHE_RSA_CHACHA20_POLY1305_SHA256},
+		{"TLS_DHE_RSA_WITH_AES_128_CBC_SHA", nts::protect::suite_t::DHE_RSA_AES_128_CBC_SHA},
+		{"TLS_DHE_RSA_WITH_AES_256_CBC_SHA", nts::protect::suite_t::DHE_RSA_AES_256_CBC_SHA},
 	};
 	// Разбираемое название в верхнем регистре
 	string upper = name;
@@ -362,8 +369,8 @@ static bool suiteByName(const string & name, nts::protect::suite_t & suite) noex
 /**
  * @brief Функция разбора перечня прикладных протоколов из проволочного вида
  *
- * Прошлый вид перечня оставлен публичным свойством Context::protocols: каждый протокол идёт
- * своим длиной и байтами. Для наружного модуля нужен перечень строк
+ * @details Прошлый вид перечня оставлен публичным свойством Context::protocols: каждый протокол идёт
+ *          своим длиной и байтами. Для наружного модуля нужен перечень строк.
  *
  * @param wire   перечень протоколов проволочным видом
  * @param result место, в которое помещается разобранный перечень
@@ -411,13 +418,13 @@ static size_t ipLiteral(const string & host) noexcept {
 /**
  * @brief Функция установки серверных наборов шифрования по умолчанию
  *
- * Набор Mozilla «intermediate»: только ECDHE с AEAD. Прежний список держал ещё и DHE-RSA,
- * но наборов TLS 1.2 с простым DHE у наружного модуля нет — механика конечного поля ffdhe
- * работает лишь как key_share издания 1.3
+ * @details Набор Mozilla «intermediate»: только ECDHE с AEAD. Прежний список держал ещё и DHE-RSA,
+ *          но наборов TLS 1.2 с простым DHE у наружного модуля нет — механика конечного поля ffdhe
+ *          работает лишь как key_share издания 1.3.
  *
- * Наборы издания 1.3 ставят первыми: перечень отдаётся от предпочтительного к запасному,
- * и без них сервер, отвечая на modern-приветствие, выбрал бы издание 1.2, тогда как
- * прежний OpenSSL держал 1.3 по умолчанию
+ * @details Наборы издания 1.3 ставят первыми: перечень отдаётся от предпочтительного к запасному,
+ *          и без них сервер, отвечая на modern-приветствие, выбрал бы издание 1.2, тогда как
+ *          прежний OpenSSL держал 1.3 по умолчанию.
  *
  * @param result место, в которое помещается перечень наборов
  *
@@ -440,9 +447,9 @@ static void serverSuites(vector <nts::protect::suite_t> & result) noexcept {
 /**
  * @brief Функция разбора перечня наборов шифрования из строки настроек
  *
- * Прежний `SSL_CTX_set_cipher_list()` касался только TLS 1.2, наборы TLS 1.3 задавала сама
- * библиотека. Чтобы настройка не молча отрезала издание 1.3, наборы TLS 1.3 дополняем, если
- * в списке не назван ни один из них
+ * @details Прежний `SSL_CTX_set_cipher_list()` касался только TLS 1.2, наборы TLS 1.3 задавала сама
+ *          библиотека. Чтобы настройка не молча отрезала издание 1.3, наборы TLS 1.3 дополняем, если
+ *          в списке не назван ни один из них.
  *
  * @param ciphers строка настроек списка алгоритмов шифрования
  * @param result  место, в которое помещается разобранный перечень наборов
@@ -502,8 +509,11 @@ static void suitesList(const string & ciphers, vector <nts::protect::suite_t> & 
 /**
  * @brief Функция получения перечня групп обмена ключами по умолчанию
  *
- * X25519 предлагают все современные клиенты, без неё рукопожатие шло только на P-256.
- * Гибридная постквантовая группа X25519MLKEM768 идёт первой, как это делал OpenSSL 3.5
+ * @details X25519 предлагают все современные клиенты, без неё рукопожатие шло только на P-256.
+ *          Гибридная постквантовая группа X25519MLKEM768 идёт первой, как это делал OpenSSL 3.5.
+ *          Конечные поля ffdhe2048 и ffdhe3072 идут последними: они нужны наборам DHE издания 1.2,
+ *          а сервер при приветствии без supported_groups берёт группу своим порядком (раздел 4
+ *          RFC 7919) — без конечного поля в перечне набор DHE не согласуется вовсе.
  *
  * @param result место, в которое помещается перечень групп
  *
@@ -515,102 +525,468 @@ static void groupList(vector <nts::extension::group_t> & result) noexcept {
 		nts::extension::group_t::X25519,
 		nts::extension::group_t::SECP256R1,
 		nts::extension::group_t::SECP384R1,
+		nts::extension::group_t::SECP521R1,
+		nts::extension::group_t::FFDHE2048,
+		nts::extension::group_t::FFDHE3072
+	});
+}
+/**
+ * @brief Функция получения перечня групп, по которым клиент шлёт доли ключа
+ *
+ * @details Раздел 4.2.8 RFC 8446: поддержка групп объявляется одним перечнем, а доли ключа шлются
+ *          по другому. Конечные поля в доли не берём: доля ffdhe2048 несёт 256 байт, а ffdhe3072 — 384,
+ *          и приветствие издания 1.3 раздулось бы на 640 байт ради ветви, которая ему не нужна —
+ *          наборы DHE ведёт только издание 1.2, где доля ключа идёт в ClientKeyExchange.
+ *
+ * @param result место, в которое помещается перечень групп долей
+ *
+ */
+static void shareList(vector <nts::extension::group_t> & result) noexcept {
+	// Выполняем установку перечня групп долей в порядке предпочтения
+	result.assign({
+		nts::extension::group_t::X25519MLKEM768,
+		nts::extension::group_t::X25519,
+		nts::extension::group_t::SECP256R1,
+		nts::extension::group_t::SECP384R1,
 		nts::extension::group_t::SECP521R1
 	});
 }
 /**
- * @brief Функция сборки тела сообщения рукопожатия из принятых байтов канала
+ * @brief Функция подготовки подлинности по файлам с разделением запаса
  *
- * Раздел 5.1 RFC 8446: сообщения рукопожатия лежат внутри записей, а одно сообщение может
- * занять несколько записей. Собираем тела записей рукопожатия, пока не придёт первое
- * сообщение целиком
+ * @details Разбор PEM и подготовку ключа делает одна заготовка на пару файлов, а связи одной
+ *          подлинности разделяют её. Чтение файлов вынесено сюда затем, чтобы отклику выбора
+ *          подлинности по имени не досталось ни чтения, ни разбора: он зовётся из noexcept-контекста
+ *          и блокирует ведущий поток, поэтому к запасу он лишь перекладывает готовое.
  *
- * @param bytes  принятые байты канала
- * @param result место, в которое помещается тело сообщения без его обвязки
- * @return       результат сборки (false - байтов пока не хватает)
+ * @param fs   объект работы с файловой системой
+ * @param fmk  объект работы со строками
+ * @param log  объект работы с логами
+ * @param held запас подготовленных подлинностей
+ * @param pem  адрес файла полной цепочки сертификатов
+ * @param key  адрес файла приватного ключа
+ * @return     подготовленная подлинность либо nullptr, если файлы не годятся
  *
  */
-static bool helloBody(const vector <uint8_t> & bytes, vector <uint8_t> & result) noexcept {
-	// Тела записей рукопожатия, собранные в одно сообщение
-	vector <uint8_t> message;
-	/**
-	 * Переход по записям протокола
-	 */
-	for(size_t offset = 0; (offset + RECORD_HEADER_SIZE) <= bytes.size();){
-		// Размер тела текущей записи протокола
-		const size_t size = ((static_cast <size_t> (bytes[offset + 3]) << 8) | static_cast <size_t> (bytes[offset + 4]));
-		// Если тело записи ещё не пришло целиком, выходим
-		if((offset + RECORD_HEADER_SIZE + size) > bytes.size())
-			// Выводим из цикла
-			break;
-		/**
-		 * Тип записи 0x16 — сообщения рукопожатия (раздел 5.1 RFC 8446); прочие записи
-		 * здесь не встречаются, но и рвать из-за них разбор не станем
-		 */
-		if(bytes[offset] == RECORD_TYPE_HANDSHAKE){
-			// Добавляем тело записи к собираемому сообщению
-			message.insert(message.end(), &bytes[offset + RECORD_HEADER_SIZE], &bytes[offset + RECORD_HEADER_SIZE + size]);
-			// Если обвязки сообщения ещё нет, ждём продолжения
-			if(message.size() >= MESSAGE_HEADER_SIZE){
-				// Размер тела сообщения по его обвязке
-				const size_t total = ((static_cast <size_t> (message[1]) << 16) | (static_cast <size_t> (message[2]) << 8) | static_cast <size_t> (message[3]));
-				// Если тело сообщения собрано, забираем его без обвязки и выходим
-				if(message.size() >= (MESSAGE_HEADER_SIZE + total)){
-					// Выполняем копирование собранного тела сообщения
-					result.assign(message.begin() + MESSAGE_HEADER_SIZE, message.begin() + MESSAGE_HEADER_SIZE + total);
-					// Выходим из цикла
-					break;
-				}
+static const nts::context::credential_t * heldCredential(const awh::fs_t & fs, const awh::fmk_t * fmk, const awh::log_t * log, unordered_map <string, nts::context::credential_t> & held, const string & pem, const string & key) noexcept {
+	// Если адрес файла цепочки не задан, готовить нечего
+	if(pem.empty())
+		// Выводим признак отсутствия подлинности
+		return nullptr;
+	// Запись запаса подлинностей, ключом которой служит пара адресов файлов
+	const string mark = fmk->format("%s\n%s", pem.c_str(), key.c_str());
+	// Разобранные и подготовленные файлы цепочки и ключа
+	auto i = held.find(mark);
+	// Если подлинность этих файлов ещё не готовилась, разбираем и готовим её
+	if(i == held.end()){
+		// Разбираемая подлинность стороны связи
+		nts::context::credential_t credential;
+		// Прочитанные байты файла цепочки сертификатов
+		const vector <char> text = fs.read(pem);
+		// Если текст цепочки сертификатов не прочитался либо не разобрался
+		if(text.empty() || (nts::pem::certificates(string(text.begin(), text.end()), credential.chain) != nts::pem::error_t::NONE) || credential.chain.empty()){
+			// Выводим в лог сообщение о нечитаемом сертификате
+			log->print("Certificate cannot be set: %s", awh::log_t::flag_t::CRITICAL, pem.c_str());
+			// Выводим признак отсутствия подлинности
+			return nullptr;
+		}
+		// Если приватный ключ сертификата задан
+		if(!key.empty()){
+			// Прочитанные байты файла приватного ключа
+			const vector <char> secret = fs.read(key);
+			// Если текст приватного ключа не прочитался
+			if(secret.empty()){
+				// Выводим в лог сообщение о нечитаемом ключе
+				log->print("Private key cannot be set: %s", awh::log_t::flag_t::CRITICAL, key.c_str());
+				// Выводим признак отсутствия подлинности
+				return nullptr;
+			}
+			/**
+			 * Секретный ключ передаётся наружному модулю текстом PEM: разбор обёртки
+			 * и вида ключа делает сама библиотека, а заготовку подписи — prepare()
+			 */
+			credential.secret.assign(secret.begin(), secret.end());
+			// Отказ подготовки секретного ключа
+			const nts::context::error_t error = credential.prepare();
+			// Если ключ не подготовлен, подлинность не годится
+			if(error != nts::context::error_t::NONE){
+				// Выводим в лог сообщение об отказе подготовки ключа
+				log->print("Private key is not valid: %s code=%hhu", awh::log_t::flag_t::CRITICAL, key.c_str(), static_cast <uint8_t> (error));
+				// Выводим признак отсутствия подлинности
+				return nullptr;
 			}
 		}
-		// Выполняем переход к следующей записи
-		offset += (RECORD_HEADER_SIZE + size);
+		// Выполняем установку подготовленной подлинности в запас
+		i = held.emplace(mark, std::move(credential)).first;
 	}
-	// Выводим результат сборки
-	return !result.empty();
+	// Выводим подготовленную подлинность
+	return &i->second;
 }
 /**
- * @brief Функция разбора имени узла, запрошенного клиентом, из байтов приветствия
+ * @brief Отклик выбора подлинности сервера по имени, предъявленному клиентом
  *
- * Раздел 3 RFC 6066: имя лежит в расширении 0 приветствия клиента и при TLS 1.2, и при TLS 1.3
- * открытым текстом. Наружное имя под ECH (раздел 4 RFC 9849) разбирается так же, внутреннее —
- * только библиотеке
+ * @details Раздел 3 RFC 6066: имя приходит из расширения server_name приветствия. A-NTS зовёт отклик
+ *          один раз за полное рукопожатие, после разбора приветствия и до составления ответа, из
+ *          noexcept-контекста и без перехвата; при возобновлении связи билетом он не зовётся вовсе,
+ *          а после HelloRetryRequest — заново по второму приветствию. Отклику нельзя звать методы
+ *          той же связи, поэтому он лишь перекладывает заготовку из запаса движка в выданную
+ *          подлинность; приведение регистра и подбор маски по имени — на нашей стороне.
  *
- * @param body тело сообщения приветствия клиента без его обвязки
- * @param name место, в которое помещается разобранное имя
- * @return     результат разбора
+ * @param name       имя узла, предъявленное клиентом (годно лишь на время вызова)
+ * @param credential место, в которое перекладывается выбранная подлинность
+ * @param context    указатели на запасы движка, переданные при установке отклика
+ * @return          итог выбора: LEAVE оставляет подлинность слушателя, GIVEN берёт выданную,
+ *                  REFUSE обрывает рукопожатие извещением unrecognized_name
  *
  */
-static bool helloHostname(const vector <uint8_t> & body, string & name) noexcept {
-	// Разобранные параметры приветствия клиента
-	nts::hello::client_t hello;
-	// Если приветствие не разобралось, выходим
-	if(nts::hello::parse(nts::view_t(body.data(), body.size()), hello) != nts::hello::error_t::NONE)
-		// Выводим признак неудачи
-		return false;
-	// Расширение server_name имеет тип 0 (раздел 4.3.1 RFC 6066)
-	const nts::hello::extension_t * ext = nts::hello::extension(hello.extensions, 0);
-	// Если расширение не предъявлено либо оно короткое, выходим
-	if((ext == nullptr) || (ext->data.size < 5))
-		// Выводим признак неудачи
-		return false;
-	// Байты тела расширения
-	const uint8_t * data = ext->data.data;
-	// Если имя предъявлено не как узел (тип имени 0), выходим
-	if(data[2] != 0)
-		// Выводим признак неудачи
-		return false;
-	// Размер имени узла
-	const size_t size = ((static_cast <size_t> (data[3]) << 8) | static_cast <size_t> (data[4]));
-	// Если имя выходит за границы расширения, выходим
-	if((size == 0) || (5 + size) > ext->data.size)
-		// Выводим признак неудачи
-		return false;
-	// Выполняем установку разобранного имени
-	name.assign(reinterpret_cast <const char *> (data + 5), size);
-	// Выводим признак того, что имя разобрано
-	return true;
+static nts::context::select_t::outcome_t sniAnswer(const string & name, nts::context::credential_t & credential, void * context) noexcept {
+	// Указатели на запасы движка, переданные при установке отклика
+	const SniPick * pick = static_cast <const SniPick *> (context);
+	// Если запасы не переданы либо имя не предъявлено, остаётся подлинность слушателя
+	if((pick == nullptr) || (pick->names == nullptr) || (pick->held == nullptr) || (pick->fmk == nullptr) || (pick->log == nullptr) || name.empty())
+		// Выводим исход «оставить настроенную подлинность»
+		return nts::context::select_t::outcome_t::LEAVE;
+	/**
+	 * Отклик зовётся без перехвата: улетевшее исключение оборвало бы весь цикл событий,
+	 * поэтому подбор ведём под try и на всякой неудаче оставляем настроенную подлинность
+	 */
+	try {
+		// Доменное имя в нижнем регистре
+		string host = name;
+		// Выполняем приведение регистра предъявленного имени
+		pick->fmk->transform(host, awh::fmk_t::transform_t::LOWER);
+		// Выполняем поиск отметки файлов по точному имени
+		auto i = pick->names->find(host);
+		// Если по точному имени отметка не найдена
+		if(i == pick->names->end()){
+			// Позиция первой точки в доменном имени
+			const size_t pos = host.find('.');
+			// Если домен содержит поддомен, ищем отметку по маске домена
+			if(pos != string::npos)
+				// Выполняем поиск по маске
+				i = pick->names->find(string("*") + host.substr(pos));
+		}
+		/**
+		 * Для неизвестного домена остаётся подлинность слушателя: рукопожатие продолжается
+		 * ею, как это делал OpenSSL, не предъявляя фатального извещения
+		 */
+		if(i == pick->names->end())
+			// Выводим исход «оставить настроенную подлинность»
+			return nts::context::select_t::outcome_t::LEAVE;
+		// Заготовленная подлинность найденной пары файлов
+		auto found = pick->held->find(i->second);
+		// Если заготовки нет, вести имя нечем: файлы сменились либо не прочитались при регистрации
+		if(found == pick->held->end()){
+			// Выводим в лог сообщение об отсутствии подлинности для имени
+			pick->log->print("Certificate for host %s is not prepared", awh::log_t::flag_t::CRITICAL, host.c_str());
+			// Обрываем рукопожатие именем, которое вести нечем
+			return nts::context::select_t::outcome_t::REFUSE;
+		}
+		// Перекладываем заготовку в подлинность, выданную этой связи
+		credential = found->second;
+		// Выводим исход «взять выданную подлинность»
+		return nts::context::select_t::outcome_t::GIVEN;
+	/**
+	 * Перехватываем всё: контекст вызова noexcept и своего перехвата не имеет
+	 */
+	} catch(...) {
+		// Выводим исход «оставить настроенную подлинность»
+		return nts::context::select_t::outcome_t::LEAVE;
+	}
 }
+/**
+ * @brief Метод разбора текста PEM и добавления записей в запас доверенных сертификатов
+ *
+ * @param log   объект работы с логами
+ * @param store запас доверенных сертификатов
+ * @param file  адрес файла, из которого взят текст — нужен только сообщению об отказе
+ * @param pem   прочитанные байты файла сертификатов
+ * @return      результат добавления (false - текст не читается либо записей в нём нет)
+ *
+ */
+static bool storeCAPem(const awh::log_t * log, nts::trust::store_t & store, const string & file, const vector <char> & pem) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Разобранные записи сертификатов
+	vector <vector <uint8_t>> chain;
+	// Если текст файла прочитался и разобрался
+	if(!pem.empty() && (nts::pem::certificates(string(pem.begin(), pem.end()), chain) == nts::pem::error_t::NONE)){
+		/**
+		 * Переход по разобранным записям
+		 */
+		for(auto & item : chain){
+			// Если запись добавлена в запас, запоминаем успех
+			if(store.add(nts::view_t(item.data(), item.size())))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+	// Если файл читается, но сертификатов в нём не оказалось, выводим сообщение
+	} else if(!pem.empty()) log->print("CAfile is invalid: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод добавления в запас доверенных сертификатов записей из файла
+ *
+ * @param fs     объект работы с файловой системой
+ * @param log    объект работы с логами
+ * @param store  запас доверенных сертификатов
+ * @param file   адрес файла сертификатов текстом PEM
+ * @return       результат добавления
+ *
+ */
+static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & file) noexcept {
+	// Прочитанные байты файла сертификатов
+	const vector <char> pem = fs.read(file);
+	// Выводим результат разбора прочитанного текста
+	return storeCAPem(log, store, file, pem);
+}
+/**
+ * @brief Метод добавления в запас доверенных сертификатов записей из каталога
+ *
+ * @details Некоторые системы держат корневые сертификаты не одной связкой, а каталогом отдельных
+ *          записей: NetBSD — /etc/openssl/certs (301 запись), Solaris и illumos — /etc/certs/CA
+ *          (186 и 120 записей), Linux и FreeBSD — /etc/ssl/certs. 
+ *
+ * @param fs    объект работы с файловой системой
+ * @param log   объект работы с логами
+ * @param store запас доверенных сертификатов
+ * @param dir   адрес каталога с файлами сертификатов текстом PEM
+ * @return      результат добавления (false - каталог недоступен либо ни одна запись не разобралась)
+ *
+ */
+static bool storeCADir(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & dir) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Выполняем обход каталога с сертификатами центра сертификации
+	static_cast <void> (fs.walkDir(dir, "", false, [&fs, &log, &store, &result](const string & name) noexcept -> bool {
+		// Прочитанные байты записи каталога
+		const vector <char> pem = fs.read(name);
+		/**
+		 * Записи без текста PEM пропускаем молча: каталог доверия вправе держать служебные
+		 * файлы, каким является /etc/openssl/certs/.certctl на NetBSD 10.1 (снято прогоном
+		 * 08.11.2026) — отказ на них не ошибка связки, а норма раскладки каталога
+		 */
+		if(!pem.empty() && (string(pem.begin(), pem.end()).find("-----BEGIN") != string::npos)){
+			// Если файл сертификатов разобрался и пополнил запас, запоминаем это
+			if(storeCAPem(log, store, name, pem))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+		// Продолжаем обход каталога
+		return true;
+	}));
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод добавления в запас списков отзыва и сертификатов из одного файла
+ *
+ * @details Прежний OpenSSL звал X509_load_cert_crl_file() и брал из файла и сертификаты, и списки
+ *          отзыва, поэтому смешанный файл раскладываем на два разбора сами. Поданный список включает
+ *          проверку отзыва всей цепочки: запас без списков отзыва не проверяет вовсе, а запас со
+ *          списками требует список каждому издателю звеньев и отвечает отказом MISSING (раздел 6.1
+ *          RFC 5280) — об этом стоит помнить, подавая список одного издателя.
+ *
+ * @param fs    объект работы с файловой системой
+ * @param log   объект работы с логами
+ * @param store запас доверенных сертификатов и списков отзыва
+ * @param file  адрес файла текстом PEM
+ * @return      результат добавления (false - файл не прочитался либо записей в нём нет)
+ *
+ */
+static bool storeCRLFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & file) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Прочитанные байты файла списков отзыва
+	const vector <char> pem = fs.read(file);
+	// Если файл не прочитался, объявляем это громко: молча терять заказ отзыва нельзя
+	if(pem.empty()){
+		// Выводим в лог сообщение о нечитаемом файле
+		log->print("CRLfile is not found: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
+		// Выводим результат
+		return false;
+	}
+	// Текст файла списков отзыва
+	const string text(pem.begin(), pem.end());
+	// Разобранные списки отзыва записями DER
+	vector <vector <uint8_t>> lists;
+	// Отказ разбора списков отзыва
+	const nts::pem::error_t error = nts::pem::decode(text, "X509 CRL", lists);
+	/**
+	 * Переход по разобранным спискам отзыва
+	 */
+	for(const auto & item : lists){
+		// Если список добавлен в запас, запоминаем успех
+		if(store.addList(nts::view_t(item.data(), item.size())))
+			// Запоминаем, что в запас что-то добавлено
+			result = true;
+		// Непригодный список объявляем: запас доверия им не пополнить
+		else log->print("CRL is invalid: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
+	}
+	// Если разбор спискам не дался, выводим сообщение о испорченном файле
+	if((error != nts::pem::error_t::NONE) && (error != nts::pem::error_t::EMPTY))
+		// Выводим в лог сообщение об отказе разбора
+		log->print("CRLfile is invalid: %s code=%hhu", awh::log_t::flag_t::CRITICAL, file.c_str(), static_cast <uint8_t> (error));
+	// Разобранные сертификаты того же файла
+	vector <vector <uint8_t>> chain;
+	// Если сертификаты в файле есть, добавляем их в запас доверенных
+	if(nts::pem::certificates(text, chain) == nts::pem::error_t::NONE){
+		/**
+		 * Переход по разобранным сертификатам
+		 */
+		for(const auto & item : chain){
+			// Если сертификат добавлен в запас, запоминаем успех
+			if(store.add(nts::view_t(item.data(), item.size())))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+	}
+	// Если ни списка, ни сертификата файл не дал, объявляем его пустым для запаса
+	if(!result)
+		// Выводим в лог сообщение об отсутствии записей
+		log->print("CRLfile holds no records: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
+	// Выводим результат
+	return result;
+}
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Метод добавления в запас доверенных сертификатов системного хранилища
+	 *
+	 * @param store запас доверенных сертификатов
+	 * @param log   объект работы с логами
+	 * @param name  название разделителя системного хранилища
+	 * @return      результат добавления
+	 *
+	 */
+	static bool storeCAWindows(nts::trust::store_t & store, const awh::log_t * log, const char * name) noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Открываем системное хранилище сертификатов
+		HCERTSTORE sys = ::CertOpenSystemStore(0, name);
+		// Если системное хранилище не открыто
+		if(sys == nullptr){
+			// Выводим в лог сообщение о недоступном хранилище
+			log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+			// Выводим признак того, что запас не пополнен
+			return false;
+		}
+		/**
+		 * Перебираем все сертификаты системного хранилища	
+		 */
+		for(PCCERT_CONTEXT ctx = nullptr; (ctx = ::CertEnumCertificatesInStore(sys, ctx)) != nullptr;){
+			// Если запись сертификата добавлена в запас, запоминаем успех
+			if(store.add(nts::view_t(ctx->pbCertEncoded, static_cast <size_t> (ctx->cbCertEncoded))))
+				// Запоминаем, что в запас что-то добавлено
+				result = true;
+		}
+		// Закрываем системное хранилище
+		::CertCloseStore(sys, 0);
+		// Выводим результат
+		return result;
+	}
+#endif
+/**
+ * @brief Функция получения общего секрета метки возврата состояния дейтаграмм
+ *
+ * @details Прежний OpenSSL держал один секрет на процесс (Engine::_cookies[16], RAND_bytes при первом
+ *          обращении) и им подписывал печёнки DTLSv1_listen: печёнку выдаёт одна связь, а проверяет
+ *          другая, поэтому секрет обязан быть общим. A-NTS принимает его вызовом stamp(); не заданный
+ *          секрет он породил бы энтропией на каждую связь, и печёнка другой связи не сошлась бы.
+ *          Смену поколения (restamp) не ведём: прежний код секрет не менял вовсе, а часов у связи нет.
+ *
+ * @return общий секрет метки возврата состояния
+ *
+ */
+static const vector <uint8_t> & cookieSecret() noexcept {
+	// Общий секрет метки, порождается один раз на процесс
+	static const vector <uint8_t> secret = [](){
+		// Источник случайных чисел
+		std::random_device device;
+		// Секрет метки в 16 байт — как держал прежний OpenSSL
+		vector <uint8_t> result(16);
+		/**
+		 * Заполняем секрет случайными байтами
+		 */
+		for(auto & item : result)
+			// Добавляем очередной случайный байт
+			item = static_cast <uint8_t> (device());
+		// Выводим собранный секрет
+		return result;
+	}();
+	// Выводим общий секрет
+	return secret;
+}
+/**
+ * @brief Функция сборки непрозрачного опознавателя собеседника для метки возврата состояния
+ *
+ * @details Раздел 5.1 RFC 9147: метка привязывается к адресу, с которого пришло приветствие, и связь
+ *          сличает опознаватель побайтово, не разбирая его. Подаём два октета порта и адрес семьи
+ *          сокета — четыре октета IPv4 либо шестнадцать IPv6.
+ *
+ * @param peer параметры подключения собеседника
+ * @param out  место, в которое помещается опознаватель
+ *
+ */
+static void peerMark(const struct sockaddr_storage & peer, vector <uint8_t> & out) noexcept {
+	// Очищаем опознаватель перед сборкой
+	out.clear();
+	// Если собеседник пришёл по IPv4
+	if(peer.ss_family == AF_INET){
+		// Адрес собеседника IPv4
+		const struct sockaddr_in * in = reinterpret_cast <const struct sockaddr_in *> (&peer);
+		// Добавляем порт собеседника
+		out.push_back(static_cast <uint8_t> (in->sin_port >> 8));
+		// Добавляем младший октет порта
+		out.push_back(static_cast <uint8_t> (in->sin_port & 0xFF));
+		// Указатель на октеты адреса
+		const uint8_t * address = reinterpret_cast <const uint8_t *> (&in->sin_addr);
+		/**
+		 * Переход по октетам адреса IPv4
+		 */
+		for(size_t i = 0; i < sizeof(in->sin_addr); i++)
+			// Добавляем очередной октет адреса
+			out.push_back(address[i]);
+	// Если собеседник пришёл по IPv6
+	} else if(peer.ss_family == AF_INET6) {
+		// Адрес собеседника IPv6
+		const struct sockaddr_in6 * in6 = reinterpret_cast <const struct sockaddr_in6 *> (&peer);
+		// Добавляем старший октет порта
+		out.push_back(static_cast <uint8_t> (in6->sin6_port >> 8));
+		// Добавляем младший октет порта
+		out.push_back(static_cast <uint8_t> (in6->sin6_port & 0xFF));
+		// Указатель на октеты адреса
+		const uint8_t * address = reinterpret_cast <const uint8_t *> (&in6->sin6_addr);
+		/**
+		 * Переход по октетам адреса IPv6
+		 */
+		for(size_t i = 0; i < sizeof(in6->sin6_addr); i++)
+			// Добавляем очередной октет адреса
+			out.push_back(address[i]);
+	}
+}
+
+/**
+ * @brief Набор указателей для отклика выбора подлинности по имени узла
+ *
+ * Отклик A-NTS зовётся из noexcept-контекста, без перехвата и без права звать методы той же
+ * связи, поэтому он получает не движок и не связь, а указатели на готовые запасы: перечень
+ * имён с отметками файлов, подготовленные подлинности и средства приведения регистра с журналом
+ *
+ */
+struct SniPick {
+	// Перечень доменных имён с отметками пары файлов: имя -> адрес цепочки и адрес ключа
+	const unordered_map <string, string> * names;
+	// Запас подготовленных подлинностей движка: отметка пары файлов -> заготовка
+	const unordered_map <string, nts::context::credential_t> * held;
+	// Средства приведения регистра предъявленного имени
+	const awh::fmk_t * fmk;
+	// Журнал движка
+	const awh::log_t * log;
+};
 /**
  * @brief Класс состояния связи внешнего модуля шифрования
  *
@@ -620,16 +996,12 @@ static bool helloHostname(const vector <uint8_t> & body, string & name) noexcept
  */
 class awh::Engine::Context::Tls {
 	public:
-		// Флаг того, что рукопожатие прервано: подлинность по имени клиента не годится
-		bool fatal;
 		// Флаг проверки соответствия сертификата собеседника предъявленному имени
 		bool verify;
 		// Флаг того, что сверка имени сертификата выполнена
 		bool checked;
 		// Флаг отправки приветствия своей стороной связи
 		bool started;
-		// Флаг того, что приветствие клиента разобрано и подлинность выбрана
-		bool sniffed;
 		// Запас доверенных сертификатов
 		nts::trust::store_t store;
 		// Связь стороны клиента
@@ -640,17 +1012,17 @@ class awh::Engine::Context::Tls {
 		string host;
 		// Непроданные собеседнику байты открытого текста
 		vector <uint8_t> plain;
-		// Байты канала, разобранные до подачи их связи (подбор подлинности по SNI)
-		vector <uint8_t> peek;
-		// Движок, которому принадлежит связь: по нему выбираем подлинность для имени клиента
-		awh::Engine * engine;
+		// Перечень имён узла с отметками файлов подлинности: снимок запаса движка на время связи
+		unordered_map <string, string> names;
+		// Указатели, по которым отклик выбора подлинности берёт заготовку, не зовя методов связи
+		SniPick pick;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Tls() noexcept : 
-		 fatal(false), verify(false), checked(false),
-		 started(false), sniffed(false), engine(nullptr) {}
+			verify(false), checked(false), started(false),
+			pick{nullptr, nullptr, nullptr, nullptr} {}
 };
 /**
  * @brief Класс запаса подготовленных подлинностей
@@ -919,7 +1291,7 @@ bool awh::Engine::Address::connect() noexcept {
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
 		// Если подключение зашифрованно, значит мы должны использовать DTLS
-		else if(this->_encrypted){
+		else if(this->_encrypted) {
 			/**
 			 * Определяем тип подключения
 			 */
@@ -1729,12 +2101,422 @@ void awh::Engine::Address::init(const string & ip, const uint32_t port, const in
 	}
 }
 /**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Engine::Address::Address(const fmk_t * fmk, const log_t * log) noexcept :
+ sock(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
+ _async(false), _encrypted(false), status(status_t::DISCONNECTED),
+ port(0), ip{""}, mac{""}, _fs(fmk, log), _ifnet(fmk, log),
+ _socket(fmk, log), _fmk(fmk), _log(log) {}
+/**
  * @brief Деструктор
  *
  */
 awh::Engine::Address::~Address() noexcept {
 	// Выполняем отключение
 	this->clear();
+}
+
+/**
+ * @brief Метод извлечения прочитанных связью байтов в буфер чтения
+ *
+ * @details Раздел 5.4 RFC 8446: принятые записи открытым текстом выдаются накопителем целиком,
+ *          поэтому неотданный остаток держится в самом буфере чтения.
+ *
+ */
+void awh::Engine::Context::drain() noexcept {
+	// Если связь инициализирована
+	if(this->_tls != nullptr){
+		// Принятые связью байты открытого текста
+		vector <uint8_t> data;
+		// Отказ извлечения принятых байтов
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.read(data) : this->_tls->client.read(data));
+		// Если отказ не связан с состоянием связи, выводим сообщение
+		if((error != nts::context::error_t::NONE) && (error != nts::context::error_t::STATE))
+			// Выводим в лог сообщение об отказе извлечения
+			this->_log->print("Engine: received data refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+		// Если открытые байты получены, добавляем их к неотданному остатку
+		else if(!data.empty()) this->_tls->plain.insert(this->_tls->plain.end(), data.begin(), data.end());
+	}
+}
+/**
+ * @brief Метод отправки накопленных связи байтов в сокет
+ *
+ * Снятие байтов происходит ровно в том объёме, в котором сокет их принял: связь не знает,
+ * дошло ли до собеседника, и повторной генерации записей не будет
+ *
+ * @return результат работы функции (false - сокет не принял всё, повторить позже)
+ *
+ */
+bool awh::Engine::Context::flush() noexcept {
+	// Результат работы функции
+	bool result = true;
+	// Если связь и сокет инициализированы
+	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
+		/**
+		 * Переход по накопленным связи байтам	
+		 */
+		for(size_t count = 0; count < AWH_ENGINE_FLUSH_LIMIT; count++){
+			// Байты, отправляемые собеседнику
+			const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
+			// Если связи нечего отправить, выходим
+			if(data.size == 0)
+				// Выходим из цикла
+				break;
+			// Количество отправленных байтов
+			ssize_t sent = 0;
+			/**
+			 * Определяем тип сокета
+			 */
+			if(this->_addr->_type == SOCK_DGRAM){
+				// Адрес собеседника, которому предназначена дейтаграмма
+				struct sockaddr * addr = nullptr;
+				// Длина адреса собеседника
+				socklen_t len = 0;
+				/**
+				 * Адрес подаётся лишь неприкреплённому сокету: прикрепленный (ATTACHED) и
+				 * подключённый (CONNECTED) уже знают собеседника, и sendto с адресом отвечает
+				 * EISCONN. Прежний код оставлял addr нулевым для ATTACHED тем же switch статусов;
+				 * длина берётся у объекта подключения, а не по размеру sockaddr_storage — с
+				 * длиной 128 байт вместо 16 sendto отвечает EADDRNOTAVAIL
+				 */
+				if(this->_addr->status == addr_t::status_t::ACCEPTED){
+					// Выполняем установку адреса принятого клиента
+					addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.client);
+					// Запоминаем настоящую длину адреса
+					len = this->_addr->_peer.size;
+				}
+				// Выполняем отправку дейтаграммы: накопитель связи отдаёт ровно одну готовую дейтаграмму
+				sent = ::sendto(this->_addr->sock, data.data, data.size, 0, addr, len);
+			// Если сокет установлен как потоковый, отправляем байты как есть
+			} else sent = ::send(this->_addr->sock, data.data, data.size, 0);
+			// Если сокет принял байты
+			if(sent > 0){
+				// Снимаем отправленные байты с накопителя связи
+				if(this->_type == type_t::SERVER)
+					// Выполняем снятие байтов у связи сервера
+					this->_tls->server.consume(static_cast <size_t> (sent));
+				else this->_tls->client.consume(static_cast <size_t> (sent));
+				// Если сокет принял не всё, повторяем отправку позже
+				if(static_cast <size_t> (sent) < data.size)
+					// Выводим признак того, что нужно дождаться готовности к записи
+					return false;
+				// Выполняем переход к следующей части накопителя
+				continue;
+			// Если сокет временно не готов принять байты, выводим признак ожидания
+			} else if(this->retry()) return false;
+			// Выводим в лог сообщение об ошибке отправки
+			this->_log->print("Engine: write failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+			// Выходим из цикла
+			break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод проверки временной ошибки отправки датаграммы
+ *
+ * @return результат проверки (true - отправку нужно повторить позже)
+ */
+bool awh::Engine::Context::retry() const noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Выводим результат проверки
+		return ((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAENOBUFS) || (AWH_ERROR() == WSAEINTR));
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		// Выводим результат проверки
+		return ((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EAGAIN) || (AWH_ERROR() == ENOBUFS) || (AWH_ERROR() == EINTR));
+	#endif
+}
+/**
+ * @brief Метод проверки наличия байтов, которые связь должна отправить
+ *
+ * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+ *
+ */
+bool awh::Engine::Context::pending() const noexcept {
+	// Если связь не создана, отправлять нечего
+	if(this->_tls == nullptr)
+		// Сообщаем, что неотправленных байтов нет
+		return false;
+	// Байты, накопленные связью для отправки собеседнику
+	const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
+	// Выводим признак наличия неотправленных байтов
+	return (data.size > 0);
+}
+/**
+ * @brief Метод проверки пройденности рукопожатия обеими сторонами
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::Engine::Context::established() const noexcept {
+	// Если связь создана, выводим результат проверки
+	if(this->_tls != nullptr)
+		// Выводим признак пройденного рукопожатия
+		return ((this->_type == type_t::SERVER) ? this->_tls->server.established() : this->_tls->client.established());
+	// Сообщаем, что связь не создана
+	return false;
+}
+/**
+ * @brief Метод приёма байтов из сокета и подачи их связи
+ *
+ * @details Сервер разбирает приветствие клиента до подачи его байтов связи: подлинность по имени (SNI)
+ *          нужно успеть выставить, пока ответ не сложен.
+ *
+ * @return количество принятых байт, 0 - собеседник закрылся, -1 - данных нет, -2 - связь отвергла байты
+ *
+ */
+int64_t awh::Engine::Context::feed() noexcept {
+	// Результат работы функции
+	int64_t result = -1;
+	// Если связь и сокет инициализированы
+	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
+		// Буфер принятых байтов канала
+		vector <uint8_t> buffer;
+		// Размер буфера приёма: дейтаграмма либо кусок потока
+		const size_t max = ((this->_addr->_type == SOCK_DGRAM) ? static_cast <size_t> (AWH_ENGINE_DATAGRAM_SIZE) : static_cast <size_t> (AWH_ENGINE_CHUNK_SIZE));
+		// Выполняем выделение памяти под буфер приёма
+		buffer.resize(max);
+		// Количество принятых байтов
+		ssize_t got = 0;
+		/**
+		 * Определяем тип сокета
+		 */
+		if(this->_addr->_type == SOCK_DGRAM){
+			// Адрес собеседника, от которого ждём дейтаграмму
+			struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
+			// Выполняем приём дейтаграммы
+			got = ::recvfrom(this->_addr->sock, buffer.data(), max, 0, addr, &this->_addr->_peer.size);
+		// Если сокет установлен как потоковый, читаем поток байтов
+		} else got = ::recv(this->_addr->sock, buffer.data(), max, 0);
+		// Если байты приняты
+		if(got > 0){
+			// Байты, которые связи ещё не показаны
+			const uint8_t * data = buffer.data();
+			// Размер байтов, которые связи показываются этим шагом
+			size_t size = static_cast <size_t> (got);
+			// Байты подаются связи как пришли: границы записей связь восстанавливает сама
+			const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.push(nts::view_t(data, size)) : this->_tls->client.push(nts::view_t(data, size)));
+			// Если связь отвергла принятые байты
+			if(error != nts::context::error_t::NONE){
+				// Выводим в лог сообщение об отказе разбора
+				this->_log->print("Engine: received bytes refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+				// Выводим признак отказа связи
+				return -2;
+			}
+			// Выводим количество принятых байтов
+			result = static_cast <int64_t> (got);
+		// Если собеседник закрыл соединение
+		} else if(got == 0)
+			// Устанавливаем положительный результат
+			result = 0;
+		// Если приём не выполнен по временной причине, выводим ожидание данных
+		else if(!this->retry()) {
+			// Выводим в лог сообщение об ошибке приёма
+			this->_log->print("Engine: read failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
+			// Выводим признак отказа связи
+			result = -2;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод перекачки байтов связи одним шагом
+ *
+ * @param want флаг, что прикладные данные нужны сейчас
+ * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+ *
+ */
+int32_t awh::Engine::Context::pump(const bool want) noexcept {
+	// Результат работы функции
+	int32_t result = -1;
+	// Если связь не создана, сообщаем об отказе
+	if(this->_tls == nullptr)
+		// Выводим признак того, что рукопожатие не удалось
+		return 0;
+	// Если приветствие своей стороны ещё не отправлено
+	if(!this->_tls->started){
+		// Отказ заведения связи
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.start() : this->_tls->client.start());
+		// Если связь не удалось завести
+		if(error != nts::context::error_t::NONE){
+			// Выводим в лог сообщение об отказе заведения связи
+			this->_log->print("Engine: connection start failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
+			// Выводим признак того, что рукопожатие не удалось
+			return 0;
+		}
+		// Запоминаем, что приветствие отправлено
+		this->_tls->started = true;
+		/**
+		 * @brief Если отложенная дейтаграмма есть, подаём её связи
+		 *
+		 * @details Принятую слушающим сокетом дейтаграмму подаём связи сразу после заведения: сокет уже
+		 *          прикреплён к собеседнику, и ответ (HelloVerifyRequest у DTLS) уйдёт ему же.
+		 *
+		 */ 
+		if(!this->_greeting.empty()){
+			// Отказ подачи отложенной дейтаграммы
+			const nts::context::error_t given = ((this->_type == type_t::SERVER) ? this->_tls->server.push(nts::view_t(this->_greeting.data(), this->_greeting.size())) : this->_tls->client.push(nts::view_t(this->_greeting.data(), this->_greeting.size())));
+			// Если связь отвергла дейтаграмму, выводим сообщение
+			if(given != nts::context::error_t::NONE)
+				// Выводим в лог сообщение об отказе разбора
+				this->_log->print("Engine: greeting refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (given));
+			// Очищаем отложенную дейтаграмму: повторно её не подаём
+			this->_greeting.clear();
+		}
+	}
+	// Байты, которые связь должна отправить, уходят первыми
+	if(!this->flush())
+		// Сообщаем, что нужно дождаться готовности сокета к записи
+		return -2;
+	/**
+	 * Событие чтения ставится на краевой режим (EV_CLEAR), поэтому за один шаг
+	 * выбираем весь пришедший канал: оставшиеся в сокете байты не дождутся
+	 * следующего изменения состояния, и рукопожатие встанет
+	 */
+	int64_t size = -1;
+	/**
+	 * Переход по принятым байтам канала
+	 */
+	for(size_t count = 0; count < AWH_ENGINE_FEED_LIMIT; count++){
+		// Результат приёма байтов канала
+		size = this->feed();
+		// Если связь отвергла принятые байты
+		if(size == -2)
+			// Сообщаем, что рукопожатие не удалось
+			return 0;
+		// Если читать больше нечего либо собеседник закрыл связь, останавливаемся
+		if(size <= 0)
+			// Выходим из цикла
+			break;
+		// Открытый текст принятых записей забираем в буфер чтения
+		this->drain();
+	}
+	/**
+	 * Записи приложения и close_notify могут прийти одним куском: открытый текст уже в
+	 * буфере, поэтому закрытие связи объявляем только когда отдавать нечего. Иначе
+	 * последнее сообщение собеседника пропало бы, не дойдя до вызывающего
+	 */
+	if(size == 0 && this->_tls->plain.empty())
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	/**
+	 * Прежний OpenSSL проверял цепочку доверенных и соответствие сертификата доменному
+	 * имени колбэками внутри рукопожатия. Наружный модуль цепочку собеседника не судит —
+	 * запас доверенных нужен ему лишь для разбора ответа OCSP, — поэтому обе проверки
+	 * делает насос: сразу по завершении рукопожатия и ровно один раз на связь
+	 */
+	if(this->established() && !this->_tls->checked){
+		// Отметка о том, что проверки выполнены
+		this->_tls->checked = true;
+		// Цепочка сертификатов собеседника
+		const vector <vector <uint8_t>> & chain = ((this->_type == type_t::SERVER) ? this->_tls->server.peer() : this->_tls->client.peer());
+		// Если проверка доверия цепочке разрешена и цепочка получена
+		if(this->_tls->verify && !chain.empty()){
+			// Миг проверки соответствия сроков сертификатов
+			const int64_t moment = static_cast <int64_t> (::time(nullptr));
+			// Роль собеседника: у клиента проверяем сервер, у сервера — клиента
+			const nts::trust::role_t role = ((this->_type == type_t::SERVER) ? nts::trust::role_t::CLIENT : nts::trust::role_t::SERVER);
+			// Отказ доверия цепочки сертификатов запасом доверенных
+			const nts::trust::error_t failure = nts::trust::verify(chain, this->_tls->store, moment, role);
+			// Если цепочка запасу не доверена, рукопожатие не удалось
+			if(failure != nts::trust::error_t::NONE){
+				// Выводим в лог сообщение о недоверенной цепочке сертификатов
+				this->_log->print("Certificate chain validation failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (failure));
+				/**
+				 * Коды отзыва выводим словами: по одному числу не отличить отозванный
+				 * сертификат от отсутствующего, просроченного или поддельного списка
+				 */
+				switch(failure){
+					// Сертификат отозван списком своего издателя
+					case nts::trust::error_t::REVOKED:
+						// Выводим в лог причину отказа
+						this->_log->print("Certificate is revoked by the CRL of its issuer", log_t::flag_t::CRITICAL);
+						// Выходим из разбора причины
+						break;
+					// Списка отзыва издателю звена не подали
+					case nts::trust::error_t::MISSING:
+						// Выводим в лог причину отказа
+						this->_log->print("No CRL for the issuer of a chain link: every issuer needs one", log_t::flag_t::CRITICAL);
+						// Выходим из разбора причины
+						break;
+					// Список отзыва издателя просрочен
+					case nts::trust::error_t::OUTDATED:
+						// Выводим в лог причину отказа
+						this->_log->print("CRL of the issuer is outdated: nextUpdate has passed", log_t::flag_t::CRITICAL);
+						// Выходим из разбора причины
+						break;
+					// Подпись списка отзыва не сошлась с ключом издателя
+					case nts::trust::error_t::FORGED:
+						// Выводим в лог причину отказа
+						this->_log->print("CRL signature does not match the issuer key", log_t::flag_t::CRITICAL);
+						// Выходим из разбора причины
+						break;
+				}
+				// Сообщаем, что рукопожатие не удалось
+				return 0;
+			}
+			/**
+			 * Раздел 6.4 RFC 6125: имя узла сверяется с именами первого звена цепочки —
+			 * дополнительных имён владельца, а при их отсутствии — с общим именем
+			 */
+			if(!this->_tls->host.empty()){
+				// Отказ сличения имени узла с именами сертификата
+				const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), this->_tls->host);
+				// Если имя узла не отвечает именам сертификата, рукопожатие не удалось
+				if(error != nts::trust::error_t::NONE){
+					// Выводим в лог сообщение о несоответствии имени сертификата
+					this->_log->print("Certificate does not match the host '%s': code=%hhu", log_t::flag_t::CRITICAL, this->_tls->host.c_str(), static_cast <uint8_t> (error));
+					// Сообщаем, что рукопожатие не удалось
+					return 0;
+				}
+			}
+		}
+	}
+	// Если рукопожатие завершено обеими сторонами
+	if(this->established()){
+		/**
+		 * Завершающий полёт рукопожатия (ChangeCipherSpec и Finished у TLS 1.2) связь
+		 * складывает в накопитель тем же шагом, каким признаёт рукопожатие пройденным.
+		 * Собеседник ждёт эти байты, поэтому завершённым рукопожатие объявляем только
+		 * после их отправки: без этого ответ ушёл бы лишь по следующему событию этой
+		 * стороны, а на краевых событиях это ожидание до таймаута подключения
+		 */
+		if(!this->flush())
+			// Сообщаем, что нужно дождаться готовности сокета к записи
+			return -2;
+		// Упреждающие данные и данные конца рукопожатия приходят тем же шагом
+		if(want)
+			// Выполняем повторное извлечение принятых байтов
+			this->drain();
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	}
+	// Ответ на принятые байты отправляем сразу, не дожидаясь следующего события
+	if(!this->flush())
+		// Сообщаем, что нужно дождаться готовности сокета к записи
+		return -2;
+	/**
+	 * Открытые байты, принятые одним куском с закрытием связи, обязана получить
+	 * вызывающая сторона: рукопожатие уже пройдено, и признак наличия данных отдаём
+	 * до того, как отказ будет объявлен на следующем шаге, когда буфер опустеет
+	 */
+	if(!this->_tls->plain.empty())
+		// Сообщаем, что данные приняты
+		return 1;
+	// Выводим результат шага: завершено либо ждём данных
+	return (this->established() ? 1 : result);
 }
 /**
  * @brief Метод вывода информации об ошибке
@@ -1761,8 +2543,10 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 			// Устанавливаем результат отключения подключения
 			result = 0;
 			// Выводим в лог сообщение об отказе связи
-			this->_log->print("Engine: connection failed: code=%hhu state=%hhu alert=%s", log_t::flag_t::CRITICAL,
-				static_cast <uint8_t> (error), static_cast <uint8_t> (state), nts::alert::name(alert.description));
+			this->_log->print(
+				"Engine: connection failed: code=%hhu state=%hhu alert=%s", log_t::flag_t::CRITICAL,
+				static_cast <uint8_t> (error), static_cast <uint8_t> (state), nts::alert::name(alert.description)
+			);
 		// Если отказа связи нет, решение принимаем по её состоянию
 		} else {
 			/**
@@ -1829,463 +2613,6 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 	}
 	// Выводим значение результата
 	return result;
-}
-/**
- * @brief Метод проверки временной ошибки отправки датаграммы
- *
- * @return результат проверки (true - отправку нужно повторить позже)
- */
-bool awh::Engine::Context::retry() const noexcept {
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#if _WIN32 || _WIN64
-		// Выводим результат проверки
-		return ((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAENOBUFS) || (AWH_ERROR() == WSAEINTR));
-	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	#else
-		// Выводим результат проверки
-		return ((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EAGAIN) || (AWH_ERROR() == ENOBUFS) || (AWH_ERROR() == EINTR));
-	#endif
-}
-/**
- * @brief Метод проверки пройденности рукопожатия обеими сторонами
- *
- * @return результат проверки
- *
- */
-bool awh::Engine::Context::established() const noexcept {
-	// Если связь создана, выводим результат проверки
-	if(this->_tls != nullptr)
-		// Выводим признак пройденного рукопожатия
-		return ((this->_type == type_t::SERVER) ? this->_tls->server.established() : this->_tls->client.established());
-	// Сообщаем, что связь не создана
-	return false;
-}
-/**
- * @brief Метод проверки наличия байтов, которые связь должна отправить
- *
- * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
- *
- */
-bool awh::Engine::Context::pending() const noexcept {
-	// Если связь не создана, отправлять нечего
-	if(this->_tls == nullptr)
-		// Сообщаем, что неотправленных байтов нет
-		return false;
-	// Байты, накопленные связью для отправки собеседнику
-	const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
-	// Выводим признак наличия неотправленных байтов
-	return (data.size > 0);
-}
-/**
- * @brief Метод отправки накопленных связи байтов в сокет
- *
- * Снятие байтов происходит ровно в том объёме, в котором сокет их принял: связь не знает,
- * дошло ли до собеседника, и повторной генерации записей не будет
- *
- * @return результат работы функции (false - сокет не принял всё, повторить позже)
- *
- */
-bool awh::Engine::Context::flush() noexcept {
-	// Результат работы функции
-	bool result = true;
-	// Если связь и сокет инициализированы
-	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
-		/**
-		 * Переход по накопленным связи байтам	
-		 */
-		for(size_t count = 0; count < AWH_ENGINE_FLUSH_LIMIT; count++){
-			// Байты, отправляемые собеседнику
-			const nts::view_t data = ((this->_type == type_t::SERVER) ? this->_tls->server.output() : this->_tls->client.output());
-			// Если связи нечего отправить, выходим
-			if(data.size == 0)
-				// Выходим из цикла
-				break;
-			// Количество отправленных байтов
-			ssize_t sent = 0;
-			/**
-			 * Определяем тип сокета
-			 */
-			if(this->_addr->_type == SOCK_DGRAM){
-				// Адрес собеседника, которому предназначена дейтаграмма
-				struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
-				// Выполняем отправку дейтаграммы: накопитель связи отдаёт ровно одну готовую дейтаграмму
-				sent = ::sendto(this->_addr->sock, data.data, data.size, 0, addr, sizeof(struct sockaddr_storage));
-			// Если сокет установлен как потоковый, отправляем байты как есть
-			} else sent = ::send(this->_addr->sock, data.data, data.size, 0);
-			// Если сокет принял байты
-			if(sent > 0){
-				// Снимаем отправленные байты с накопителя связи
-				if(this->_type == type_t::SERVER)
-					// Выполняем снятие байтов у связи сервера
-					this->_tls->server.consume(static_cast <size_t> (sent));
-				else this->_tls->client.consume(static_cast <size_t> (sent));
-				// Если сокет принял не всё, повторяем отправку позже
-				if(static_cast <size_t> (sent) < data.size)
-					// Выводим признак того, что нужно дождаться готовности к записи
-					return false;
-				// Выполняем переход к следующей части накопителя
-				continue;
-			// Если сокет временно не готов принять байты, выводим признак ожидания
-			} else if(this->retry()) return false;
-			// Выводим в лог сообщение об ошибке отправки
-			this->_log->print("Engine: write failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
-			// Выходим из цикла
-			break;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод приёма байтов из сокета и подачи их связи
- *
- * Сервер разбирает приветствие клиента до подачи его байтов связи: подлинность по имени (SNI)
- * нужно успеть выставить, пока ответ не сложен
- *
- * @return количество принятых байт, 0 - собеседник закрылся, -1 - данных нет, -2 - связь отвергла байты
- *
- */
-int64_t awh::Engine::Context::feed() noexcept {
-	// Результат работы функции
-	int64_t result = -1;
-	// Если связь и сокет инициализированы
-	if((this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->sock != INVALID_SOCKET)){
-		// Буфер принятых байтов канала
-		vector <uint8_t> buffer;
-		// Размер буфера приёма: дейтаграмма либо кусок потока
-		const size_t max = ((this->_addr->_type == SOCK_DGRAM) ? static_cast <size_t> (AWH_ENGINE_DATAGRAM_SIZE) : static_cast <size_t> (AWH_ENGINE_CHUNK_SIZE));
-		// Выполняем выделение памяти под буфер приёма
-		buffer.resize(max);
-		// Количество принятых байтов
-		ssize_t got = 0;
-		/**
-		 * Определяем тип сокета
-		 */
-		if(this->_addr->_type == SOCK_DGRAM){
-			// Адрес собеседника, от которого ждём дейтаграмму
-			struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
-			// Выполняем приём дейтаграммы
-			got = ::recvfrom(this->_addr->sock, buffer.data(), max, 0, addr, &this->_addr->_peer.size);
-		// Если сокет установлен как потоковый, читаем поток байтов
-		} else got = ::recv(this->_addr->sock, buffer.data(), max, 0);
-		// Если байты приняты
-		if(got > 0){
-			// Байты, которые связи ещё не показаны
-			const uint8_t * data = buffer.data();
-			// Размер байтов, которые связи показываются этим шагом
-			size_t size = static_cast <size_t> (got);
-			/**
-			 * Серверу нужно выбрать подлинность по предъявленному имени до того, как
-			 * приветствие будет разобрано связью: окно «разобрано, но не отвечено» у
-			 * наружного модуля отсутствует
-			 */
-			if((this->_type == type_t::SERVER) && !this->_tls->sniffed){
-				// Добавляем принятые байты к накопленному для разбора приветствию
-				this->_tls->peek.insert(this->_tls->peek.end(), data, data + size);
-				// Тело сообщения рукопожатия, собранное из принятых записей
-				vector <uint8_t> body;
-				// Если тело приветствия ещё не собрано
-				if(!helloBody(this->_tls->peek, body)){
-					// Пока байтов не больше разбираемого предела, ждём их продолжения
-					if(this->_tls->peek.size() <= static_cast <size_t> (AWH_ENGINE_HELLO_LIMIT))
-						// Выводим количество принятых байтов, связи их ещё не показаны
-						return static_cast <int64_t> (got);
-					// За пределом ждать нечего: подаём накопленное как есть и перестаём разбирать
-					this->_tls->sniffed = true;
-				// Тело приветствия собрано: подлинность выбираем по предъявленному имени
-				} else {
-					// Имя узла, за которым пришёл клиент
-					string name;
-					// Если имя разобрано и движок доступен, выбираем подлинность по нему
-					if(helloHostname(body, name) && (this->_tls->engine != nullptr)){
-						/**
-						 * Смена подлинности до разбора приветствия связью возможна:
-						 * ответ ещё не сложен
-						 */
-						this->_tls->engine->sniSelect(*this, name);
-					}
-					// Запоминаем, что разбор приветствия сделан
-					this->_tls->sniffed = true;
-				}
-				// Байты, показываемые связи, берутся из накопленного для разбора
-				data = this->_tls->peek.data();
-				// Устанавливаем размер показываемых байтов
-				size = this->_tls->peek.size();
-			}
-			// Байты подаются связи как пришли: границы записей связь восстанавливает сама
-			const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.push(nts::view_t(data, size)) : this->_tls->client.push(nts::view_t(data, size)));
-			// Очистка накопленного для разбора приветствия
-			this->_tls->peek.clear();
-			// Если связь отвергла принятые байты
-			if(error != nts::context::error_t::NONE){
-				// Выводим в лог сообщение об отказе разбора
-				this->_log->print("Engine: received bytes refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
-				// Выводим признак отказа связи
-				return -2;
-			}
-			// Выводим количество принятых байтов
-			result = static_cast <int64_t> (got);
-		// Если собеседник закрыл соединение
-		} else if(got == 0) result = 0;
-		// Если приём не выполнен по временной причине, выводим ожидание данных
-		else if(!this->retry()){
-			// Выводим в лог сообщение об ошибке приёма
-			this->_log->print("Engine: read failed: %s", log_t::flag_t::WARNING, this->_addr->_socket.message().c_str());
-			// Выводим признак отказа связи
-			result = -2;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод извлечения прочитанных связью байтов в буфер чтения
- *
- * Раздел 5.4 RFC 8446: принятые записи открытым текстом выдаются накопителем целиком,
- * поэтому неотданный остаток держится в самом буфере чтения
- *
- */
-void awh::Engine::Context::drain() noexcept {
-	// Если связь инициализирована
-	if(this->_tls != nullptr){
-		// Принятые связью байты открытого текста
-		vector <uint8_t> data;
-		// Отказ извлечения принятых байтов
-		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.read(data) : this->_tls->client.read(data));
-		// Если отказ не связан с состоянием связи, выводим сообщение
-		if((error != nts::context::error_t::NONE) && (error != nts::context::error_t::STATE)){
-			// Выводим в лог сообщение об отказе извлечения
-			this->_log->print("Engine: received data refused: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
-		// Если открытые байты получены, добавляем их к неотданному остатку
-		} else if(!data.empty()) this->_tls->plain.insert(this->_tls->plain.end(), data.begin(), data.end());
-	}
-}
-/**
- * @brief Метод перекачки байтов связи одним шагом
- *
- * @param want флаг, что прикладные данные нужны сейчас
- * @return     результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
- *
- */
-int32_t awh::Engine::Context::pump(const bool want) noexcept {
-	// Результат работы функции
-	int32_t result = -1;
-	// Если связь не создана, сообщаем об отказе
-	if(this->_tls == nullptr)
-		// Выводим признак того, что рукопожатие не удалось
-		return 0;
-	// Если приветствие своей стороны ещё не отправлено
-	if(!this->_tls->started){
-		// Отказ заведения связи
-		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.start() : this->_tls->client.start());
-		// Если связь не удалось завести
-		if(error != nts::context::error_t::NONE){
-			// Выводим в лог сообщение об отказе заведения связи
-			this->_log->print("Engine: connection start failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (error));
-			// Выводим признак того, что рукопожатие не удалось
-			return 0;
-		}
-		// Запоминаем, что приветствие отправлено
-		this->_tls->started = true;
-	}
-	// Байты, которые связь должна отправить, уходят первыми
-	if(!this->flush())
-		// Сообщаем, что нужно дождаться готовности сокета к записи
-		return -2;
-	/**
-	 * Событие чтения ставится на краевой режим (EV_CLEAR), поэтому за один шаг
-	 * выбираем весь пришедший канал: оставшиеся в сокете байты не дождутся
-	 * следующего изменения состояния, и рукопожатие встанет
-	 */
-	int64_t size = -1;
-	/**
-	 * Переход по принятым байтам канала
-	 */
-	for(size_t count = 0; count < AWH_ENGINE_FEED_LIMIT; count++){
-		// Результат приёма байтов канала
-		size = this->feed();
-		// Если связь отвергла принятые байты
-		if(size == -2)
-			// Сообщаем, что рукопожатие не удалось
-			return 0;
-		// Если читать больше нечего либо собеседник закрыл связь, останавливаемся
-		if(size <= 0)
-			// Выходим из цикла
-			break;
-		// Открытый текст принятых записей забираем в буфер чтения
-		this->drain();
-	}
-	// Если подлинность по предъявленному имени не годится, рукопожатие прерываем
-	if(this->_tls->fatal)
-		// Сообщаем, что рукопожатие не удалось
-		return 0;
-	/**
-	 * Записи приложения и close_notify могут прийти одним куском: открытый текст уже в
-	 * буфере, поэтому закрытие связи объявляем только когда отдавать нечего. Иначе
-	 * последнее сообщение собеседника пропало бы, не дойдя до вызывающего
-	 */
-	if(size == 0 && this->_tls->plain.empty())
-		// Сообщаем, что рукопожатие не удалось
-		return 0;
-	/**
-	 * Прежний OpenSSL проверял цепочку доверенных и соответствие сертификата доменному
-	 * имени колбэками внутри рукопожатия. Наружный модуль цепочку собеседника не судит —
-	 * запас доверенных нужен ему лишь для разбора ответа OCSP, — поэтому обе проверки
-	 * делает насос: сразу по завершении рукопожатия и ровно один раз на связь
-	 */
-	if(this->established() && !this->_tls->checked){
-		// Отметка о том, что проверки выполнены
-		this->_tls->checked = true;
-		// Цепочка сертификатов собеседника
-		const vector <vector <uint8_t>> & chain = ((this->_type == type_t::SERVER) ? this->_tls->server.peer() : this->_tls->client.peer());
-		// Если проверка доверия цепочке разрешена и цепочка получена
-		if(this->_tls->verify && !chain.empty()){
-			// Миг проверки соответствия сроков сертификатов
-			const int64_t moment = static_cast <int64_t> (::time(nullptr));
-			// Роль собеседника: у клиента проверяем сервер, у сервера — клиента
-			const nts::trust::role_t role = ((this->_type == type_t::SERVER) ? nts::trust::role_t::CLIENT : nts::trust::role_t::SERVER);
-			// Отказ доверия цепочки сертификатов запасом доверенных
-			const nts::trust::error_t failure = nts::trust::verify(chain, this->_tls->store, moment, role);
-			// Если цепочка запасу не доверена, рукопожатие не удалось
-			if(failure != nts::trust::error_t::NONE){
-				// Выводим в лог сообщение о недоверенной цепочке сертификатов
-				this->_log->print("Certificate chain validation failed: code=%hhu", log_t::flag_t::CRITICAL, static_cast <uint8_t> (failure));
-				// Сообщаем, что рукопожатие не удалось
-				return 0;
-			}
-			/**
-			 * Раздел 6.4 RFC 6125: имя узла сверяется с именами первого звена цепочки —
-			 * дополнительных имён владельца, а при их отсутствии — с общим именем
-			 */
-			if(!this->_tls->host.empty()){
-				// Отказ сличения имени узла с именами сертификата
-				const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), this->_tls->host);
-				// Если имя узла не отвечает именам сертификата, рукопожатие не удалось
-				if(error != nts::trust::error_t::NONE){
-					// Выводим в лог сообщение о несоответствии имени сертификата
-					this->_log->print("Certificate does not match the host '%s': code=%hhu", log_t::flag_t::CRITICAL, this->_tls->host.c_str(), static_cast <uint8_t> (error));
-					// Сообщаем, что рукопожатие не удалось
-					return 0;
-				}
-			}
-		}
-	}
-	// Если рукопожатие завершено обеими сторонами
-	if(this->established()){
-		/**
-		 * Завершающий полёт рукопожатия (ChangeCipherSpec и Finished у TLS 1.2) связь
-		 * складывает в накопитель тем же шагом, каким признаёт рукопожатие пройденным.
-		 * Собеседник ждёт эти байты, поэтому завершённым рукопожатие объявляем только
-		 * после их отправки: без этого ответ ушёл бы лишь по следующему событию этой
-		 * стороны, а на краевых событиях это ожидание до таймаута подключения
-		 */
-		if(!this->flush())
-			// Сообщаем, что нужно дождаться готовности сокета к записи
-			return -2;
-		// Упреждающие данные и данные конца рукопожатия приходят тем же шагом
-		if(want)
-			// Выполняем повторное извлечение принятых байтов
-			this->drain();
-		// Сообщаем, что рукопожатие завершено
-		return 1;
-	}
-	// Ответ на принятые байты отправляем сразу, не дожидаясь следующего события
-	if(!this->flush())
-		// Сообщаем, что нужно дождаться готовности сокета к записи
-		return -2;
-	/**
-	 * Открытые байты, принятые одним куском с закрытием связи, обязана получить
-	 * вызывающая сторона: рукопожатие уже пройдено, и признак наличия данных отдаём
-	 * до того, как отказ будет объявлен на следующем шаге, когда буфер опустеет
-	 */
-	if(!this->_tls->plain.empty())
-		// Сообщаем, что данные приняты
-		return 1;
-	// Выводим результат шага: завершено либо ждём данных
-	return (this->established() ? 1 : result);
-}
-/**
- * @brief Метод выполнения шага рукопожатия без передачи данных
- *
- * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
- */
-int32_t awh::Engine::Context::negotiate() noexcept {
-	// Если шифрование не активно либо связь не создана
-	if(!this->_encrypted || (this->_tls == nullptr))
-		// Сообщаем, что рукопожатие завершено
-		return 1;
-	// Если сокет не инициализирован
-	if((this->_addr == nullptr) || (this->_addr->sock == INVALID_SOCKET))
-		// Сообщаем, что рукопожатие не удалось
-		return 0;
-	/**
-	 * Рукопожатие засчитывается пройденным только вместе с отправкой его завершающего
-	 * полёта, поэтому неотправленные байты обязаны пойти шаг за шагом
-	 */
-	if(this->established() && !this->pending())
-		// Сообщаем, что рукопожатие завершено
-		return 1;
-	// Выполняем шаг перекачки байтов связи
-	const int32_t result = this->pump(false);
-	// Если рукопожатие не удалось, выводим его причину
-	if(result == 0)
-		// Выводим информацию об ошибке связи
-		static_cast <void> (this->error(0));
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод получения времени до перепосылки рукопожатия DTLS
- *
- * @return время в миллисекундах до срабатывания таймера DTLS (0 - таймер не запущен)
- */
-uint32_t awh::Engine::Context::retransmission() const noexcept {
-	/**
-	 * Потерянные сообщения рукопожатия DTLS перепосылает тот, кто связь ведёт: наружный
-	 * модуль лишь считает срок ожидания, часы у него отсутствуют (раздел 5.8.2 RFC 9147)
-	 */
-	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
-		// Время до срабатывания таймера в миллисекундах
-		const uint32_t msec = ((this->_type == type_t::SERVER) ? this->_tls->server.timeout() : this->_tls->client.timeout());
-		// Выводим время ожидания
-		return msec;
-	}
-	// Таймер не запущен
-	return 0;
-}
-/**
- * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
- *
- * @return результат работы функции (false - рукопожатие не удалось)
- */
-bool awh::Engine::Context::retransmit() noexcept {
-	// Если это подключение DTLS
-	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
-		// Отказ перепосылки по истечении срока ожидания
-		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.elapsed() : this->_tls->client.elapsed());
-		// Если попытки перепосылки исчерпаны
-		if(error != nts::context::error_t::NONE){
-			// Выводим в лог сообщение о перепосылке
-			this->_log->print("DTLS handshake retransmission failed: code=%hhu", log_t::flag_t::WARNING, static_cast <uint8_t> (error));
-			// Сообщаем, что рукопожатие не удалось
-			return false;
-		}
-		// Если рукопожатие ещё не завершено либо остались неотправленные байты, продвигаем его: сообщения могли прийти без события
-		if(!this->established() || this->pending()){
-			// Результат шага перекачки байтов связи
-			const int32_t result = this->pump(false);
-			// Если рукопожатие не удалось
-			if(result == 0)
-				// Сообщаем, что рукопожатие не удалось
-				return false;
-		}
-	}
-	// Сообщаем, что всё хорошо
-	return true;
 }
 /**
  * @brief Метод очистки контекста
@@ -2360,6 +2687,36 @@ void awh::Engine::Context::info() const noexcept {
 			}
 		}
 	}
+}
+/**
+ * @brief Метод выполнения шага рукопожатия без передачи данных
+ *
+ * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+ */
+int32_t awh::Engine::Context::negotiate() noexcept {
+	// Если шифрование не активно либо связь не создана
+	if(!this->_encrypted || (this->_tls == nullptr))
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	// Если сокет не инициализирован
+	if((this->_addr == nullptr) || (this->_addr->sock == INVALID_SOCKET))
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	/**
+	 * Рукопожатие засчитывается пройденным только вместе с отправкой его завершающего
+	 * полёта, поэтому неотправленные байты обязаны пойти шаг за шагом
+	 */
+	if(this->established() && !this->pending())
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	// Выполняем шаг перекачки байтов связи
+	const int32_t result = this->pump(false);
+	// Если рукопожатие не удалось, выводим его причину
+	if(result == 0)
+		// Выводим информацию об ошибке связи
+		static_cast <void> (this->error(0));
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод чтения данных из сокета
@@ -2473,8 +2830,13 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
-					// Если сработало событие таймаута
-					case ETIME:
+					/**
+					 * Если система объявляет ошибку истечения таймера: DragonFly её не имеет
+					 */
+					#ifdef ETIME
+						// Если сработало событие таймаута
+						case ETIME:
+					#endif
 					// Если ошибка протокола
 					case EPROTO:
 					// Если в буфере закончились данные
@@ -2757,8 +3119,13 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
-					// Если сработало событие таймаута
-					case ETIME:
+					/**
+					 * Если система объявляет ошибку истечения таймера: DragonFly её не имеет
+					 */
+					#ifdef ETIME
+						// Если сработало событие таймаута
+						case ETIME:
+					#endif
 					// Если ошибка протокола
 					case EPROTO:
 					// Если в буфере закончились данные
@@ -2888,6 +3255,55 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
+ *
+ * @return результат работы функции (false - рукопожатие не удалось)
+ */
+bool awh::Engine::Context::retransmit() noexcept {
+	// Если это подключение DTLS
+	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Отказ перепосылки по истечении срока ожидания
+		const nts::context::error_t error = ((this->_type == type_t::SERVER) ? this->_tls->server.elapsed() : this->_tls->client.elapsed());
+		// Если попытки перепосылки исчерпаны
+		if(error != nts::context::error_t::NONE){
+			// Выводим в лог сообщение о перепосылке
+			this->_log->print("DTLS handshake retransmission failed: code=%hhu", log_t::flag_t::WARNING, static_cast <uint8_t> (error));
+			// Сообщаем, что рукопожатие не удалось
+			return false;
+		}
+		// Если рукопожатие ещё не завершено либо остались неотправленные байты, продвигаем его: сообщения могли прийти без события
+		if(!this->established() || this->pending()){
+			// Результат шага перекачки байтов связи
+			const int32_t result = this->pump(false);
+			// Если рукопожатие не удалось
+			if(result == 0)
+				// Сообщаем, что рукопожатие не удалось
+				return false;
+		}
+	}
+	// Сообщаем, что всё хорошо
+	return true;
+}
+/**
+ * @brief Метод получения времени до перепосылки рукопожатия DTLS
+ *
+ * @return время в миллисекундах до срабатывания таймера DTLS (0 - таймер не запущен)
+ */
+uint32_t awh::Engine::Context::retransmission() const noexcept {
+	/**
+	 * Потерянные сообщения рукопожатия DTLS перепосылает тот, кто связь ведёт: наружный
+	 * модуль лишь считает срок ожидания, часы у него отсутствуют (раздел 5.8.2 RFC 9147)
+	 */
+	if(this->_encrypted && (this->_tls != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Время до срабатывания таймера в миллисекундах
+		const uint32_t msec = ((this->_type == type_t::SERVER) ? this->_tls->server.timeout() : this->_tls->client.timeout());
+		// Выводим время ожидания
+		return msec;
+	}
+	// Таймер не запущен
+	return 0;
 }
 /**
  * @brief Метод проверки на то, является ли сокет заблокированным
@@ -3158,7 +3574,7 @@ int32_t awh::Engine::Context::availability(const method_t method) const noexcept
 							// Добавляем неотправленные байты
 							result += static_cast <int32_t> (size);
 					// Если связь клиентская, берём её накопитель
-					} else if(this->_tls != nullptr){
+					} else if(this->_tls != nullptr) {
 						// Размер неотправленного накопителя связи
 						const size_t size = this->_tls->client.output().size;
 						// Если накопитель заполнен, учитываем его
@@ -3173,17 +3589,6 @@ int32_t awh::Engine::Context::availability(const method_t method) const noexcept
 	// Выводим результат
 	return result;
 }
-/**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
- */
-awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
- _verb(false), _encrypted(false), _type(type_t::NONE), _proto(proto_t::RAW),
- _tls(nullptr), _addr(nullptr), _fmk(fmk), _log(log) {}
-
 /**
  * @brief Метод выполнения выбора следующего протокола
  *
@@ -3219,7 +3624,17 @@ bool awh::Engine::Context::selectProto(uint8_t ** out, uint8_t * outSize, const 
 	// Выводим результат
 	return false;
 }
- /**
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ *
+ */
+awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
+ _verb(false), _encrypted(false), _type(type_t::NONE), _proto(proto_t::RAW),
+ _tls(nullptr), _addr(nullptr), _fmk(fmk), _log(log) {}
+/**
  * @brief Деструктор
  *
  */
@@ -3227,268 +3642,29 @@ awh::Engine::Context::~Context() noexcept {
 	// Выполняем очистку выделенных ранее данных
 	this->clear();
 }
+
 /**
- * @brief Метод установки подлинности стороны связи по файлам сертификатов
+ * @brief Метод прогрева запаса подготовленных подлинностей по зарегистрированным именам
  *
- * Подготовка ключа RSA стоит вдвое дороже самой подписи, а ключа ECDSA — вдвое дороже всего
- * рукопожатия, поэтому подготовленная подлинность разделяется всеми связями одной пары файлов
- *
- * @param target контекст назначения
- * @param cert   адреса файлов сертификатов
- * @return       результат установки
+ * @details Отклик выбора подлинности по имени узла зовётся из noexcept-контекста, без перехвата,
+ *          и блокирует ведущий поток, поэтому читать файлы и готовить ключ он не должен: заготовка
+ *          обязана прийти к нему готовой. Прогрев при регистрации даёт и раннюю проверку файлов —
+ *          негодные объявляются сразу, а не на первом рукопожатии. Разбор PEM экономится, подготовка
+ *          же ключа на пути GIVEN повторяется движком всяким полным рукопожатием.
  *
  */
-bool awh::Engine::credential(ctx_t & target, const cert_t & cert) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если связь и адрес файла цепочки сертификатов переданы
-	if((target._tls != nullptr) && !cert.pem.empty()){
-		// Запись запаса подлинностей, ключом которой служит пара адресов файлов
-		const string mark = this->_fmk->format("%s\n%s", cert.pem.c_str(), cert.key.c_str());
-		// Разобранные и подготовленные файлы цепочки и ключа
-		auto i = this->_keys->held.find(mark);
-		// Если подлинность этих файлов ещё не готовилась, разбираем и готовим её
-		if(i == this->_keys->held.end()){
-			// Разбираемая подлинность стороны связи
-			nts::context::credential_t credential;
-			// Прочитанные байты файла цепочки сертификатов
-			const vector <char> pem = this->_fs.read(cert.pem);
-			// Если текст цепочки сертификатов не прочитался либо не разобрался
-			if(pem.empty() || (nts::pem::certificates(string(pem.begin(), pem.end()), credential.chain) != nts::pem::error_t::NONE) || credential.chain.empty()){
-				// Выводим в лог сообщение о нечитаемом сертификате
-				this->_log->print("Certificate cannot be set: %s", log_t::flag_t::CRITICAL, cert.pem.c_str());
-				// Выводим признак того, что подлинность не установлена
-				return false;
-			}
-			// Если приватный ключ сертификата задан
-			if(!cert.key.empty()){
-				// Прочитанные байты файла приватного ключа
-				const vector <char> secret = this->_fs.read(cert.key);
-				// Если текст приватного ключа не прочитался
-				if(secret.empty()){
-					// Выводим в лог сообщение о нечитаемом ключе
-					this->_log->print("Private key cannot be set: %s", log_t::flag_t::CRITICAL, cert.key.c_str());
-					// Выводим признак того, что подлинность не установлена
-					return false;
-				}
-				/**
-				 * Секретный ключ передаётся наружному модулю текстом PEM: разбор обёртки
-				 * и вида ключа делает сама библиотека, а заготовку подписи — prepare()
-				 */
-				credential.secret.assign(secret.begin(), secret.end());
-				// Отказ подготовки секретного ключа
-				const nts::context::error_t error = credential.prepare();
-				// Если ключ не подготовлен, подлинность не годится
-				if(error != nts::context::error_t::NONE){
-					// Выводим в лог сообщение об отказе подготовки ключа
-					this->_log->print("Private key is not valid: %s code=%hhu", log_t::flag_t::CRITICAL, cert.key.c_str(), static_cast <uint8_t> (error));
-					// Выводим признак того, что подлинность не установлена
-					return false;
-				}
-			}
-			// Выполняем установку подготовленной подлинности в запас
-			i = this->_keys->held.emplace(mark, std::move(credential)).first;
-		}
-		// Устанавливаем подлинность в связь активного рода
-		if(target._type == type_t::SERVER)
-			// Выполняем установку подлинности связи сервера
-			target._tls->server.credential(i->second);
-		else target._tls->client.credential(i->second);
-		// Запоминаем, что подлинность установлена
-		result = true;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод выбора подлинности сервера по имени, запрошенному клиентом (SNI)
- *
- * Наружный модуль разбирает приветствие и складывает ответ одним шагом, поэтому имя
- * извлекается из байтов канала до подачи их связи — собранием занимается helloBody()
- *
- * @param target контекст назначения
- * @param name   имя, предъявленное клиентом
- * @return       результат выбора
- *
- */
-bool awh::Engine::sniSelect(ctx_t & target, const string & name) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если сертификаты по доменным именам заданы и имя предъявлено
-	if((target._tls != nullptr) && !this->_sni.empty() && !name.empty()){
-		// Доменное имя в нижнем регистре
-		string host = name;
-		// Переводим доменное имя в нижний регистр
-		this->_fmk->transform(host, fmk_t::transform_t::LOWER);
-		// Выполняем поиск подлинности по точному имени
-		auto i = this->_sni.find(host);
-		// Если по точному имени подлинность не найдена
-		if(i == this->_sni.end()){
-			// Позиция первой точки в доменном имени
-			const size_t pos = host.find('.');
-			// Если домен содержит поддомен
-			if(pos != string::npos)
-				// Выполняем поиск подлинности по маске домена
-				i = this->_sni.find(this->_fmk->format("*%s", host.substr(pos).c_str()));
-		}
+void awh::Engine::warm() noexcept {
+	// Если запас подлинностей создан, прогреваем его по перечню имён
+	if(this->_keys != nullptr){
 		/**
-		 * Для неизвестного домена остаётся подлинность по умолчанию: рукопожатие
-		 * продолжается ею, как это делал OpenSSL, не предъявляя фатального извещения
+		 * Переход по зарегистрированным доменным именам
 		 */
-		if(i != this->_sni.end()){
-			// Выполняем установку подлинности по найденным файлам
-			result = this->credential(target, i->second);
-			// Если подлинность установить не удалось, рукопожатие прерываем
-			if(!result){
-				// Выводим в лог сообщение о невозможности выбрать подлинность
-				this->_log->print("Certificate for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
-				// Запоминаем, что связь дальше вести нельзя
-				target._tls->fatal = true;
-			}
+		for(const auto & item : this->_sni){
+			// Выполняем подготовку подлинности зарегистрированного имени
+			static_cast <void> (heldCredential(this->_fs, this->_fmk, this->_log, this->_keys->held, item.second.pem, item.second.key));
 		}
 	}
-	// Выводим результат
-	return result;
 }
-/**
- * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
- *
- * Раздел 6.4 RFC 6125: имя разыскивается среди дополнительных имён владельца, а общее имя
- * берётся лишь тогда, когда дополнительных имён нет вовсе; звёздочка дозволена лишь самой
- * левой частью и лишь целой частью — это и делает nts::trust::belongs()
- *
- * @param host  доменное имя
- * @param chain цепочка сертификатов собеседника записями DER
- * @return      результат проверки
- *
- */
-awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept {
-	// Результат работы функции
-	validate_t result = validate_t::Error;
-	// Если хост передан и цепочка сертификатов получена
-	if(!host.empty() && !chain.empty()){
-		// Отказ сличения имени узла с именами сертификата
-		const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), host);
-		/**
-		 * Определяем полученный отказ
-		 */
-		switch(static_cast <uint8_t> (error)){
-			// Если имя узла отвечает имени сертификата
-			case static_cast <uint8_t> (nts::trust::error_t::NONE): result = validate_t::MatchFound; break;
-			// Если имя узла ни одному имени сертификата не отвечает
-			case static_cast <uint8_t> (nts::trust::error_t::NAME): result = validate_t::MatchNotFound; break;
-			// Если сертификат цепочки разобрать не удалось
-			case static_cast <uint8_t> (nts::trust::error_t::PARSE): result = validate_t::MalformedCertificate; break;
-			// Для остальных отказов
-			default: result = validate_t::Error; break;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод добавления в запас доверенных сертификатов записей из файла
- *
- * @param fs     объект работы с файловой системой
- * @param log    объект работы с логами
- * @param store  запас доверенных сертификатов
- * @param file   адрес файла сертификатов текстом PEM
- * @return       результат добавления
- *
- */
-static bool storeCAFile(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & file) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Прочитанные байты файла сертификатов
-	const vector <char> pem = fs.read(file);
-	// Разобранные записи сертификатов
-	vector <vector <uint8_t>> chain;
-	// Если текст файла прочитался и разобрался
-	if(!pem.empty() && (nts::pem::certificates(string(pem.begin(), pem.end()), chain) == nts::pem::error_t::NONE)){
-		/**
-		 * Переход по разобранным записям	
-		 */
-		for(auto & item : chain){
-			// Если запись добавлена в запас, запоминаем успех
-			if(store.add(nts::view_t(item.data(), item.size())))
-				// Запоминаем, что в запас что-то добавлено
-				result = true;
-		}
-	// Если файл читается, но сертификатов в нём не оказалось, выводим сообщение
-	} else if(!pem.empty()) log->print("CAfile is invalid: %s", awh::log_t::flag_t::CRITICAL, file.c_str());
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод добавления в запас доверенных сертификатов записей из каталога
- *
- * Некоторые системы держат корневые сертификаты не одной связкой, а каталогом отдельных
- * записей: NetBSD — /etc/openssl/certs (301 запись), Solaris и illumos — /etc/certs/CA
- * (186 и 120 записей), Linux и FreeBSD — /etc/ssl/certs. Снято измерением 07.11.2026
- * на живых системах
- *
- * @param fs    объект работы с файловой системой
- * @param log   объект работы с логами
- * @param store запас доверенных сертификатов
- * @param dir   адрес каталога с файлами сертификатов текстом PEM
- * @return      результат добавления (false - каталог недоступен либо ни одна запись не разобралась)
- *
- */
-static bool storeCADir(const awh::fs_t & fs, const awh::log_t * log, nts::trust::store_t & store, const string & dir) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Выполняем обход каталога с сертификатами центра сертификации
-	static_cast <void> (fs.walkDir(dir, "", false, [&fs, &log, &store, &result](const string & name) noexcept -> bool {
-		// Если файл сертификатов разобрался и пополнил запас, запоминаем это
-		if(storeCAFile(fs, log, store, name))
-			// Запоминаем, что в запас что-то добавлено
-			result = true;
-		// Продолжаем обход каталога
-		return true;
-	}));
-	// Выводим результат
-	return result;
-}
-/**
- * Для операционной системы MS Windows
- */
-#if _WIN32 || _WIN64
-	/**
-	 * @brief Метод добавления в запас доверенных сертификатов системного хранилища
-	 *
-	 * @param store запас доверенных сертификатов
-	 * @param log   объект работы с логами
-	 * @param name  название разделителя системного хранилища
-	 * @return      результат добавления
-	 *
-	 */
-	static bool storeCAWindows(nts::trust::store_t & store, const awh::log_t * log, const char * name) noexcept {
-		// Результат работы функции
-		bool result = false;
-		// Открываем системное хранилище сертификатов
-		HCERTSTORE sys = ::CertOpenSystemStore(0, name);
-		// Если системное хранилище не открыто
-		if(sys == nullptr){
-			// Выводим в лог сообщение о недоступном хранилище
-			log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
-			// Выводим признак того, что запас не пополнен
-			return false;
-		}
-		/**
-		 * Перебираем все сертификаты системного хранилища	
-		 */
-		for(PCCERT_CONTEXT ctx = nullptr; (ctx = ::CertEnumCertificatesInStore(sys, ctx)) != nullptr;){
-			// Если запись сертификата добавлена в запас, запоминаем успех
-			if(store.add(nts::view_t(ctx->pbCertEncoded, static_cast <size_t> (ctx->cbCertEncoded))))
-				// Запоминаем, что в запас что-то добавлено
-				result = true;
-		}
-		// Закрываем системное хранилище
-		::CertCloseStore(sys, 0);
-		// Выводим результат
-		return result;
-	}
-#endif
 /**
  * @brief Метод инициализации запаса доверенных сертификатов
  *
@@ -3512,15 +3688,15 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 		 */
 		if(!this->_cert.ca.empty() || !this->_cert.path.empty()){
 			// Если адрес CA-файла существует как файл
-			if(!this->_cert.ca.empty() && this->_fs.isFile(this->_cert.ca)){
+			if(!this->_cert.ca.empty() && this->_fs.isFile(this->_cert.ca))
 				// Выполняем добавление сертификатов из файла в запас
 				result = storeCAFile(this->_fs, this->_log, store, this->_cert.ca);
 			// Если указан каталог с сертификатами центра сертификации, перебираем его содержимое
-			} else if(!this->_cert.path.empty() && this->_fs.isDir(this->_cert.path)){
+			else if(!this->_cert.path.empty() && this->_fs.isDir(this->_cert.path))
 				// Выполняем обход каталога с сертификатами центра сертификации
 				result = storeCADir(this->_fs, this->_log, store, this->_cert.path);
 			// Если указанный адрес не найден, возвращаемся к расположениям системы
-			} else this->_log->print("CAfile is not found: %s", log_t::flag_t::CRITICAL, (!this->_cert.ca.empty() ? this->_cert.ca.c_str() : this->_cert.path.c_str()));
+			else this->_log->print("CAfile is not found: %s", log_t::flag_t::CRITICAL, (!this->_cert.ca.empty() ? this->_cert.ca.c_str() : this->_cert.path.c_str()));
 		}
 		// Если явный заказ не задал или не нашёлся, перебираем расположения системы
 		if(!result){
@@ -3639,6 +3815,267 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод инициализации запаса списков отзыва сертификатов
+ *
+ * @details Список добывает и подаёт потребитель: наружный модуль ввода-вывода не ведёт, а проверку
+ *          отзыва включает сам факт поданного списка. Прежний OpenSSL ставил при этом флаги
+ *          X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL — у A-NTS тот же смысл встроен в запас.
+ *
+ * @param target контекст назначения
+ * @return      результат инициализации
+ *
+ */
+bool awh::Engine::storeCRL(ctx_t & target) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если связь создана и адрес файла списков отзыва задан
+	if((target._tls != nullptr) && !this->_cert.crl.empty()){
+		// Если адрес файла списков отзыва существует как файл
+		if(this->_fs.isFile(this->_cert.crl))
+			// Выполняем добавление списков отзыва и сертификатов файла в запас
+			result = storeCRLFile(this->_fs, this->_log, target._tls->store, this->_cert.crl);
+		// Если файл не найден, объявляем это громко
+		else this->_log->print("CRLfile is not found: %s", log_t::flag_t::CRITICAL, this->_cert.crl.c_str());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки подлинности стороны связи по файлам сертификата и ключа
+ *
+ * @param target контекст назначения
+ * @param cert   файлы цепочки сертификатов и приватного ключа
+ * @return       результат установки
+ *
+ */
+bool awh::Engine::credential(ctx_t & target, const cert_t & cert) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если связь и адрес файла цепочки сертификатов переданы
+	if((target._tls != nullptr) && !cert.pem.empty()){
+		// Подготовленная подлинность этих файлов
+		const nts::context::credential_t * ready = heldCredential(this->_fs, this->_fmk, this->_log, this->_keys->held, cert.pem, cert.key);
+		// Если подлинность подготовлена, устанавливаем её в связь активного рода
+		if(ready != nullptr){
+			// Устанавливаем подлинность в связь активного рода
+			if(target._type == type_t::SERVER)
+				// Выполняем установку подлинности связи сервера
+				target._tls->server.credential(*ready);
+			else target._tls->client.credential(*ready);
+			// Запоминаем, что подлинность установлена
+			result = true;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод заведения связи наружного модуля шифрования
+ *
+ * @details Прежний OpenSSL создавал пару SSL_CTX и SSL и вешал на них колбэки; наружный модуль
+ *          настраивается целиком одним контекстом, поэтому здесь остаётся только перечень настроек.
+ *
+ * @param target контекст назначения
+ * @param type   тип активного приложения
+ * @param host   хост удалённого сервера
+ * @return       результат заведения связи
+ *
+ */
+bool awh::Engine::wrapTLS(ctx_t & target, const type_t type, const string & host) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если объект подключения и сокет переданы
+	if((target._addr != nullptr) && (target._addr->sock != INVALID_SOCKET)){
+		// Выполняем создание состояния связи
+		target._tls = std::make_unique <ctx_t::Tls>();
+		/**
+		 * Снимаем перечень имён с отметками файлов: отклику выбора подлинности читать файлы нельзя
+		 */
+		for(const auto & item : this->_sni){
+			// Выполняем установку отметки пары файлов для доменного имени
+			target._tls->names[item.first] = this->_fmk->format("%s\n%s", item.second.pem.c_str(), item.second.key.c_str());
+		}
+		// Передаём отклику указатели на запасы: связь он получает от наружного модуля, а не от нас
+		target._tls->pick = SniPick{&target._tls->names, &this->_keys->held, this->_fmk, this->_log};
+		// Устанавливаем адрес удалённого сервера для SNI и сверки имени сертификата
+		target._tls->host = host;
+		// Устанавливаем признак проверки доверия цепочке собеседника
+		target._tls->verify = this->_verify;
+		/**
+		 * Определяем перенос связи: дейтаграммы ведут DTLS, потоки — TLS.
+		 * SCTP у v4 заводится только как SOCK_STREAM, поэтому шифруется как обычный TCP
+		 */
+		const nts::context::transport_t transport = ((target._addr->_type == SOCK_DGRAM) ? nts::context::transport_t::DATAGRAMS : nts::context::transport_t::RECORDS);
+		// Перечень наборов шифрования для связи
+		vector <nts::protect::suite_t> suites;
+		// Выполняем разбор перечня наборов шифрования из строки настроек
+		suitesList(this->_cipher, suites, this->_log);
+		// Если список настроек пуст, а связь серверная, берём серверный набор по умолчанию
+		if(suites.empty() && (type == type_t::SERVER))
+			// Выполняем установку серверных наборов по умолчанию
+			serverSuites(suites);
+		// Перечень групп обмена ключами
+		vector <nts::extension::group_t> groups;
+		// Выполняем установку перечня групп по умолчанию
+		groupList(groups);
+		// Перечень групп, по которым клиент шлёт доли ключа: конечные поля в него не входят
+		vector <nts::extension::group_t> shares;
+		// Выполняем установку перечня групп долей по умолчанию
+		shareList(shares);
+		// Перечень прикладных протоколов, объявляемых связью
+		vector <string> protocols;
+		// Выполняем разбор перечня прикладных протоколов
+		protocolList(target.protocols, protocols);
+		/**
+		 * Определяем род связи
+		 */
+		if(type == type_t::SERVER){
+			// Устанавливаем перенос связи
+			target._tls->server.transport(transport);
+			// Если перенос дейтаграммами, подаём адрес собеседника и секрет метки возврата состояния
+			if(transport == nts::context::transport_t::DATAGRAMS){
+				// Непрозрачный опознаватель собеседника: порт и октеты адреса
+				vector <uint8_t> mark;
+				// Выполняем сборку опознавателя собеседника
+				peerMark(target._addr->_peer.client, mark);
+				// Устанавливаем адрес собеседника для метки возврата состояния (раздел 5.1 RFC 9147)
+				static_cast <void> (target._tls->server.address(nts::view_t(mark.data(), mark.size())));
+				// Устанавливаем общий секрет метки: печёнку выдаёт одна связь, а проверяет другая
+				target._tls->server.stamp(cookieSecret());
+			}
+			// Выполняем установку пределов изданий протокола
+			result = (target._tls->server.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
+			// Выполняем установку групп обмена ключами
+			target._tls->server.groups(groups);
+			// Если перечень наборов шифрования собран, устанавливаем его
+			if(!suites.empty())
+				// Выполняем установку наборов шифрования
+				target._tls->server.suites(suites);
+			// Если перечень прикладных протоколов задан, объявляем его
+			if(!protocols.empty())
+				// Выполняем установку прикладных протоколов
+				target._tls->server.protocols(protocols);
+			// Устанавливаем отклик выбора подлинности по имени, предъявленному клиентом (раздел 3 RFC 6066)
+			target._tls->server.select(nts::context::select_t(sniAnswer, &target._tls->pick));
+			// Если подлинность сервера задана файлами сертификатов, устанавливаем её
+			if(result && !this->_cert.pem.empty())
+				// Выполняем установку подлинности по умолчанию
+				result = this->credential(target, this->_cert);
+			/**
+			 * Если разрешена проверка сертификата клиента, собираем запас доверенных:
+			 * наружный модуль цепочку не судит, но запас нужен и для сверки имени издателя
+			 */
+			if(result && this->_verify){
+				// Выполняем инициализацию запаса доверенных сертификатов
+				static_cast <void> (this->storeCA(target));
+				// Выполняем инициализацию запаса списков отзыва: поданный список включает проверку всей цепочки
+				static_cast <void> (this->storeCRL(target));
+				// Устанавливаем запас доверенных сертификатов связи
+				target._tls->server.verification(true, 0, target._tls->store);
+			}
+			// Если подлинность сервера не задана, связь завести нельзя
+			if(result && this->_cert.pem.empty()){
+				// Выводим в лог сообщение об отсутствии сертификата сервера
+				this->_log->print("There is no certificate for the server", log_t::flag_t::CRITICAL);
+				// Сообщаем, что связь не заведена
+				result = false;
+			}
+		// Если приложение является клиентом
+		} else {
+			// Устанавливаем перенос связи
+			target._tls->client.transport(transport);
+			// Выполняем установку пределов изданий протокола
+			result = (target._tls->client.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
+			// Выполняем установку групп и предложений обмена ключами
+			target._tls->client.groups(groups);
+			// Выполняем установку предложений групп долей ключа
+			target._tls->client.shares(shares);
+			// Если перечень наборов шифрования собран, устанавливаем его
+			if(!suites.empty())
+				// Выполняем установку наборов шифрования
+				target._tls->client.suites(suites);
+			// Если перечень прикладных протоколов задан, объявляем его
+			if(!protocols.empty())
+				// Выполняем установку прикладных протоколов
+				target._tls->client.protocols(protocols);
+			/**
+			 * Раздел 3 RFC 6066: адрес в расширении server_name не передают, поэтому имя
+			 * отправляем только когда хост не является IP-адресом
+			 */
+			if(!host.empty() && (ipLiteral(host) == 0))
+				// Устанавливаем имя узла, за которым пришли
+				target._tls->client.name(host);
+			// Выполняем инициализацию запаса доверенных сертификатов
+			static_cast <void> (this->storeCA(target));
+			// Выполняем инициализацию запаса списков отзыва: поданный список включает проверку всей цепочки
+			static_cast <void> (this->storeCRL(target));
+			// Устанавливаем проверку цепочки собеседника и запас доверенных
+			target._tls->client.verification(this->_verify, 0, target._tls->store);
+			// Если указан сертификат клиента, устанавливаем его подлинность
+			if(!this->_cert.pem.empty())
+				// Выполняем установку подлинности клиента
+				result = this->credential(target, this->_cert);
+		}
+		// Если связь заведена, запоминаем, что шифрование активно
+		if(result){
+			// Устанавливаем флаг инициализации шифрования
+			target._encrypted = true;
+			// Устанавливаем флаг активации TLS
+			target._addr->_encrypted = true;
+		// Если связь не завелась, очищаем состояние связи
+		} else {
+			// Выполняем очистку состояния связи
+			target._tls.reset(nullptr);
+			// Выводим в лог сообщение о невозможности завести связь
+			this->_log->print("Could not create SSL/TLS session object", log_t::flag_t::CRITICAL);
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод проверки доменного имени по цепочке сертификатов собеседника
+ *
+ * @details Раздел 6.4 RFC 6125: имя разыскивается среди дополнительных имён владельца, а общее имя
+ *          берётся лишь тогда, когда дополнительных имён нет вовсе; звёздочка дозволена лишь самой
+ *          левой частью и лишь целой частью — это и делает nts::trust::belongs().
+ *
+ * @param host  доменное имя
+ * @param chain цепочка сертификатов собеседника записями DER
+ * @return      результат проверки
+ *
+ */
+awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const vector <vector <uint8_t>> & chain) const noexcept {
+	// Результат работы функции
+	validate_t result = validate_t::Error;
+	// Если хост передан и цепочка сертификатов получена
+	if(!host.empty() && !chain.empty()){
+		// Отказ сличения имени узла с именами сертификата
+		const nts::trust::error_t error = nts::trust::belongs(nts::view_t(chain.front().data(), chain.front().size()), host);
+		/**
+		 * Определяем полученный отказ
+		 */
+		switch(static_cast <uint8_t> (error)){
+			// Если имя узла отвечает имени сертификата
+			case static_cast <uint8_t> (nts::trust::error_t::NONE):
+				// Формируем результат ответа валидации
+				result = validate_t::MatchFound; break;
+			// Если имя узла ни одному имени сертификата не отвечает
+			case static_cast <uint8_t> (nts::trust::error_t::NAME):
+				// Формируем результат ответа валидации
+				result = validate_t::MatchNotFound; break;
+			// Если сертификат цепочки разобрать не удалось
+			case static_cast <uint8_t> (nts::trust::error_t::PARSE):
+				// Формируем результат ответа валидации
+				result = validate_t::MalformedCertificate; break;
+			// Для остальных отказов
+			default: result = validate_t::Error; break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод ожидания рукопожатия
  *
  * @param target контекст назначения
@@ -3646,25 +4083,43 @@ bool awh::Engine::storeCA(ctx_t & target) const noexcept {
  */
 bool awh::Engine::wait(ctx_t & target) noexcept {
 	/**
-	 * Определяем тип входящего сокета
+	 * @brief Если сокет потоковый, выводим признак того, что рукопожатие ещё не начато
+	 *
+	 * @details Прежняя SSL_stateless() отвечала, что рукопожатие ещё не началось: приветствие своей
+	 *          стороны ещё не отправлено.
+	 *
 	 */
-	switch(target._addr->_type){
-		// Если сокет установлен TCP/IP
-		case SOCK_STREAM:
-			/**
-			 * Прежняя SSL_stateless() отвечала, что рукопожатие ещё не началось:
-			 * приветствие своей стороны ещё не отправлено
-			 */
-			return ((target._tls != nullptr) && !target._tls->started);
-		/**
-		 * Дейтаграммы: разбор приветствия без состояния (печёнки и адрес клиента)
-		 * переносится на круг 2 — наружный модуль ведёт печёнки сам, и вызову нужен
-		 * накопитель принятой дейтаграммы вместе с адресом собеседника
-		 */
-		case SOCK_DGRAM: {
-			// Выводим в лог сообщение о том, что ожидание без состояния не готово
-			this->_log->print("DTLS stateless listen is not implemented yet", log_t::flag_t::WARNING);
-		} break;
+	if(target._addr->_type == SOCK_STREAM)
+		// Выводим признак ожидания рукопожатия
+		return ((target._tls != nullptr) && !target._tls->started);
+	/**
+	 * Дейтаграммы: прежняя DTLSv1_listen() читала приветствие со слушающего сокета и тем самым
+	 * заполняла адрес клиента — без этого attach() копировал бы нулевой адрес, и sendto отвечал
+	 * EADDRNOTAVAIL. Печёнки ведёт сама A-NTS на связи клиента (address и stamp подаются при
+	 * заведении), поэтому здесь принимаем первую дейтаграмму, запоминаем адрес собеседника и
+	 * откладываем байты: их подаст связи насос после заведения, иначе приветствие пропало бы
+	 */
+	if(target._addr->_type == SOCK_DGRAM){
+		// Буфер принимаемой дейтаграммы
+		vector <uint8_t> data(AWH_ENGINE_DATAGRAM_SIZE);
+		// Адрес собеседника, с которого пришла дейтаграмма
+		struct sockaddr_storage peer{};
+		// Длина адреса собеседника
+		socklen_t len = sizeof(peer);
+		// Количество принятых байтов
+		const ssize_t got = ::recvfrom(target._addr->sock, data.data(), data.size(), 0, reinterpret_cast <struct sockaddr *> (&peer), &len);
+		// Если дейтаграмма не принята, прикреплять некого
+		if(got <= 0)
+			// Сообщаем, что ничего не обработано
+			return false;
+		// Запоминаем адрес собеседника для прикрепления связи
+		::memcpy(&target._addr->_peer.client, &peer, sizeof(peer));
+		// Запоминаем настоящую длину адреса собеседника
+		target._addr->_peer.size = len;
+		// Откладываем принятые байты до заведения связи
+		target._greeting.assign(data.begin(), data.begin() + got);
+		// Сообщаем, что собеседник принят и связь можно прикреплять
+		return true;
 	}
 	// Сообщаем, что ничего не обработано
 	return false;
@@ -3877,150 +4332,6 @@ void awh::Engine::attach(ctx_t & target, addr_t * address) noexcept {
 		 * связи передаёт наружному модулю отдельно — круг 2
 		 */
 	}
-}
-/**
- * @brief Метод заведения связи наружного модуля шифрования
- *
- * Прежний OpenSSL создавал пару SSL_CTX и SSL и вешал на них колбэки; наружный модуль
- * настраивается целиком одним контекстом, поэтому здесь остаётся только перечень настроек
- *
- * @param target контекст назначения
- * @param type   тип активного приложения
- * @param host   хост удалённого сервера
- * @return       результат заведения связи
- *
- */
-bool awh::Engine::wrapTLS(ctx_t & target, const type_t type, const string & host) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если объект подключения и сокет переданы
-	if((target._addr != nullptr) && (target._addr->sock != INVALID_SOCKET)){
-		// Выполняем создание состояния связи
-		target._tls = std::make_unique <ctx_t::Tls>();
-		// Запоминаем движок: по нему связь выбирает подлинность для имени клиента
-		target._tls->engine = this;
-		// Устанавливаем адрес удалённого сервера для SNI и сверки имени сертификата
-		target._tls->host = host;
-		// Устанавливаем признак проверки доверия цепочке собеседника
-		target._tls->verify = this->_verify;
-		/**
-		 * Определяем перенос связи: дейтаграммы ведут DTLS, потоки — TLS.
-		 * SCTP у v4 заводится только как SOCK_STREAM, поэтому шифруется как обычный TCP
-		 */
-		const nts::context::transport_t transport = ((target._addr->_type == SOCK_DGRAM) ? nts::context::transport_t::DATAGRAMS : nts::context::transport_t::RECORDS);
-		// Перечень наборов шифрования для связи
-		vector <nts::protect::suite_t> suites;
-		// Выполняем разбор перечня наборов шифрования из строки настроек
-		suitesList(this->_cipher, suites, this->_log);
-		// Если список настроек пуст, а связь серверная, берём серверный набор по умолчанию
-		if(suites.empty() && (type == type_t::SERVER))
-			// Выполняем установку серверных наборов по умолчанию
-			serverSuites(suites);
-		// Перечень групп обмена ключами
-		vector <nts::extension::group_t> groups;
-		// Выполняем установку перечня групп по умолчанию
-		groupList(groups);
-		// Перечень прикладных протоколов, объявляемых связью
-		vector <string> protocols;
-		// Выполняем разбор перечня прикладных протоколов
-		protocolList(target.protocols, protocols);
-		/**
-		 * Определяем род связи
-		 */
-		if(type == type_t::SERVER){
-			// Устанавливаем перенос связи
-			target._tls->server.transport(transport);
-			// Выполняем установку пределов изданий протокола
-			result = (target._tls->server.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
-			// Выполняем установку групп обмена ключами
-			target._tls->server.groups(groups);
-			// Если перечень наборов шифрования собран, устанавливаем его
-			if(!suites.empty())
-				// Выполняем установку наборов шифрования
-				target._tls->server.suites(suites);
-			// Если перечень прикладных протоколов задан, объявляем его
-			if(!protocols.empty())
-				// Выполняем установку прикладных протоколов
-				target._tls->server.protocols(protocols);
-			// Если подлинность сервера задана файлами сертификатов, устанавливаем её
-			if(result && !this->_cert.pem.empty())
-				// Выполняем установку подлинности по умолчанию
-				result = this->credential(target, this->_cert);
-			/**
-			 * Если разрешена проверка сертификата клиента, собираем запас доверенных:
-			 * наружный модуль цепочку не судит, но запас нужен и для сверки имени издателя
-			 */
-			if(result && this->_verify){
-				// Выполняем инициализацию запаса доверенных сертификатов
-				static_cast <void> (this->storeCA(target));
-				// Устанавливаем запас доверенных сертификатов связи
-				target._tls->server.verification(true, 0, target._tls->store);
-			}
-			// Если указан файл отозванных сертификатов, предупреждаем: отзыв ожидает наружный модуль
-			if(!this->_cert.crl.empty())
-				// Выводим в лог сообщение об ожидающей проверке отзыва
-				this->_log->print("CRL checking is not supported by the cipher module yet", log_t::flag_t::WARNING);
-			// Если подлинность сервера не задана, связь завести нельзя
-			if(result && this->_cert.pem.empty()){
-				// Выводим в лог сообщение об отсутствии сертификата сервера
-				this->_log->print("There is no certificate for the server", log_t::flag_t::CRITICAL);
-				// Сообщаем, что связь не заведена
-				result = false;
-			}
-		// Если приложение является клиентом
-		} else {
-			// Устанавливаем перенос связи
-			target._tls->client.transport(transport);
-			// Выполняем установку пределов изданий протокола
-			result = (target._tls->client.versions(TLS_VERSION_12, TLS_VERSION_13) == nts::context::error_t::NONE);
-			// Выполняем установку групп и предложений обмена ключами
-			target._tls->client.groups(groups);
-			// Выполняем установку предложений групп
-			target._tls->client.shares(groups);
-			// Если перечень наборов шифрования собран, устанавливаем его
-			if(!suites.empty())
-				// Выполняем установку наборов шифрования
-				target._tls->client.suites(suites);
-			// Если перечень прикладных протоколов задан, объявляем его
-			if(!protocols.empty())
-				// Выполняем установку прикладных протоколов
-				target._tls->client.protocols(protocols);
-			/**
-			 * Раздел 3 RFC 6066: адрес в расширении server_name не передают, поэтому имя
-			 * отправляем только когда хост не является IP-адресом
-			 */
-			if(!host.empty() && (ipLiteral(host) == 0))
-				// Устанавливаем имя узла, за которым пришли
-				target._tls->client.name(host);
-			// Выполняем инициализацию запаса доверенных сертификатов
-			static_cast <void> (this->storeCA(target));
-			// Устанавливаем проверку цепочки собеседника и запас доверенных
-			target._tls->client.verification(this->_verify, 0, target._tls->store);
-			// Если указан сертификат клиента, устанавливаем его подлинность
-			if(!this->_cert.pem.empty())
-				// Выполняем установку подлинности клиента
-				result = this->credential(target, this->_cert);
-			// Если указан файл отозванных сертификатов, предупреждаем: отзыв ожидает наружный модуль
-			if(!this->_cert.crl.empty())
-				// Выводим в лог сообщение об ожидающей проверке отзыва
-				this->_log->print("CRL checking is not supported by the cipher module yet", log_t::flag_t::WARNING);
-		}
-		// Если связь заведена, запоминаем, что шифрование активно
-		if(result){
-			// Устанавливаем флаг инициализации шифрования
-			target._encrypted = true;
-			// Устанавливаем флаг активации TLS
-			target._addr->_encrypted = true;
-		// Если связь не завелась, очищаем состояние связи
-		} else {
-			// Выполняем очистку состояния связи
-			target._tls.reset(nullptr);
-			// Выводим в лог сообщение о невозможности завести связь
-			this->_log->print("Could not create SSL/TLS session object", log_t::flag_t::CRITICAL);
-		}
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * @brief Метод обертывания сетевого сокета для сервера
@@ -4275,10 +4586,12 @@ void awh::Engine::certificate(const string & pem, const string & key) noexcept {
 		this->_cert.pem = this->_fs.realPath(pem, false);
 	// Если сертификат не передан, очищаем установленный адрес сертификата
 	else this->_cert.pem.clear();
-	// Если запас подлинностей уже собран, сбрасываем его: файлы сменились
-	if(this->_keys != nullptr)
-		// Выполняем очистку запаса подготовленных подлинностей
-		this->_keys->held.clear();
+		// Если запас подлинностей уже собран, сбрасываем его: файлы сменились
+		if(this->_keys != nullptr)
+			// Выполняем очистку запаса подготовленных подлинностей
+			this->_keys->held.clear();
+		// Прогреваем запас заново: отклику выбора подлинности файлы читать нельзя
+		this->warm();
 }
 /**
  * @brief Метод установки файлов сертификата сервера для доменного имени (SNI)
@@ -4319,6 +4632,8 @@ void awh::Engine::certificate(const string & host, const string & pem, const str
 		if(this->_keys != nullptr)
 			// Выполняем очистку запаса подготовленных подлинностей
 			this->_keys->held.clear();
+		// Прогреваем запас заново: отклику выбора подлинности файлы читать нельзя
+		this->warm();
 	}
 }
 /**
@@ -4345,19 +4660,9 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	 * подготовки, а его случайные значения берутся из энтропии системы сами
 	 */
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
-	/**
-	 * Алгоритмы шифрования по умолчанию не задаются: сервер без списка от приложения берёт
-	 * набор ECDHE с AEAD плюс наборы издания 1.3, клиент — набор наружного модуля по умолчанию.
-	 * Прежний список допускал 3DES, CAMELLIA и обмен ключами RSA без прямой секретности
-	 */
 }
 /**
  * @brief Деструктор
  *
  */
-awh::Engine::~Engine() noexcept {
-	/**
-	 * Запас подготовленных подлинностей разрушается сам: ключ живёт shared_ptr,
-	 * и связь, которой он установлен, держит свою ссылку
-	 */
-}
+awh::Engine::~Engine() noexcept = default;

@@ -29,7 +29,12 @@
 #elif __sun__
 	/**
 	 * Подключаем системные заголовки
+	 *
+	 * Заголовка <sys/types.h> здесь быть обязано: illumos-сборка OpenIndiana Hipster
+	 * 2026.04 объявляет sigset_t именно в нём, а <sys/devpoll.h> его не подключает —
+	 * на Solaris 11.4 тот же заголовок читается и без него.
 	 */
+	#include <sys/types.h>
 	#include <sys/devpoll.h>
 /**
  * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
