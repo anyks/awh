@@ -81,6 +81,14 @@
 using namespace std;
 
 /**
+ * Длина обвязки записи протокола: тип, издание и размер
+ */
+static constexpr size_t RECORD_HEADER_SIZE = 5;
+/**
+ * Длина обвязки сообщения рукопожатия: тип и три байта размера
+ */
+static constexpr size_t MESSAGE_HEADER_SIZE = 4;
+/**
  * Код издания протокола TLS 1.2
  */
 static constexpr uint16_t TLS_VERSION_12 = 0x0303;
@@ -92,14 +100,25 @@ static constexpr uint16_t TLS_VERSION_13 = 0x0304;
  * Тип записи протокола с сообщениями рукопожатия (раздел 5.1 RFC 8446)
  */
 static constexpr uint8_t RECORD_TYPE_HANDSHAKE = 0x16;
+
 /**
- * Длина обвязки записи протокола: тип, издание и размер
+ * @brief Набор указателей для отклика выбора подлинности по имени узла
+ *
+ * Отклик A-NTS зовётся из noexcept-контекста, без перехвата и без права звать методы той же
+ * связи, поэтому он получает не движок и не связь, а указатели на готовые запасы: перечень
+ * имён с отметками файлов, подготовленные подлинности и средства приведения регистра с журналом
+ *
  */
-static constexpr size_t RECORD_HEADER_SIZE = 5;
-/**
- * Длина обвязки сообщения рукопожатия: тип и три байта размера
- */
-static constexpr size_t MESSAGE_HEADER_SIZE = 4;
+struct SniPick {
+	// Перечень доменных имён с отметками пары файлов: имя -> адрес цепочки и адрес ключа
+	const unordered_map <string, string> * names;
+	// Запас подготовленных подлинностей движка: отметка пары файлов -> заготовка
+	const unordered_map <string, nts::context::credential_t> * held;
+	// Средства приведения регистра предъявленного имени
+	const awh::fmk_t * fmk = nullptr;
+	// Журнал движка
+	const awh::log_t * log = nullptr;
+};
 
 /**
  * @brief Функция получения названия набора шифрования для журнала
@@ -260,7 +279,7 @@ static void nameText(const nts::x509::name_t & name, string & result) noexcept {
 						// Добавляем первую из пары кавычек
 						result.append(1, '\"');
 					// Добавляем очередной знак значения
-					result.append(symbol);
+					result.append(1, symbol);
 				}
 				// Добавляем закрывающую кавычку
 				result.append(1, '\"');
@@ -969,24 +988,6 @@ static void peerMark(const struct sockaddr_storage & peer, vector <uint8_t> & ou
 	}
 }
 
-/**
- * @brief Набор указателей для отклика выбора подлинности по имени узла
- *
- * Отклик A-NTS зовётся из noexcept-контекста, без перехвата и без права звать методы той же
- * связи, поэтому он получает не движок и не связь, а указатели на готовые запасы: перечень
- * имён с отметками файлов, подготовленные подлинности и средства приведения регистра с журналом
- *
- */
-struct SniPick {
-	// Перечень доменных имён с отметками пары файлов: имя -> адрес цепочки и адрес ключа
-	const unordered_map <string, string> * names;
-	// Запас подготовленных подлинностей движка: отметка пары файлов -> заготовка
-	const unordered_map <string, nts::context::credential_t> * held;
-	// Средства приведения регистра предъявленного имени
-	const awh::fmk_t * fmk;
-	// Журнал движка
-	const awh::log_t * log;
-};
 /**
  * @brief Класс состояния связи внешнего модуля шифрования
  *
@@ -2438,31 +2439,31 @@ int32_t awh::Engine::Context::pump(const bool want) noexcept {
 				 * Коды отзыва выводим словами: по одному числу не отличить отозванный
 				 * сертификат от отсутствующего, просроченного или поддельного списка
 				 */
-				switch(failure){
+				switch(static_cast <uint8_t> (failure)){
 					// Сертификат отозван списком своего издателя
-					case nts::trust::error_t::REVOKED:
+					case static_cast <uint8_t> (nts::trust::error_t::REVOKED):
 						// Выводим в лог причину отказа
 						this->_log->print("Certificate is revoked by the CRL of its issuer", log_t::flag_t::CRITICAL);
-						// Выходим из разбора причины
-						break;
+					// Выходим из разбора причины
+					break;
 					// Списка отзыва издателю звена не подали
-					case nts::trust::error_t::MISSING:
+					case static_cast <uint8_t> (nts::trust::error_t::MISSING):
 						// Выводим в лог причину отказа
 						this->_log->print("No CRL for the issuer of a chain link: every issuer needs one", log_t::flag_t::CRITICAL);
-						// Выходим из разбора причины
-						break;
+					// Выходим из разбора причины
+					break;
 					// Список отзыва издателя просрочен
-					case nts::trust::error_t::OUTDATED:
+					case static_cast <uint8_t> (nts::trust::error_t::OUTDATED):
 						// Выводим в лог причину отказа
 						this->_log->print("CRL of the issuer is outdated: nextUpdate has passed", log_t::flag_t::CRITICAL);
-						// Выходим из разбора причины
-						break;
+					// Выходим из разбора причины
+					break;
 					// Подпись списка отзыва не сошлась с ключом издателя
-					case nts::trust::error_t::FORGED:
+					case static_cast <uint8_t> (nts::trust::error_t::FORGED):
 						// Выводим в лог причину отказа
 						this->_log->print("CRL signature does not match the issuer key", log_t::flag_t::CRITICAL);
-						// Выходим из разбора причины
-						break;
+					// Выходим из разбора причины
+					break;
 				}
 				// Сообщаем, что рукопожатие не удалось
 				return 0;
