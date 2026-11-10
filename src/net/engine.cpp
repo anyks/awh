@@ -3498,12 +3498,6 @@ int32_t awh::Engine::Context::buffer(const method_t method) const noexcept {
 				case static_cast <uint8_t> (method_t::WRITE):
 					// Получаем размер буфера для записи
 					result = this->_addr->_socket.bufferSize(this->_addr->sock, socket_t::mode_t::WRITE);
-					/*
-					// Если защищённый режим работы разрешён
-					if(this->_encrypted && (this->_ssl != nullptr))
-						// Выполняем определение минимального размера буфера который возможно отправить
-						result = min(result, BIO_get_write_guarantee(this->_bio));
-					*/
 				break;
 			}
 		}
