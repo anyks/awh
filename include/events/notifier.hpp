@@ -16,9 +16,9 @@
 #define __AWH_EVENT_NOTIFIER__
 
 /**
- * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+ * Для операционных систем MacOS X, FreeBSD, NetBSD, DragonFly BSD или Linux
  */
-#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
+#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __DragonFly__
 	/**
 	 * Стандартные модули
 	 */
@@ -53,19 +53,19 @@ namespace awh {
 				// Основные сокеты уведомителя
 				SOCKET _socks[2];
 			/**
-			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+			 * Для операционных систем MacOS X, FreeBSD, NetBSD, DragonFly BSD или Linux
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __DragonFly__
 				// Основной сокет уведомителя
 				SOCKET _sock;
 			#endif
 			/**
-			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux.
+			 * Для операционных систем MacOS X, FreeBSD, NetBSD, DragonFly BSD или Linux.
 			 * На Linux eventfd складывает записанные значения в один счётчик: два уведомления
 			 * до одного чтения давали сумму идентификаторов. Поэтому идентификаторы хранятся
 			 * в очереди, а eventfd служит только сигналом пробуждения
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
+			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __DragonFly__
 				private:
 					// Мютекс для блокировки потока
 					std::mutex _mtx;

@@ -143,11 +143,13 @@ namespace awh {
 				LINUX   = 0x02, // Операционная система Linux
 				WIND32  = 0x03, // Операционная система Windows 32bit
 				WIND64  = 0x04, // Операционная система Windows 64bit
-				MACOSX  = 0x05, // Операционная система MacOS X
-				SOLARIS = 0x06, // Операционная система Sun Solaris
-				FREEBSD = 0x07, // Операционная система FreeBSD
-				NETBSD  = 0x08, // Операционная система NetBSD
-				OPENBSD = 0x09  // Операционная система OpenBSD
+				MACOSX  = 0x05, // Операционная система macOS
+				NETBSD  = 0x06, // Операционная система NetBSD
+				OPENBSD = 0x07, // Операционная система OpenBSD
+				FREEBSD = 0x08, // Операционная система FreeBSD
+				DFLYBSD = 0x09, // Операционная система DragonFly BSD
+				SOLARIS = 0x0A, // Операционная система Sun Solaris
+				ILLUMOS = 0x0B  // Операционная система (OpenIndiana, SmartOS, OmniOS)
 			};
 		public:
 			/**

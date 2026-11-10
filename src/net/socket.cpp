@@ -109,9 +109,14 @@ bool awh::Socket::noSigPIPE(const SOCKET sock) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Для операционной системы Linux или Sun Solaris
+	 * @brief Для операционной системы Linux, Sun Solaris или OpenBSD
+	 *
+	 * @details OpenBSD идёт этим путём, потому что SO_NOSIGPIPE в его <sys/socket.h> нет
+	 *          (сверено по заголовкам OpenBSD 7.9), а игнорирование SIGPIPE на весь процесс —
+	 *          единственный поддерживаемый способ не умереть от записи в закрытый сокет.
+	 *
 	 */
-	#if __linux__ || __sun__
+	#if __linux__ || __sun__ || __OpenBSD__
 		// Создаем структуру активации сигнала
 		struct sigaction act;
 		// Зануляем структуру
@@ -137,9 +142,9 @@ bool awh::Socket::noSigPIPE(const SOCKET sock) const noexcept {
 			return -1;
 		*/
 	/**
-	 * Для операционных систем FreeBSD, NetBSD, OpenBSD или MacOS X
+	 * Для операционных систем FreeBSD, NetBSD или MacOS X
 	 */
-	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 		// Устанавливаем параметр
 		const int32_t on = 1;
 		// Устанавливаем SO_NOSIGPIPE
@@ -968,70 +973,91 @@ bool awh::Socket::keepAlive(const SOCKET sock, const int32_t cnt, const int32_t 
 			// Выходим из функции
 			return result;
 		}
-		// Максимальное количество попыток
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
-			#endif
-			// Выходим из функции
-			return result;
-		}
 		/**
-		 * Если мы работаем в Sun Solaris
+		 * На OpenBSD тонкая настройка keep-alive одному сокету недоступна: в его <netinet/tcp.h>
+		 * нет ни TCP_KEEPCNT, ни TCP_KEEPIDLE, ни TCP_KEEPINTVL (сверено по заголовкам OpenBSD 7.9),
+		 * а времена задаются только системно — net.inet.tcp.keepinit, keepidle, keepintvl и keepcnt.
+		 * Поэтому на этой системе остаётся общий SO_KEEPALIVE, а разбор настроек закрывает ветвь ниже.
 		 */
-		#if __sun__
-			// Компенсируем время через которое происходит проверка подключения передано в секундах
-			const_cast <int32_t &> (idle) *= 1000;
-			// Компенсируем время между попытками передано в секундах
-			const_cast <int32_t &> (intvl) *= 1000;
-		#endif
-		/**
-		 * Если мы работаем в MacOS X
-		 */
-		#if __APPLE__
-			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
+		#ifndef __OpenBSD__
+			// Максимальное количество попыток
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+					this->_log->print("Cannot set TCP_KEEPCNT option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
 				// Выходим из функции
 				return result;
 			}
-		/**
-		 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
-		 */
-		#elif __linux__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
-			// Время через которое происходит проверка подключения
-			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
+			/**
+			 * Если мы работаем в Sun Solaris
+			 */
+			#if __sun__
+				// Компенсируем время через которое происходит проверка подключения передано в секундах
+				const_cast <int32_t &> (idle) *= 1000;
+				// Компенсируем время между попытками передано в секундах
+				const_cast <int32_t &> (intvl) *= 1000;
+			#endif
+			/**
+			 * Если мы работаем в MacOS X
+			 */
+			#if __APPLE__
+				// Время через которое происходит проверка подключения
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим в лог информацию
+						this->_log->print("Cannot set TCP_KEEPALIVE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+					#endif
+					// Выходим из функции
+					return result;
+				}
+			/**
+			 * Если мы работаем в Linux, FreeBSD или Sun Solaris
+			 */
+			#elif __linux__ || __FreeBSD__ || __NetBSD__ || __sun__
+				// Время через которое происходит проверка подключения
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим в лог информацию
+						this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+					#endif
+					// Выходим из функции
+					return result;
+				}
+			#endif
+			// Время между попытками
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим в лог информацию
-					this->_log->print("Cannot set TCP_KEEPIDLE option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+					this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
 				#endif
-				// Выходим из функции
-				return result;
 			}
-		#endif
-		// Время между попытками
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
+		/**
+		 * Если сборка производится в операционной системе OpenBSD
+		 */
+		#else
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим в лог информацию
-				this->_log->print("Cannot set TCP_KEEPINTVL option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, this->message().c_str());
+				this->_log->print("TCP keep-alive timings are system-wide on OpenBSD (net.inet.tcp.keep*), only SO_KEEPALIVE is set on SOCKET=%d", log_t::flag_t::WARNING, sock);
 			#endif
-		}
+			// Считаем настройку выполненной: постоянный режим сокету уже выдан
+			result = true;
+		#endif
 	#endif
 	// Выводим результат
 	return result;

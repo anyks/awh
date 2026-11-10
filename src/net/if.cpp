@@ -724,12 +724,16 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					mib[3] = family;
 					mib[4] = NET_RT_FLAGS;
 					/**
-					 * Если операционной системой является NetBSD или OpenBSD
+					 * @brief Если операционной системой является NetBSD
+					 *
+					 * @details OpenBSD идёт в соседнюю ветвь: в его <net/route.h> определения RTF_LLDATA нет, а записи,
+					 *          порождённые ARP и ND, помечены флагом RTF_LLINFO (0x400) — сверено по заголовкам OpenBSD 7.9.
+					 *
 					 */
-					#if __NetBSD__ || __OpenBSD__
+					#if __NetBSD__
 						mib[5] = RTF_LLDATA;
 					/**
-					 * Если операционной системой является MacOS X или FreeBSD
+					 * Если операционной системой является MacOS X, FreeBSD или OpenBSD
 					 */
 					#else
 						mib[5] = RTF_LLINFO;
@@ -808,12 +812,16 @@ string awh::IfNet::mac(const string & ip, const int32_t family) const noexcept {
 					mib[3] = family;
 					mib[4] = NET_RT_FLAGS;
 					/**
-					 * Если операционной системой является NetBSD или OpenBSD
+					 * @brief Если операционной системой является NetBSD
+					 *
+					 * @details OpenBSD идёт в соседнюю ветвь: в его <net/route.h> определения RTF_LLDATA нет, а записи,
+					 *          порождённые ARP и ND, помечены флагом RTF_LLINFO (0x400) — сверено по заголовкам OpenBSD 7.9.
+					 *
 					 */
-					#if __NetBSD__ || __OpenBSD__
+					#if __NetBSD__
 						mib[5] = RTF_LLDATA;
 					/**
-					 * Если операционной системой является MacOS X или FreeBSD
+					 * Если операционной системой является MacOS X, FreeBSD или OpenBSD
 					 */
 					#else
 						mib[5] = RTF_LLINFO;

@@ -206,7 +206,7 @@ void awh::FDS::help(const uint64_t actual, const uint64_t desired) const noexcep
 	/**
 	 * Для операционной системы NetBSD
 	 */
-	#elif ___NetBSD__
+	#elif __NetBSD__
 		// Выполняем формирование лога
 		this->_log->print(
 			"\nMaximum sockets requested: %llu, but current system limit is: %llu.\n"

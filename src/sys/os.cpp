@@ -163,6 +163,7 @@ using namespace std;
 	 * @brief Шаблон метода чтения метаданных из бинарного контейнера
 	 *
 	 * @tparam T Тип данных выводимого результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -170,6 +171,7 @@ using namespace std;
 	 *
 	 * @param buffer буфер бинарных данных
 	 * @param result результат работф функции
+	 *
 	 */
 	static void metadata(const vector <char> & buffer, T & result) noexcept {
 		// Если данные являются основными
@@ -182,6 +184,7 @@ using namespace std;
 	 *
 	 * @param name   название записи для получения настроек
 	 * @param buffer бинарный буфер с извлечёнными значениями
+	 *
 	 */
 	static void sysctl(const string & name, vector <char> & buffer) noexcept {
 		// Если название параметра и тип извлекаемого значения переданы
@@ -189,9 +192,14 @@ using namespace std;
 			// Выполняем очистку буфера данных
 			buffer.clear();
 			/**
-			 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * @brief Если мы работаем в MacOS X, FreeBSD или NetBSD
+			 *
+			 * @details OpenBSD в эту ветвь не входит: sysctlbyname нет ни в его заголовках, ни в libc
+			 *          (сверено grep-ом по /usr/include и nm -D по /usr/lib/libc.so.103.0 на OpenBSD 7.9),
+			 *          поэтому извлечение по имени на этой системе не выполняется и буфер остаётся пустым.
+			 *
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 				// Получаем размер буфера
 				size_t length = 0;
 				// Если размеры удачно получены
@@ -333,9 +341,13 @@ using namespace std;
 		// Если название параметра передано
 		if(!name.empty() && (buffer != nullptr) && (size > 0)){
 			/**
-			 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * Если мы работаем в MacOS X, FreeBSD или NetBSD
+			 *
+			 * OpenBSD в эту ветвь не входит: sysctlbyname нет ни в его заголовках, ни в libc
+			 * (сверено grep-ом по /usr/include и nm -D по /usr/lib/libc.so.103.0 на OpenBSD 7.9),
+			 * поэтому установка по имени на этой системе отвечает отказом и ничего не меняет.
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 				// Устанавливаем новые параметры настройки ядра
 				return (::sysctlbyname(name.c_str(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 			/**
@@ -469,62 +481,79 @@ awh::OS::family_t awh::OS::family() const noexcept {
 	/**
 	 * Операционной системой является Windows 32bit
 	 */
-	#ifdef _WIN32
-		// Заполняем структуру
+	#if defined(_WIN32)
+		// Возвращаем флаг операционной системы
 		return family_t::WIND32;
 	/**
 	 * Операционной системой является Windows 64bit
 	 */
-	#elif _WIN64
-		// Заполняем структуру
+	#elif defined(_WIN64)
+		// Возвращаем флаг операционной системы
 		return family_t::WIND64;
 	/**
-	 * Операционной системой является MacOS X
+	 * Операционной системой является macOS
 	 */
-	#elif __APPLE__ || __MACH__
-		// Заполняем структуру
+	#elif defined(__APPLE__) || defined(__MACH__)
+		// Возвращаем флаг операционной системы
 		return family_t::MACOSX;
 	/**
 	 * Операционной системой является Linux
 	 */
-	#elif __linux__
-		// Заполняем структуру
+	#elif defined(__linux__)
+		// Возвращаем флаг операционной системы
 		return family_t::LINUX;
 	/**
 	 * Операционной системой является FreeBSD
 	 */
-	#elif __FreeBSD__
-		// Заполняем структуру
+	#elif defined(__FreeBSD__)
+		// Возвращаем флаг операционной системы
 		return family_t::FREEBSD;
 	/**
 	 * Операционной системой является NetBSD
 	 */
-	#elif __NetBSD__
-		// Заполняем структуру
+	#elif defined(__NetBSD__)
+		// Возвращаем флаг операционной системы
 		return family_t::NETBSD;
 	/**
 	 * Операционной системой является OpenBSD
 	 */
-	#elif __OpenBSD__
-		// Заполняем структуру
+	#elif defined(__OpenBSD__)
+		// Возвращаем флаг операционной системы
 		return family_t::OPENBSD;
 	/**
-	 * Реализация под Sun Solaris
+	 * Операционной системой является DragonFly BSD
 	 */
-	#elif __sun__
-		// Заполняем структуру
-		return family_t::SOLARIS;
+	#elif defined(__DragonFly__)
+		// Возвращаем флаг операционной системы
+		return family_t::DFLYBSD;
+	/**
+	 * Реализация под Solaris или OpenIndiana
+	 */
+	#elif defined(__sun__)
+		/**
+		 * Если операционной системой является OpenSolaris
+		 */
+		#if defined(__illumos__)
+			// Возвращаем флаг операционной системы
+			return family_t::ILLUMOS;
+		/**
+		 * Операционной системой является Solaris
+		 */
+		#else
+			// Возвращаем флаг операционной системы
+			return family_t::SOLARIS;
+		#endif
 	/**
 	 * Операционной системой является Unix
 	 */
-	#elif __unix || __unix__
-		// Заполняем структуру
+	#elif defined(__unix) || defined(__unix__)
+		// Возвращаем флаг операционной системы
 		return family_t::UNIX;
 	/**
 	 * Операционной системой не распознана
 	 */
 	#else
-		// Выводим результат
+		// Возвращаем флаг операционной системы
 		return family_t::NONE;
 	#endif
 }
@@ -2119,9 +2148,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template double awh::OS::sysctl <double> (const string &) const noexcept;
 	template string awh::OS::sysctl <string> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является MacOS X, Linux или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 		template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
 		template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
 	#endif
@@ -2140,9 +2169,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
 	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является MacOS X, Linux или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 		template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
 		template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
 	#endif
@@ -2199,9 +2228,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является MacOS X, Linux или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 		template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
 	#endif
@@ -2304,9 +2333,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const vector <float> &) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const vector <double> &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является MacOS X, Linux или OpenBSD
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
 		template bool awh::OS::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
 	#endif

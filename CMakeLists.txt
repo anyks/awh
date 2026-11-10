@@ -236,14 +236,14 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
             SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
             SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
             ##
-            #
-            # sudo apt-get install graphviz
-            # sudo pip install gprof2dot
-            #
-            # gprof ./build/[executable-name] gmon.out > ./profile-data.txt
-            #
-            # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
-            ##
+             #
+             # sudo apt-get install graphviz
+             # sudo pip install gprof2dot
+             #
+             # gprof ./build/[executable-name] gmon.out > ./profile-data.txt
+             #
+             # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
+             ##
         endif()
     endif(NOT CMAKE_SHARED_BUILD_LIB)
     # Выводим сообщение отладочной информации
@@ -298,12 +298,21 @@ else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
 
-# Выполняем поиск библиотеки TcMalloc
-find_package(TcMalloc REQUIRED)
+##
+ # Выполняем поиск библиотеки TcMalloc
+ # Поиск оставляем необязательным: на OpenBSD аллокатор не собирается (см. build_third_party.sh),
+ # и отказывать всей конфигурации из-за этого проект права не имеет. Для остальных систем
+ # проверку делает ветка ниже
+ ##
+find_package(TcMalloc)
 
 # Провекра TcMalloc
 if (TcMalloc_FOUND)
     message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
+# Если операционной системой является OpenBSD
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+    # Удаляем библиотеку TCMalloc: распределением памяти заведёт системный malloc
+    SET(TCMALLOC_LIBRARIES "")
 else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)

@@ -553,9 +553,9 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				}
 			/**
-			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+			 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				// Выполняем инициализацию Kqueue
 				if((this->_kq = kqueue()) == INVALID_SOCKET){
 					/**
@@ -617,9 +617,9 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				// Выполняем закрытие подключения
 				::close(this->_efd);
 			/**
-			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+			 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				// Выполняем закрытие подключения
 				::close(this->_kq);
 			#endif
@@ -629,12 +629,13 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 /**
  * @brief Метод пересоздания объекта ядра базы событий с повторной регистрацией всех участников
  *
- * Участники, их функции обратного вызова и уведомители таймеров сохраняются как есть.
- * Раньше пинок очищал базу событий и добавлял участников заново: на Linux очистка не
- * удаляла участников, add() находил их и не регистрировал в новом EPoll, а таймеры
- * уничтожались, поэтому все события умирали. На kqueue таймеры пересоздавались с новыми
- * дескрипторами, о которых объекты событий не знали. Метод может быть вызван из обработчика,
- * поэтому участники не удаляются (удаление уничтожило бы выполняющуюся функцию обратного вызова)
+ * @details Участники, их функции обратного вызова и уведомители таймеров сохраняются как есть.
+ *          Раньше пинок очищал базу событий и добавлял участников заново: на Linux очистка не
+ *          удаляла участников, add() находил их и не регистрировал в новом EPoll, а таймеры
+ *          уничтожались, поэтому все события умирали. На kqueue таймеры пересоздавались с новыми
+ *          дескрипторами, о которых объекты событий не знали. Метод может быть вызван из обработчика,
+ *          поэтому участники не удаляются (удаление уничтожило бы выполняющуюся функцию обратного вызова).
+ *
  */
 void awh::Base::recreate() noexcept {
 	/**
@@ -658,9 +659,9 @@ void awh::Base::recreate() noexcept {
 				event.data.ptr = nullptr;
 			}
 		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 			/**
 			 * Результаты последнего опроса принадлежат старому объекту ядра. Буфер не сокращаем
 			 * (он может обходиться прямо сейчас), а помечаем все его записи недействительными
@@ -738,9 +739,9 @@ void awh::Base::recreate() noexcept {
 				}
 			}
 		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 			/**
 			 * Список изменений постоянный (все записи с EV_ADD) и подаётся в каждый вызов kevent,
 			 * поэтому все участники регистрируются в новой очереди при следующем опросе
@@ -785,10 +786,10 @@ void awh::Base::stream(const SOCKET sock, const uint64_t event) noexcept {
 /**
  * @brief Метод извлечения всех накопившихся событий межпотокового передатчика
  *
- * Уведомитель отслеживается по фронту (EPOLLET / EV_CLEAR): одно пробуждение может
- * нести несколько уведомлений, и оставшиеся в очереди ждали бы следующего уведомления.
- * Поэтому события извлекаются до исчерпания, каждое доставляется ровно один раз.
- * Передатчик и участник ищутся заново на каждом шаге: обработчик может их удалить
+ * @details Уведомитель отслеживается по фронту (EPOLLET / EV_CLEAR): одно пробуждение может
+ *          нести несколько уведомлений, и оставшиеся в очереди ждали бы следующего уведомления.
+ *          Поэтому события извлекаются до исчерпания, каждое доставляется ровно один раз.
+ *          Передатчик и участник ищутся заново на каждом шаге: обработчик может их удалить.
  *
  * @param id   идентификатор записи
  * @param sock сокет межпотокового передатчика
@@ -838,10 +839,10 @@ void awh::Base::streams(const uint64_t id, const SOCKET sock) noexcept {
 	/**
 	 * @brief Метод исключения участника из результатов последнего опроса базы событий
 	 *
-	 * Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
-	 * часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса.
-	 * Поэтому запись удаляемого участника только помечается пустой (data.ptr = nullptr),
-	 * и обход её пропускает. Без этого указатель на удалённого участника разыменовывается.
+	 * @details Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
+	 *          часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса.
+	 *          Поэтому запись удаляемого участника только помечается пустой (data.ptr = nullptr),
+	 *          и обход её пропускает. Без этого указатель на удалённого участника разыменовывается.
 	 *
 	 * @param peer участник для исключения
 	 */
@@ -860,16 +861,16 @@ void awh::Base::streams(const uint64_t id, const SOCKET sock) noexcept {
 		}
 	}
 /**
- * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+ * Для операционных систем MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
  */
-#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 	/**
 	 * @brief Метод исключения сокета из результатов последнего опроса базы событий
 	 *
-	 * Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
-	 * часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса
-	 * (например чужой EV_EOF закрывает здоровое подключение с тем же номером сокета).
-	 * Поэтому запись только помечается недействительной, и обход её пропускает.
+	 * @details Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
+	 *          часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса
+	 *          (например чужой EV_EOF закрывает здоровое подключение с тем же номером сокета).
+	 *          Поэтому запись только помечается недействительной, и обход её пропускает.
 	 *
 	 * @param sock сокет для исключения
 	 */
@@ -908,9 +909,9 @@ void awh::Base::streams(const uint64_t id, const SOCKET sock) noexcept {
 	/**
 	 * @brief Метод поиска изменения события сокета для указанного фильтра
 	 *
-	 * Фильтры kqueue являются малыми отрицательными числами, а не битами, поэтому
-	 * у сокета отдельное изменение для чтения и отдельное для записи. Одно общее
-	 * изменение затирало ожидающее включение записи при включении чтения.
+	 * @details Фильтры kqueue являются малыми отрицательными числами, а не битами, поэтому
+	 *          у сокета отдельное изменение для чтения и отдельное для записи. Одно общее
+	 *          изменение затирало ожидающее включение записи при включении чтения.
 	 *
 	 * @param sock   сокет для поиска
 	 * @param filter фильтр события (EVFILT_READ / EVFILT_WRITE)
@@ -1061,9 +1062,9 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 			// Выполняем разблокировку чтения базы событий
 			this->_locker = false;
 		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
 			// Исключаем сокет из результатов текущего опроса (буфер не сокращаем, он может обходиться)
@@ -1243,9 +1244,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 				this->_locker = false;
 			}
 		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_peers.find(sock);
 			// Если сокет есть в базе событий
@@ -1832,9 +1833,9 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 					this->_locker = false;
 				}
 			/**
-			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+			 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				// Выполняем поиск файлового дескриптора в базе событий
 				auto i = this->_peers.find(sock);
 				// Если сокет есть в базе событий
@@ -2200,9 +2201,9 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 						}
 					}
 				/**
-				 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+				 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 					// Выполняем поиск файлового дескриптора в базе событий
 					auto i = this->_peers.find(sock);
 					// Если сокет есть в базе событий
@@ -2976,9 +2977,9 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 							}
 						}
 					/**
-					 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+					 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 					 */
-					#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+					#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 						// Если тип установлен как не закрытие подключения
 						if(type != event_type_t::CLOSE){
 							/**
@@ -3184,9 +3185,9 @@ void awh::Base::clear() noexcept {
 			 */
 			this->_peers.clear();
 		/**
-		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+		 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 			/**
 			 * Буфер результатов опроса не сокращаем (он может обходиться прямо сейчас,
 			 * если метод вызван из обработчика), а помечаем все его записи недействительными.
@@ -3305,9 +3306,9 @@ void awh::Base::stop() noexcept {
 		// Если работа базы событий запущена
 		if(this->_works){
 			/**
-			 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * Для операционных систем Linux, MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
 			 */
-			#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				/**
 				 * Если опрос работает в другом потоке (остановка по сигналу), то очищать базу событий
 				 * здесь нельзя: поток опроса обходит её прямо сейчас, а ожидание событий без таймаута
@@ -3363,9 +3364,9 @@ void awh::Base::start() noexcept {
 		// Устанавливаем флаг работы базы событий
 		this->_works = !this->_works;
 		/**
-		 * Если это  MacOS X, FreeBSD, NetBSD, OpenBSD или Sun Solaris
+		 * Если это MacOS X, FreeBSD, NetBSD, OpenBSD, DragonFly BSD или Sun Solaris
 		 */
-		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__
+		#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __sun__ || __DragonFly__
 			// Создаём объект временного таймаута
 			struct timespec baseDelay = {0, 0};
 			// Если установлен конкретный таймаут
@@ -4095,9 +4096,9 @@ void awh::Base::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					std::this_thread::sleep_for(100ms);
 				/**
-				 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
+				 * Для операционных систем FreeBSD, NetBSD, OpenBSD, DragonFly BSD или MacOS X
 				 */
-				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 					// Если опрос базы событий не заблокирован
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
@@ -4151,8 +4152,13 @@ void awh::Base::start() noexcept {
 									if(static_cast <size_t> (i) < this->_events.size()){
 										// Получаем объект файлового дескриптора
 										const auto & event = this->_events.at(i);
-										// Если запись исключена из обхода (её сокет удалён во время обхода)
-										if(event.filter == 0)
+										/**
+										 * Пропускаем запись, исключённую из обхода (её сокет удалён во время обхода).
+										 * Признаком служит недействительный дескриптор, а не обнулённый фильтр: на NetBSD
+										 * EVFILT_READ определён как 0 (на FreeBSD, MacOS X, OpenBSD и DragonFly BSD это
+										 * -1), и прежняя проверка по нулю съедала каждое событие чтения на NetBSD
+										 */
+										if(event.ident == static_cast <uintptr_t> (INVALID_SOCKET))
 											// Пропускаем запись
 											continue;
 										// Если сработал уведомитель пробуждения опроса
@@ -4171,9 +4177,11 @@ void awh::Base::start() noexcept {
 										// Получаем флаг получения ошибки сокета
 										isError = (event.flags & EV_ERROR);
 										/**
-										 * Фильтры kqueue являются малыми отрицательными числами, а не битами,
-										 * поэтому сравниваем на равенство. Проверка по маске давала истину
-										 * для любого фильтра, и чтение с записью срабатывали одновременно
+										 * Фильтры kqueue являются малыми целыми числами, а не битами, поэтому
+										 * сравниваем на равенство. Проверка по маске давала истину для любого
+										 * фильтра, и чтение с записью срабатывали одновременно. Знак фильтра тоже
+										 * обязан учитываться: на FreeBSD, MacOS X, OpenBSD и DragonFly BSD он
+										 * отрицательный, на NetBSD нумерация фильтров начинается с нуля
 										 */
 										isRead = (event.filter == EVFILT_READ);
 										// Получаем флаг доступности сокета на запись
@@ -4669,16 +4677,16 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
 	// Получаем идентификатор потока
 	this->_wid = this->wid();
 	/**
-	 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+	 * Для операционных систем Linux, MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
 	 */
-	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 		// Сбрасываем количество действительных записей в буфере результатов
 		this->_ready = 0;
 	#endif
 	/**
-	 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+	 * Для операционных систем Linux, MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
 	 */
-	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 		// Выполняем инициализацию уведомителя пробуждения опроса
 		this->_wakeup = this->_wake.init();
 	#endif

@@ -88,16 +88,18 @@ intract(){
 }
 
 ##
-# Функция извлечения модулей из библиотеки
-#
+ # Функция извлечения модулей из библиотеки
+ ##
 extract(){
 	# Производим пересборку всех зависимых библиотек
 	for i in $(ls . | grep ".*\.$1$");
 	do
-		# Архивы TcMalloc не сливаем: проект линкует tcmalloc_minimal и common отдельно
-		# (cmake/FindTcMalloc.cmake), а слияние зовётся ДО сборки GPerfTools. При повторном
-		# прогоне маркер пропускает сборку GPerfTools, и съеденные здесь архивы некому
-		# восстановить: линковка AWH встаёт на «cannot find libtcmalloc_minimal.a»
+		##
+		 # Архивы TcMalloc не сливаем: проект линкует tcmalloc_minimal и common отдельно
+		 # (cmake/FindTcMalloc.cmake), а слияние зовётся ДО сборки GPerfTools. При повторном
+		 # прогоне маркер пропускает сборку GPerfTools, и съеденные здесь архивы некому
+		 # восстановить: линковка AWH встаёт на «cannot find libtcmalloc_minimal.a»
+		 ##
 		if [ "$i" = "libtcmalloc_minimal.a" ] || [ "$i" = "libcommon.a" ]; then
 			# Выполняем переход к следующему архиву
 			continue

@@ -28,21 +28,28 @@
  */
 #elif __sun__
 	/**
-	 * Подключаем системные заголовки
+	 * @brief Подключаем системные заголовки
 	 *
-	 * Заголовка <sys/types.h> здесь быть обязано: illumos-сборка OpenIndiana Hipster
-	 * 2026.04 объявляет sigset_t именно в нём, а <sys/devpoll.h> его не подключает —
-	 * на Solaris 11.4 тот же заголовок читается и без него.
+	 * @details Заголовка <sys/types.h> здесь быть обязано: illumos-сборка OpenIndiana Hipster
+	 *          2026.04 объявляет sigset_t именно в нём, а <sys/devpoll.h> его не подключает —
+	 *          на Solaris 11.4 тот же заголовок читается и без него.
+	 *
 	 */
 	#include <sys/types.h>
 	#include <sys/devpoll.h>
 /**
- * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+ * Для операционных систем MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
  */
-#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 	/**
-	 * Подключаем системные заголовки
+	 * @brief Подключаем системные заголовки
+	 *
+	 * @details Заголовка <sys/types.h> здесь быть обязано: OpenBSD 7.9 объявляет поля
+	 *          struct kevent (__uintptr_t, __int64_t) в собственном <sys/event.h>, не подключая
+	 *          <sys/_types.h> — на FreeBSD и NetBSD тот же заголовок читается и без него.
+	 *
 	 */
+	#include <sys/types.h>
 	#include <sys/event.h>
 #endif
 
@@ -212,9 +219,9 @@ namespace awh {
 				// Список активных событий (буфер результатов опроса ядра)
 				vector <struct epoll_event> _events;
 			/**
-			 * Для операционной системы MacOS Xб FreeBSD, NetBSD или OpenBSD
+			 * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				// Идентификатор активного kqueue
 				SOCKET _kq;
 				// Количество событий полученных последним опросом
@@ -315,9 +322,9 @@ namespace awh {
 				 */
 				void forget(const peer_t * peer) noexcept;
 			/**
-			 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * Для операционных систем MacOS X, FreeBSD, NetBSD, OpenBSD или DragonFly BSD
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 				/**
 				 * @brief Метод исключения сокета из результатов последнего опроса базы событий
 				 *

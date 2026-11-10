@@ -31,9 +31,9 @@
 	#include <fcntl.h>
 	#include <unistd.h>
 /**
- * Для операционной системы  MacOS X, FreeBSD или NetBSD
+ * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
  */
-#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __DragonFly__
 	/**
 	 * Подключаем системные заголовки
 	 */
@@ -233,9 +233,9 @@ void awh::Notifier::reset() noexcept {
 				this->_socks[1] = INVALID_SOCKET;
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __DragonFly__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
 				// Создаём объект события
@@ -384,9 +384,9 @@ SOCKET awh::Notifier::init() noexcept {
 			// Делаем блокирующим сокет на запись
 			this->_socket.blocking(this->_socks[1], socket_t::mode_t::ENABLED);
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __DragonFly__
 			// Если сокет ещё не инициализирован
 			if(this->_sock == INVALID_SOCKET){
 				// Выполняем инициализацию сокета события
@@ -579,9 +579,9 @@ bool awh::Notifier::event(uint64_t & id) noexcept {
 					::memcpy(&id, buffer, size);
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __DragonFly__
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если очередь событий не пустая
@@ -740,9 +740,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 				}
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционных систем MacOS X, FreeBSD, NetBSD или DragonFly BSD
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __DragonFly__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
 				/**
@@ -826,9 +826,9 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 			// Сбрасываем значение сокета на запись
 			this->_socks[1] = INVALID_SOCKET;
 		/**
-		 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+		 * Для операционных систем MacOS X, FreeBSD, NetBSD, DragonFly BSD или Linux
 		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
+		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__ || __DragonFly__
 			// Инициализируем файловый дескриптор
 			this->_sock = INVALID_SOCKET;
 		#endif
