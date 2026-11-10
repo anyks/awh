@@ -7596,7 +7596,6 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 		#endif
 	}
 }
-
 /**
  * @brief Функция извлечения координат url адресов в строке
  *

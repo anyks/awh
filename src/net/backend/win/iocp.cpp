@@ -69798,7 +69798,7 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
-		if(i != ::__awh_nodes__.end()){
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED) && (i->second->state.status != event::status_t::GARBAGE)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			// Если событие уже инициализировано
@@ -69852,12 +69852,20 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Если узел уничтожен из функции обратного вызова
+											if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+												// Выводим результат обработки
+												return result;
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
 												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
 											// Если функция обратного вызова для вывода события не установлена
 											else log::print("%s", log::flag_t::WARNING, error.c_str());
+											// Если узел уничтожен из функции обратного вызова
+											if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+												// Выводим результат обработки
+												return result;
 											// Снимаем флаг ожидания подключения
 											server->state.status = event::status_t::INITIAL;
 										}
@@ -69870,6 +69878,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Если узел уничтожен из функции обратного вызова
+										if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+											// Выводим результат обработки
+											return result;
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
@@ -69890,6 +69902,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 												log::print("%s", log::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
+										// Если узел уничтожен из функции обратного вызова
+										if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+											// Выводим результат обработки
+											return result;
 										// Снимаем флаг ожидания подключения
 										server->state.status = event::status_t::INITIAL;
 									}
@@ -69949,12 +69965,20 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
+											// Если узел уничтожен из функции обратного вызова
+											if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+												// Выводим результат обработки
+												return result;
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
 												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, failure);
 											// Если функция обратного вызова для вывода события не установлена
 											else log::print("%s", log::flag_t::WARNING, failure.c_str());
+											// Если узел уничтожен из функции обратного вызова
+											if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+												// Выводим результат обработки
+												return result;
 											// Снимаем флаг ожидания подключения
 											server->state.status = event::status_t::INITIAL;
 										}
@@ -69965,6 +69989,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
 										server->callbacks.status(server->id, event::status_t::FAILURE);
+									// Если узел уничтожен из функции обратного вызова
+									if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+										// Выводим результат обработки
+										return result;
 									// Устанавливаем текст ошибки
 									/**
 									 * @note Довод обязан называть ПРЕДМЕТ отказа, а не говорить от имени
@@ -69997,6 +70025,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 											log::print("%s", log::flag_t::WARNING, error.c_str());
 										#endif
 									}
+									// Если узел уничтожен из функции обратного вызова
+									if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+										// Выводим результат обработки
+										return result;
 									// Снимаем флаг ожидания подключения
 									server->state.status = event::status_t::INITIAL;
 								} break;
@@ -70056,6 +70088,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 								if(user->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									user->callbacks.status(user->id, event::status_t::FAILURE);
+								// Если узел уничтожен из функции обратного вызова
+								if((user->state.status == event::status_t::DESTROYED) || (user->state.status == event::status_t::GARBAGE))
+									// Выводим результат обработки
+									return result;
 								// Устанавливаем текст ошибки
 								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
@@ -70151,6 +70187,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									timer->callbacks.status(timer->id, event::status_t::FAILURE);
+								// Если узел уничтожен из функции обратного вызова
+								if((timer->state.status == event::status_t::DESTROYED) || (timer->state.status == event::status_t::GARBAGE))
+									// Выводим результат обработки
+									return result;
 								// Устанавливаем текст ошибки
 								const string error = "Listen is only allowed from server node";
 								// Если установлена функция обратного вызова
@@ -70377,6 +70417,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							user->callbacks.status(user->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((user->state.status == event::status_t::DESTROYED) || (user->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Event cannot be used for listening";
 						// Если установлена функция обратного вызова
@@ -70472,6 +70516,10 @@ bool awh::engine::io::listen(const event::id_t id, const uint32_t max) noexcept 
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							timer->callbacks.status(timer->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((timer->state.status == event::status_t::DESTROYED) || (timer->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Event cannot be used for listening";
 						// Если установлена функция обратного вызова
