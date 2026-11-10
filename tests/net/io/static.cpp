@@ -27750,6 +27750,262 @@ TEST_F(IoFixture, IoAccessListModeTest){
 }
 
 /**
+ * @brief Тест белого списка контроля доступа
+ *
+ * @details Белый список разрешает только перечисленные адреса и отвергает все прочие.
+ *          Проверяется это ПОВЕДЕНИЕМ: пока адрес собеседника в белом списке не значится,
+ *          его подключение принято быть не должно, а по внесении - должно
+ *
+ *          Двух обменов проверка требует по той же причине, что и всякая проверка запрета:
+ *          молчание сервера само по себе ничего не доказывает. Доказывает разница между
+ *          двумя обменами, отличающимися одним лишь составом белого списка
+ *
+ * @note Белый список деятелен, пока непуст: пустой список проверку отключает и разрешает
+ *       всех, поэтому в начале, до внесения адреса собеседника, сервер принимает любого
+ *
+ */
+TEST_F(IoFixture, IoAccessListWhiteTest){
+	// Признак принятого сервером подключения
+	bool accepted = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(awh::engine::io::initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(awh::engine::source::port::set(server, port));
+	/**
+	 * Заносим в белый список адрес, которому собеседник НЕ соответствует
+	 *
+	 * @note Заносится он ДО фиксации: список спрашивается при принятии подключения, и
+	 *       порядок здесь тот же, что и у прочих настроек события. Белый список отныне
+	 *       непуст и деятелен, а адрес собеседника 127.0.0.1 в нём не значится
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::WHITE, "10.0.0.1"));
+	// Занесённый адрес обязан в белом списке числиться
+	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::WHITE).count("10.0.0.1"), static_cast <size_t> (1));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем принятое подключение
+		accepted = true;
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(awh::engine::io::commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(awh::engine::io::listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(awh::engine::io::launch(server));
+	/**
+	 * @brief Обмен: клиент подключается к серверу
+	 *
+	 * @return идентификатор заведённого клиента
+	 *
+	 */
+	const auto & knock = [ port]() noexcept -> awh::event::id_t {
+		// Заводим событие клиента
+		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Если идентификатор события заведён
+		if(client > 0){
+			// Выставляем настройки события клиента
+			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			(void) awh::engine::target::set(client, "127.0.0.1");
+			(void) awh::engine::target::port::set(client, port);
+			// Фиксируем, подключаем и запускаем событие клиента
+			(void) awh::engine::io::commit(client);
+			(void) awh::engine::io::connect(client);
+			(void) awh::engine::io::launch(client);
+		}
+		// Выводим идентификатор заведённого клиента
+		return client;
+	};
+	// Стучимся к серверу, которого в белом списке нет
+	const awh::event::id_t first = knock();
+	ASSERT_GT(first, 0);
+	/**
+	 * Крутим цикл отведённый срок
+	 */
+	for(uint8_t i = 0; i < 40; i++)
+		// Выполняем оборот цикла событий
+		awh::engine::io::poll(10);
+	// Подключение не из белого списка принято быть НЕ должно
+	ASSERT_FALSE(accepted) << "подключение не из белого списка принято";
+	// Уничтожаем событие первого клиента
+	awh::engine::io::destroy(first);
+	/**
+	 * Заносим адрес собеседника в белый список
+	 *
+	 * @note Отныне 127.0.0.1 в белом списке числится, и подключение обязано пройти
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::WHITE, "127.0.0.1"));
+	// Адрес собеседника обязан в белом списке числиться
+	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::WHITE).count("127.0.0.1"), static_cast <size_t> (1));
+	// Стучимся к серверу из белого списка
+	const awh::event::id_t second = knock();
+	ASSERT_GT(second, 0);
+	/**
+	 * Крутим цикл, покуда подключение не примут
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Выполняем обороты цикла событий, покуда подключение не принято и срок не истёк
+		 */
+		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			awh::engine::io::poll(10);
+	}
+	/**
+	 * Подключение из белого списка обязано быть принято
+	 *
+	 * @note Утверждение это и делает проверку доказательной: оно отделяет запрет первого
+	 *       обмена от любой иной причины молчания сервера
+	 *
+	 */
+	ASSERT_TRUE(accepted) << "подключение из белого списка не принято: молчание первого обмена запретом не доказано";
+	// Уничтожаем события
+	awh::engine::io::destroy(second);
+	awh::engine::io::destroy(server);
+}
+
+/**
+ * @brief Тест перевеса чёрного списка над белым
+ *
+ * @details Оба списка спрашиваются при приёме, и чёрный имеет перевес: адрес, попавший
+ *          в оба списка сразу, отвергается. Проверяется это ПОВЕДЕНИЕМ двумя обменами,
+ *          отличающимися одним лишь внесением адреса собеседника в чёрный список
+ *
+ * @note Первый обмен доказывает, что белый список адрес пропускает; второй - что
+ *       добавление того же адреса в чёрный список перевешивает белый и отвергает его
+ *
+ */
+TEST_F(IoFixture, IoAccessListPrecedenceTest){
+	// Признак принятого сервером подключения
+	bool accepted = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(awh::engine::io::initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(awh::engine::source::port::set(server, port));
+	/**
+	 * Заносим адрес собеседника в белый список
+	 *
+	 * @note Заносится он ДО фиксации: чёрный список пока пуст, поэтому белый в одиночку
+	 *       обязан пропустить 127.0.0.1 - это и есть исходная точка первого обмена
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::WHITE, "127.0.0.1"));
+	// Адрес собеседника обязан в белом списке числиться
+	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::WHITE).count("127.0.0.1"), static_cast <size_t> (1));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем принятое подключение
+		accepted = true;
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(awh::engine::io::commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(awh::engine::io::listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(awh::engine::io::launch(server));
+	/**
+	 * @brief Обмен: клиент подключается к серверу
+	 *
+	 * @return идентификатор заведённого клиента
+	 *
+	 */
+	const auto & knock = [ port]() noexcept -> awh::event::id_t {
+		// Заводим событие клиента
+		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Если идентификатор события заведён
+		if(client > 0){
+			// Выставляем настройки события клиента
+			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			(void) awh::engine::target::set(client, "127.0.0.1");
+			(void) awh::engine::target::port::set(client, port);
+			// Фиксируем, подключаем и запускаем событие клиента
+			(void) awh::engine::io::commit(client);
+			(void) awh::engine::io::connect(client);
+			(void) awh::engine::io::launch(client);
+		}
+		// Выводим идентификатор заведённого клиента
+		return client;
+	};
+	// Стучимся к серверу, когда адрес есть только в белом списке
+	const awh::event::id_t first = knock();
+	ASSERT_GT(first, 0);
+	/**
+	 * Крутим цикл, покуда подключение не примут
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Выполняем обороты цикла событий, покуда подключение не принято и срок не истёк
+		 */
+		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			awh::engine::io::poll(10);
+	}
+	// Адрес из белого списка обязан быть принят, пока чёрный список пуст
+	ASSERT_TRUE(accepted) << "подключение из белого списка не принято до внесения в чёрный";
+	// Уничтожаем событие первого клиента
+	awh::engine::io::destroy(first);
+	// Сбрасываем признак принятого подключения
+	accepted = false;
+	/**
+	 * Заносим тот же адрес в чёрный список
+	 *
+	 * @note Адрес оказывается в обоих списках сразу; чёрный имеет перевес, поэтому
+	 *       подключение отныне обязано отвергаться, несмотря на присутствие в белом
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::BLACK, "127.0.0.1"));
+	// Адрес обязан в чёрном списке числиться
+	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::BLACK).count("127.0.0.1"), static_cast <size_t> (1));
+	// Стучимся к серверу, когда адрес есть в обоих списках
+	const awh::event::id_t second = knock();
+	ASSERT_GT(second, 0);
+	/**
+	 * Крутим цикл отведённый срок
+	 */
+	for(uint8_t i = 0; i < 40; i++)
+		// Выполняем оборот цикла событий
+		awh::engine::io::poll(10);
+	/**
+	 * Адрес из обоих списков принят быть НЕ должен: чёрный перевешивает белый
+	 *
+	 * @note Утверждение это и делает проверку доказательной: первый обмен доказал, что
+	 *       белый список адрес пропускал, значит отказ второго обмена - действие чёрного
+	 *
+	 */
+	ASSERT_FALSE(accepted) << "подключение из обоих списков принято: перевес чёрного не сработал";
+	// Уничтожаем события
+	awh::engine::io::destroy(second);
+	awh::engine::io::destroy(server);
+}
+
+/**
  * @brief Тест извещения об освобождении места в очереди отправки
  *
  * @details Подписка `available_t` сообщает, что место в очереди отправки освободилось, и

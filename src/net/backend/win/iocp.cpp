@@ -15511,8 +15511,11 @@ namespace events {
 		if(
 			(node != nullptr) && (ev.udata != ::local::internal) &&
 			((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE)) &&
-			(ev.flags & ::change::ENABLE) && !(ev.flags & (::change::DELETE | ::change::DISABLE)) &&
-			(ev.filter == ::change::filter_t::READ)
+			!(ev.flags & (::change::DELETE | ::change::DISABLE)) &&
+			(
+				((ev.flags & ::change::ENABLE) && ((ev.filter == ::change::filter_t::READ) || (ev.filter == ::change::filter_t::VNODE))) ||
+				((ev.flags & ::change::ADD) && (ev.flags & ::change::ONESHOT) && (ev.filter == ::change::filter_t::WRITE))
+			)
 		)
 			// Пропускаем подписку, сохраняя записи очистки
 			return;
