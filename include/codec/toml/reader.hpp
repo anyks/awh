@@ -250,14 +250,14 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
 						/**
 						 * \~russian
-						 * Признак дозволения вложенных значений
+						 * @brief Признак дозволения вложенных значений
 						 *
 						 * @details Снятый признак отвергает всякий перечень значений да встроенную
 						 *          таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
 						 *          `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки.
 						 *
 						 * \~english
-						 * Sign of the permission of the nested values
+						 * @brief Sign of the permission of the nested values
 						 *
 						 * @details A cleared sign rejects every array and inline table, leaving the simple values.
 						 *          Formerly this thought was expressed by a zero at `maxDepth`, while a zero now
@@ -268,7 +268,7 @@ namespace awh {
 						bool nesting;
 						/**
 						 * \~russian
-						 * Признак признания знаков Юникода в именах без кавычек
+						 * @brief Признак признания знаков Юникода в именах без кавычек
 						 *
 						 * @note Описание версии 1.0.0 отводит именам без кавычек лишь знаки
 						 *       US-ASCII, и умолчанием берётся оно: имя «сервер» такому разбору
@@ -277,7 +277,7 @@ namespace awh {
 						 *       оставлен потребителю, а не зашит
 						 *
 						 * \~english
-						 * Flag of the recognition of the Unicode characters in the names without quotes
+						 * @brief Flag of the recognition of the Unicode characters in the names without quotes
 						 *
 						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to the names without quotes,
 						 *       and it is taken by default: the name «сервер» for such a parsing
@@ -290,14 +290,14 @@ namespace awh {
 						bool unicode;
 						/**
 						 * \~russian
-						 * Признак проверки повторного объявления ключей и таблиц
+						 * @brief Признак проверки повторного объявления ключей и таблиц
 						 *
 						 * @note Описание повтор запрещает, и проверка эта по умолчанию
 						 *       включена. Стоит она памяти - разбор удерживает имена уже
 						 *       объявленного, - и отключают её там, где текст заведомо свой
 						 *
 						 * \~english
-						 * Flag of the check of a repeated declaration of the keys and of the tables
+						 * @brief Flag of the check of a repeated declaration of the keys and of the tables
 						 *
 						 * @note The specification prohibits a repetition, and this check is enabled by
 						 *       default. It costs memory — the parsing holds the names of what has already been
@@ -314,14 +314,14 @@ namespace awh {
 						uint32_t maxKey;
 						/**
 						 * \~russian
-						 * Наибольшая допустимая длина логической строки в байтах, ноль - без предела
+						 * @brief Наибольшая допустимая длина логической строки в байтах, ноль - без предела
 						 *
 						 * @note Предел считается на запись целиком - вместе со всеми строками
 						 *       многострочного значения, - иначе многострочная запись давала бы
 						 *       обход предела
 						 *
 						 * \~english
-						 * Largest admissible length of a logical line in bytes, zero — without a limit
+						 * @brief Largest admissible length of a logical line in bytes, zero — without a limit
 						 *
 						 * @note The limit is counted over the record as a whole — together with all the lines of
 						 *       a multiline value — otherwise a multiline record would give
@@ -332,7 +332,7 @@ namespace awh {
 						uint32_t maxLine;
 						/**
 						 * \~russian
-						 * Наибольшая допустимая глубина вложенности значений
+						 * @brief Наибольшая допустимая глубина вложенности значений
 						 *
 						 * @note Считается вложенностью перечней и встроенных таблиц друг в
 						 *       друга. Ноль значит «без предела» - уклад этот один у всех кодеков рамки
@@ -347,7 +347,7 @@ namespace awh {
 						 *       завышенным: разбор вложенности ведётся стопою вызовов
 						 *
 						 * \~english
-						 * Largest admissible depth of the nesting of the values
+						 * @brief Largest admissible depth of the nesting of the values
 						 *
 						 * @note Counted by the nesting of the arrays and of the inline tables into one
 						 *       another. Zero means «without a limit» — this convention is one and the same for all
@@ -525,14 +525,14 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Pending {
 						/**
 						 * \~russian
-						 * Признак того, что имя заведено исподволь
+						 * @brief Признак того, что имя заведено исподволь
 						 *
 						 * @note Заведённое исподволь уже объявленного не подменяет: таблица,
 						 *       объявленная заголовком, объемлющим именем ключа в заведённую исподволь
 						 *       не превращается
 						 *
 						 * \~english
-						 * Flag of the name having been created implicitly
+						 * @brief Flag of the name having been created implicitly
 						 *
 						 * @note What has been created implicitly does not replace what has already been declared: a table
 						 *       declared by a header does not turn into one created implicitly by an enclosing name of a key
@@ -566,7 +566,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Признак того, что исходный текст поступил целиком
+					 * @brief Признак того, что исходный текст поступил целиком
 					 *
 					 * @note Признак этот запоминается подачей и берётся выдачей событий:
 					 *       разбор продолжается по мере обхода событий, и без него продолжение
@@ -574,7 +574,7 @@ namespace awh {
 					 *       неразобранной, а состояние разбора незавершённым
 					 *
 					 * \~english
-					 * Flag of the source text having arrived in full
+					 * @brief Flag of the source text having arrived in full
 					 *
 					 * @note This flag is remembered by the feeding and is taken by the issuance of the events:
 					 *       the parsing continues as the events are traversed, and without it that continuation
@@ -586,7 +586,7 @@ namespace awh {
 					bool _final;
 					/**
 					 * \~russian
-					 * Признак того, что разбираемой записи не хватает продолжения текста
+					 * @brief Признак того, что разбираемой записи не хватает продолжения текста
 					 *
 					 * @note Разбор записи ведётся по накопленному тексту, и исчерпание его
 					 *       посреди записи означает не ошибку, а нужду в следующем куске: запись
@@ -594,7 +594,7 @@ namespace awh {
 					 *       продолжения. Ошибкой исчерпание становится лишь на последнем куске
 					 *
 					 * \~english
-					 * Flag of the record being parsed lacking a continuation of the text
+					 * @brief Flag of the record being parsed lacking a continuation of the text
 					 *
 					 * @note The parsing of a record is conducted over the accumulated text, and its exhaustion
 					 *       in the middle of a record means not an error but a need for the next chunk: the record
@@ -617,16 +617,16 @@ namespace awh {
 					size_t _offset;
 					/**
 					 * \~russian
-					 * Положение, с которого ищется знак конца записи, откаченной нуждою в
-					 * продолжении текста
+					 * @brief Положение, с которого ищется знак конца записи, откаченной нуждою в
+					 *        продолжении текста
 					 *
 					 * @note Держится ради подачи мелкими кусками: без него запись
 					 *       разбиралась бы заново на всяком куске, и разбор её обходился
 					 *       бы квадратом длины своей
 					 *
 					 * \~english
-					 * Position from which the ending character of a record rolled back by a need for
-					 * a continuation of the text is sought
+					 * @brief Position from which the ending character of a record rolled back by a need for
+					 *        a continuation of the text is sought
 					 *
 					 * @note It is kept for the sake of a feeding by small chunks: without it a record
 					 *       would be parsed anew at every chunk, and its parsing would cost
@@ -639,7 +639,7 @@ namespace awh {
 					size_t _current;
 					/**
 					 * \~russian
-					 * Количество имён, объявляемых разбираемой записью
+					 * @brief Количество имён, объявляемых разбираемой записью
 					 *
 					 * @note Очередь имён между записями не освобождается, а лишь укорачивается
 					 *       этим счётом: места её достаются следующей записи вместе с уже занятой под
@@ -647,7 +647,7 @@ namespace awh {
 					 *       Длина самой очереди означает число заведённых мест, а не число имён
 					 *
 					 * \~english
-					 * Number of the names declared by the record being parsed
+					 * @brief Number of the names declared by the record being parsed
 					 *
 					 * @note The deque of the names is not released between the records but is only shortened
 					 *       by this count: its places go to the next record together with the memory already occupied
@@ -662,7 +662,7 @@ namespace awh {
 					uint32_t _line;
 					/**
 					 * \~russian
-					 * Счёт встроенных таблиц записи, собственного имени не имеющих
+					 * @brief Счёт встроенных таблиц записи, собственного имени не имеющих
 					 *
 					 * @note Ключи такой таблицы повторами друг другу приходятся наравне с
 					 *       ключами именованной, а учёт их ведётся по имени: имя ей даётся
@@ -671,7 +671,7 @@ namespace awh {
 					 *       и столкнуться им не с чем
 					 *
 					 * \~english
-					 * Count of the inline tables of a record that have no name of their own
+					 * @brief Count of the inline tables of a record that have no name of their own
 					 *
 					 * @note The keys of such a table are repetitions to one another on a par with
 					 *       the keys of a named one, while their accounting is conducted by a name: a name of its own is given to it
@@ -692,14 +692,14 @@ namespace awh {
 					error_t _error;
 					/**
 					 * \~russian
-					 * Отложенный код ошибки приведения к кодировке UTF-8
+					 * @brief Отложенный код ошибки приведения к кодировке UTF-8
 					 *
 					 * @note Приведение переносит в хранилище всё, что успело проверить, и
 					 *       отказ его выдаётся лишь по исчерпании приведённого начала: иначе
 					 *       разбор того же текста целиком и кусками расходился бы событиями
 					 *
 					 * \~english
-					 * Postponed error code of the conversion to the UTF-8 encoding
+					 * @brief Postponed error code of the conversion to the UTF-8 encoding
 					 *
 					 * @note The conversion transfers into the storage everything it has managed to check, and
 					 *       its refusal is issued only upon the exhaustion of the converted beginning: otherwise
@@ -727,14 +727,14 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Хранилище собираемого полного имени ключа разбираемой пары
+					 * @brief Хранилище собираемого полного имени ключа разбираемой пары
 					 *
 					 * @note Держится полем по той же причине, что и хранилище содержимого:
 					 *       очистка сохраняет за ним занятую память, и всякая следующая пара
 					 *       обходится без выделения
 					 *
 					 * \~english
-					 * Storage of the full name of the key of the pair being parsed
+					 * @brief Storage of the full name of the key of the pair being parsed
 					 *
 					 * @note It is kept as a member for the same reason as the storage of the content:
 					 *       the clearing preserves the occupied memory behind it, and every next pair
@@ -745,20 +745,42 @@ namespace awh {
 					string _name;
 					// Имя текущей таблицы текста настроек
 					string _table;
+					/**
+					 * \~russian
+					 * @brief Рода имени текущей таблицы и его начал
+					 *
+					 * @details Объявление пары спрашивает род своей таблицы и всех её начал дважды:
+					 *          один раз в проверке объемлющих имён и ещё раз в заведении исподволь, -
+					 *          а род их с открытия таблицы не меняется. Рода поэтому снимаются один
+					 *          раз при её открытии и держатся здесь.
+					 *
+					 * \~english
+					 * @brief Kinds of the name of the current table and of its beginnings
+					 *
+					 * @details The declaration of a pair asks for the kind of its table and of all its beginnings
+					 *          twice: once in the check of the enclosing names and once more in the implied
+					 *          origination, - while their kind does not change since the opening of the table.
+					 *          The kinds are therefore taken once upon its opening and are kept here.
+					 *
+					 * \~
+					 */
+					vector <kind_t> _tableKinds;
+					// Длины имён, рода каких записаны следом
+					vector <size_t> _tableLengths;
 					// Хранилище содержимого событий разбираемой записи
 					string _store;
 					// Приведённый к кодировке UTF-8 исходный текст
 					string _buffer;
 					/**
 					 * \~russian
-					 * Хранилище собираемого содержимого строкового значения
+					 * @brief Хранилище собираемого содержимого строкового значения
 					 *
 					 * @note Держится полем ради переиспользования занятой памяти: очистка
 					 *       её за хранилищем сохраняет, и всякое следующее строковое
 					 *       значение обходится без выделения
 					 *
 					 * \~english
-					 * Storage of the content of a string value being assembled
+					 * @brief Storage of the content of a string value being assembled
 					 *
 					 * @note It is kept as a member for the sake of the reuse of the occupied memory: its clearing
 					 *       preserves it behind the storage, and every next string
@@ -779,7 +801,7 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Имена, объявляемые разбираемой записью
+					 * @brief Имена, объявляемые разбираемой записью
 					 *
 					 * @details Запись, которой не хватило продолжения текста, откатывается
 					 *          к своему началу и разбирается заново - и всё, что она успела
@@ -791,7 +813,7 @@ namespace awh {
 					 *       подаче кусками отвергает то, что при подаче целиком принимает
 					 *
 					 * \~english
-					 * Names declared by the record being parsed
+					 * @brief Names declared by the record being parsed
 					 *
 					 * @details A record that has lacked a continuation of the text is rolled back
 					 *          to its beginning and is parsed anew — and everything it has managed to
@@ -918,13 +940,13 @@ namespace awh {
 								uint16_t length;
 								/**
 								 * \~russian
-								 * Имя слота
+								 * @brief Имя слота
 								 *
 								 * @note Читается тело слота, покуда длина имени вмещаема, и владеемая слотом
 								 *       память - свыше того
 								 *
 								 * \~english
-								 * Name of the slot
+								 * @brief Name of the slot
 								 *
 								 * @note The body of the slot is read while the length of the name is holdable, and the memory
 								 *       owned by the slot - beyond that
@@ -978,7 +1000,7 @@ namespace awh {
 							struct Slot * slots;
 							/**
 							 * \~russian
-							 * Встроенные слоты малого указателя имён
+							 * @brief Встроенные слоты малого указателя имён
 							 *
 							 * @details Обычная запись объявляет имён считанные единицы, и
 							 *          заведение таблицы выделением на всякий её разбор обходилось
@@ -986,7 +1008,7 @@ namespace awh {
 							 *          выделение начинается лишь по его исчерпании.
 							 *
 							 * \~english
-							 * Embedded slots of the small index of the names
+							 * @brief Embedded slots of the small index of the names
 							 *
 							 * @details A common record declares a handful of the names, and the establishing
 							 *          of the table by an allocation cost more than the names themselves at every
@@ -1162,7 +1184,7 @@ namespace awh {
 					} names_t;
 					/**
 					 * \~russian
-					 * Указатель родов уже объявленных имён
+					 * @brief Указатель родов уже объявленных имён
 					 *
 					 * @details Правила описания об объявлении имён сводятся к роду уже
 					 *          объявленного, и держать их порознь перечнями значило бы проверять одно и
@@ -1174,7 +1196,7 @@ namespace awh {
 					 *       памяти стоит
 					 *
 					 * \~english
-					 * Index of the kinds of the already declared names
+					 * @brief Index of the kinds of the already declared names
 					 *
 					 * @details The rules of the specification about the declaration of the names come down to the kind of what has already been
 					 *          declared, and to keep them apart as lists would mean to check one and
@@ -1190,7 +1212,7 @@ namespace awh {
 					names_t _names;
 					/**
 					 * \~russian
-					 * Указатель имён, объявляемых разбираемой записью
+					 * @brief Указатель имён, объявляемых разбираемой записью
 					 *
 					 * @details Всякое объявляемое имя сличается со всеми, объявленными записью
 					 *          прежде, и перебор их обращал бы разбор в квадратичный: встроенная таблица из
@@ -1205,7 +1227,7 @@ namespace awh {
 					 *       годными
 					 *
 					 * \~english
-					 * Index of the names declared by the record being parsed
+					 * @brief Index of the names declared by the record being parsed
 					 *
 					 * @details Every name being declared is compared with all the ones declared by the record
 					 *          before, and a traversal of them would turn the parsing into a quadratic one: an inline table of

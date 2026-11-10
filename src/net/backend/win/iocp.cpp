@@ -15514,7 +15514,8 @@ namespace events {
 			!(ev.flags & (::change::DELETE | ::change::DISABLE)) &&
 			(
 				((ev.flags & ::change::ENABLE) && ((ev.filter == ::change::filter_t::READ) || (ev.filter == ::change::filter_t::VNODE))) ||
-				((ev.flags & ::change::ADD) && (ev.flags & ::change::ONESHOT) && (ev.filter == ::change::filter_t::WRITE))
+				((ev.flags & ::change::ADD) && (ev.flags & ::change::ONESHOT) && (ev.filter == ::change::filter_t::WRITE)) ||
+				((ev.flags & ::change::ADD) && (ev.flags & ::change::CLEAR) && (ev.filter == ::change::filter_t::VNODE))
 			)
 		)
 			// Пропускаем подписку, сохраняя записи очистки
@@ -75491,7 +75492,7 @@ bool awh::engine::action::set(const event::id_t id, const event::action_t action
 						// Создаём запись списка изменений
 						::change::record_t event{};
 						// Устанавливаем событие на отслеживание изменения каталога
-						event = ::change::make(dir->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, nullptr);
+						event = ::change::make(dir->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, dir);
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
 					}
@@ -75688,7 +75689,7 @@ bool awh::engine::action::set(const event::id_t id, const event::action_t action
 						// Создаём запись списка изменений
 						::change::record_t event{};
 						// Устанавливаем событие на отслеживание изменения каталога
-						event = ::change::make(fs->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, nullptr);
+						event = ::change::make(fs->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, fs);
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
 					}
@@ -77326,7 +77327,7 @@ bool awh::engine::io::resume(const event::id_t id) noexcept {
 								// Создаём запись списка изменений
 								::change::record_t event{};
 								// Устанавливаем событие на отслеживание изменения каталога
-								event = ::change::make(dir->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, nullptr);
+								event = ::change::make(dir->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, dir);
 								// Добавляем новое событие в список изменений
 								::events::add(::move(event));
 							}
@@ -77379,7 +77380,7 @@ bool awh::engine::io::resume(const event::id_t id) noexcept {
 								// Создаём запись списка изменений
 								::change::record_t event{};
 								// Устанавливаем событие на отслеживание изменения каталога
-								event = ::change::make(fs->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, nullptr);
+								event = ::change::make(fs->fd, ::change::filter_t::VNODE, ::change::ADD | ::change::CLEAR, flags, 0, fs);
 								// Добавляем новое событие в список изменений
 								::events::add(::move(event));
 							}
