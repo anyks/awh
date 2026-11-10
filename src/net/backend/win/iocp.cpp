@@ -15505,6 +15505,17 @@ namespace events {
 				} break;
 			}
 		}
+		/**
+		 * Не ставим подписку по дескриптору уничтоженного в обработчике узла
+		 */
+		if(
+			(node != nullptr) && (ev.udata != ::local::internal) &&
+			((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE)) &&
+			(ev.flags & ::change::ENABLE) && !(ev.flags & (::change::DELETE | ::change::DISABLE)) &&
+			(ev.filter == ::change::filter_t::READ)
+		)
+			// Пропускаем подписку, сохраняя записи очистки
+			return;
 		// Добавляем новое событие в список изменений
 		::local::change.push_back(::move(ev));
 	}

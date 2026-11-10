@@ -44,7 +44,6 @@
 #include "internal/pages.inc"
 #include "internal/classes.inc"
 
-
 /**
  * @brief Пространство имён вспомогательных средств
  *

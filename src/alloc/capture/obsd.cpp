@@ -35,15 +35,20 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cerrno>
 #include <cstddef>
 #include <cstring>
-#include <cerrno>
 #include <unistd.h>
 
 /**
  * Подключаем заголовочный файл
  */
 #include <alloc/alloc.hpp>
+
+/**
+ * Подписываемся на пространство имён аллокатора
+ */
+using namespace awh::alloc;
 
 /**
  * Признак того, что libc идёт через наши внутренние имена
@@ -174,7 +179,7 @@ extern "C" {
 	 */
 	void * malloc_conceal(size_t size) {
 		// Выдаём укрытую память фасадом распределителя
-		return awh::alloc::allocator::secure(size, nullptr, false);
+		return allocator::secure(size, nullptr, false);
 	}
 	/**
 	 * @brief Функция выдачи обнулённой укрытой памяти
@@ -203,7 +208,7 @@ extern "C" {
 			return nullptr;
 		}
 		// Выдаём укрытую область
-		return awh::alloc::allocator::secure((count * size), nullptr, false);
+		return allocator::secure((count * size), nullptr, false);
 	}
 	/**
 	 * @brief Функция внутренней выдачи укрытой памяти
