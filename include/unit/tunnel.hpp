@@ -519,7 +519,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Tunnel(const Tunnel &) = delete;
+				explicit Tunnel(const Tunnel &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

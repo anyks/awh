@@ -283,26 +283,6 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
-				 *
-				 * @param eid    идентификатор события ICMP-клиента
-				 * @param action действие события таймера ICMP-клиента
-				 * @param delay  задержка таймера ICMP-клиента
-				 * @return       нужно ли завершить клиента после истечения таймаута
-				 *
-				 * \~english
-				 * @brief Method of processing the timeout of waiting for a response of the ICMP server
-				 *
-				 * @param eid    event identifier of the ICMP client
-				 * @param action action of the timer event of the ICMP client
-				 * @param delay  timer delay of the ICMP client
-				 * @return       whether the client should be terminated after the timeout has expired
-				 *
-				 * \~
-				 */
-				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
-				/**
-				 * \~russian
 				 * @brief Метод продолжения ожидания своего ответа
 				 *
 				 * @details Сокет ICMP сырой, и приходит на него **весь** ICMP машины: чужие
@@ -343,6 +323,26 @@ namespace awh {
 				 * \~
 				 */
 				void keepWaiting(const event::id_t eid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
+				 *
+				 * @param eid    идентификатор события ICMP-клиента
+				 * @param action действие события таймера ICMP-клиента
+				 * @param delay  задержка таймера ICMP-клиента
+				 * @return       нужно ли завершить клиента после истечения таймаута
+				 *
+				 * \~english
+				 * @brief Method of processing the timeout of waiting for a response of the ICMP server
+				 *
+				 * @param eid    event identifier of the ICMP client
+				 * @param action action of the timer event of the ICMP client
+				 * @param delay  timer delay of the ICMP client
+				 * @return       whether the client should be terminated after the timeout has expired
+				 *
+				 * \~
+				 */
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод обработки ответов удалённого сервера на ICMP-запросы

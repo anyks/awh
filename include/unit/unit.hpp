@@ -84,7 +84,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Признак просьбы об остановке, поступившей прежде запуска цикла
+				 * @brief Признак просьбы об остановке, поступившей прежде запуска цикла
 				 *
 				 * @details Обращение может отказать ещё до входа в цикл событий - скажем,
 				 *          рассылка не уходит в неисправную сеть, - и отказ этот приходит
@@ -97,7 +97,7 @@ namespace awh {
 				 *          уходил бы в ожидание навсегда - остановить его было бы уже некому.
 				 *
 				 * \~english
-				 * Flag of a stop request that has arrived before the loop has been started
+				 * @brief Flag of a stop request that has arrived before the loop has been started
 				 *
 				 * @details A call may fail even before entering the event loop — say,
 				 *          a broadcast does not go out into a faulty network — and that refusal
@@ -434,7 +434,6 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
 				 *
@@ -676,7 +675,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Unit(const Unit &) = delete;
+				explicit Unit(const Unit &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

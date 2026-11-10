@@ -26,7 +26,6 @@
 #include <array>
 #include <string>
 #include <chrono>
-#include <sys/macro/global.hpp>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -68,10 +67,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/lib.hpp>
+#include <unit/ntp.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <unit/ntp.hpp>
+#include <sys/macro/lib.hpp>
+#include <sys/macro/global.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -827,7 +827,6 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unu
 		}
 		// Создаём объект пакета запроса
 		::ntp::packet_t packet{};
-		// Формируем NTP-запрос
 		/**
 		 * Собираем вопрос, запоминая метку отправки
 		 *
@@ -1968,7 +1967,6 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 			this->_transfer.version = version;
 			// Создаём объект пакета запроса
 			::ntp::packet_t packet{};
-			// Формируем NTP-запрос
 			/**
 			 * Собираем вопрос, запоминая метку отправки
 			 *

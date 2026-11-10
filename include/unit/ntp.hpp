@@ -439,7 +439,6 @@ namespace awh {
 				 *
 				 * @param callback функции обратного вызова
 				 *
-				 *
 				 * \~english
 				 * @brief Method of setting the callback functions
 				 *

@@ -409,7 +409,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Mediator(const Mediator &) = delete;
+				explicit Mediator(const Mediator &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

@@ -29,9 +29,6 @@
 #include <algorithm>
 
 /**
- * Системные заголовочные файлы
- */
-/**
  * Для операционной системы MS Windows
  *
  * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют.
@@ -56,20 +53,18 @@
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 #endif
-#include <sys/types.h>
+
 /**
- * @note Системные заголовки netinet/ip.h и netinet/ip6.h здесь не подключаются вовсе:
- *       у MS Windows их нет, а заголовки пакетов IPv4 и IPv6 модуль описывает своими
- *       словами по месту разбора ответа - структурами ip4_hdr_min и ip6_hdr_min
- *
+ * Системный заголовочный файл
  */
+#include <sys/types.h>
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <unit/icmp.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <unit/icmp.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -178,10 +173,10 @@ namespace {
 	 * доверяется признаку упаковки. Без упаковки поле полезной нагрузки съезжает с
 	 * восьмого байта на шестнадцатый, а сам заголовок разрастается с 20 байт до 24
 	 */
-	static_assert(sizeof(header_t) == 20, "AWH: разметка заголовка ICMP нарушена");
-	static_assert(offsetof(header_t, meta) == 4, "AWH: разметка заголовка ICMP нарушена");
-	static_assert(offsetof(header_t, meta.echo.sequence) == 6, "AWH: разметка заголовка ICMP нарушена");
-	static_assert(offsetof(header_t, meta.echo.payload) == 8, "AWH: разметка заголовка ICMP нарушена");
+	static_assert(sizeof(header_t) == 20, "AWH: ICMP header formatting is malformed");
+	static_assert(offsetof(header_t, meta) == 4, "AWH: ICMP header formatting is malformed");
+	static_assert(offsetof(header_t, meta.echo.sequence) == 6, "AWH: ICMP header formatting is malformed");
+	static_assert(offsetof(header_t, meta.echo.payload) == 8, "AWH: ICMP header formatting is malformed");
 
 	/**
 	 * @brief Функция генерации уникального идентификатора
@@ -276,41 +271,6 @@ namespace {
 		}
 	}
 	/**
-	 * @brief Функция подсчёта контрольной суммы ICMPv6
-	 *
-	 * @param src    адрес источника IPv6
-	 * @param dst    адрес назначения IPv6
-	 * @param buffer буфер ICMP-сообщения
-	 * @param size   размер ICMP-сообщения
-	 * @return       подсчитанная контрольная сумма
-	 *
-	 */
-	static __AWH_INLINE__ uint16_t checksum6(const uint8_t src[16], const uint8_t dst[16], const void * buffer, const size_t size) noexcept {
-		// Контрольная сумма расчёта
-		uint32_t sum = 0;
-		// Добавляем адреса и длину псевдозаголовка IPv6
-		::checksumAdd(sum, src, 16);
-		::checksumAdd(sum, dst, 16);
-		// Длина ICMP-сообщения в сетевом порядке байт
-		const uint32_t length = htonl(static_cast <uint32_t> (size));
-		// Добавляем длину ICMP-сообщения
-		::checksumAdd(sum, &length, sizeof(length));
-		// Нулевое поле и номер протокола ICMPv6
-		const uint8_t proto[4] = {0, 0, 0, IPPROTO_ICMPV6};
-		// Добавляем номер протокола ICMPv6
-		::checksumAdd(sum, proto, sizeof(proto));
-		// Добавляем тело ICMP-сообщения
-		::checksumAdd(sum, buffer, size);
-		/**
-		 * Выполняем финальную свёртку переноса
-		 */
-		while(sum >> 16)
-			// Выполняем свёртку переноса
-			sum = ((sum >> 16) + (sum & 0xffff));
-		// Возвращаем результат
-		return static_cast <uint16_t> (~sum);
-	}
-	/**
 	 * @brief Функция подсчёта контрольной суммы
 	 *
 	 * @param buffer буфер данных для подсчёта
@@ -351,6 +311,41 @@ namespace {
 		}
 		// Возвращаем результат
 		return result;
+	}
+	/**
+	 * @brief Функция подсчёта контрольной суммы ICMPv6
+	 *
+	 * @param src    адрес источника IPv6
+	 * @param dst    адрес назначения IPv6
+	 * @param buffer буфер ICMP-сообщения
+	 * @param size   размер ICMP-сообщения
+	 * @return       подсчитанная контрольная сумма
+	 *
+	 */
+	static __AWH_INLINE__ uint16_t checksum6(const uint8_t src[16], const uint8_t dst[16], const void * buffer, const size_t size) noexcept {
+		// Контрольная сумма расчёта
+		uint32_t sum = 0;
+		// Добавляем адреса и длину псевдозаголовка IPv6
+		::checksumAdd(sum, src, 16);
+		::checksumAdd(sum, dst, 16);
+		// Длина ICMP-сообщения в сетевом порядке байт
+		const uint32_t length = htonl(static_cast <uint32_t> (size));
+		// Добавляем длину ICMP-сообщения
+		::checksumAdd(sum, &length, sizeof(length));
+		// Нулевое поле и номер протокола ICMPv6
+		const uint8_t proto[4] = {0, 0, 0, IPPROTO_ICMPV6};
+		// Добавляем номер протокола ICMPv6
+		::checksumAdd(sum, proto, sizeof(proto));
+		// Добавляем тело ICMP-сообщения
+		::checksumAdd(sum, buffer, size);
+		/**
+		 * Выполняем финальную свёртку переноса
+		 */
+		while(sum >> 16)
+			// Выполняем свёртку переноса
+			sum = ((sum >> 16) + (sum & 0xffff));
+		// Возвращаем результат
+		return static_cast <uint16_t> (~sum);
 	}
 };
 
@@ -551,6 +546,20 @@ void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, c
 	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
+ * @brief Метод продолжения ожидания своего ответа
+ *
+ * @param eid идентификатор события чтения ICMP-ответа
+ *
+ */
+void awh::unit::ICMP::keepWaiting(const event::id_t eid) noexcept {
+	// Если ответ удалённого сервера не ожидается, продолжать нечего
+	if(!this->_transfer.waiting)
+		// Выходим из функции
+		return;
+	// Выполняем продолжение прерванного чужим пакетом ожидания
+	engine::timer::rearm(eid, event::action_t::READ);
+}
+/**
  * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
  *
  * @param eid    идентификатор события ICMP-клиента
@@ -575,18 +584,18 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_un
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug(
+			log::debug(
 				"ICMP-client timeout (delay: %u)",
 				__PRETTY_FUNCTION__,
 				{eid, static_cast <uint16_t> (action), delay},
-				awh::log::flag_t::WARNING, delay
+				log::flag_t::WARNING, delay
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ICMP-client timeout (delay: %u)", awh::log::flag_t::WARNING, delay);
+			log::print("ICMP-client timeout (delay: %u)", log::flag_t::WARNING, delay);
 		#endif
 	}
 	// Запрещаем завершение клиента после истечения таймаута
@@ -601,20 +610,6 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_un
  * @param size размер данных события чтения ICMP-ответа
  *
  */
-/**
- * @brief Метод продолжения ожидания своего ответа
- *
- * @param eid идентификатор события чтения ICMP-ответа
- *
- */
-void awh::unit::ICMP::keepWaiting(const event::id_t eid) noexcept {
-	// Если ответ удалённого сервера не ожидается, продолжать нечего
-	if(!this->_transfer.waiting)
-		// Выходим из функции
-		return;
-	// Выполняем продолжение прерванного чужим пакетом ожидания
-	engine::timer::rearm(eid, event::action_t::READ);
-}
 void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
@@ -648,7 +643,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					 *          системного `netinet/ip.h`: у MS Windows заголовка этого нет
 					 *          вовсе. Заодно снимается зависимость от порядка следования
 					 *          битовых полей `ip_v`/`ip_hl`, который у системного описания
-					 *          задан условной сборкой по порядку октетов машины
+					 *          задан условной сборкой по порядку октетов машины.
 					 *
 					 */
 					struct ip4_hdr_min {
@@ -917,13 +912,13 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (mode), data, size}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (mode), data, size}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -979,13 +974,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
+					log::debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("ICMP-client target address is not set", awh::log::flag_t::CRITICAL);
+					log::print("ICMP-client target address is not set", log::flag_t::CRITICAL);
 				#endif
 			}
 			// Возвращаем результат
@@ -1023,13 +1018,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
+					log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Failed to set options for ICMP-client event", awh::log::flag_t::CRITICAL);
+					log::print("Failed to set options for ICMP-client event", log::flag_t::CRITICAL);
 				#endif
 			}
 			// Возвращаем результат
@@ -1077,13 +1072,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
+				log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Failed to launch ICMP-client", awh::log::flag_t::CRITICAL);
+				log::print("Failed to launch ICMP-client", log::flag_t::CRITICAL);
 			#endif
 		}
 		// Возвращаем результат
@@ -1099,13 +1094,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1250,13 +1245,13 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {target}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {target}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1309,13 +1304,13 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1373,13 +1368,13 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), target}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), target}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1434,13 +1429,13 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1499,13 +1494,13 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1564,13 +1559,13 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1669,13 +1664,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
+								log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Failed to set options for ICMP-client event", awh::log::flag_t::CRITICAL);
+								log::print("Failed to set options for ICMP-client event", log::flag_t::CRITICAL);
 							#endif
 						}
 						// Снимаем флаг ожидания ответа от сервера
@@ -1722,13 +1717,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
+									log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("Failed to launch ICMP-client", awh::log::flag_t::CRITICAL);
+									log::print("Failed to launch ICMP-client", log::flag_t::CRITICAL);
 								#endif
 							}
 						// Если фиксация параметров события прошла успешно
@@ -1767,13 +1762,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+								log::print("%s", log::flag_t::WARNING, error.c_str());
 							#endif
 						}
 					}
@@ -1809,13 +1804,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат

@@ -23,7 +23,6 @@
  * Стандартные заголовочные файлы
  */
 #include <array>
-#include <sys/macro/global.hpp>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -64,10 +63,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <unit/dns.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <unit/dns.hpp>
 #include <sys/macro/lib.hpp>
+#include <sys/macro/global.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/idna/idna.hpp>
 
@@ -141,21 +141,10 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Структура записи из файла хостов
-	 *
-	 */
-	struct HostsEntry {
-		// IP-адрес из файла хостов
-		string_view ip;
-		// Список доменных имён
-		vector <string_view> domains;
-	};
-
-	/**
 	 * @brief Структура записи DNS-кэша
 	 *
 	 */
-	struct Entry {
+	typedef struct Entry {
 		// Размер IP-адреса
 		uint8_t size;
 		// Метка времени истечения записи (в миллисекундах)
@@ -171,13 +160,27 @@ namespace {
 		explicit Entry() noexcept :
 		 size(0), life(0),
 		 ip{0}, domain{0} {}
-	};
-
+	} entry_t;
+	/**
+	 * @brief Структура записи из файла хостов
+	 *
+	 */
+	typedef struct HostsEntry {
+		// IP-адрес из файла хостов
+		string_view ip;
+		// Список доменных имён
+		vector <string_view> domains;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit HostsEntry() noexcept : ip{""} {}
+	} hosts_entry_t;
 	/**
 	 * @brief Структура IP-адреса, связанного с доменом
 	 *
 	 */
-	struct EntryIP {
+	typedef struct EntryIP {
 		// Флаг локального IP-адреса
 		bool local;
 		// Метка времени истечения записи (в миллисекундах)
@@ -188,14 +191,14 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit EntryIP() noexcept : local(false), life(0), ip(nullptr) {}
-	};
-
+		explicit EntryIP() noexcept :
+		 local(false), life(0), ip(nullptr) {}
+	} entry_ip_t;
 	/**
 	 * @brief Структура записи доменного имени
 	 *
 	 */
-	struct EntryDomain {
+	typedef struct EntryDomain {
 		// Флаг локального доменного имени
 		bool local;
 		// Метка времени истечения записи (в миллисекундах)
@@ -206,8 +209,9 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit EntryDomain() noexcept : local(false), life(0), domain{""} {}
-	};
+		explicit EntryDomain() noexcept :
+		 local(false), life(0), domain{""} {}
+	} entry_domain_t;
 
 	/**
 	 * @brief Функция сравнения двух IP-адресов
@@ -249,7 +253,7 @@ namespace {
 	 * @param record  запись для добавления или обновления
 	 *
 	 */
-	static __AWH_INLINE__ void upsertEntryIP(vector <EntryIP> & entries, EntryIP && record) noexcept {
+	static __AWH_INLINE__ void upsertEntryIP(vector <entry_ip_t> & entries, entry_ip_t && record) noexcept {
 		/**
 		 * Выполняем перебор всех записей домена
 		 */
@@ -274,7 +278,7 @@ namespace {
 	 * @param record  запись для добавления или обновления
 	 *
 	 */
-	static __AWH_INLINE__ void upsertEntryDomain(vector <EntryDomain> & entries, EntryDomain && record) noexcept {
+	static __AWH_INLINE__ void upsertEntryDomain(vector <entry_domain_t> & entries, entry_domain_t && record) noexcept {
 		/**
 		 * Выполняем перебор всех записей IP-адреса
 		 */
@@ -299,7 +303,7 @@ namespace {
 	 * @note Использует FNV-1a алгоритм — быстрый и с хорошим распределением
 	 *
 	 */
-	struct IpV6Hash {
+	typedef struct IpV6Hash {
 		/**
 		 * @brief Оператор генерации числового хэша ключа
 		 *
@@ -322,15 +326,14 @@ namespace {
 			// Возвращаем результат
 			return result;
 		}
-	};
-
+	} ipv6_hash_t;
 	/**
 	 * @brief Структура хэш-функции для ключа доменного имени
 	 *
 	 * @note Использует FNV-1a алгоритм — быстрый и с хорошим распределением
 	 *
 	 */
-	struct DomainHash {
+	typedef struct DomainHash {
 		/**
 		 * @brief Оператор генерации числового хэша доменного имени
 		 *
@@ -355,7 +358,7 @@ namespace {
 			// Возвращаем результат
 			return result;
 		}
-	};
+	} domain_hash_t;
 
 	/**
 	 * @brief Объект работы с чёрным списком
@@ -365,9 +368,8 @@ namespace {
 		// Чёрный список для блокировки IPv4-адресов
 		unordered_set <uint32_t> ipv4;
 		// Чёрный список для блокировки IPv6-адресов
-		unordered_set <array <uint8_t, 16>, IpV6Hash> ipv6;
+		unordered_set <array <uint8_t, 16>, ipv6_hash_t> ipv6;
 	} __awh_blacklist__;
-
 	/**
 	 * @brief Объект работы с кэшированием
 	 *
@@ -382,11 +384,11 @@ namespace {
 		// Интервал сохранения дампа кэша в миллисекундах
 		uint32_t interval;
 		// Список IPv4-адресов с доменными именами
-		unordered_map <uint32_t, vector <EntryDomain>> ipv4;
+		unordered_map <uint32_t, vector <entry_domain_t>> ipv4;
 		// Список доменных имён с IP-адресами
-		unordered_map <string, vector <EntryIP>, DomainHash> domains;
+		unordered_map <string, vector <entry_ip_t>, domain_hash_t> domains;
 		// Список IPv6-адресов с доменными именами
-		unordered_map <array <uint8_t, 16>, vector <EntryDomain>, IpV6Hash> ipv6;
+		unordered_map <array <uint8_t, 16>, vector <entry_domain_t>, ipv6_hash_t> ipv6;
 		/**
 		 * @brief Конструктор
 		 *
@@ -483,7 +485,6 @@ namespace dns {
 		explicit ARecord() noexcept :
 		 name{""}, ip(0), ttl(0) {}
 	} a_record_t;
-
 	/**
 	 * @brief Структура AAAA-записи DNS
 	 *
@@ -502,7 +503,6 @@ namespace dns {
 		explicit AAAARecord() noexcept :
 		 name{""}, ip{0}, ttl(0) {}
 	} aaaa_record_t;
-
 	/**
 	 * @brief Структура NS-записи DNS
 	 *
@@ -521,7 +521,6 @@ namespace dns {
 		explicit NSRecord() noexcept :
 		 name{""}, server{""}, ttl(0) {}
 	} ns_record_t;
-
 	/**
 	 * @brief Структура CNAME-записи DNS
 	 *
@@ -540,7 +539,6 @@ namespace dns {
 		explicit CNAMERecord() noexcept :
 		 name{""}, canonical{""}, ttl(0) {}
 	} cname_record_t;
-
 	/**
 	 * @brief Структура MX-записи DNS
 	 *
@@ -561,7 +559,6 @@ namespace dns {
 		explicit MXRecord() noexcept :
 		 name{""}, server{""}, preference(0), ttl(0) {}
 	} mx_record_t;
-
 	/**
 	 * @brief Структура TXT-записи DNS
 	 *
@@ -580,7 +577,6 @@ namespace dns {
 		explicit TXTRecord() noexcept :
 		 name{""}, texts{}, ttl(0) {}
 	} txt_record_t;
-
 	/**
 	 * @brief Структура SOA-записи DNS
 	 *
@@ -613,7 +609,6 @@ namespace dns {
 		 retry(0), expire(0), serial(0),
 		 refresh(0), minimum(0), ttl(0) {}
 	} soa_record_t;
-
 	/**
 	 * @brief Структура PTR-записи DNS
 	 *
@@ -632,7 +627,6 @@ namespace dns {
 		explicit PTRRecord() noexcept :
 		 name{""}, domain{""}, ttl(0) {}
 	} ptr_record_t;
-
 	/**
 	 * @brief Структура для хранения результатов DNS-запросов
 	 *
@@ -664,7 +658,6 @@ namespace dns {
 			mx.clear(); txt.clear(); soa.clear(); ptr.clear();
 		}
 	} dns_result_t;
-
 	/**
 	 * @brief Структура заголовка DNS
 	 *
@@ -691,7 +684,6 @@ namespace dns {
 		 qdcount(0), ancount(0),
 		 nscount(0), arcount(0) {}
 	} head_t;
-
 	/**
 	 * @brief Структура полей Question (QTYPE и QCLASS)
 	 *
@@ -1354,7 +1346,7 @@ awh::unit::DNS::Payload::Payload() noexcept : size(0), buffer(nullptr) {}
  * @return       текущие параметры пакета
  *
  */
-awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) noexcept {
+awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (packet_t && packet) noexcept {
 	// Копируем время жизни из объекта параметров пакета
 	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
@@ -1381,7 +1373,7 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) n
  * @return        текущие параметры пакета
  *
  */
-awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & packet) noexcept {
+awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const packet_t & packet) noexcept {
 	// Копируем время жизни из объекта параметров пакета
 	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
@@ -1401,7 +1393,7 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & pack
  * @param packet объект параметров пакета
  *
  */
-awh::unit::DNS::Packet::Packet(Packet && packet) noexcept {
+awh::unit::DNS::Packet::Packet(packet_t && packet) noexcept {
 	// Копируем время жизни из объекта параметров пакета
 	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
@@ -1425,7 +1417,7 @@ awh::unit::DNS::Packet::Packet(Packet && packet) noexcept {
  * @param packet объект параметров пакета
  *
  */
-awh::unit::DNS::Packet::Packet(const Packet & packet) noexcept {
+awh::unit::DNS::Packet::Packet(const packet_t & packet) noexcept {
 	// Копируем время жизни из объекта параметров пакета
 	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
@@ -1764,7 +1756,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 					// Добавляем в контейнер метку времени сохранения кэша
 					dumpBox.add("TIMESTAMP", now);
 					// Создаём объект записи для добавления в контейнер
-					Entry record{};
+					entry_t record{};
 					/**
 					 * Выполняем перебор всего списка доменных имён с IP-адресами
 					 */
@@ -1778,7 +1770,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 							// Проверяем устарела ли запись в кэше
 							if((i->life > 0) && (i->life <= now))
 								// Если запись в кэше устарела, удаляем её
-								i = const_cast <vector <EntryIP> &> (ips).erase(i);
+								i = const_cast <vector <entry_ip_t> &> (ips).erase(i);
 							// Если запись в кэше не является локальной
 							else if(!i->local) {
 								// Определяем размер доменного имени
@@ -1975,12 +1967,12 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 		try {
 			// Блокируем доступ к глобальному кэшу DNS
 			const locker_t <std::shared_mutex> lock(::__awh_dns_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-
 			/**
-			 * Сначала удаляем все локальные записи из кэша, чтобы не было конфликтов с новыми данными
+			 * @brief Если в кэше есть IPv4-адреса
+			 *
+			 * @note Сначала удаляем все локальные записи из кэша, чтобы не было конфликтов с новыми данными
+			 *
 			 */
-
-			// Если в кэше есть IPv4-адреса
 			if(!::__awh_cache__.ipv4.empty()){
 				/**
 				 * Выполняем перебор всех IP-адресов в кэше
@@ -2067,7 +2059,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 				 */
 				try {
 					// Создаём объект для хранения данных из строки файла хостов
-					HostsEntry entry;
+					hosts_entry_t entry;
 					// 1. Убираем комментарий (всё после '#')
 					if(auto pos = str.find('#'); pos != string_view::npos)
 						// Оставляем только часть строки до комментария
@@ -2133,7 +2125,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 							// Если в кэше доменное имя найдено
 							if(i != ::__awh_cache__.domains.end()){
 								// Создаём объект записи
-								EntryIP record{};
+								entry_ip_t record{};
 								// Помечаем IP-адрес как локальный
 								record.local = true;
 								/**
@@ -2151,7 +2143,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес найден в кэше
 										if(i != ::__awh_cache__.ipv4.end()){
 											// Создаём объект записи
-											EntryDomain record{};
+											entry_domain_t record{};
 											// Помечаем IP-адрес как локальный
 											record.local = true;
 											// Устанавливаем доменное имя
@@ -2161,7 +2153,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес не найден в кэше
 										} else {
 											// Создаём список записей IP-адресов
-											vector <EntryDomain> entry(1);
+											vector <entry_domain_t> entry(1);
 											// Помечаем IP-адрес как локальный
 											entry.back().local = true;
 											// Устанавливаем доменное имя
@@ -2181,7 +2173,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес найден в кэше
 										if(i != ::__awh_cache__.ipv6.end()){
 											// Создаём объект записи
-											EntryDomain record{};
+											entry_domain_t record{};
 											// Помечаем IP-адрес как локальный
 											record.local = true;
 											// Устанавливаем доменное имя
@@ -2191,7 +2183,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес не найден в кэше
 										} else {
 											// Создаём список записей IP-адресов
-											vector <EntryDomain> entry(1);
+											vector <entry_domain_t> entry(1);
 											// Помечаем IP-адрес как локальный
 											entry.back().local = true;
 											// Устанавливаем доменное имя
@@ -2206,7 +2198,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 							// Если в кэше доменное имя не найдено
 							} else {
 								// Создаём список записей IP-адресов
-								vector <EntryIP> entry(1);
+								vector <entry_ip_t> entry(1);
 								// Помечаем IP-адрес как локальный
 								entry.back().local = true;
 								/**
@@ -2224,7 +2216,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес найден в кэше
 										if(i != ::__awh_cache__.ipv4.end()){
 											// Создаём объект записи
-											EntryDomain record{};
+											entry_domain_t record{};
 											// Помечаем IP-адрес как локальный
 											record.local = true;
 											// Устанавливаем доменное имя
@@ -2234,7 +2226,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес не найден в кэше
 										} else {
 											// Создаём список записей IP-адресов
-											vector <EntryDomain> entryDomain(1);
+											vector <entry_domain_t> entryDomain(1);
 											// Помечаем IP-адрес как локальный
 											entryDomain.back().local = true;
 											// Устанавливаем доменное имя
@@ -2254,7 +2246,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес найден в кэше
 										if(i != ::__awh_cache__.ipv6.end()){
 											// Создаём объект записи
-											EntryDomain record{};
+											entry_domain_t record{};
 											// Помечаем IP-адрес как локальный
 											record.local = true;
 											// Устанавливаем доменное имя
@@ -2264,7 +2256,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 										// Если IP-адрес не найден в кэше
 										} else {
 											// Создаём список записей IP-адресов
-											vector <EntryDomain> entryDomain(1);
+											vector <entry_domain_t> entryDomain(1);
 											// Помечаем IP-адрес как локальный
 											entryDomain.back().local = true;
 											// Устанавливаем доменное имя
@@ -4897,7 +4889,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 				// Получаем текущую метку времени
 				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				// Создаём объект записи
-				EntryIP record;
+				entry_ip_t record;
 				// Если время жизни кэша установлено
 				if(ttl > 0)
 					// Устанавливаем время жизни
@@ -4917,7 +4909,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv4.end()){
 							// Создаём объект записи
-							EntryDomain record{};
+							entry_domain_t record{};
 							// Устанавливаем доменное имя
 							record.domain = domain;
 							// Если время жизни кэша установлено
@@ -4929,7 +4921,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес не найден в кэше
 						} else {
 							// Создаём список записей IP-адресов
-							vector <EntryDomain> entry(1);
+							vector <entry_domain_t> entry(1);
 							// Устанавливаем доменное имя
 							entry.back().domain = domain;
 							// Устанавливаем время жизни
@@ -4949,7 +4941,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv6.end()){
 							// Создаём объект записи
-							EntryDomain record{};
+							entry_domain_t record{};
 							// Устанавливаем доменное имя
 							record.domain = domain;
 							// Устанавливаем время жизни
@@ -4959,7 +4951,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес не найден в кэше
 						} else {
 							// Создаём список записей IP-адресов
-							vector <EntryDomain> entry(1);
+							vector <entry_domain_t> entry(1);
 							// Устанавливаем доменное имя
 							entry.back().domain = domain;
 							// Устанавливаем время жизни
@@ -4974,7 +4966,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			// Если в кэше доменное имя не найдено
 			} else {
 				// Создаём список записей IP-адресов
-				vector <EntryIP> entry(1);
+				vector <entry_ip_t> entry(1);
 				// Получаем текущую метку времени
 				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				// Устанавливаем время жизни
@@ -4994,7 +4986,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv4.end()){
 							// Создаём объект записи
-							EntryDomain record{};
+							entry_domain_t record{};
 							// Устанавливаем доменное имя
 							record.domain = domain;
 							// Устанавливаем время жизни
@@ -5004,7 +4996,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес не найден в кэше
 						} else {
 							// Создаём список записей IP-адресов
-							vector <EntryDomain> entry(1);
+							vector <entry_domain_t> entry(1);
 							// Устанавливаем доменное имя
 							entry.back().domain = domain;
 							// Устанавливаем время жизни
@@ -5024,7 +5016,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес найден в кэше
 						if(i != ::__awh_cache__.ipv6.end()){
 							// Создаём объект записи
-							EntryDomain record{};
+							entry_domain_t record{};
 							// Устанавливаем доменное имя
 							record.domain = domain;
 							// Устанавливаем время жизни
@@ -5034,7 +5026,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 						// Если IP-адрес не найден в кэше
 						} else {
 							// Создаём список записей IP-адресов
-							vector <EntryDomain> entry(1);
+							vector <entry_domain_t> entry(1);
 							// Устанавливаем доменное имя
 							entry.back().domain = domain;
 							// Если время жизни кэша установлено
@@ -5248,7 +5240,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 			// Если кэш из бинарного файла загружен в контейнер
 			if(!this->_binbox.empty()){
 				// Создаём объект записи для добавления в контейнер
-				Entry record{};
+				entry_t record{};
 				// Размер буфера для загрузки кэша доменных имён
 				size_t size = 0;
 				// Бинарный буфер для загрузки кэша доменных имён

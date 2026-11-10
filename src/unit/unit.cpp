@@ -464,8 +464,7 @@ void awh::unit::Unit::start() noexcept {
 		 *
 		 * @details Обращение уже завершилось отказом, и ожидать в цикле нечего: событий,
 		 *          способных его прервать, не заведено ни одного. Отметка снимается
-		 *          здесь же - запуск, следующий за новым обращением, ею связан быть не
-		 *          должен
+		 *          здесь же - запуск, следующий за новым обращением, ею связан быть не должен.
 		 *
 		 */
 		if(this->_stopped){
@@ -693,8 +692,7 @@ void awh::unit::Unit::interception(const event::mode_t mode) noexcept {
 awh::unit::Unit::Unit() noexcept :
  _pid(::getpid()), _timeout(-1), _stopped(false),
  _intercep(event::mode_t::DISABLED),
- _status(event::status_t::NONE), _signals(),
- _callback() {
+ _status(event::status_t::NONE), _signals() {
 	// Если база событий не инициализированна
 	if(!engine::io::isInitialized()){
 		// Инициализируем базу событий

@@ -440,7 +440,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования (запрещаем)
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor (prohibited)
 				 *
@@ -452,7 +451,6 @@ namespace awh {
 				 * @brief Оператор копирования (запрещаем)
 				 *
 				 * @return текущее значение объекта
-				 *
 				 *
 				 * \~english
 				 * @brief Copy assignment operator (prohibited)
