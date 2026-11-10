@@ -3811,16 +3811,13 @@ namespace awh {
 				 * \~russian
 				 * @brief Функция отключения события
 				 *
-				 * @details Разрывает соединение: закрывает дескриптор и переводит событие в
-				 *          состояние отмены, после чего вызывается подписка `event_t` с
-				 *          действием `DISCONNECT`. Само событие при этом **остаётся
-				 *          живым** - его идентификатор действителен, подписки сохранены.
-				 *          Этим отключение и отличается от `destroy()`, который событие
-				 *          уничтожает.
+				 * @details Переводит событие в состояние отмены и вызывает установленную
+				 *          подписку `event_t` с действием `DISCONNECT`. У узлов `CLIENT` и
+				 *          `PEER` закрывает дескриптор и сохраняет событие, если обработчик
+				 *          сам его не уничтожил.
 				 *
-				 * @note Дескриптор закрыт, поэтому просто запустить событие снова нельзя:
-				 *       вернуть его в работу можно через `rebirth()`, пересоздающий
-				 *       дескриптор с сохранением самого события
+				 * @note Узел `ORIGIN` представляет сессию на общем сокете сервера. При
+				 *       отключении сессия уничтожается, а общий сокет сервера не закрывается
 				 *
 				 * @note Отключение должно быть событию разрешено соответствующим действием.
 				 *       Если оно запрещено, функция молча ничего не делает и возвращает
@@ -3835,16 +3832,13 @@ namespace awh {
 				 * \~english
 				 * @brief Function of the disconnection of an event
 				 *
-				 * @details Breaks the connection: closes the descriptor and puts the event into
-				 *          the state of the cancellation, after which the `event_t` subscription with
-				 *          the action `DISCONNECT` is called. The event itself at that **remains
-				 *          alive** — its identifier is valid, the subscriptions are preserved.
-				 *          By this the disconnection differs from `destroy()`, which destroys
-				 *          the event.
+				 * @details Puts the event into the state of cancellation and calls the installed
+				 *          `event_t` subscription with the action `DISCONNECT`. For `CLIENT` and
+				 *          `PEER` nodes, it closes the descriptor and preserves the event unless
+				 *          the handler destroys it itself.
 				 *
-				 * @note The descriptor is closed, and therefore simply launching the event again is not possible:
-				 *       returning it into the work is possible through `rebirth()`, recreating
-				 *       the descriptor with the preservation of the event itself
+				 * @note An `ORIGIN` node represents a session on the server's shared socket.
+				 *       Disconnection destroys the session without closing the server's shared socket
 				 *
 				 * @note The disconnection must be allowed to the event by the corresponding action.
 				 *       If it is forbidden, the function silently does nothing and returns

@@ -1009,6 +1009,11 @@ namespace awh {
 			 *       ответ `shelter` говорит, что состоялось НА ДЕЛЕ. Затирание же
 			 *       обещано всегда
 			 *
+			 * @note Запрет уходить в подкачку запрашивается флагом `wire`: именам
+			 *       библиотеки времени исполнения OpenBSD (`malloc_conceal`,
+			 *       `calloc_conceal`) обещано лишь укрытие от снимков, и запрет
+			 *       подкачки их договор не содержит
+			 *
 			 * @note Защита эта - НЕ шифрование: живую память шифровать нечем, к ней
 			 *       обращается сам процессор. Она защищает от снимков - подкачки,
 			 *       снимка при падении, спящего режима, - а не от того, кто читает
@@ -1027,6 +1032,7 @@ namespace awh {
 			 *
 			 * @param size    требуемый размер в байтах
 			 * @param shelter сведения о состоявшейся защите либо nullptr
+			 * @param wire    признак запроса запрета уходить в подкачку
 			 * @return        адрес выданной памяти либо nullptr
 			 *
 			 * \~english
@@ -1036,6 +1042,10 @@ namespace awh {
 			 *       crash memory dump, it is forbidden to swap out, and the content is wiped
 			 *       on free. Not every system can do the first two, and the shelter answer
 			 *       tells what happened IN FACT. Wiping, however, is always promised
+			 *
+			 * @note The prohibition to swap out is requested by the wire flag: the OpenBSD
+			 *       runtime library names (malloc_conceal, calloc_conceal) are promised
+			 *       concealment from dumps only, and their contract carries no swap ban
 			 *
 			 * @note This protection is NOT encryption: live memory cannot be encrypted, the
 			 *       processor itself accesses it. It protects from snapshots - swapping,
@@ -1054,11 +1064,12 @@ namespace awh {
 			 *
 			 * @param size    required size in bytes
 			 * @param shelter information about the protection achieved or nullptr
+			 * @param wire    flag of requesting the prohibition to swap out
 			 * @return        address of the allocated memory or nullptr
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void * secure(const size_t size, shelter_t * shelter = nullptr) noexcept;
+			__AWH_SHARED_EXPORT__ void * secure(const size_t size, shelter_t * shelter = nullptr, const bool wire = true) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция смены доступности защищённого блока

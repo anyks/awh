@@ -3200,53 +3200,6 @@ namespace {
 		return result;
 	}
 
-	/**
-	 * @brief Функция выдачи блока, укрытого от снимков памяти
-	 *
-	 * @note Служит именам библиотеки времени исполнения, обещающим укрытую выдачу:
-	 *       `malloc_conceal` и `calloc_conceal` у OpenBSD. Выдача идёт слоем крупных выдач
-	 *       - тот берёт память у источника напрямую, а лишь источник и умеет просить
-	 *       укрытия: задаётся оно ПРИ ОТВЕДЕНИИ и задним числом не навешивается
-	 *
-	 * @param size   требуемый размер в байтах
-	 * @param hidden признак состоявшегося укрытия либо nullptr
-	 * @return       адрес выданного блока либо nullptr
-	 *
-	 */
-	void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, bool * wired) noexcept {
-		// Если укрытие не состоялось
-		if(hidden != nullptr)
-			// Отмечаем укрытие несостоявшимся
-			(* hidden) = false;
-		// Если запрет подкачки не состоялся
-		if(wired != nullptr)
-			// Отмечаем запрет несостоявшимся
-			(* wired) = false;
-		// Заводим распределитель, если он ещё не заведён
-		if(!::prepare())
-			// Выдавать нечего
-			return nullptr;
-		// Признак состоявшегося укрытия
-		bool sheltered = false;
-		// Выдаём укрытый блок слоем крупных выдач
-		void * result = ::machinery->huge.conceal(((size > 0) ? size : 1), sheltered, wire, wired);
-		// Если блок не выдан
-		if(result == nullptr)
-			// Выдавать нечего
-			return nullptr;
-		// Отмечаем крупные блоки выданными
-		::enormous.store(true, std::memory_order_relaxed);
-		// Учитываем выданное прикладному коду
-		::account(::machinery->caches.local(), static_cast <int64_t> (size));
-		// Берём выданный блок под учёт места выдачи
-		::enrol(result, size);
-		// Если ответ об укрытии затребован
-		if(hidden != nullptr)
-			// Отдаём признак состоявшегося укрытия
-			(* hidden) = sheltered;
-		// Выводим адрес выданного блока
-		return result;
-	}
 
 	/**
 	 * Выровненная семья MS Windows
@@ -3476,17 +3429,64 @@ namespace {
 			return 0;
 		}
 	#endif
-};
-
-/**
- * Если аллокатор отключён и операционная система не принадлежит к Apple и не запущена под санитайзером
- */
-#if !defined(AWH_ALLOC_DISABLED) && !(defined(__APPLE__) && AWH_ALLOC_SANITIZER)
 	/**
-	 * @brief Пространство имён пособников операторов языка C++
+	 * @brief Функция выдачи блока, укрытого от снимков памяти
+	 *
+	 * @note Служит именам библиотеки времени исполнения, обещающим укрытую выдачу:
+	 *       `malloc_conceal` и `calloc_conceal` у OpenBSD. Выдача идёт слоем крупных выдач
+	 *       - тот берёт память у источника напрямую, а лишь источник и умеет просить
+	 *       укрытия: задаётся оно ПРИ ОТВЕДЕНИИ и задним числом не навешивается
+	 *
+	 * @note Наружу помощник не виден: имена библиотеки времени исполнения идут к нему
+	 *       через фасад `secure()`, какой и держит межфайловой шов. Прямой зов из
+	 *       «capture/obsd.cpp» требовал внешнего связывания и держал приватное имя
+	 *       в обход порядка (правка 10.11.2026)
+	 *
+	 * @param size   требуемый размер в байтах
+	 * @param hidden признак состоявшегося укрытия либо nullptr
+	 * @param wire   признак запроса запрета уходить в подкачку
+	 * @param wired  признак состоявшегося запрета либо nullptr
+	 * @return       адрес выданного блока либо nullptr
 	 *
 	 */
-	namespace {
+	static void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, bool * wired) noexcept {
+		// Если укрытие не состоялось
+		if(hidden != nullptr)
+			// Отмечаем укрытие несостоявшимся
+			(* hidden) = false;
+		// Если запрет подкачки не состоялся
+		if(wired != nullptr)
+			// Отмечаем запрет несостоявшимся
+			(* wired) = false;
+		// Заводим распределитель, если он ещё не заведён
+		if(!::prepare())
+			// Выдавать нечего
+			return nullptr;
+		// Признак состоявшегося укрытия
+		bool sheltered = false;
+		// Выдаём укрытый блок слоем крупных выдач
+		void * result = ::machinery->huge.conceal(((size > 0) ? size : 1), sheltered, wire, wired);
+		// Если блок не выдан
+		if(result == nullptr)
+			// Выдавать нечего
+			return nullptr;
+		// Отмечаем крупные блоки выданными
+		::enormous.store(true, std::memory_order_relaxed);
+		// Учитываем выданное прикладному коду
+		::account(::machinery->caches.local(), static_cast <int64_t> (size));
+		// Берём выданный блок под учёт места выдачи
+		::enrol(result, size);
+		// Если ответ об укрытии затребован
+		if(hidden != nullptr)
+			// Отдаём признак состоявшегося укрытия
+			(* hidden) = sheltered;
+		// Выводим адрес выданного блока
+		return result;
+	}
+	/**
+	 * Если аллокатор отключён и операционная система не принадлежит к Apple и не запущена под санитайзером
+	 */
+	#if !defined(AWH_ALLOC_DISABLED) && !(defined(__APPLE__) && AWH_ALLOC_SANITIZER)
 		/**
 		 * @brief Функция выдачи памяти оператора языка C++
 		 *
@@ -3539,30 +3539,27 @@ namespace {
 			// Освобождаем память распределителем
 			::discard(ptr);
 		}
-	};
-#endif
-
-/**
- * Счётчик выдач языка C++ заводится лишь ключом стендов замера
- */
-#if defined(AWH_ALLOC_COUNTING)
+	#endif
 	/**
-	 * @brief Счётчики выдач языка C++ для стендов замера
-	 *
-	 * @note Счёт ведётся той же семьёй операторов языка, что и выдача: стендам
-	 *       требуется число выдач, заказанных замеряемым кодом, а не всё, что
-	 *       распределитель обслужил за время работы процесса
-	 *
+	 * Счётчик выдач языка C++ заводится лишь ключом стендов замера
 	 */
-	namespace {
+	#if defined(AWH_ALLOC_COUNTING)
+		/**
+		 * @brief Счётчики выдач языка C++ для стендов замера
+		 *
+		 * @note Счёт ведётся той же семьёй операторов языка, что и выдача: стендам
+		 *       требуется число выдач, заказанных замеряемым кодом, а не всё, что
+		 *       распределитель обслужил за время работы процесса
+		 *
+		 */
 		// Признак включённого счёта
 		atomic_bool __awh_counting__(false);
 		// Количество выполненных выдач
 		atomic_size_t __awh_counted__(0);
 		// Суммарный объём выданного в байтах
 		atomic_size_t __awh_countedBytes__(0);
-	};
-#endif
+	#endif
+};
 
 /**
  * @brief Функция выделения памяти
@@ -4003,16 +4000,17 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_AL
  *
  * @param size    требуемый размер в байтах
  * @param shelter сведения о состоявшейся защите либо nullptr
+ * @param wire    признак запроса запрета уходить в подкачку
  * @return        адрес выданной памяти либо nullptr
  *
  */
-void * awh::alloc::allocator::secure(const size_t size, shelter_t * shelter) noexcept {
+void * awh::alloc::allocator::secure(const size_t size, shelter_t * shelter, const bool wire) noexcept {
 	// Признак состоявшегося укрытия от снимков памяти
 	bool hidden = false;
 	// Признак состоявшегося запрета уходить в подкачку
 	bool wired = false;
-	// Выдаём укрытую память с запретом уходить в подкачку
-	void * result = ::__awh_alloc_conceal__(size, &hidden, true, &wired);
+	// Выдаём укрытую память, запросив запрет подкачки по флагу
+	void * result = ::__awh_alloc_conceal__(size, &hidden, wire, &wired);
 	/**
 	 * Отдаём сведения о состоявшейся защите
 	 *

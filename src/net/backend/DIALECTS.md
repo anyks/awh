@@ -34,7 +34,7 @@
 | Вид | kqueue | epoll | io_uring | ports | IOCP |
 |---|---|---|---|---|---|
 | STREAM (один-к-одному) | **свойство:** натив только FreeBSD (модуль sctp); macOS/NetBSD/OpenBSD/DragonFly — **честный отказ** (errno 43) | натив (модуль ядра) | натив | натив | **свойство:** протокола в системе нет — честный отказ |
-| SEQPACKET (один-ко-многим) | то же: натив только FreeBSD (уведомления + `sctp_peeloff`) | натив (`sctp_connectx`, уведомления + peeloff) | натив | натив (`sctp_connectx`; у illumos его нет — связь по первому адресу) | честный отказ |
+| SEQPACKET (один-ко-многим) | то же: натив только FreeBSD (уведомления + `sctp_peeloff`) | натив (`sctp_connectx`, уведомления + peeloff) | натив | натив (`sctp_connectx`; у illumos его нет — перебор адресов через переподключение, 10.11) | честный отказ |
 
 **Приговор по SCTP:** у FreeBSD/Linux/Solaris протокол нативен и отлажен
 (многодомная заявка списком сливается в ОДИН `sctp_connectx` — замерено:
@@ -43,7 +43,10 @@ OpenBSD/DragonFly прежняя **UDP-эмуляция** (IPv4 SEQPACKET → DG
 **дефектом** (молчаливая подмена надёжного протокола ненадёжным, к тому же
 неполной: только IPv4 SEQPACKET, а STREAM и IPv6 падали errno 43) — **снята
 решением владельца 29.10.2026**: теперь везде честный отказ, натив только
-FreeBSD. У illumos `sctp_connectx` нет — связь по первому адресу (свойство).
+FreeBSD. У illumos `sctp_connectx` нет — многодомная заявка с 10.11.2026 пробуется адресом
+за адресом машинерией переподключения (connect-time failover, гейтится `RECONNECT`);
+ограничение системы компенсировано userspace-перебором, подробности — приговор 10.11
+в AUDIT-FINDINGS.md.
 
 ## 3. Семейства PIPE / FSYS / USER / TIMER
 
@@ -91,7 +94,7 @@ KEEPIDLE молча не ставился (дефект, починен 27.10.20
 | Поведение | kqueue | epoll | io_uring | ports | IOCP |
 |---|---|---|---|---|---|
 | Границы записей SEQPACKET | **FreeBSD — `MSG_EOR`:** отправитель очерчивает запись флагом, движок ставит его на отправки и дочитывает хвост записи при переполнении (свойство: «поток с записями» socket(2)); у остальных BSD — посылочные границы | посылочные границы (per-send) | посылочные границы | посылочные границы + эхо MSG_EOR | границы строя сообщений канала |
-| SCTP один-ко-многим | FreeBSD: уведомления + `sctp_peeloff` (RFC 6458); остальные — отказ | уведомления + peeloff | уведомления + peeloff | `sctp_connectx` + peeloff; у illumos — по первому адресу (свойство) | протокола нет |
+| SCTP один-ко-многим | FreeBSD: уведомления + `sctp_peeloff` (RFC 6458); остальные — отказ | уведомления + peeloff | уведомления + peeloff | `sctp_connectx` + peeloff; у illumos — перебор адресов через переподключение (10.11) | протокола нет |
 | Приём (accept) | kqueue EVFILT_READ на слушателе | epoll EPOLLIN | io_uring accept | port_get | AcceptEx / GetAcceptExSockaddrs |
 | Чтение/запись | kqueue EVFILT_READ/WRITE | epoll ET | io_uring read/write | port_get | завершения по кольцу IOCP |
 | Backpressure (полный буфер отправки) | EVFILT_WRITE: писать по готовности | EPOLLOUT | io_uring POLLOUT | PORT_SOURCE_FD write | кольцо завершений |

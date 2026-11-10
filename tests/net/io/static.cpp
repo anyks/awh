@@ -320,6 +320,90 @@ static uint16_t port() noexcept {
 }
 
 /**
+ * @brief Проба отражения широковещания на уровне операционной системы
+ *
+ * @details Шлёт широковещательную дейтаграмму обычным сокетом системы - без движка -
+ *          и короткое время ждёт возвращения её копии тому же сокету. На обычной сети
+ *          ОС доставляет отправителю копию его же широковещания; на виртуальном
+ *          коммутаторе (ens18 у openSUSE и подобные) копия отправителю не возвращается.
+ *          Проба нарочно отделена от движка: она различает «среда не отражает» и
+ *          «движок не доставил», и только первое законно обращает проверку в пропуск
+ *
+ * @note Сокет пробы привязывается к собственному свободному порту, чтобы не пересекаться
+ *       с портом самой проверки и не принять чужую дейтаграмму за отражённую
+ *
+ * @param bcast адрес широковещания, отражение которого предстоит проверить
+ * @return      признак того, что ОС отражает широковещание отправителю
+ *
+ */
+static bool broadcastLoopsBack(const std::string & bcast) noexcept {
+	// Подбираем свободный порт для пробы
+	const uint16_t probePort = port();
+	// Заводим сокет пробы
+	const int32_t probe = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Если сокет пробы не заведён, судить об отражении нечем
+	if(probe < 0)
+		// Считаем, что отражается: своего повода пропустить нет
+		return true;
+	// Значение включаемых параметров сокета
+	const int32_t option = 1;
+	// Разрешаем широковещание
+	(void) ::setsockopt(probe, SOL_SOCKET, SO_BROADCAST, reinterpret_cast <const char *> (&option), sizeof(option));
+	// Разрешаем повторное использование адреса
+	(void) ::setsockopt(probe, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&option), sizeof(option));
+	// Параметры привязки сокета пробы
+	struct sockaddr_in address;
+	// Обнуляем параметры привязки
+	::memset(&address, 0, sizeof(address));
+	// Устанавливаем семейство адреса
+	address.sin_family = AF_INET;
+	// Слушаем на всех адресах: копия широковещания придёт на любой из них
+	address.sin_addr.s_addr = htonl(INADDR_ANY);
+	// Устанавливаем подобранный порт пробы
+	address.sin_port = htons(probePort);
+	// Если привязка не удалась, судить об отражении нечем
+	if(::bind(probe, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
+		// Закрываем сокет пробы
+		::closesocket(probe);
+		// Считаем, что отражается
+		return true;
+	}
+	// Параметры адреса назначения
+	struct sockaddr_in target;
+	// Обнуляем параметры адреса назначения
+	::memset(&target, 0, sizeof(target));
+	// Устанавливаем семейство адреса назначения
+	target.sin_family = AF_INET;
+	// Устанавливаем порт назначения, равный порту пробы
+	target.sin_port = htons(probePort);
+	// Если адрес широковещения не разбирается, судить об отражении нечем
+	if(::inet_pton(AF_INET, bcast.c_str(), &target.sin_addr) != 1){
+		// Закрываем сокет пробы
+		::closesocket(probe);
+		// Считаем, что отражается
+		return true;
+	}
+	// Текст пробной дейтаграммы
+	const char message[] = "awh-broadcast-probe";
+	// Шлём широковещательную дейтаграмму
+	(void) ::sendto(probe, message, sizeof(message), 0, reinterpret_cast <const struct sockaddr *> (&target), sizeof(target));
+	// Набор сокетов, готовых к чтению
+	fd_set readable;
+	// Выполняем очистку набора готовых к чтению
+	FD_ZERO(&readable);
+	// Добавляем сокет пробы в набор готовых к чтению
+	FD_SET(probe, &readable);
+	// Срок ожидания возвращения копии широковещания
+	struct timeval timeout{2, 0};
+	// Ждём возвращения копии широковещания отправителю
+	const int32_t ready = ::select(probe + 1, &readable, nullptr, nullptr, &timeout);
+	// Закрываем сокет пробы
+	::closesocket(probe);
+	// Отражается, если копия вернулась
+	return (ready > 0);
+}
+
+/**
  * @brief Проверка наличия каталога образцов удостоверений
  *
  * @details Пути к удостоверениям в проверках ОТНОСИТЕЛЬНЫЕ - «../sh/certificates», -
@@ -8966,8 +9050,17 @@ TEST_F(IoFixture, IoBroadcastTest){
 			ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 			// Формируем адрес Broadcast
 			addr.v4((addr.v4(awh::net_addr_t::endian_t::BIG) & 0xFFFFFF00U) | 0x000000FFU, awh::net_addr_t::endian_t::BIG);
+			// Адрес широковещания, отражение которого предстоит проверить пробой
+			const std::string broadcast(static_cast <std::string> (addr));
+			// Если ОС не отражает широковещание отправителю, доставка невозможна по свойству среды (виртуальный коммутатор), а не по вине движка
+			if(!::broadcastLoopsBack(broadcast)){
+				// Уничтожаем все события
+				ASSERT_TRUE(awh::engine::io::deinitialize());
+				// Объявляем проверку пропущенной по свойству окружения
+				GTEST_SKIP() << "широковещание пропущено: ОС не отражает его отправителю (виртуальный коммутатор)";
+			}
 			// Устанавливаем адрес сервера назначения
-			ASSERT_TRUE(awh::engine::target::set(events[0], static_cast <std::string> (addr)));
+			ASSERT_TRUE(awh::engine::target::set(events[0], broadcast));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			awh::engine::io::on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -18010,10 +18103,11 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Подаём заявку списком из двух узлов
 		ASSERT_TRUE(awh::engine::io::connect({events[0], second}));
 		#if defined(__illumos__)
-			// У illumos многодомного подключения нет: связь идёт по первому адресу
-			// списка, и владелец заявки несёт один адрес
-			ASSERT_EQ(static_cast <uint8_t> (1), awh::engine::sctp::addresses(events[0]))
-			 << "у illumos связь обязана идти по первому адресу списка";
+			// У illumos нет sctp_connectx: заявка несёт все адреса пира, а пробуется
+			// адресом за адресом машинерией переподключения, оттого счётчик адресов
+			// несёт всё их число, как и у систем, где sctp_connectx есть
+			ASSERT_EQ(static_cast <uint8_t> (2), awh::engine::sctp::addresses(events[0]))
+			 << "у illumos заявка обязана нести все адреса для последовательного перебора";
 		#else
 			// Число адресов заявки обязано стать двумя: список слился в одну заявку
 			ASSERT_EQ(static_cast <uint8_t> (2), awh::engine::sctp::addresses(events[0]))

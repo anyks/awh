@@ -44833,8 +44833,8 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 	try {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден
-		if(i != ::__awh_nodes__.end()){
+		// Если событие найдено и не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED) && (i->second->state.status != event::status_t::GARBAGE)){
 			// Если событие ещё не инициализировано или клонированно от другого события
 			if(i->second->state.status == event::status_t::NONE){
 				// Создаём охранника узла события
@@ -48586,6 +48586,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
 																		server->callbacks.status(server->id, event::status_t::FAILURE);
+																	// Если узел уничтожен из функции обратного вызова
+																	if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																		// Выводим результат обработки
+																		return result;
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
@@ -48606,6 +48610,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																			log::print("%s", log::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
+																	// Если узел уничтожен из функции обратного вызова
+																	if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																		// Выводим результат обработки
+																		return result;
 																	/**
 																	 * Состояние узла обязано быть СНЯТО перед выходом
 																	 *
@@ -48769,6 +48777,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 														if(server->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
+														// Если узел уничтожен из функции обратного вызова
+														if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+															// Выводим результат обработки
+															return result;
 														// Устанавливаем текст ошибки
 														const string error = "Unix-socket address is not set or exceeds maximum path length";
 														// Если установлена функция обратного вызова
@@ -48791,6 +48803,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																log::print("%s", log::flag_t::WARNING, error.c_str());
 															#endif
 														}
+														// Если узел уничтожен из функции обратного вызова
+														if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+															// Выводим результат обработки
+															return result;
 														// Снимаем флаг ожидания подключения
 														server->state.status = event::status_t::NONE;
 													}
@@ -48872,6 +48888,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																server->callbacks.status(server->id, event::status_t::FAILURE);
+															// Если узел уничтожен из функции обратного вызова
+															if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																// Выводим результат обработки
+																return result;
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -48894,6 +48914,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																	log::print("%s", log::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
+															// Если узел уничтожен из функции обратного вызова
+															if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																// Выводим результат обработки
+																return result;
 															/**
 															 * Состояние узла обязано быть СНЯТО перед выходом
 															 *
@@ -48982,6 +49006,12 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																log::print("%s", log::flag_t::WARNING, error.c_str());
 															#endif
 														}
+														// Если узел уничтожен из функции обратного вызова
+														if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+															// Выводим результат обработки
+															return result;
+														// Снимаем состояние после отказа фиксации
+														server->state.status = event::status_t::NONE;
 													}
 												}
 											// Если адрес целевой машины не указан
@@ -49066,6 +49096,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
 																server->callbacks.status(server->id, event::status_t::FAILURE);
+															// Если узел уничтожен из функции обратного вызова
+															if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																// Выводим результат обработки
+																return result;
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
@@ -49088,6 +49122,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																	log::print("%s", log::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
+															// Если узел уничтожен из функции обратного вызова
+															if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+																// Выводим результат обработки
+																return result;
 															/**
 															 * Состояние узла обязано быть СНЯТО перед выходом
 															 *
@@ -49150,6 +49188,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 														if(server->callbacks.status != nullptr)
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
+														// Если узел уничтожен из функции обратного вызова
+														if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+															// Выводим результат обработки
+															return result;
 														// Устанавливаем текст ошибки
 														const string error = "Event type does not match";
 														// Если установлена функция обратного вызова
@@ -49172,6 +49214,12 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 																log::print("%s", log::flag_t::WARNING, error.c_str());
 															#endif
 														}
+														// Если узел уничтожен из функции обратного вызова
+														if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+															// Выводим результат обработки
+															return result;
+														// Снимаем состояние после отказа фиксации
+														server->state.status = event::status_t::NONE;
 													}
 												}
 											// Если адрес целевой машины не указан
@@ -49275,6 +49323,8 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 				}
 			// Если событие уже зафиксированно
 			} else {
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -49287,6 +49337,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(user->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							user->callbacks.status(user->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((user->state.status == event::status_t::DESTROYED) || (user->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49318,6 +49372,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							dir->callbacks.status(dir->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((dir->state.status == event::status_t::DESTROYED) || (dir->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49349,6 +49407,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							fs->callbacks.status(fs->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((fs->state.status == event::status_t::DESTROYED) || (fs->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49382,6 +49444,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(timer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							timer->callbacks.status(timer->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((timer->state.status == event::status_t::DESTROYED) || (timer->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49413,6 +49479,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49444,6 +49514,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							peer->callbacks.status(peer->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49475,6 +49549,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							origin->callbacks.status(origin->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49506,6 +49584,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((tunnel->state.status == event::status_t::DESTROYED) || (tunnel->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49537,6 +49619,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(mediator->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((mediator->state.status == event::status_t::DESTROYED) || (mediator->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49568,6 +49654,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							client->callbacks.status(client->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -49599,6 +49689,10 @@ bool awh::engine::io::commit(const event::id_t id) noexcept {
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова об ошибке отказа
 							server->callbacks.status(server->id, event::status_t::FAILURE);
+						// Если узел уничтожен из функции обратного вызова
+						if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+							// Выводим результат обработки
+							return result;
 						// Устанавливаем текст ошибки
 						const string error = "Active events cannot be committed again";
 						// Если установлена функция обратного вызова
@@ -68300,8 +68394,8 @@ bool awh::engine::io::launch(const event::id_t id) noexcept {
 	try {
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден
-		if(i != ::__awh_nodes__.end()){
+		// Если идентификатор найден и событие не уничтожено
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED) && (i->second->state.status != event::status_t::GARBAGE)){
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**
@@ -68749,6 +68843,10 @@ bool awh::engine::io::launch(const event::id_t id) noexcept {
 					if(peer->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
 						peer->callbacks.status(peer->id, event::status_t::FAILURE);
+					// Если событие уничтожено в обработчике статуса
+					if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+						// Прерываем разбор текущего события
+						break;
 					// Устанавливаем текст ошибки
 					const string error = "This node cannot be launched manually";
 					// Если установлена функция обратного вызова
@@ -68780,6 +68878,10 @@ bool awh::engine::io::launch(const event::id_t id) noexcept {
 					if(origin->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
 						origin->callbacks.status(origin->id, event::status_t::FAILURE);
+					// Если событие уничтожено в обработчике статуса
+					if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+						// Прерываем разбор текущего события
+						break;
 					// Устанавливаем текст ошибки
 					const string error = "This node cannot be launched manually";
 					// Если установлена функция обратного вызова
@@ -68811,6 +68913,10 @@ bool awh::engine::io::launch(const event::id_t id) noexcept {
 					if(mediator->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
 						mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+					// Если событие уничтожено в обработчике статуса
+					if((mediator->state.status == event::status_t::DESTROYED) || (mediator->state.status == event::status_t::GARBAGE))
+						// Прерываем разбор текущего события
+						break;
 					// Устанавливаем текст ошибки
 					const string error = "This node cannot be launched manually";
 					// Если установлена функция обратного вызова
@@ -68921,6 +69027,10 @@ bool awh::engine::io::disconnect(const event::id_t id) noexcept {
 						if(origin->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова с установленным флагом события
 							origin->callbacks.event(origin->id, event::action_t::DISCONNECT);
+						// Если событие уничтожено в обработчике отключения
+						if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+							// Подтверждаем выполненное отключение
+							return true;
 						// Выполняем удаление узла
 						return ::io::destroy(origin);
 					}
@@ -68993,8 +69103,8 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 			for(const event::id_t & id : ids){
 				// Выполняем поиск идентификатора события
 				auto i = ::__awh_nodes__.find(id);
-				// Если идентификатор события найден
-				if(i != ::__awh_nodes__.end()){
+				// Если идентификатор найден и событие не уничтожено
+				if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED) && (i->second->state.status != event::status_t::GARBAGE)){
 					// Создаём охранника узла события
 					::local::guard_t guard(i->second.get());
 					// Если событие уже инициализировано
@@ -69243,6 +69353,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(user->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											user->callbacks.status(user->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((user->state.status == event::status_t::DESTROYED) || (user->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69274,6 +69388,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(dir->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											dir->callbacks.status(dir->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((dir->state.status == event::status_t::DESTROYED) || (dir->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69305,6 +69423,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(fs->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											fs->callbacks.status(fs->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((fs->state.status == event::status_t::DESTROYED) || (fs->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69338,6 +69460,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(timer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											timer->callbacks.status(timer->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((timer->state.status == event::status_t::DESTROYED) || (timer->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69462,6 +69588,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(tunnel->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((tunnel->state.status == event::status_t::DESTROYED) || (tunnel->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69493,6 +69623,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(mediator->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((mediator->state.status == event::status_t::DESTROYED) || (mediator->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69524,6 +69658,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Если событие уничтожено в обработчике статуса
+										if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+											// Прерываем разбор текущего события
+											break;
 										// Устанавливаем текст ошибки
 										const string error = "Connection is only allowed from client node";
 										// Если установлена функция обратного вызова
@@ -69564,6 +69702,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(user->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									user->callbacks.status(user->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((user->state.status == event::status_t::DESTROYED) || (user->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69595,6 +69737,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(dir->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									dir->callbacks.status(dir->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((dir->state.status == event::status_t::DESTROYED) || (dir->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69626,6 +69772,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(fs->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									fs->callbacks.status(fs->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((fs->state.status == event::status_t::DESTROYED) || (fs->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69659,6 +69809,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(timer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									timer->callbacks.status(timer->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((timer->state.status == event::status_t::DESTROYED) || (timer->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69690,6 +69844,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(ipc->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									ipc->callbacks.status(ipc->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69721,6 +69879,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(peer->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									peer->callbacks.status(peer->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69752,6 +69914,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(origin->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									origin->callbacks.status(origin->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69783,6 +69949,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(tunnel->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((tunnel->state.status == event::status_t::DESTROYED) || (tunnel->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69845,6 +70015,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(client->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
@@ -69876,6 +70050,10 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Если событие уничтожено в обработчике статуса
+								if((server->state.status == event::status_t::DESTROYED) || (server->state.status == event::status_t::GARBAGE))
+									// Прерываем разбор текущего события
+									break;
 								// Устанавливаем текст ошибки
 								const string error = "Event cannot be used to connect";
 								// Если установлена функция обратного вызова
