@@ -6794,8 +6794,19 @@ template void awh::Chrono::set(const double, const unit_t) noexcept;
 template void awh::Chrono::set(const string, const unit_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
+ *
+ * @note Типы эти самостоятельны лишь на MacOS X и OpenBSD: на FreeBSD, NetBSD, DragonFly,
+ *       Solaris, OpenIndiana и Linux size_t совпадает с uint64_t, а ssize_t с int64_t, оттого
+ *       отдельное создание шаблона было бы повторным и сборка отвечает на это отказом.
+ *       Проверено опытом на ногах парка через std::is_same
+ *
+ * @warning В прежнем перечне Linux был записан как `__Linux__` - такого признака не объявляет
+ *          ни один компилятор, они дают `__linux__`, оттого условие было ложно и лишь этим
+ *          сборка Linux и держалась. Написание исправлять нельзя - Linux следует убрать из
+ *          перечня вовсе, что здесь и сделано
+ *
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template void awh::Chrono::set(const size_t, const unit_t) noexcept;
 	template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
 #endif
@@ -7783,7 +7794,7 @@ template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 #endif
@@ -7851,7 +7862,7 @@ template string awh::Chrono::get(const unit_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Chrono::get(const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t) const noexcept;
 #endif
@@ -7920,7 +7931,7 @@ template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 #endif

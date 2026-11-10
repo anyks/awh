@@ -335,9 +335,20 @@ template void awh::Buffer::pop <double> () noexcept;
 	template void awh::Buffer::pop <char> () noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
+ *
+ * @note Типы эти самостоятельны лишь на MacOS X и OpenBSD: на FreeBSD, NetBSD, DragonFly,
+ *       Solaris, OpenIndiana и Linux size_t совпадает с uint64_t, а ssize_t с int64_t, оттого
+ *       отдельное создание шаблона было бы повторным и сборка отвечает на это отказом.
+ *       Проверено опытом на ногах парка через std::is_same
+ *
+ * @warning В прежнем перечне Linux был записан как `__Linux__` - такого признака не объявляет
+ *          ни один компилятор, они дают `__linux__`, оттого условие было ложно и лишь этим
+ *          сборка Linux и держалась. Написание исправлять нельзя - Linux следует убрать из
+ *          перечня вовсе, что здесь и сделано
+ *
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template void awh::Buffer::pop <size_t> () noexcept;
 	template void awh::Buffer::pop <ssize_t> () noexcept;
 #endif
@@ -380,9 +391,9 @@ template size_t awh::Buffer::count <double> () const noexcept;
 	template size_t awh::Buffer::count <char> () const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Buffer::count <size_t> () const noexcept;
 	template size_t awh::Buffer::count <ssize_t> () const noexcept;
 #endif
@@ -432,9 +443,9 @@ template double awh::Buffer::back() const noexcept;
 	template char awh::Buffer::back() const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Buffer::back() const noexcept;
 	template ssize_t awh::Buffer::back() const noexcept;
 #endif
@@ -484,9 +495,9 @@ template double awh::Buffer::front() const noexcept;
 	template char awh::Buffer::front() const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Buffer::front() const noexcept;
 	template ssize_t awh::Buffer::front() const noexcept;
 #endif
@@ -553,9 +564,9 @@ template double awh::Buffer::at(const size_t) const noexcept;
 	template char awh::Buffer::at(const size_t) const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template size_t awh::Buffer::at(const size_t) const noexcept;
 	template ssize_t awh::Buffer::at(const size_t) const noexcept;
 #endif
@@ -620,9 +631,9 @@ template void awh::Buffer::set(const double, const size_t) noexcept;
 	template void awh::Buffer::set(const char, const size_t) noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X, Linux или OpenBSD
+ * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+#if __APPLE__ || __MACH__ || __OpenBSD__
 	template void awh::Buffer::set(const size_t, const size_t) noexcept;
 	template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
 #endif

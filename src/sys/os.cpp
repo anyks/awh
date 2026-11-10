@@ -2148,9 +2148,20 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template double awh::OS::sysctl <double> (const string &) const noexcept;
 	template string awh::OS::sysctl <string> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или OpenBSD
+	 * Если size_t и ssize_t являются самостоятельными типами
+	 *
+	 * @note Типы эти самостоятельны лишь на MacOS X и OpenBSD: на FreeBSD, NetBSD, DragonFly,
+	 *       Solaris, OpenIndiana и Linux size_t совпадает с uint64_t, а ssize_t с int64_t, оттого
+	 *       отдельное создание шаблона было бы повторным и сборка отвечает на это отказом.
+	 *       Проверено опытом на ногах парка через std::is_same
+	 *
+	 * @warning В прежнем перечне Linux был записан как `__Linux__` - такого признака не объявляет
+	 *          ни один компилятор, они дают `__linux__`, оттого условие было ложно и лишь этим
+	 *          сборка Linux и держалась. Написание исправлять нельзя - Linux следует убрать из
+	 *          перечня вовсе, что здесь и сделано
+	 *
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+	#if __APPLE__ || __MACH__ || __OpenBSD__
 		template size_t awh::OS::sysctl <size_t> (const string &) const noexcept;
 		template ssize_t awh::OS::sysctl <ssize_t> (const string &) const noexcept;
 	#endif
@@ -2169,9 +2180,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template vector <double> awh::OS::sysctl <vector <double>> (const string &) const noexcept;
 	template vector <string> awh::OS::sysctl <vector <string>> (const string &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или OpenBSD
+	 * Если size_t и ssize_t являются самостоятельными типами
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+	#if __APPLE__ || __MACH__ || __OpenBSD__
 		template vector <size_t> awh::OS::sysctl <vector <size_t>> (const string &) const noexcept;
 		template vector <ssize_t> awh::OS::sysctl <vector <ssize_t>> (const string &) const noexcept;
 	#endif
@@ -2228,9 +2239,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const float) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const double) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или OpenBSD
+	 * Если size_t и ssize_t являются самостоятельными типами
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+	#if __APPLE__ || __MACH__ || __OpenBSD__
 		template bool awh::OS::sysctl <size_t> (const string &, const size_t) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const ssize_t) const noexcept;
 	#endif
@@ -2333,9 +2344,9 @@ size_t awh::OS::rss(const rss_t mode) const noexcept {
 	template bool awh::OS::sysctl <float> (const string &, const vector <float> &) const noexcept;
 	template bool awh::OS::sysctl <double> (const string &, const vector <double> &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X, Linux или OpenBSD
+	 * Если size_t и ssize_t являются самостоятельными типами
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__ || __OpenBSD__
+	#if __APPLE__ || __MACH__ || __OpenBSD__
 		template bool awh::OS::sysctl <size_t> (const string &, const vector <size_t> &) const noexcept;
 		template bool awh::OS::sysctl <ssize_t> (const string &, const vector <ssize_t> &) const noexcept;
 	#endif
