@@ -28006,6 +28006,83 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 }
 
 /**
+ * @brief Тест списка контроля доступа на клиенте
+ *
+ * @details Клиентский список контроля доступа проверяет адрес назначения перед подключением:
+ *          занесённая в чёрный список цель отвергается, а по очистке списка подключение проходит.
+ *          Проверяется это ПОВЕДЕНИЕМ: возврат connect обязан быть отрицательным при цели в чёрном
+ *          списке и положительным после очистки. Доказывает разница между двумя подключениями,
+ *          отличающимися одним лишь составом чёрного списка клиента
+ *
+ * @note Список спрашивается в момент подключения, поэтому возврат connect и есть доказательство
+ *       отказа: цель отвергается движком до системного вызова подключения
+ *
+ */
+TEST_F(IoFixture, IoClientAccessListTest){
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события сервера создан
+	ASSERT_GT(server, 0);
+	// Заводим событие клиента TCP
+	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события клиента создан
+	ASSERT_GT(client, 0);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(awh::engine::io::initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(awh::engine::source::port::set(server, port));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(awh::engine::io::commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(awh::engine::io::listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(awh::engine::io::launch(server));
+	// Устанавливаем опции события клиента
+	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события клиента
+	ASSERT_TRUE(awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	// Устанавливаем адрес назначения события клиента
+	ASSERT_TRUE(awh::engine::target::set(client, "127.0.0.1"));
+	// Устанавливаем порт назначения события клиента
+	ASSERT_TRUE(awh::engine::target::port::set(client, port));
+	/**
+	 * Заносим адрес назначения в чёрный список клиента
+	 *
+	 * @note Заносится он ДО фиксации: список спрашивается при подключении, и цель 127.0.0.1
+	 *       отныне обязана отвергаться движком до системного вызова подключения
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::control_list::add(client, awh::event::control_list_t::BLACK, "127.0.0.1"));
+	// Занесённый адрес обязан в чёрном списке клиента числиться
+	ASSERT_EQ(awh::engine::control_list::get(client, awh::event::control_list_t::BLACK).count("127.0.0.1"), static_cast <size_t> (1));
+	// Выполняем фиксацию настроек события клиента
+	ASSERT_TRUE(awh::engine::io::commit(client));
+	// Подключение к цели из чёрного списка клиента обязано быть отвергнуто
+	ASSERT_FALSE(awh::engine::io::connect(client)) << "подключение к цели из чёрного списка клиента прошло";
+	// Очищаем чёрный список клиента
+	ASSERT_TRUE(awh::engine::control_list::clear(client, awh::event::control_list_t::BLACK));
+	// Очищенный чёрный список клиента обязан опустеть
+	ASSERT_TRUE(awh::engine::control_list::get(client, awh::event::control_list_t::BLACK).empty());
+	/**
+	 * Подключение к цели с очищенным списком обязано пройти
+	 *
+	 * @note Утверждение это и делает проверку доказательной: оно отделяет отказ первого
+	 *       подключения от любой иной причины, ведь цель и порт те же самые
+	 *
+	 */
+	ASSERT_TRUE(awh::engine::io::connect(client)) << "подключение к цели с очищенным списком клиента не прошло";
+	// Уничтожаем события
+	awh::engine::io::destroy(client);
+	awh::engine::io::destroy(server);
+}
+
+/**
  * @brief Тест извещения об освобождении места в очереди отправки
  *
  * @details Подписка `available_t` сообщает, что место в очереди отправки освободилось, и

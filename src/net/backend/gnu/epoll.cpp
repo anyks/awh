@@ -2332,6 +2332,14 @@ namespace io {
 			unique_ptr <net::attr_t> source;
 			// Целевые параметры подключения
 			unique_ptr <net::attr_t> target;
+			// Чёрный список адресов назначения, к которым подключение запрещено
+			unordered_map <string, event::address_t> blacklist;
+			// Белый список адресов назначения, к которым подключение разрешено
+			unordered_map <string, event::address_t> whitelist;
+			// Режим активации чёрного списка: проверка действует, когда список включён и непустой
+			event::mode_t blacklistMode = event::mode_t::ENABLED;
+			// Режим активации белого списка: проверка действует, когда список включён и непустой
+			event::mode_t whitelistMode = event::mode_t::ENABLED;
 		private:
 			// Параметры пропускной способности, заводятся при установке предела
 			unique_ptr <bandwidth_t> _bandwidth;
@@ -2405,6 +2413,32 @@ namespace io {
 					this->_bandwidth = unique_ptr <bandwidth_t> (new bandwidth_t);
 				// Возвращаем собственный набор
 				return (* this->_bandwidth);
+			}
+			/**
+			 * @brief Признак активности чёрного списка
+			 *
+			 * @details Чёрный список действует, когда он включён режимом и непустой: пустой список
+			 *          или список с отключённым режимом проверку доступа не производит.
+			 *
+			 * @return результат проверки активности чёрного списка
+			 *
+			 */
+			bool blacklistActive() const noexcept {
+				// Выводим признак активности чёрного списка
+				return ((this->blacklistMode == event::mode_t::ENABLED) && !this->blacklist.empty());
+			}
+			/**
+			 * @brief Признак активности белого списка
+			 *
+			 * @details Белый список действует, когда он включён режимом и непустой: пустой список
+			 *          или список с отключённым режимом проверку доступа не производит.
+			 *
+			 * @return результат проверки активности белого списка
+			 *
+			 */
+			bool whitelistActive() const noexcept {
+				// Выводим признак активности белого списка
+				return ((this->whitelistMode == event::mode_t::ENABLED) && !this->whitelist.empty());
 			}
 		public:
 			/**
@@ -39822,6 +39856,30 @@ bool awh::engine::control_list::clear(const event::id_t id, const event::control
 						}
 					}
 				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект узла
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					/**
+					 * Определяем тип контрольного списка
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если контрольный список относится к чёрному списку
+						case static_cast <uint8_t> (event::control_list_t::BLACK): {
+							// Очищаем чёрный список
+							client->blacklist.clear();
+							// Устанавливаем результат
+							return client->blacklist.empty();
+						}
+						// Если контрольный список относится к белому списку
+						case static_cast <uint8_t> (event::control_list_t::WHITE): {
+							// Очищаем белый список
+							client->whitelist.clear();
+							// Устанавливаем результат
+							return client->whitelist.empty();
+						}
+					}
+				} break;
 				// Для других типов узлов
 				default: {
 					/**
@@ -40106,6 +40164,202 @@ bool awh::engine::control_list::add(const event::id_t id, const event::control_l
 							} break;
 						}
 					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем тип контрольного списка
+						 */
+						switch(static_cast <uint8_t> (type)){
+							// Если контрольный список относится к чёрному списку
+							case static_cast <uint8_t> (event::control_list_t::BLACK): {
+								/**
+								 * Определяем тип адреса события
+								 */
+								switch(static_cast <uint8_t> (client->state.address)){
+									// Если тип адреса принадлежит к Unix Domain Socket
+									case static_cast <uint8_t> (event::address_t::UDS): {
+										// Если адрес соответствует адресу файловой системы
+										if(::__awh_addr__.check(value, net_addr_t::type_t::FS))
+											// Выполняем добавление нового адреса в чёрный список
+											return client->blacklist.emplace(value.data(), client->state.address).second;
+										// Если адрес не принадлежит к адресу файловой системы
+										else {
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "Address being added to blacklist does not match file system address";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем ошибку в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем ошибку в лог
+													log::print("%s", log::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если тип адреса принадлежит к IPv4-адресам
+									case static_cast <uint8_t> (event::address_t::IPV4):
+									// Если тип адреса принадлежит к IPv6-адресам
+									case static_cast <uint8_t> (event::address_t::IPV6): {
+										/**
+										 * Определяем проверку соответствует ли адрес
+										 */
+										switch(static_cast <uint8_t> (::__awh_addr__.host(value))){
+											// Если адрес соответствует IPv4-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+												// Выполняем добавление нового адреса в чёрный список
+												return client->blacklist.emplace(value, client->state.address).second;
+											// Если адрес соответствует MAC-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::MAC):
+											// Если адрес соответствует IPv6-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+												// Выполняем добавление нового адреса в чёрный список
+												return client->blacklist.emplace(fmk::transform(value, fmk::transform_t::UPPER_CASE), client->state.address).second;
+											// Если мы получили какой-то другой адрес
+											default: {
+												// Если установлена функция обратного вызова
+												if(client->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													client->callbacks.status(client->id, event::status_t::FAILURE);
+												// Устанавливаем текст ошибки
+												const string error = "Address being added to blacklist does not match MAC-address or IP-address";
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+												// Если функция обратного вызова для вывода события не установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Записываем ошибку в лог
+														log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Записываем ошибку в лог
+														log::print("%s", log::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										}
+									} break;
+								}
+							} break;
+							// Если контрольный список относится к белому списку
+							case static_cast <uint8_t> (event::control_list_t::WHITE): {
+								/**
+								 * Определяем тип адреса события
+								 */
+								switch(static_cast <uint8_t> (client->state.address)){
+									// Если тип адреса принадлежит к Unix Domain Socket
+									case static_cast <uint8_t> (event::address_t::UDS): {
+										// Если адрес соответствует адресу файловой системы
+										if(::__awh_addr__.check(value, net_addr_t::type_t::FS))
+											// Выполняем добавление нового адреса в белый список
+											return client->whitelist.emplace(value, client->state.address).second;
+										// Если адрес не принадлежит к адресу файловой системы
+										else {
+											// Если установлена функция обратного вызова
+											if(client->callbacks.status != nullptr)
+												// Вызываем функцию обратного вызова об ошибке отказа
+												client->callbacks.status(client->id, event::status_t::FAILURE);
+											// Устанавливаем текст ошибки
+											const string error = "Address being added to whitelist does not match file system address";
+											// Если установлена функция обратного вызова
+											if(client->callbacks.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки события
+												client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+											// Если функция обратного вызова для вывода события не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем ошибку в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем ошибку в лог
+													log::print("%s", log::flag_t::WARNING, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если тип адреса принадлежит к IPv4-адресам
+									case static_cast <uint8_t> (event::address_t::IPV4):
+									// Если тип адреса принадлежит к IPv6-адресам
+									case static_cast <uint8_t> (event::address_t::IPV6): {
+										/**
+										 * Определяем проверку соответствует ли адрес
+										 */
+										switch(static_cast <uint8_t> (::__awh_addr__.host(value))){
+											// Если адрес соответствует IPv4-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+												// Выполняем добавление нового адреса в белый список
+												return client->whitelist.emplace(value, client->state.address).second;
+											// Если адрес соответствует MAC-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::MAC):
+											// Если адрес соответствует IPv6-адресу
+											case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+												// Выполняем добавление нового адреса в белый список
+												return client->whitelist.emplace(fmk::transform(value, fmk::transform_t::UPPER_CASE), client->state.address).second;
+											// Если мы получили какой-то другой адрес
+											default: {
+												// Если установлена функция обратного вызова
+												if(client->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова об ошибке отказа
+													client->callbacks.status(client->id, event::status_t::FAILURE);
+												// Устанавливаем текст ошибки
+												const string error = "Address being added to whitelist does not match MAC-address or IP-address";
+												// Если установлена функция обратного вызова
+												if(client->callbacks.error != nullptr)
+													// Вызываем функцию обратного вызова ошибки события
+													client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+												// Если функция обратного вызова для вывода события не установлена
+												else {
+													/**
+													 * Если включён режим отладки
+													 */
+													#if defined(DEBUG_MODE)
+														// Записываем ошибку в лог
+														log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Записываем ошибку в лог
+														log::print("%s", log::flag_t::WARNING, error.c_str());
+													#endif
+												}
+											}
+										}
+									} break;
+								}
+							} break;
+						}
+					} break;
 					// Для других типов узлов
 					default: {
 						/**
@@ -40269,6 +40523,78 @@ bool awh::engine::control_list::remove(const event::id_t id, const event::contro
 							} break;
 						}
 					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем объект узла
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем тип контрольного списка
+						 */
+						switch(static_cast <uint8_t> (type)){
+							// Если контрольный список относится к чёрному списку
+							case static_cast <uint8_t> (event::control_list_t::BLACK): {
+								// Если чёрный список не пустой
+								if(!client->blacklist.empty()){
+									/**
+									 * Определяем тип адреса события
+									 */
+									switch(static_cast <uint8_t> (client->state.address)){
+										// Если тип адреса принадлежит к Unix Domain Socket
+										case static_cast <uint8_t> (event::address_t::UDS): {
+											// Выполняем поиск указанного адреса
+											auto i = client->blacklist.find(string{value});
+											// Если адрес найден, удаляем его
+											if((result = (i != client->blacklist.end())))
+												// Выполняем удаление указанного адреса
+												client->blacklist.erase(i);
+										} break;
+										// Если тип адреса принадлежит к IPv4-адресам
+										case static_cast <uint8_t> (event::address_t::IPV4):
+										// Если тип адреса принадлежит к IPv6-адресам
+										case static_cast <uint8_t> (event::address_t::IPV6): {
+											// Выполняем поиск указанного адреса
+											auto i = client->blacklist.find(fmk::transform(value, fmk::transform_t::UPPER_CASE));
+											// Если адрес найден, удаляем его
+											if((result = (i != client->blacklist.end())))
+												// Выполняем удаление указанного адреса
+												client->blacklist.erase(i);
+										} break;
+									}
+								}
+							} break;
+							// Если контрольный список относится к белому списку
+							case static_cast <uint8_t> (event::control_list_t::WHITE): {
+								// Если белый список не пустой
+								if(!client->whitelist.empty()){
+									/**
+									 * Определяем тип адреса события
+									 */
+									switch(static_cast <uint8_t> (client->state.address)){
+										// Если тип адреса принадлежит к Unix Domain Socket
+										case static_cast <uint8_t> (event::address_t::UDS): {
+											// Выполняем поиск указанного адреса
+											auto i = client->whitelist.find(string{value});
+											// Если адрес найден, удаляем его
+											if((result = (i != client->whitelist.end())))
+												// Выполняем удаление указанного адреса
+												client->whitelist.erase(i);
+										} break;
+										// Если тип адреса принадлежит к IPv4-адресам
+										case static_cast <uint8_t> (event::address_t::IPV4):
+										// Если тип адреса принадлежит к IPv6-адресам
+										case static_cast <uint8_t> (event::address_t::IPV6): {
+											// Выполняем поиск указанного адреса
+											auto i = client->whitelist.find(fmk::transform(value, fmk::transform_t::UPPER_CASE));
+											// Если адрес найден, удаляем его
+											if((result = (i != client->whitelist.end())))
+												// Выполняем удаление указанного адреса
+												client->whitelist.erase(i);
+										} break;
+									}
+								}
+							} break;
+						}
+					} break;
 					// Для других типов узлов
 					default: {
 						/**
@@ -40381,6 +40707,30 @@ bool awh::engine::control_list::mode(const event::id_t id, const event::control_
 						}
 					}
 				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем объект узла
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					/**
+					 * Определяем тип контрольного списка
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если контрольный список относится к чёрному списку
+						case static_cast <uint8_t> (event::control_list_t::BLACK): {
+							// Устанавливаем режим активации чёрного списка
+							client->blacklistMode = mode;
+							// Устанавливаем результат
+							return true;
+						}
+						// Если контрольный список относится к белому списку
+						case static_cast <uint8_t> (event::control_list_t::WHITE): {
+							// Устанавливаем режим активации белого списка
+							client->whitelistMode = mode;
+							// Устанавливаем результат
+							return true;
+						}
+					}
+				} break;
 				// Для других типов узлов
 				default: {
 					/**
@@ -40480,6 +40830,22 @@ const unordered_map <string, event::address_t> & awh::engine::control_list::get(
 						case static_cast <uint8_t> (event::control_list_t::WHITE):
 							// Возвращаем результат
 							return awh_cast <::io::server_t *> (i->second.get())->whitelist;
+					}
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					/**
+					 * Определяем тип контрольного списка
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если контрольный список относится к чёрному списку
+						case static_cast <uint8_t> (event::control_list_t::BLACK):
+							// Возвращаем результат
+							return awh_cast <::io::client_t *> (i->second.get())->blacklist;
+						// Если контрольный список относится к белому списку
+						case static_cast <uint8_t> (event::control_list_t::WHITE):
+							// Возвращаем результат
+							return awh_cast <::io::client_t *> (i->second.get())->whitelist;
 					}
 				} break;
 				// Для других типов узлов
@@ -64002,6 +64368,94 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 															: (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path))
 														);
 													}
+													// Если список контроля доступа клиента деятелен, проверяем адрес назначения
+													if(client->blacklistActive() || client->whitelistActive()){
+														// Строковое представление адреса назначения
+														string destination;
+														/**
+														 * Определяем тип адреса назначения
+														 */
+														switch(static_cast <uint8_t> (client->state.address)){
+															// Если адрес назначения принадлежит к Unix Domain Socket
+															case static_cast <uint8_t> (event::address_t::UDS): {
+																// Получаем путь адреса назначения
+																const char * path = ::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path;
+																// Если адрес абстрактной формы, имя адресуется за нулевым первым октетом
+																if(path[0] == '\0')
+																	// Формируем адрес назначения абстрактной формы
+																	destination = string("@") + string(path + 1);
+																// Если адрес назначения файловой формы
+																else
+																	// Формируем адрес назначения файловой формы
+																	destination = path;
+															} break;
+															// Если адрес назначения принадлежит к IPv4
+															case static_cast <uint8_t> (event::address_t::IPV4): {
+																// Заводим объект сетевого адреса
+																net_addr_t addr;
+																// Устанавливаем IPv4-адрес назначения, тип адреса v4 ставит сам
+																addr.v4(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr);
+																// Получаем строковое представление адреса назначения
+																destination = static_cast <string> (addr);
+															} break;
+															// Если адрес назначения принадлежит к IPv6
+															case static_cast <uint8_t> (event::address_t::IPV6): {
+																// Заводим объект сетевого адреса
+																net_addr_t addr;
+																// Буфер IPv6-адреса назначения
+																array <uint8_t, 16> ip6;
+																// Копируем IPv6-адрес назначения в буфер
+																::memcpy(&ip6[0], &::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr, 16);
+																// Устанавливаем IPv6-адрес назначения, тип адреса v6 ставит сам
+																addr.v6(ip6);
+																// Получаем строковое представление адреса назначения
+																destination = static_cast <string> (addr);
+															} break;
+														}
+														/**
+														 * Если адрес назначения в чёрном списке или не в белом, отказываем в подключении
+														 *
+														 * @note Чёрный список имеет перевес: попадание адреса в оба списка отвергает заявку
+														 *
+														 */
+														if((client->blacklistActive() && (client->blacklist.find(destination) != client->blacklist.end())) ||
+														   (client->whitelistActive() && (client->whitelist.find(destination) == client->whitelist.end()))){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Устанавливаем текст ошибки
+															const string error = fmk::format("Target address \"%s\" is not allowed by the access list", destination.c_str());
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, event::error_t::ACCESS_DENIED, error);
+															// Если функция обратного вызова для вывода события не установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if defined(DEBUG_MODE)
+																	// Записываем ошибку в лог
+																	log::debug("%s", __PRETTY_FUNCTION__, {client->id, ids.size()}, log::flag_t::CRITICAL, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Записываем ошибку в лог
+																	log::print("%s", log::flag_t::CRITICAL, error.c_str());
+																#endif
+															}
+															// Снимаем флаг ожидания подключения
+															client->state.status = event::status_t::INITIAL;
+															// Если функция обратного вызова для вывода подключения установлена
+															if(client->callbacks.connect != nullptr)
+																// Вызываем функцию обратного вызова для подключения
+																client->callbacks.connect(client->id, false);
+															// Выводим результат отказа в подключении
+															return false;
+														}
+													}
 													// Если подключение к удаленному серверу не выполнено
 													if(!(result = (::connect(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
 														// Если ошибка не является ошибкой в процессе подключения
@@ -64155,6 +64609,96 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 																// Записываем предупреждение в лог
 																log::print("%s", log::flag_t::WARNING, reason);
 															#endif
+														}
+													}
+													// Если список контроля доступа клиента деятелен, проверяем все адреса многодомной заявки
+													if(client->blacklistActive() || client->whitelistActive()){
+														// Признак отказа по списку контроля доступа
+														bool refused = false;
+														// Смещение текущего адреса в плотно уложенном списке
+														size_t offset = 0;
+														/**
+														 * Проходим по всем адресам многодомной заявки
+														 *
+														 * @note Строгий вариант: проверяется каждый адрес заявки; чёрный список отвергает
+														 *       при любом попадании, белый - при любом адресе не в списке
+														 *
+														 */
+														while((offset < addrs.size()) && !refused){
+															// Получаем указатель на текущий адрес списка
+															const struct sockaddr * sa = reinterpret_cast <const struct sockaddr *> (addrs.data() + offset);
+															// Строковое представление текущего адреса
+															string destination;
+															// Если текущий адрес принадлежит к IPv4
+															if(sa->sa_family == AF_INET){
+																// Заводим объект сетевого адреса
+																net_addr_t addr;
+																// Устанавливаем IPv4-адрес, тип адреса v4 ставит сам
+																addr.v4(::__awh_trust_cast__ <const struct sockaddr_in> (sa)->sin_addr.s_addr);
+																// Получаем строковое представление адреса
+																destination = static_cast <string> (addr);
+																// Смещаемся на длину адреса IPv4
+																offset += sizeof(struct sockaddr_in);
+															// Если текущий адрес принадлежит к IPv6
+															} else if(sa->sa_family == AF_INET6){
+																// Заводим объект сетевого адреса
+																net_addr_t addr;
+																// Буфер IPv6-адреса
+																array <uint8_t, 16> ip6;
+																// Копируем IPv6-адрес в буфер
+																::memcpy(&ip6[0], &::__awh_trust_cast__ <const struct sockaddr_in6> (sa)->sin6_addr, 16);
+																// Устанавливаем IPv6-адрес, тип адреса v6 ставит сам
+																addr.v6(ip6);
+																// Получаем строковое представление адреса
+																destination = static_cast <string> (addr);
+																// Смещаемся на длину адреса IPv6
+																offset += sizeof(struct sockaddr_in6);
+															// Если семейство текущего адреса не опознано
+															} else
+																// Прерываем обход списка адресов
+																break;
+															// Если текущий адрес в чёрном списке или не в белом списке, помечаем отказ
+															if((client->blacklistActive() && (client->blacklist.find(destination) != client->blacklist.end())) ||
+															   (client->whitelistActive() && (client->whitelist.find(destination) == client->whitelist.end())))
+																// Устанавливаем признак отказа по списку контроля доступа
+																refused = true;
+														}
+														// Если по списку контроля доступа многодомная заявка отвергнута
+														if(refused){
+															// Если установлена функция обратного вызова
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова об ошибке отказа
+																client->callbacks.status(client->id, event::status_t::FAILURE);
+															// Устанавливаем текст ошибки
+															const string error = "One of the association addresses is not allowed by the access list";
+															// Если установлена функция обратного вызова
+															if(client->callbacks.error != nullptr)
+																// Вызываем функцию обратного вызова ошибки события
+																client->callbacks.error(client->id, event::error_t::ACCESS_DENIED, error);
+															// Если функция обратного вызова для вывода события не установлена
+															else {
+																/**
+																 * Если включён режим отладки
+																 */
+																#if defined(DEBUG_MODE)
+																	// Записываем ошибку в лог
+																	log::debug("%s", __PRETTY_FUNCTION__, {client->id, ids.size()}, log::flag_t::CRITICAL, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Записываем ошибку в лог
+																	log::print("%s", log::flag_t::CRITICAL, error.c_str());
+																#endif
+															}
+															// Снимаем флаг ожидания подключения
+															client->state.status = event::status_t::INITIAL;
+															// Если функция обратного вызова для вывода подключения установлена
+															if(client->callbacks.connect != nullptr)
+																// Вызываем функцию обратного вызова для подключения
+																client->callbacks.connect(client->id, false);
+															// Выводим результат отказа в подключении
+															return false;
 														}
 													}
 													/**
