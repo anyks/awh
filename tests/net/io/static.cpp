@@ -27537,6 +27537,125 @@ TEST_F(IoFixture, IoAccessListTest){
 }
 
 /**
+ * @brief Тест режима активации чёрного списка контроля доступа
+ *
+ * @details Режим активации позволяет держать список наполненным, но проверку им включать
+ *          и выключать. Проверяется это ПОВЕДЕНИЕМ: с отключённым режимом занесённый в
+ *          чёрный список адрес принимается, с включённым - нет. Доказывает разница между
+ *          двумя обменами, отличающимися одним лишь режимом: она отделяет снятие запрета
+ *          от любой иной причины молчания сервера
+ *
+ * @note Отключение режима обязано оставлять адрес в списке, а не вычищать его
+ *
+ */
+TEST_F(IoFixture, IoAccessListModeTest){
+	// Признак принятого сервером подключения
+	bool accepted = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(awh::engine::io::initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(awh::engine::source::port::set(server, port));
+	// Заносим адрес собеседника в чёрный список
+	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::BLACK, "127.0.0.1"));
+	// Неопределённый список режимом не управляется
+	ASSERT_FALSE(awh::engine::control_list::mode(server, awh::event::control_list_t::NONE, awh::event::mode_t::ENABLED));
+	/**
+	 * Отключаем режим активации чёрного списка
+	 *
+	 * @note Список остаётся наполненным, но проверка им не производится
+	 */
+	ASSERT_TRUE(awh::engine::control_list::mode(server, awh::event::control_list_t::BLACK, awh::event::mode_t::DISABLED));
+	// Отключённый режим обязан оставлять адрес в списке
+	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::BLACK).count("127.0.0.1"), static_cast <size_t> (1));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&accepted]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем принятое подключение
+		accepted = true;
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(awh::engine::io::commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(awh::engine::io::listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(awh::engine::io::launch(server));
+	/**
+	 * @brief Обмен: клиент подключается к серверу
+	 *
+	 * @return идентификатор заведённого клиента
+	 *
+	 */
+	const auto & knock = [ port]() noexcept -> awh::event::id_t {
+		// Заводим событие клиента
+		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Если идентификатор события заведён
+		if(client > 0){
+			// Выставляем настройки события клиента
+			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			(void) awh::engine::target::set(client, "127.0.0.1");
+			(void) awh::engine::target::port::set(client, port);
+			// Фиксируем, подключаем и запускаем событие клиента
+			(void) awh::engine::io::commit(client);
+			(void) awh::engine::io::connect(client);
+			(void) awh::engine::io::launch(client);
+		}
+		// Выводим идентификатор заведённого клиента
+		return client;
+	};
+	// Стучимся к серверу при отключённом режиме чёрного списка
+	const awh::event::id_t first = knock();
+	ASSERT_GT(first, 0);
+	/**
+	 * Крутим цикл, покуда подключение не примут
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			awh::engine::io::poll(10);
+	}
+	/**
+	 * С отключённым режимом подключение обязано быть принято
+	 *
+	 * @note Утверждение это и делает проверку доказательной: оно отделяет снятие запрета
+	 *       от любой иной причины молчания сервера
+	 */
+	ASSERT_TRUE(accepted) << "подключение при отключённом режиме чёрного списка не принято";
+	// Уничтожаем событие первого клиента
+	awh::engine::io::destroy(first);
+	// Сбрасываем признак принятого подключения
+	accepted = false;
+	// Включаем режим активации чёрного списка обратно
+	ASSERT_TRUE(awh::engine::control_list::mode(server, awh::event::control_list_t::BLACK, awh::event::mode_t::ENABLED));
+	// Стучимся к серверу при включённом режиме чёрного списка
+	const awh::event::id_t second = knock();
+	ASSERT_GT(second, 0);
+	/**
+	 * Крутим цикл отведённый срок
+	 */
+	for(uint8_t i = 0; i < 40; i++)
+		// Выполняем оборот цикла событий
+		awh::engine::io::poll(10);
+	// Подключение при включённом режиме чёрного списка принято быть НЕ должно
+	ASSERT_FALSE(accepted) << "подключение при включённом режиме чёрного списка принято";
+	// Уничтожаем события
+	awh::engine::io::destroy(second);
+	awh::engine::io::destroy(server);
+}
+
+/**
  * @brief Тест извещения об освобождении места в очереди отправки
  *
  * @details Подписка `available_t` сообщает, что место в очереди отправки освободилось, и

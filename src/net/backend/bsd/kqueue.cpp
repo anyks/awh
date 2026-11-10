@@ -2415,6 +2415,36 @@ namespace io {
 		unordered_map <string, event::address_t> blacklist;
 		// Белый список пиров которым разрешён доступ
 		unordered_map <string, event::address_t> whitelist;
+		// Режим активации чёрного списка: проверка действует, когда список включён и непустой
+		event::mode_t blacklistMode = event::mode_t::ENABLED;
+		// Режим активации белого списка: проверка действует, когда список включён и непустой
+		event::mode_t whitelistMode = event::mode_t::ENABLED;
+		/**
+		 * @brief Признак активности чёрного списка
+		 *
+		 * @details Чёрный список действует, когда он включён режимом и непустой: пустой список
+		 *          или список с отключённым режимом проверку доступа не производит.
+		 *
+		 * @return результат проверки активности чёрного списка
+		 *
+		 */
+		bool blacklistActive() const noexcept {
+			// Выводим признак активности чёрного списка
+			return ((this->blacklistMode == event::mode_t::ENABLED) && !this->blacklist.empty());
+		}
+		/**
+		 * @brief Признак активности белого списка
+		 *
+		 * @details Белый список действует, когда он включён режимом и непустой: пустой список
+		 *          или список с отключённым режимом проверку доступа не производит.
+		 *
+		 * @return результат проверки активности белого списка
+		 *
+		 */
+		bool whitelistActive() const noexcept {
+			// Выводим признак активности белого списка
+			return ((this->whitelistMode == event::mode_t::ENABLED) && !this->whitelist.empty());
+		}
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
@@ -33465,7 +33495,7 @@ namespace io {
 								// Устанавливаем IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 								// Если чёрный или белый список адресов не пустой
-								if(!server->blacklist.empty() || !server->whitelist.empty()){
+								if(server->blacklistActive() || server->whitelistActive()){
 									// Временный объект для извлечения сетевого интерфейса
 									net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
@@ -33489,7 +33519,7 @@ namespace io {
 										// Получаем MAC-адрес для проверки
 										const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 										// Если адрес находится в чёрном списке
-										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+										if(server->blacklistActive() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33524,7 +33554,7 @@ namespace io {
 											return false;
 										}
 										// Если в белом списке нет адреса
-										if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+										if(server->whitelistActive() && (server->whitelist.find(mac) == server->whitelist.end())){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33564,7 +33594,7 @@ namespace io {
 									// Получаем IP-адрес для проверки
 									const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 									// Если адрес находится в чёрном списке
-									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+									if(server->blacklistActive() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -33599,7 +33629,7 @@ namespace io {
 										return false;
 									}
 									// Если в белом списке нет адреса
-									if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+									if(server->whitelistActive() && (server->whitelist.find(ip) == server->whitelist.end())){
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -33671,7 +33701,7 @@ namespace io {
 								// Устанавливаем IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 								// Если чёрный или белый список адресов не пустой
-								if(!server->blacklist.empty() || !server->whitelist.empty()){
+								if(server->blacklistActive() || server->whitelistActive()){
 									// Временный объект для извлечения сетевого интерфейса
 									net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
@@ -33695,7 +33725,7 @@ namespace io {
 										// Получаем MAC-адрес для проверки
 										const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 										// Если адрес находится в чёрном списке
-										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+										if(server->blacklistActive() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33730,7 +33760,7 @@ namespace io {
 											return false;
 										}
 										// Если в белом списке нет адреса
-										if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+										if(server->whitelistActive() && (server->whitelist.find(mac) == server->whitelist.end())){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -33770,7 +33800,7 @@ namespace io {
 									// Получаем IP-адрес для проверки
 									const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 									// Если адрес находится в чёрном списке
-									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+									if(server->blacklistActive() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -33805,7 +33835,7 @@ namespace io {
 										return false;
 									}
 									// Если в белом списке нет адреса
-									if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+									if(server->whitelistActive() && (server->whitelist.find(ip) == server->whitelist.end())){
 										// Если установлена функция обратного вызова
 										if(server->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об ошибке отказа
@@ -35447,7 +35477,7 @@ namespace io {
 						// Устанавливаем IP-адрес
 						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						// Если чёрный или белый список адресов не пустой
-						if(!server->blacklist.empty() || !server->whitelist.empty()){
+						if(server->blacklistActive() || server->whitelistActive()){
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем полученный IP-адрес во временный объект
@@ -35471,7 +35501,7 @@ namespace io {
 								// Получаем MAC-адрес для проверки
 								const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 								// Если адрес находится в чёрном списке
-								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+								if(server->blacklistActive() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -35502,7 +35532,7 @@ namespace io {
 									return true;
 								}
 								// Если в белом списке нет адреса
-								if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+								if(server->whitelistActive() && (server->whitelist.find(mac) == server->whitelist.end())){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -35538,7 +35568,7 @@ namespace io {
 							// Получаем IP-адрес для проверки
 							const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 							// Если адрес находится в чёрном списке
-							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+							if(server->blacklistActive() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -35569,7 +35599,7 @@ namespace io {
 								return true;
 							}
 							// Если в белом списке нет адреса
-							if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+							if(server->whitelistActive() && (server->whitelist.find(ip) == server->whitelist.end())){
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -35616,7 +35646,7 @@ namespace io {
 						// Устанавливаем IP-адрес
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 						// Если чёрный или белый список адресов не пустой
-						if(!server->blacklist.empty() || !server->whitelist.empty()){
+						if(server->blacklistActive() || server->whitelistActive()){
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем полученный IP-адрес во временный объект
@@ -35640,7 +35670,7 @@ namespace io {
 								// Получаем MAC-адрес для проверки
 								const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 								// Если адрес находится в чёрном списке
-								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
+								if(server->blacklistActive() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -35671,7 +35701,7 @@ namespace io {
 									return true;
 								}
 								// Если в белом списке нет адреса
-								if(!server->whitelist.empty() && (server->whitelist.find(mac) == server->whitelist.end())){
+								if(server->whitelistActive() && (server->whitelist.find(mac) == server->whitelist.end())){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -35707,7 +35737,7 @@ namespace io {
 							// Получаем IP-адрес для проверки
 							const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 							// Если адрес находится в чёрном списке
-							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
+							if(server->blacklistActive() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -35738,7 +35768,7 @@ namespace io {
 								return true;
 							}
 							// Если в белом списке нет адреса
-							if(!server->whitelist.empty() && (server->whitelist.find(ip) == server->whitelist.end())){
+							if(server->whitelistActive() && (server->whitelist.find(ip) == server->whitelist.end())){
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
@@ -40262,6 +40292,117 @@ bool awh::engine::control_list::remove(const event::id_t id, const event::contro
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Функция установки режима активации контрольного списка
+ *
+ * @param id   идентификатор события
+ * @param type тип контрольного списка
+ * @param mode режим активации / деактивации
+ * @return     результат выполнения установки режима
+ *
+ */
+bool awh::engine::control_list::mode(const event::id_t id, const event::control_list_t type, const event::mode_t mode) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем объект узла
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					/**
+					 * Определяем тип контрольного списка
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если контрольный список относится к чёрному списку
+						case static_cast <uint8_t> (event::control_list_t::BLACK): {
+							// Устанавливаем режим активации чёрного списка
+							server->blacklistMode = mode;
+							// Устанавливаем результат
+							return true;
+						}
+						// Если контрольный список относится к белому списку
+						case static_cast <uint8_t> (event::control_list_t::WHITE): {
+							// Устанавливаем режим активации белого списка
+							server->whitelistMode = mode;
+							// Устанавливаем результат
+							return true;
+						}
+					}
+				} break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Определяем тип контрольного списка
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если контрольный список относится к чёрному списку
+						case static_cast <uint8_t> (event::control_list_t::BLACK): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Blacklist does not exist for this event type", log::flag_t::WARNING);
+							#endif
+						} break;
+						// Если контрольный список относится к белому списку
+						case static_cast <uint8_t> (event::control_list_t::WHITE): {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Whitelist does not exist for this event type", log::flag_t::WARNING);
+							#endif
+						} break;
+					}
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return false;
 }
 /**
  * @brief Функция получения контрольного списка события
