@@ -1224,26 +1224,52 @@ void awh::codec::toml::Reader::stage(const string_view name, const kind_t kind, 
 	this->_staged.emplace(this->_pending.at(this->_staging - 1).name, static_cast <uint32_t> (this->_staging - 1));
 }
 /**
- * @brief Метод проверки занятости объемлющих имён
+ * @brief Метод проверки повторного объявления имени
  *
- * @param name   проверяемое полное имя ключа либо таблицы
+ * @param name   объявляемое полное имя ключа либо таблицы
+ * @param kind   род объявляемого имени
+ * @param error  код ошибки повторного объявления
  * @param offset положение объявления в приведённом тексте
- * @return       признак того, что объемлющие имена свободны
+ * @return       признак того, что имя объявляется впервые
  *
  */
-bool awh::codec::toml::Reader::occupied(const string & name, const size_t offset) noexcept {
+bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, const error_t error, const size_t offset) noexcept {
 	/**
-	 * @brief Выполняем перебор всех объемлющих имён проверяемого имени
+	 * Если проверка повторного объявления настройками отключена
+	 */
+	if(!this->_settings.duplicates)
+		// Выводим признак того, что имя объявляется впервые
+		return true;
+	/**
+	 * @brief Выполняем перебор всех объемлющих имён объявляемого имени
 	 *
-	 * @note Разделитель стоит перед всякой частью имени, и всякое его вхождение,
-	 *       кроме первого, отделяет очередное объемлющее имя
+	 * @details Обход один на три проверки, какие прежде ходили каждая своим обходом:
+	 *          объемлющее имя, занятое встроенной таблицей либо парой, отвергается
+	 *          всегда; занятое заголовком - лишь когда объявляется пара; а ещё не
+	 *          заведённое - заводится исподволь. Разделитель составных частей
+	 *          отыскивается один раз на имя вместо трёх, и род объемлющего имени
+	 *          снимается один раз вместо трёх.
+	 *
+	 * @note Имя текущей таблицы и начала его из проверки заголовком изъяты: пара
+	 *       внутри «[a.b.c]» объемлющими именами своими имеет её саму, и запрет их
+	 *       отверг бы всякую пару таблицы, заведённой заголовком. Проверкам на
+	 *       встроенную таблицу и на пару эти имена подлежат наравне с прочими
+	 *
+	 * @note Порядок отказов сохранён прежним: сперва объемлющие имена, затем род
+	 *       самого объявляемого имени. Иной порядок выдал бы иной код отказа там,
+	 *       где негодны оба
 	 *
 	 */
 	for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
+		// Получаем очередное объемлющее имя
+		const string_view prefix = string_view(name).substr(0, i);
+		// Запоминаем признак того, что объемлющее имя есть имя текущей таблицы либо начало его
+		const bool inside = ((prefix.length() <= this->_table.length()) &&
+			(this->_table.compare(0, prefix.length(), prefix) == 0));
 		/**
 		 * Определяем род объемлющего имени
 		 */
-		switch(static_cast <uint8_t> (this->lookup(string_view(name).substr(0, i)))){
+		switch(static_cast <uint8_t> (this->lookup(prefix))){
 			/**
 			 * @brief Если объемлющее имя занято встроенной таблицей
 			 *
@@ -1292,34 +1318,60 @@ bool awh::codec::toml::Reader::occupied(const string & name, const size_t offset
 				// Объявляем отказ разбора
 				return this->failure(error_t::REDEFINE_TABLE, offset);
 			}
+			/**
+			 * Если объемлющее имя объявлено заголовком таблицы
+			 */
+			case static_cast <uint8_t> (kind_t::TABLE):
+			/**
+			 * Если объемлющее имя объявлено заголовком набора таблиц
+			 */
+			case static_cast <uint8_t> (kind_t::ARRAY): {
+				/**
+				 * @brief Если объявляется пара либо встроенная таблица и имя не принадлежит текущей таблице
+				 *
+				 * @details Описание запрещает дописывать составным именем ключа в таблицу, прежде
+				 *          объявленную заголовком: запись «[a.b.c]» с последующими «[a]» и «b.c.t = 1»
+				 *          дополняла бы закрытую уже таблицу. Дозволено лишь заводить составным
+				 *          именем ключа таблицы новые либо дополнять заведённые тем же способом.
+				 *
+				 */
+				if(!inside && ((kind == kind_t::VALUE) || (kind == kind_t::INLINE))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
+					#endif
+					// Объявляем отказ разбора
+					return this->failure(error_t::DUPLICATE_TABLE, offset);
+				}
+			} break;
+			/**
+			 * @brief Если объемлющее имя ещё не заведено
+			 *
+			 * @note Всякое объемлющее имя заводит таблицу исподволь, и род её разнится:
+			 *       заведённую заголовком дозволено объявить явно, а заведённую
+			 *       составным именем ключа - нет
+			 *
+			 */
+			case static_cast <uint8_t> (kind_t::NONE): {
+				// Выполняем учёт имени, заводимого исподволь
+				this->stage(prefix, (((kind == kind_t::TABLE) || (kind == kind_t::ARRAY)) ?
+					kind_t::IMPLICIT : kind_t::DOTTED), true);
+			} break;
+			/**
+			 * Иначе объемлющее имя заведено исподволь и дополнять его не запрещено
+			 */
+			default: break;
 		}
 	}
-	// Выводим признак того, что объемлющие имена свободны
-	return true;
-}
-/**
- * @brief Метод проверки повторного объявления имени
- *
- * @param name   объявляемое полное имя ключа либо таблицы
- * @param kind   род объявляемого имени
- * @param error  код ошибки повторного объявления
- * @param offset положение объявления в приведённом тексте
- * @return       признак того, что имя объявляется впервые
- *
- */
-bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, const error_t error, const size_t offset) noexcept {
-	/**
-	 * Если проверка повторного объявления настройками отключена
-	 */
-	if(!this->_settings.duplicates)
-		// Выводим признак того, что имя объявляется впервые
-		return true;
-	/**
-	 * Если объемлющие имена объявляемого имени заняты
-	 */
-	if(!this->occupied(name, offset))
-		// Выводим признак неудачного объявления имени
-		return false;
 	// Получаем род уже объявленного имени
 	const kind_t current = this->lookup(name);
 	/**
@@ -1408,60 +1460,6 @@ bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, c
 				#endif
 				// Объявляем отказ разбора
 				return this->failure(error, offset);
-			}
-		}
-	}
-	/**
-	 * @brief Если объявляется пара имени ключа со значением
-	 *
-	 * @details Описание запрещает дописывать составным именем ключа в таблицу, прежде
-	 *          объявленную заголовком: запись «[a.b.c]» с последующими «[a]» и «b.c.t = 1»
-	 *          дополняла бы закрытую уже таблицу. Дозволено лишь заводить составным именем
-	 *          таблицы новые либо дополнять заведённые тем же способом.
-	 *
-	 * @note Имя текущей таблицы и начала его из проверки изъяты: пара внутри «[a.b.c]»
-	 *       объемлющими именами своими имеет её саму, и запрет их отверг бы всякую пару
-	 *       таблицы, заголовком объявленной
-	 *
-	 */
-	if((kind == kind_t::VALUE) || (kind == kind_t::INLINE)){
-		/**
-		 * Выполняем перебор всех объемлющих имён объявляемого имени
-		 */
-		for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
-			// Получаем очередное объемлющее имя
-			const string_view prefix = string_view(name).substr(0, i);
-			/**
-			 * Если объемлющее имя является именем текущей таблицы либо началом его
-			 */
-			if((prefix.length() <= this->_table.length()) &&
-			   (this->_table.compare(0, prefix.length(), prefix) == 0))
-				// Выполняем переход к следующему объемлющему имени
-				continue;
-			/**
-			 * Определяем род объемлющего имени
-			 */
-			switch(static_cast <uint8_t> (this->lookup(prefix))){
-				// Если объемлющее имя объявлено заголовком таблицы
-				case static_cast <uint8_t> (kind_t::TABLE):
-				// Если объемлющее имя объявлено заголовком набора таблиц
-				case static_cast <uint8_t> (kind_t::ARRAY): {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем отказ в журнал работы
-						log::debug("TOML parsing failed: %s at line %u column %u", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (kind), static_cast <uint16_t> (error), offset}, log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем отказ в журнал работы
-						log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::WARNING, codec::toml::message(error_t::DUPLICATE_TABLE), this->locate(offset).line, this->locate(offset).column);
-					#endif
-					// Объявляем отказ разбора
-					return this->failure(error_t::DUPLICATE_TABLE, offset);
-				}
 			}
 		}
 	}
@@ -4992,8 +4990,16 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	 *
 	 */
 	string & name = this->_name;
-	// Запоминаем имя текущей таблицы началом полного имени ключа
-	name.assign(this->_table);
+	/**
+	 * @brief Выполняем укорочение хранилища имени до имени текущей таблицы
+	 *
+	 * @note Начало полного имени всякой пары одной таблицы совпадает с именем
+	 *       таблицы, и хранилище держит его с прошлой пары: укорочение оставляет
+	 *       начало на месте, тогда как запись имени таблицы копировала бы его
+	 *       заново на всякую пару. Начало устанавливается при открытии таблицы
+	 *
+	 */
+	name.resize(this->_table.length());
 	// Выполняем сборку полного имени ключа из составных частей
 	this->assemble(item.part, item.parts, name);
 	/**
@@ -5348,6 +5354,15 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	if(this->_declaring){
 		// Запоминаем имя текущей таблицы текста настроек
 		this->_table = this->_pendingTable;
+		/**
+		 * @brief Выполняем запись имени таблицы началом хранилища полного имени ключа
+		 *
+		 * @note Записывается один раз на таблицу, а не на пару: разбор пары
+		 *       лишь укорачивает хранилище до этой длины, отчего начало имени
+		 *       пары не копируется заново на всякую пару
+		 *
+		 */
+		this->_name.assign(this->_table);
 		// Выполняем сброс родов имён прежней таблицы
 		this->_tableKinds.clear();
 		// Выполняем сброс длин имён прежней таблицы

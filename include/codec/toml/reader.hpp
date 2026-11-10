@@ -1741,30 +1741,6 @@ namespace awh {
 					void stage(const string_view name, const kind_t kind, const bool implied) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод проверки занятости объемлющих имён
-					 *
-					 * @details Под парой не заводится ничего, а встроенная таблица не дополняется
-					 *          вовсе: описание запрещает и то, и другое.
-					 *
-					 * @param name   проверяемое полное имя ключа либо таблицы
-					 * @param offset положение объявления в приведённом тексте
-					 * @return       признак того, что объемлющие имена свободны
-					 *
-					 * \~english
-					 * @brief Method of checking the occupancy of the enclosing names
-					 *
-					 * @details Nothing is created under a pair, while an inline table is not supplemented
-					 *          at all: the specification prohibits both the one and the other.
-					 *
-					 * @param name   full name of the key or of the table being checked
-					 * @param offset position of the declaration in the converted text
-					 * @return       flag of the enclosing names being free
-					 *
-					 * \~
-					 */
-					bool occupied(const string & name, const size_t offset) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод проверки повторного объявления имени
 					 *
 					 * @param name   объявляемое полное имя ключа либо таблицы
