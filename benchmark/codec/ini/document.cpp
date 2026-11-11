@@ -393,6 +393,7 @@ namespace {
 		 *
 		 * @note Измеряется количество обращений в секунду, а не мегабайты: поиск
 		 *       разбором текста не занят, и пропускная способность к нему неприменима
+		 *
 		 */
 		result.value = ((outcome.seconds > 0.0) ? (static_cast <double> (outcome.operations) / outcome.seconds) : 0.0);
 		// Устанавливаем сведения о прогоне
@@ -462,6 +463,7 @@ namespace {
 		 * @note Измеряется количество установок значения в секунду, а не мегабайты:
 		 *       сборка вызовами разбором текста не занята, и пропускная способность
 		 *       к ней неприменима
+		 *
 		 */
 		result.value = ((outcome.seconds > 0.0) ? (static_cast <double> (outcome.operations * ASSEMBLY_PROPERTIES) / outcome.seconds) : 0.0);
 		// Устанавливаем сведения о прогоне

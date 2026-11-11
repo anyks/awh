@@ -69613,6 +69613,7 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 											return false;
 										}
 									}
+									// Устанавливаем статус события в состояние успешного подключения
 									client->state.status = event::status_t::SUCCESS;
 									/**
 									 * Определяем протокол интернета
@@ -76311,6 +76312,10 @@ bool awh::engine::action::set(const event::id_t id, const event::action_t action
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
 											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+											// Если узел уничтожен из обработчика состояния
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
+												// Выполняем пинок, не восстанавливая таймер записи
+												return io::kick();
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -76734,6 +76739,10 @@ bool awh::engine::action::set(const event::id_t id, const event::action_t action
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
 											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED);
+											// Если узел уничтожен из обработчика состояния
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
+												// Выполняем пинок, не восстанавливая таймер записи
+												return io::kick();
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */

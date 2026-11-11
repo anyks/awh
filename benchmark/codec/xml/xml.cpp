@@ -329,6 +329,7 @@ const string & awh::benchmark::markup::declared() noexcept {
 	 * Собираемый текст разметки
 	 *
 	 * @note Собирается он единожды: сборка к измеряемой работе не относится
+	 *
 	 */
 	static const string result = []() noexcept -> string {
 		// Собираемый текст разметки
