@@ -417,7 +417,6 @@ namespace {
 			// Выводим количество снятых значений верхнего уровня
 			return static_cast <uint64_t> (value.size());
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -433,6 +432,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -510,7 +510,6 @@ namespace {
 			// Выводим количество вложенных узлов собранного значения
 			return static_cast <uint64_t> (value.size());
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -526,6 +525,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -563,7 +563,6 @@ namespace {
 			// Выполняем запись значения в текст
 			return static_cast <uint64_t> (value.dump().size());
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -579,6 +578,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -638,7 +638,6 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -654,6 +653,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((static_cast <double> (nodes) * outcome.operations) / outcome.seconds);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -701,7 +701,6 @@ namespace {
 			// Выполняем прививку значения в дерево разметки
 			return static_cast <uint64_t> (doc.set("/host/graft", value));
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -717,6 +716,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -760,7 +760,6 @@ namespace {
 		if(!counted(outcome, result))
 			// Выводим результат измерения
 			return result;
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -776,6 +775,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perDocument(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -867,12 +867,6 @@ namespace {
 			// Выводим число заведённых вложенных узлов
 			return static_cast <uint64_t> (value.size());
 		});
-		//
-		// Устанавливаем измеренное значение
-		//
-		// @warning Делить приходится САМИМ: `perLatency` относит время к числу КРУГОВ, а
-		//          круг тут один и вмещает все заведения разом
-		//
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -888,6 +882,12 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		//
+		// Устанавливаем измеренное значение
+		//
+		// @warning Делить приходится САМИМ: `perLatency` относит время к числу КРУГОВ, а
+		//          круг тут один и вмещает все заведения разом
+		//
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_NODE_CHILDREN));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -949,7 +949,6 @@ namespace {
 			// Выводим число разысканных вложенных узлов
 			return result;
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -965,6 +964,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_NODE_CHILDREN));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -1028,7 +1028,6 @@ namespace {
 			// Выводим число выданных узлов разметки
 			return result;
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -1044,6 +1043,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_NODE_CHILDREN));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -1115,7 +1115,6 @@ namespace {
 			// Выводим число разысканных свойств узла
 			return result;
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -1131,6 +1130,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_NODE_PROPERTIES));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -1144,6 +1144,9 @@ namespace {
 		"codec/xml: розыск свойства широкого узла", "нс/обр.", WIDE_PROPERTY_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, widePropertyLatency
 	);
+	/**
+	 * Выполняем регистрацию сценария платы на розыск вложенного узла широкого узла по имени
+	 */
 	static const bool WIDE_LOOKUP_REGISTERED = awh::benchmark::add(
 		"codec/xml: розыск узла широкого узла по имени", "нс/обр.", WIDE_LOOKUP_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, wideLookupLatency

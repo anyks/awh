@@ -256,15 +256,6 @@ namespace {
 		return result;
 	}
 	/**
-	 * @brief Функция сборки вызова службы по договору SOAP
-	 *
-	 * @note Собирается здесь тот самый вызов, каким модуль перенаправления портов
-	 *       обращается к службе устройства: он и есть рабочий случай записи
-	 *
-	 * @return объём записанного текста разметки
-	 *
-	 */
-	/**
 	 * @brief Функция записи документа с пространствами имён
 	 *
 	 * @details Пространства имён чередуются намеренно: записи приходится подбирать
@@ -306,6 +297,15 @@ namespace {
 		// Выводим объём записанного текста разметки
 		return static_cast <uint64_t> (writer.text().size());
 	}
+	/**
+	 * @brief Функция сборки вызова службы по договору SOAP
+	 *
+	 * @note Собирается здесь тот самый вызов, каким модуль перенаправления портов
+	 *       обращается к службе устройства: он и есть рабочий случай записи
+	 *
+	 * @return объём записанного текста разметки
+	 *
+	 */
 	static uint64_t soapCall() noexcept {
 		// Объект записи текста разметки
 		awh::codec::xml::writer_t writer;
@@ -411,7 +411,6 @@ namespace {
 		}
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(volume, FOCUSED_ROUNDS, write);
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -427,6 +426,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -489,7 +489,6 @@ namespace {
 		}
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(volume, FOCUSED_ROUNDS, write);
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -505,6 +504,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -535,7 +535,6 @@ namespace {
 		}
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(volume, SMALL_ROUNDS, ::namespacesDocument);
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -551,6 +550,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -589,7 +589,6 @@ namespace {
 		if(!counted(outcome, result))
 			// Выводим результат измерения
 			return result;
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -605,6 +604,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perDocument(outcome);
 		// Выводим результат измерения
 		return result;
@@ -633,7 +633,6 @@ namespace {
 		}
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(volume, SMALL_ROUNDS, ::soapCall);
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -649,6 +648,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perLatency(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -687,7 +687,6 @@ namespace {
 		if(!counted(outcome, result))
 			// Выводим результат измерения
 			return result;
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -703,6 +702,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perDocument(outcome);
 		// Выводим результат измерения
 		return result;

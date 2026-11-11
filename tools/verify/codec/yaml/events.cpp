@@ -1,3 +1,37 @@
+/**
+ * @file events.cpp
+ * @date 2026-08-18
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Щуп сличения потока событий чтения YAML с эталонным набором сверки
+ *
+ * @details Поток событий выдаётся строками набора сверки — `+STR`, `+DOC`, `+MAP`,
+ *          `+SEQ`, `=VAL`, `=ALI` и их закрытиями, — с отступом по глубине вложенности,
+ *          с якорями и метками вида у значения и с отметками поточного построения и
+ *          явной черты документа. Места событий открытия собираются предварительным
+ *          вторым чтением того же текста: сличение места события с местом события
+ *          следующего требует взгляда вперёд, а чтение потоковое его не даёт
+ *
+ * @note Вторым долгом щуп поверяет круговой ход: дерево документа и снятое с него
+ *       владеющее значение обязаны переписать содержимое без потерь, а перезапись
+ *       обязана быть устойчивой — вторая выдача обязана совпасть с первой дословно
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Заголовочные файлы модуля и системы
+ */
 #include <codec/yaml/yaml.hpp>
 #include <fstream>
 #include <sstream>
@@ -34,14 +68,24 @@ namespace {
 		}
 	};
 }
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 /**
  * Приведение содержимого к записи набора сверки: перевод строки, подача и обратная
  * косая передаются отменяющими последовательностями
  */
 static std::string escaped(const std::string_view text){
+	// Собираемая запись приведённого содержимого
 	std::string result;
+	/**
+	 * Выполняем перебор всех знаков приводимого содержимого
+	 */
 	for(const char letter : text){
+		/**
+		 * Выполняем выбор отменяющей последовательности по роду знака
+		 */
 		switch(letter){
 			case '\n': result.append("\\n"); break;
 			case '\t': result.append("\\t"); break;
@@ -51,14 +95,25 @@ static std::string escaped(const std::string_view text){
 			default: result.push_back(letter);
 		}
 	}
+	// Выводим запись приведённого содержимого
 	return result;
 }
+
+/**
+ * @brief Функция запуска приложения
+ *
+ * @param argc длина массива параметров
+ * @param argv массив параметров
+ * @return     код выхода из приложения
+ *
+ */
 int main(int argc, char ** argv){
 	/**
 	 * Выполняем заведение модуля ядра первым делом
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	awh::fmk::initialize();
 	/**
@@ -66,43 +121,79 @@ int main(int argc, char ** argv){
 	 *
 	 * @note Порядок этот и есть смысл: `initialize` назначает приёмники сам, и
 	 *       отключение, поставленное до него, оказывается перезаписанным
+	 *
 	 */
 	Silent silent;
+	// Поток чтения разбираемого файла
 	std::ifstream file(argv[1], std::ios::binary);
+	// Хранилище содержимого разбираемого файла
 	std::stringstream stream; stream << file.rdbuf();
+	// Разбираемый текст документа
 	const std::string text = stream.str();
+	// Настройки чтения текста
 	yaml::reader_t::settings_t settings;
+	// Объект чтения текста
 	yaml::reader_t reader(settings);
+	/**
+	 * Если подача текста читателю завершилась отказом
+	 */
 	if(!reader.feed(text)){ std::cout << "ОТКАЗ: " << yaml::message(reader.error()) << "\n"; return 1; }
 	/**
 	 * Места событий открытия построений, проходом предварительным собранные
 	 *
 	 * @note Собираются они вторым чтением того же текста: сличение места события с местом
 	 *       события следующего требует взгляда вперёд, а чтение потоковое его не даёт
+	 *
 	 */
 	std::vector <uint64_t> starts;
 	{
+		// Настройки предварительного чтения
 		yaml::reader_t::settings_t opening;
+		// Объект предварительного чтения текста
 		yaml::reader_t scout(opening);
+		/**
+		 * Если подача текста предварительному читателю удалась
+		 */
 		if(scout.feed(text)){
+			/**
+			 * Выполняем перебор всех событий предварительного чтения
+			 */
 			while(scout.next()){
+				/**
+				 * Если событием открывается построение
+				 */
 				if((scout.event() == yaml::event_t::MAPPING_START) ||
 				   (scout.event() == yaml::event_t::SEQUENCE_START))
+					// Выполняем занесение места события открытия построения
 					starts.push_back(scout.value().location.offset);
 			}
 		}
 	}
 	// Номер разбираемого события открытия построения
 	size_t started = 0;
+	// Собираемая выдача строк набора сверки
 	std::string result;
+	// Глубина вложенности построений, ведущая отступ
 	size_t depth = 0;
+	// Помощник отступа строки по текущей глубине вложенности
 	const auto indent = [&](){ result.append(depth, ' '); };
+	// Помощник записи якоря и метки вида текущего значения
 	const auto props = [&](){
+		// Собираемая запись свойств значения
 		std::string out;
+		/**
+		 * Если значение несёт якорь и отсылкой не является
+		 */
 		if(!reader.value().anchor.empty() && (reader.event() != yaml::event_t::ALIAS))
+			// Выполняем добавление отметки якоря
 			out.append(" &").append(reader.value().anchor);
+		/**
+		 * Если значение несёт метку вида
+		 */
 		if(!reader.value().tag.empty())
+			// Выполняем добавление отметки вида
 			out.append(" <").append(reader.value().tag).append(">");
+		// Выводим запись свойств значения
 		return out;
 	};
 	/**
@@ -116,6 +207,7 @@ int main(int argc, char ** argv){
 		 * @note Запись `[ имя: значение ]` описание берёт правилом `ns-flow-pair`: отображение
 		 *       там скобок не имеет вовсе, а набор сверки метит его скобками наравне с прочими.
 		 *       Розыском по тексту его не опознать - место события стоит на имени пары
+		 *
 		 */
 		if(reader.value().flow) return std::string(" ").append(1, pair[0]).append(1, pair[1]);
 		/**
@@ -126,6 +218,7 @@ int main(int argc, char ** argv){
 		 *          правится она сличением мест ниже - но остаётся догадкою: расхождение
 		 *          по ней есть изъян щупа, а не кодека, и первым делом проверять надлежит
 		 *          её
+		 *
 		 */
 		if(reader.value().location.offset == yaml::NO_OFFSET) return std::string();
 		/**
@@ -135,20 +228,36 @@ int main(int argc, char ** argv){
 		 *       это вправе быть построением поточным: скобка тогда одна на два события, и
 		 *       принадлежит она внутреннему. Опознаётся это совпадением мест: события
 		 *       открытия идут подряд с одного и того же места. Случай Q9WF
+		 *
 		 */
 		if(((started + 1) < starts.size()) && (starts.at(started) == starts.at(started + 1)))
+			// Выводим пустую отметку поточного построения
 			return std::string();
+		// Место события в разбираемом тексте
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
+		/**
+		 * Выполняем пропуск незначащих знаков от места события
+		 */
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;
+		// Если место вышло за конец текста, отметки нет
 		if(offset >= text.size()) return std::string();
 		if((text.at(offset) == pair[0]) || (text.at(offset) == pair[1]))
+			// Выводим отметку поточного построения его скобками
 			return std::string(" ").append(1, pair[0]).append(1, pair[1]);
+		// Выводим пустую отметку
 		return std::string();
 	};
+	// Помощник отметки явной черты документа по месту события
 	const auto dashed = [&](const char * mark) noexcept -> std::string {
+		// Если место события не объявлено, черты нет
 		if(reader.value().location.offset == yaml::NO_OFFSET) return std::string();
+		// Место события в разбираемом тексте
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
+		/**
+		 * Выполняем пропуск незначащих знаков от места события
+		 */
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;
+		// Если до конца текста меньше трёх знаков, черты нет
 		if((offset + 2) > text.size()) return std::string();
 		/**
 		 * Черта опознаётся лишь тогда, когда за нею стоит пробельный знак либо конец
@@ -163,17 +272,28 @@ int main(int argc, char ** argv){
 		 *          пропадали из выдачи - и выглядело это пороком РАЗБОРА, каким не
 		 *          являлось: события чтения в обоих случаях одинаковы, что и доказано
 		 *          щупом по самому разбору. Нашло это сличение на стенде Windows
+		 *
 		 */
 		if((text.compare(offset, 3, mark) == 0) &&
 		   (((offset + 3) >= text.size()) || (text.at(offset + 3) == ' ') ||
 		    (text.at(offset + 3) == '\t') || (text.at(offset + 3) == '\n') ||
 		    (text.at(offset + 3) == '\r')))
+			// Выводим отметку явной черты документа
 			return std::string(" ").append(mark);
+		// Выводим пустую отметку
 		return std::string();
 	};
+	// Выполняем запись признака начала выдачи
 	result.append("+STR\n");
+	// Устанавливаем начальную глубину вложенности
 	depth = 1;
+	/**
+	 * Выполняем перебор всех событий разбора документа
+	 */
 	while(reader.next()){
+		/**
+		 * Выполняем запись строки набора сверки по роду события
+		 */
 		switch(static_cast <uint8_t> (reader.event())){
 			case static_cast <uint8_t> (yaml::event_t::DOCUMENT_START):
 				indent(); result.append("+DOC").append(dashed("---")).append("\n"); depth++;
@@ -183,6 +303,7 @@ int main(int argc, char ** argv){
 			break;
 			case static_cast <uint8_t> (yaml::event_t::MAPPING_START):
 				indent(); result.append("+MAP").append(marked("{}")).append(props()).append("\n"); depth++;
+				// Выполняем учёт разобранного события открытия отображения
 				started++;
 			break;
 			case static_cast <uint8_t> (yaml::event_t::MAPPING_END):
@@ -190,19 +311,25 @@ int main(int argc, char ** argv){
 			break;
 			case static_cast <uint8_t> (yaml::event_t::SEQUENCE_START):
 				indent(); result.append("+SEQ").append(marked("[]")).append(props()).append("\n"); depth++;
+				// Выполняем учёт разобранного события открытия последовательности
 				started++;
 			break;
 			case static_cast <uint8_t> (yaml::event_t::SEQUENCE_END):
 				depth--; indent(); result.append("-SEQ\n");
 			break;
 			case static_cast <uint8_t> (yaml::event_t::SCALAR): {
+				// Отметка записи значения простого вида
 				const char * mark = ":";
+				/**
+				 * Выполняем выбор отметки записи значения по её оформлению
+				 */
 				switch(static_cast <uint8_t> (reader.value().style)){
 					case static_cast <uint8_t> (yaml::style_t::SINGLE): mark = "'"; break;
 					case static_cast <uint8_t> (yaml::style_t::DOUBLE): mark = "\""; break;
 					case static_cast <uint8_t> (yaml::style_t::LITERAL): mark = "|"; break;
 					case static_cast <uint8_t> (yaml::style_t::FOLDED): mark = ">"; break;
 				}
+				// Выполняем запись строки значения
 				indent(); result.append("=VAL").append(props()).append(" ").append(mark)
 				 .append(escaped(reader.value().text)).append("\n");
 			} break;
@@ -211,7 +338,11 @@ int main(int argc, char ** argv){
 			break;
 		}
 	}
+	/**
+	 * Если чтение документа завершилось отказом
+	 */
 	if(reader.state() == yaml::state_t::FAILED){ std::cout << "ОТКАЗ: " << yaml::message(reader.error()) << "\n"; return 1; }
+	// Выполняем запись признака конца выдачи
 	result.append("-STR\n");
 	/**
 	 * Выполняем сличение двух путей перезаписи на корпусе соответствия
@@ -233,6 +364,7 @@ int main(int argc, char ** argv){
 	 *       больше - пределы вложенности да обхождение с повторными именами, - и отказ
 	 *       его законен. Обход этот НЕ молчалив: он докладывается в поток ошибок, и счёт
 	 *       обойдённых снимается прогоном по корпусу целиком
+	 *
 	 */
 	{
 		// Дерево документа разбираемого текста
@@ -290,6 +422,8 @@ int main(int argc, char ** argv){
 			}
 		}
 	}
+	// Выполняем выдачу собранных строк набора сверки
 	std::cout << result;
+	// Выводим признак успешного завершения
 	return 0;
 }

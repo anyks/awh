@@ -52,6 +52,10 @@
  * Подключаем пространства имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён проекта
+ */
 using namespace awh;
 
 /**
@@ -150,6 +154,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	awh::fmk::initialize();
 	/**
@@ -157,6 +162,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 *
 	 * @note Порядок этот и есть смысл: `initialize` назначает приёмники сам, и
 	 *       отключение, поставленное до него, оказывается перезаписанным
+	 *
 	 */
 	Silent silent;
 	/**
@@ -178,20 +184,26 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 * общее, круг тот пережило бы. Выдача перезаписи открывает эталону и её: текст, нами
 	 * записанный, читается образцовым средством, и прочтённое сличается с прочтённым из
 	 * текста исходного. Расхождение здесь означает, что запись СМЫСЛ поменяла
+	 *
 	 */
 	const bool rewriting = ((argc > 3) && (string(argv[3]).compare("rewrite") == 0));
 	// Настройки разбора текста настроек
 	codec::ini::document_t::settings_t settings;
 	// Выполняем назначение настроек разбора выбранного наречия
 	if(dialect.compare("windows") == 0)
+		// Выполняем назначение настроек наречия MS Windows
 		settings.reader = codec::ini::reader_t::settings_t::windows();
 	else if(dialect.compare("python") == 0)
+		// Выполняем назначение настроек наречия configparser языка Python
 		settings.reader = codec::ini::reader_t::settings_t::python();
 	else if(dialect.compare("systemd") == 0)
+		// Выполняем назначение настроек наречия файлов единиц systemd
 		settings.reader = codec::ini::reader_t::settings_t::systemd();
 	else if(dialect.compare("git") == 0)
+		// Выполняем назначение настроек наречия настроек Git
 		settings.reader = codec::ini::reader_t::settings_t::git();
 	else if(dialect.compare("strict") == 0)
+		// Выполняем назначение строгих настроек разбора
 		settings.reader = codec::ini::reader_t::settings_t::strict();
 	// Поток чтения разбираемого файла
 	ifstream file(argv[1], ios::binary);
@@ -228,6 +240,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 * @note Настройки записи берутся у дерева, а не умолчанием: умолчание подразделов не
 	 *       пишет вовсе, и всякий текст с подразделами давал бы отказ записи, за
 	 *       расхождение принимаемый
+	 *
 	 */
 	{
 		// Владеющее значение, с дерева настроек снятое
@@ -341,6 +354,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 *
 	 * @note Раздел этот выдаётся всегда, даже пустым: пустота его есть тоже сведение,
 	 *       и эталон её выдаёт наравне с прочим
+	 *
 	 */
 	render("", "", "");
 	/**
@@ -354,6 +368,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 *
 		 * @note Подраздел записывается через косую черту: имена его и раздела выдаются
 		 *       порознь, а запись JSON несёт один уровень имён
+		 *
 		 */
 		if(!name.subsection.empty()){
 			// Выполняем запись разделителя имён раздела и подраздела

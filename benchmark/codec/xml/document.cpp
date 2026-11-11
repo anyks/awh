@@ -307,7 +307,6 @@ namespace {
 			// Выполняем сборку дерева разметки
 			return ::build(text);
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -323,6 +322,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -345,7 +345,6 @@ namespace {
 			// Выполняем сборку дерева разметки
 			return ::build(text);
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -361,6 +360,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -471,7 +471,6 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -487,6 +486,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((static_cast <double> (nodes) * outcome.operations) / outcome.seconds);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -555,7 +555,6 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -571,6 +570,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = (static_cast <double> (outcome.allocations) / static_cast <double> (outcome.operations));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -616,7 +616,6 @@ namespace {
 			// Выводим объём записанного текста разметки
 			return static_cast <uint64_t> (writer.text().size());
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -632,6 +631,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -722,12 +722,6 @@ namespace {
 			// Выводим число разысканных вложенных узлов
 			return result;
 		});
-		//
-		// Устанавливаем измеренное значение
-		//
-		// @warning Делить приходится САМИМ: `perLatency` относит время к числу КРУГОВ, а
-		//          круг тут один и вмещает все обращения разом
-		//
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -743,6 +737,12 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		//
+		// Устанавливаем измеренное значение
+		//
+		// @warning Делить приходится САМИМ: `perLatency` относит время к числу КРУГОВ, а
+		//          круг тут один и вмещает все обращения разом
+		//
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_PARENT_CHILDREN));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -799,7 +799,6 @@ namespace {
 			// Выводим число выданных узлов разметки
 			return result;
 		});
-		// Устанавливаем измеренное значение
 		/**
 		 * Если измеряемая работа не состоялась
 		 *
@@ -815,6 +814,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		}
+		// Устанавливаем измеренное значение
 		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_PARENT_CHILDREN));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);

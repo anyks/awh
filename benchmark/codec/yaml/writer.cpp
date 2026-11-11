@@ -125,15 +125,6 @@ namespace {
 	static constexpr double WRITE_SERVICE_LATENCY_THRESHOLD = 45.08;
 
 	/**
-	 * @brief Функция записи текста настроек заданным построением
-	 *
-	 * @param layout построение, каким записывается текст настроек
-	 * @param keys   количество записываемых пар отображения
-	 * @param quoted признак записи значений, ограды требующих
-	 * @return       размер собранного текста настроек
-	 *
-	 */
-	/**
 	 * @brief Функция получения записей имён пар, заранее собранных
 	 *
 	 * @details Собираются они ОДИН РАЗ и вне замеряемого места: сборка строки заводит
@@ -205,6 +196,15 @@ namespace {
 		// Выводим перечень собранных записей значений
 		return result;
 	}
+	/**
+	 * @brief Функция записи текста настроек заданным построением
+	 *
+	 * @param layout построение, каким записывается текст настроек
+	 * @param keys   количество записываемых пар отображения
+	 * @param quoted признак записи значений, ограды требующих
+	 * @return       размер собранного текста настроек
+	 *
+	 */
 	static uint64_t writing(const awh::codec::yaml::layout_t layout, const size_t keys, const bool quoted = false) noexcept {
 		// Настройки записи текста настроек
 		awh::codec::yaml::writer_t::settings_t settings;

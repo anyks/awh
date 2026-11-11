@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Сличение снятия единицы проволочной записи ABC с судьёю, писанным по описанию
  *
  * @details Прочие кодеки рамки сличаются с ЧУЖИМ основанием: JSON с набором
@@ -23,6 +29,7 @@
  *          проверок и ворошителя, а не заменяет их
  *
  * @copyright Copyright © 2026
+ *
  */
 #include <codec/abc/encoding.hpp>
 
@@ -37,10 +44,15 @@
  * Устанавливаем пространство имён
  */
 using namespace std;
+
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
  * @brief Приговор судьи о годности единицы
+ *
  */
 enum class verdict_t : uint8_t {
 	OK,        // Единица снимается
@@ -49,6 +61,7 @@ enum class verdict_t : uint8_t {
 };
 /**
  * @brief Решение судьи о единице проволочной записи
+ *
  */
 typedef struct Ruling {
 	// Приговор о годности единицы
@@ -61,6 +74,7 @@ typedef struct Ruling {
 	size_t consumed;
 	/**
 	 * @brief Конструктор
+	 *
 	 */
 	Ruling() noexcept : verdict(verdict_t::REFUSAL), value(0), indefinite(false), consumed(0) {}
 } ruling_t;
@@ -70,6 +84,7 @@ typedef struct Ruling {
  *
  * @note Судья портится ИЗНУТРИ нарочно: порча снаружи потребовала бы второй сборки, а
  *       сличать надо тот же двоичный файл, каким снята и сама поверка
+ *
  */
 static bool Sabotage = false;
 
@@ -92,6 +107,7 @@ static bool Sabotage = false;
  * @param buffer буфер поданных октетов
  * @param size   размер поданных октетов
  * @return       решение судьи о единице
+ *
  */
 static ruling_t judge(const uint8_t * buffer, const size_t size) noexcept {
 	// Решение судьи о единице
@@ -114,6 +130,7 @@ static ruling_t judge(const uint8_t * buffer, const size_t size) noexcept {
 	 *
 	 * @note Подробность тут есть РАЗНОВИДНОСТЬ, а не ширина: отведены `0x00`-`0x06`, да
 	 *       ещё `0x1F` означает конец вместимого. Снимается одна лишь метка
+	 *
 	 */
 	if(group == SINGLE){
 		// Если разновидность одиночного значения отведена
@@ -133,6 +150,7 @@ static ruling_t judge(const uint8_t * buffer, const size_t size) noexcept {
 	 *
 	 * @note Разновидности отведены `0x00`-`0x03`: целое любой ширины, десятичное,
 	 *       открытое расширение и вместимое с объявленным размахом
+	 *
 	 */
 	if(group == EXTEND){
 		// Если разновидность расширения отведена
@@ -193,6 +211,7 @@ static ruling_t judge(const uint8_t * buffer, const size_t size) noexcept {
 	 *
 	 * @note Неопределённая длина отведена ВМЕСТИМЫМ да значениям, собираемым кусками:
 	 *       перечню, отображению, строке и двоичному значению
+	 *
 	 */
 	if(detail == 0x1F){
 		// Если крупный вид неопределённую длину допускает
@@ -209,12 +228,14 @@ static ruling_t judge(const uint8_t * buffer, const size_t size) noexcept {
 	}
 	// Виды эти к делу тут не идут, но названы ради полноты перечня
 	static_cast <void> (UNSIGNED);
+	// Отмечаем вид отрицательного числа тем же порядком
 	static_cast <void> (NEGATIVE);
 	// Выводим решение судьи отказом
 	return result;
 }
 /**
  * @brief Счёт сличения
+ *
  */
 typedef struct Tally {
 	// Число сличённых последовательностей
@@ -235,6 +256,7 @@ typedef struct Tally {
 	size_t length;
 	/**
 	 * @brief Конструктор
+	 *
 	 */
 	Tally() noexcept :
 	 checked(0), mismatch(0), byVerdict(0), byValue(0), byConsumed(0), byFlags(0), length(0) {
@@ -252,6 +274,7 @@ typedef struct Tally {
  *
  * @param probe поданные октеты
  * @param tally счёт сличения
+ *
  */
 static void compare(const vector <uint8_t> & probe, tally_t & tally) noexcept {
 	// Решение судьи о поданных октетах
@@ -322,6 +345,7 @@ static void compare(const vector <uint8_t> & probe, tally_t & tally) noexcept {
  * @param group  крупный вид проволочной записи
  * @param value  укладываемое значение
  * @param result предсказанные октеты записи
+ *
  */
 static void expected(const uint8_t group, const uint64_t value, vector <uint8_t> & result) noexcept {
 	// Выполняем очистку буфера предсказанных октетов
@@ -339,18 +363,21 @@ static void expected(const uint8_t group, const uint64_t value, vector <uint8_t>
 	size_t width = 8;
 	// Если значение умещается в один октет
 	if(value <= 0xFFull){
-		// Выполняем установку подробности и ширины записи
+		// Выполняем установку подробности метки
 		detail = 0x18;
+		// Выполняем установку ширины ведомой записи
 		width = 1;
 	// Если значение умещается в два октета
 	} else if(value <= 0xFFFFull) {
-		// Выполняем установку подробности и ширины записи
+		// Выполняем установку подробности метки
 		detail = 0x19;
+		// Выполняем установку ширины ведомой записи
 		width = 2;
 	// Если значение умещается в четыре октета
 	} else if(value <= 0xFFFFFFFFull) {
-		// Выполняем установку подробности и ширины записи
+		// Выполняем установку подробности метки
 		detail = 0x1A;
+		// Выполняем установку ширины ведомой записи
 		width = 4;
 	}
 	// Выполняем укладку метки, ведущей запись
@@ -373,6 +400,7 @@ static void expected(const uint8_t group, const uint64_t value, vector <uint8_t>
  *       молчаливая утрата прошла бы зелёной
  *
  * @param tally счёт сличения
+ *
  */
 static void writing(tally_t & tally) noexcept {
 	// Крупные виды записи, ведущие значение
@@ -408,9 +436,11 @@ static void writing(tally_t & tally) noexcept {
 				value = (round - 14);
 			// Если круг лежит среди случайных широких величин
 			else {
-				// Выполняем вращение вихря случайных величин
+				// Выполняем первый шаг вращения вихря сдвигом влево на 13
 				seed ^= (seed << 13);
+				// Выполняем второй шаг вращения вихря сдвигом вправо на 7
 				seed ^= (seed >> 7);
+				// Выполняем третий шаг вращения вихря сдвигом влево на 17
 				seed ^= (seed << 17);
 				// Выполняем установку случайной величины
 				value = seed;
@@ -445,6 +475,7 @@ static void writing(tally_t & tally) noexcept {
  *
  * @param depth глубина исчерпания в октетах
  * @param tally счёт сличения
+ *
  */
 static void exhaustive(const size_t depth, tally_t & tally) noexcept {
 	// Буфер подаваемых октетов
@@ -484,6 +515,7 @@ static void exhaustive(const size_t depth, tally_t & tally) noexcept {
  *
  * @param rounds число кругов на всякий вид и ширину
  * @param tally  счёт сличения
+ *
  */
 static void wide(const uint64_t rounds, tally_t & tally) noexcept {
 	// Крупные виды записи, ведущие ширину
@@ -521,9 +553,11 @@ static void wide(const uint64_t rounds, tally_t & tally) noexcept {
 					magnitude = edges[round];
 				// Если круг лежит среди случайных величин
 				else {
-					// Выполняем вращение вихря случайных величин
+					// Выполняем первый шаг вращения вихря сдвигом влево на 13
 					seed ^= (seed << 13);
+					// Выполняем второй шаг вращения вихря сдвигом вправо на 7
 					seed ^= (seed >> 7);
+					// Выполняем третий шаг вращения вихря сдвигом влево на 17
 					seed ^= (seed << 17);
 					// Выполняем установку случайной величины
 					magnitude = seed;
@@ -553,6 +587,7 @@ static void wide(const uint64_t rounds, tally_t & tally) noexcept {
  *
  * @param title название прогона
  * @param tally счёт сличения
+ *
  */
 static void report(const string & title, const tally_t & tally) noexcept {
 	// Выводим счёт сличённого и расхождений
@@ -580,6 +615,7 @@ static void report(const string & title, const tally_t & tally) noexcept {
  * @param argc количество передаваемых аргументов
  * @param argv список передаваемых аргументов
  * @return     код выхода из приложения
+ *
  */
 int main(int argc, char * argv[]) noexcept {
 	/**
@@ -587,6 +623,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	awh::fmk::initialize();
 	// Глубина исчерпания последовательностей в октетах
@@ -613,6 +650,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * @note Число 1536 выведено счётом ДО прогона: шесть крупных видов, ведущих ширину,
 	 *       на 256 вторых октетов. Однооктетные подачи расхождения не дают: судья зовёт
 	 *       их недостатком октетов, кодек - отказом, и оба приговора негодны
+	 *
 	 */
 	{
 		// Счёт самопроверки зрячести
