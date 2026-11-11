@@ -55,7 +55,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Service() noexcept :
+					explicit Service() noexcept :
 					 login{""}, password{""},
 					 hash(auth_t::hash_t::MD5),
 					 type(auth_t::type_t::NONE) {}
@@ -77,7 +77,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Worker(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Worker(const fmk_t * fmk, const log_t * log) noexcept :
 					 id(0), update(false), http(fmk, log), callback(log),
 					 agent(agent_t::HTTP), proto(engine_t::proto_t::HTTP1_1) {}
 					/**

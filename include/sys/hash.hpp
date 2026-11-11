@@ -102,7 +102,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				State() noexcept : num(0), size(0), key{0}, ivec{0}, ebuf{0} {}
+				explicit State() noexcept :
+				 num(0), size(0), key{0},
+				 ivec{0}, ebuf{0} {}
 			} state_t;
 		public:
 			/**
@@ -475,7 +477,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			Hash(const log_t * log) noexcept;
+			explicit Hash(const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

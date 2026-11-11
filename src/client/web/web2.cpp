@@ -90,11 +90,11 @@ int32_t awh::client::Web2::frameProxySignal(const int32_t sid, const http2_t::di
 					// Если функция обратного вызова установлена, выводим сообщение
 					if(!this->_scheme.proxy.http.empty(awh::http_t::suite_t::BODY) && web_t::_callback.is("entity"))
 						// Выполняем функцию обратного вызова дисконнекта
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, this->_scheme.proxy.http.body());
+						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string, const vector <char>)> ("entity", sid, 0, response.code, response.message, static_cast <const vector <char> &> (this->_scheme.proxy.http.body()));
 					// Если функция обратного вызова на вывод полученных данных ответа сервера установлена
 					if(web_t::_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, this->_scheme.proxy.http.body(), this->_scheme.proxy.http.headers());
+						web_t::_callback.call <void (const int32_t, const uint64_t, const uint32_t, const string &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", sid, 0, response.code, response.message, static_cast <const vector <char> &> (this->_scheme.proxy.http.body()), this->_scheme.proxy.http.headers());
 					// Если установлена функция отлова завершения запроса
 					if(web_t::_callback.is("end"))
 						// Выполняем функцию обратного вызова

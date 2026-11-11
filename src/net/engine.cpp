@@ -873,6 +873,16 @@ static bool storeCRLFile(const awh::fs_t & fs, const awh::log_t * log, nts::trus
  */
 #if _WIN32 || _WIN64
 	/**
+	 * Подключаем заголовок хранилища сертификатов системы
+	 *
+	 * Выключатель WIN32_LEAN_AND_MEAN исключает подсистему шифрования из состава
+	 * windows.h, и без отдельного подключения не находятся ни HCERTSTORE, ни
+	 * CertOpenSystemStore. Оснастка MinGW втягивает этот заголовок сама, потому
+	 * отказ приходит только на MSVC
+	 */
+	#include <wincrypt.h>
+
+	/**
 	 * @brief Метод добавления в запас доверенных сертификатов системного хранилища
 	 *
 	 * @param store запас доверенных сертификатов
@@ -884,8 +894,15 @@ static bool storeCRLFile(const awh::fs_t & fs, const awh::log_t * log, nts::trus
 	static bool storeCAWindows(nts::trust::store_t & store, const awh::log_t * log, const char * name) noexcept {
 		// Результат работы функции
 		bool result = false;
-		// Открываем системное хранилище сертификатов
-		HCERTSTORE sys = ::CertOpenSystemStore(0, name);
+		/**
+		 * Открываем системное хранилище сертификатов
+		 *
+		 * Издание функции называем явно: имена разделителей хранилища приходят узкими
+		 * знаками, а голое имя оснастка MSVC при включённом UNICODE подменяет широким
+		 * изданием, и узкая строка ему уже не годится. Оснастка MinGW и без уточнения
+		 * выбирает узкое издание, потому для неё правка ничего не меняет
+		 */
+		HCERTSTORE sys = ::CertOpenSystemStoreA(0, name);
 		// Если системное хранилище не открыто
 		if(sys == nullptr){
 			/**

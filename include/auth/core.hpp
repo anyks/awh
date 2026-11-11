@@ -83,7 +83,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Digest() noexcept :
+				explicit Digest() noexcept :
 				 nc{"00000000"}, uri{""}, qop{"auth"},
 				 realm{AWH_HOST}, nonce{""}, opaque{""},
 				 cnonce{""}, resp{""}, date{0}, hash{hash_t::MD5} {}
@@ -179,13 +179,13 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Authorization(const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Authorization(const fmk_t * fmk, const log_t * log) noexcept :
 			 _type(type_t::NONE), _hash(log), _fmk(fmk), _log(log) {}
 			/*
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~Authorization() noexcept {}
+			virtual ~Authorization() noexcept = default;
 	} auth_t;
 };
 

@@ -53,6 +53,7 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Buffer {
 		private:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура итерации записей
 			 * 
@@ -64,8 +65,9 @@ namespace awh {
 				 * @brief Конструктор
 				 * 
 				 */
-				Iterator() noexcept : end(0), begin(0) {}
-			} __attribute__((packed)) iter_t;
+				explicit Iterator() noexcept : end(0), begin(0) {}
+			} __AWH_PACKED__ iter_t;
+			__AWH_PACK_END__
 		private:
 			// Объект итерации данных
 			iter_t _iter;
@@ -316,20 +318,20 @@ namespace awh {
 			 *
 			 * @param buffer бинарный буфер для перемещения
 			 */
-			Buffer(Buffer && buffer) noexcept;
+			explicit Buffer(Buffer && buffer) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param buffer бинарный буфер для копирования
 			 */
-			Buffer(const Buffer & buffer) noexcept;
+			explicit Buffer(const Buffer & buffer) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Buffer(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Buffer(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

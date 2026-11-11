@@ -476,7 +476,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				~Websocket() noexcept {}
+				~Websocket() noexcept = default;
 		} websocket_t;
 	};
 };

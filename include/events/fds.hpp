@@ -21,7 +21,25 @@
 #include <cerrno>
 #include <string>
 #include <cstring>
-#include <unistd.h>
+
+/**
+ * Для оснастки MSVC, не несущей слоя POSIX
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <io.h>
+	#include <process.h>
+/**
+ * Для оснастки, несущей слой POSIX
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <unistd.h>
+#endif
 
 /**
  * Наши модули
@@ -73,7 +91,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			FDS(const log_t * log) noexcept : _log(log) {}
+			explicit FDS(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

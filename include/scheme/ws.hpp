@@ -71,9 +71,10 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Buffer(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Buffer(const fmk_t * fmk, const log_t * log) noexcept :
 						 payload(fmk, log), fragments(fmk, log), extraction(fmk, log) {}
 					} buffer_t;
+					__AWH_PACK_BEGIN__
 					/**
 					 * @brief Структура флагов разрешения обменом данных
 					 *
@@ -85,8 +86,10 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 */
-						Allow() noexcept : send(true), receive(true) {}
-					} __attribute__((packed)) allow_t;
+						explicit Allow() noexcept : send(true), receive(true) {}
+					} __AWH_PACKED__ allow_t;
+					__AWH_PACK_END__
+					__AWH_PACK_BEGIN__
 					/**
 					 * @brief Структура партнёра
 					 *
@@ -98,8 +101,9 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 */
-						Partner() noexcept : wbit(0), takeover(false) {}
-					} __attribute__((packed)) partner_t;
+						explicit Partner() noexcept : wbit(0), takeover(false) {}
+					} __AWH_PACKED__ partner_t;
+					__AWH_PACK_END__
 					/**
 					 * @brief Объект фрейма WebSocket
 					 *
@@ -114,7 +118,7 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Frame(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Frame(const fmk_t * fmk, const log_t * log) noexcept :
 						 size(AWH_CHUNK_SIZE), methods(fmk, log),
 						 opcode(ws::frame_t::opcode_t::TEXT) {}
 					} frame_t;
@@ -150,7 +154,7 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 close(false), shake(false),
 						 crypted(false), inflate(false), stopped(false),
 						 sid(1), respPong(0), sendPing(0), hash(log),
@@ -162,7 +166,7 @@ namespace awh {
 						 * @brief Деструктор
 						 *
 						 */
-						~Options() noexcept {}
+						~Options() noexcept = default;
 					} options_t;
 				public:
 					/**
@@ -220,13 +224,13 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit WebSocket(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~WebSocket() noexcept {}
+					~WebSocket() noexcept = default;
 			} ws_t;
 		};
 	};

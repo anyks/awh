@@ -141,7 +141,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Upstream(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Upstream(const fmk_t * fmk, const log_t * log) noexcept :
 				 notifier(fmk, log), callback(nullptr) {}
 			} upstream_t;
 			/**
@@ -167,7 +167,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept :
+				explicit Peer() noexcept :
 				 id(0), sock(INVALID_SOCKET), persist(false),
 				 delay(0), type(event_type_t::NONE), callback(nullptr) {}
 			} peer_t;
@@ -476,7 +476,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Base(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Base(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

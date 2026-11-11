@@ -64,7 +64,7 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 */
-						Locker() noexcept : mode(false) {}
+						explicit Locker() noexcept : mode(false) {}
 					} locker_t;
 					/**
 					 * @brief Структура флагов разрешения обменом данных
@@ -77,7 +77,7 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 */
-						Allow() noexcept : send(true), receive(true) {}
+						explicit Allow() noexcept : send(true), receive(true) {}
 					} allow_t;
 				public:
 					/**
@@ -99,14 +99,14 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 id(0), locked(false), connect(false),
 						 stopped(false), scheme(fmk, log), socks5(log) {}
 						/**
 						 * @brief Деструктор
 						 *
 						 */
-						~Options() noexcept {}
+						~Options() noexcept = default;
 					} options_t;
 				public:
 					/**
@@ -154,13 +154,13 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Socks5(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Socks5() noexcept {}
+					~Socks5() noexcept = default;
 			} socks5_t;
 		};
 	};

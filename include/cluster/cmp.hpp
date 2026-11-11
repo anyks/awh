@@ -51,6 +51,7 @@ namespace awh {
 		 * Максимальный размер одного буфера данных
 		 */
 		static constexpr size_t CHUNK_SIZE = 0x1000;
+		__AWH_PACK_BEGIN__
 		/**
 		 * @brief Структура работы с заголовком буфера данных
 		 *
@@ -72,8 +73,9 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Header() noexcept;
-		} __attribute__((packed)) header_t;
+			explicit Header() noexcept;
+		} __AWH_PACKED__ header_t;
+		__AWH_PACK_END__
 		/**
 		 * @brief Класс для работы с протоколом передачи данных
 		 *
@@ -224,7 +226,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Encoder(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Encoder(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -237,6 +239,7 @@ namespace awh {
 		 */
 		typedef class AWH_SHARED_EXPORT Decoder {
 			public:
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура сообщения
 				 *
@@ -249,9 +252,10 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Message() noexcept :
+					explicit Message() noexcept :
 					 mid(0), size(0), buffer(nullptr) {}
-				} __attribute__((packed)) message_t;
+				} __AWH_PACKED__ message_t;
+				__AWH_PACK_END__
 			private:
 				// Идентификатор процесса который прислал сообщение
 				pid_t _pid;
@@ -395,7 +399,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Decoder(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Decoder(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

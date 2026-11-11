@@ -60,7 +60,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Worker() noexcept : delay(0), stop(false), callback(nullptr) {}
+				explicit Worker() noexcept : delay(0), stop(false), callback(nullptr) {}
 			} wrk_t;
 		private:
 			// Мютекс для блокировки потока
@@ -255,7 +255,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Timeout() noexcept {}
+			explicit Timeout() noexcept = default;
 			/**
 			 * @brief Деструктор
 			 *

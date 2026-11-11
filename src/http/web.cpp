@@ -427,14 +427,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entityClient"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, this->_body);
+									this->_callback.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, static_cast <const vector <char> &> (this->_body));
 							} break;
 							// Если мы работаем с сервером
 							case static_cast <uint8_t> (hid_t::SERVER): {
 								// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 								if(this->_callback.is("entityServer"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, this->_body);
+									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, static_cast <const vector <char> &> (this->_body));
 							} break;
 						}
 						// Тело в запросе не передано
@@ -774,14 +774,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entityClient"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, this->_body);
+							this->_callback.call <void (const uint64_t, const uint32_t, const string &, const vector <char> &)> ("entityClient", this->_id, this->_response.code, this->_response.message, static_cast <const vector <char> &> (this->_body));
 					} break;
 					// Если мы работаем с сервером
 					case static_cast <uint8_t> (hid_t::SERVER): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
 						if(this->_callback.is("entityServer"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, this->_body);
+							this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const vector <char> &)> ("entityServer", this->_id, this->_request.method, this->_request.url, static_cast <const vector <char> &> (this->_body));
 					} break;
 				}
 				// Тело в запросе не передано
@@ -1711,7 +1711,7 @@ awh::buffer_t awh::Web::dump() const noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод установки бинарного дампа

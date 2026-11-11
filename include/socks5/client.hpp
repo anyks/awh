@@ -93,13 +93,13 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept :
+				explicit Socks5(const log_t * log) noexcept :
 				 awh::socks5_t(log), _pass{""}, _login{""} {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Socks5() noexcept {}
+				~Socks5() noexcept = default;
 		} socks5_t;
 	};
 };

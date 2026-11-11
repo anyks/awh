@@ -37,7 +37,18 @@
 #if _WIN32 || _WIN64
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-	#include <getopt.h>
+	/**
+	 * Заголовка getopt.h у оснастки MSVC нет
+	 *
+	 * MinGW несёт его вместе с оснасткой, а нативная MSVC - нет, и включение
+	 * отказывает на отсутствующем файле. Разбор аргументов командной строки
+	 * проект не ведёт: getopt, optarg и optind не зовутся нигде в своём коде,
+	 * потому подключение остаётся только за MinGW
+	 */
+	#if !defined(_MSC_VER)
+		#include <getopt.h>
+	#endif
+
 	#include <mswsock.h>
 	// Используем библиотеку ws2_32.lib
 	#pragma comment(lib, "Ws2_32.lib")
@@ -282,12 +293,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			explicit Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Socket() noexcept {}
+			~Socket() noexcept = default;
 	} socket_t;
 };
 

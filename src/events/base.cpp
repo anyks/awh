@@ -2036,7 +2036,7 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								// Выполняем установку функции обратного вызова
 								item->callback = callback;
 							// Устанавливаем сокет в список для отслеживания
-							this->_events.push_back((WSAPOLLFD){});
+							this->_events.push_back(WSAPOLLFD{});
 							// Выполняем установку файлового дескриптора
 							this->_events.back().fd = sock;
 							// Сбрасываем состояние события

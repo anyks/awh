@@ -319,12 +319,19 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 				vector <uint8_t> mask(4);
 				// Подключаем генератор к двигателю
 				mt19937 engine {randev()};
-				// Устанавливаем диапазон генератора случайных чисел
-				uniform_int_distribution <uint8_t> dist {0, 255};
+				/**
+				 * Устанавливаем диапазон генератора случайных чисел
+				 *
+				 * Тип берём шире байта: стандарт запрещает этому распределению
+				 * знаковные и беззнаковые char, и оснастка MSVC отказывает на
+				 * них сборкой. Диапазон остаётся прежним, потому и равномерность
+				 * маски не меняется
+				 */
+				uniform_int_distribution <uint16_t> dist {0, 255};
 				// Выполняем заполнение маски случайными числами
 				std::generate(mask.begin(), mask.end(), [&dist, &engine]() noexcept -> uint8_t {
-					// Выполняем генерирование случайного числа
-					return dist(engine);
+					// Выполняем генерирование случайного числа и сужаем его до байта явно
+					return static_cast <uint8_t> (dist(engine));
 				});
 				// Выполняем перебор всех байт передаваемых данных
 				for(size_t i = 0; i < size; i++)

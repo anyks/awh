@@ -2267,7 +2267,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			Callback(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
+			explicit Callback(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
 	} callback_t;
 };
 

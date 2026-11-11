@@ -125,12 +125,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Ident() noexcept :
+				explicit Ident() noexcept :
 				 id{AWH_SHORT_NAME},
 				 name{AWH_NAME},
 				 version{AWH_VERSION} {}
 			} ident_t;
 		protected:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Параметры запроса для Transfer-Encoding
 			 *
@@ -143,9 +144,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				TransferEncoding() noexcept :
+				explicit TransferEncoding() noexcept :
 				 enabled(false), trailers(false), chunking(false) {}
-			} __attribute__((packed)) te_t;
+			} __AWH_PACKED__ te_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Структура параметров компрессора
 			 *
@@ -161,7 +163,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Compressor() noexcept :
+				explicit Compressor() noexcept :
 				 current(compressor_t::NONE),
 				 selected(compressor_t::NONE) {}
 			} compressors_t;
@@ -170,15 +172,18 @@ namespace awh {
 			 *
 			 */
 			typedef struct Auth {
-				client::auth_t client; // Объект для работы с клиентской авторизацией
-				server::auth_t server; // Объект для работы с серверной авторизацией
+				// Объект для работы с клиентской авторизацией
+				client::auth_t client;
+				// Объект для работы с серверной авторизацией
+				server::auth_t server;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : client(fmk, log), server(fmk, log) {}
+				explicit Auth(const fmk_t * fmk, const log_t * log) noexcept :
+				 client(fmk, log), server(fmk, log) {}
 			} auth_t;
 		private:
 			// Объект работы с операционной системой
@@ -863,7 +868,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Http(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Http(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

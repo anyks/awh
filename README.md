@@ -168,7 +168,7 @@ $ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
 $ pacman -S mingw-w64-x86_64-dlfcn
 ```
 
-### Build third party for MS Windows
+### Build third party for MS Windows [MSYS2 MinGW]
 
 ```bash
 $ ./build_third_party.sh
@@ -190,6 +190,133 @@ $ cmake \
 
 $ cmake --build .
 ```
+
+### Build on Windows [Visual Studio]
+
+MSYS2 takes no part in this path. Visual Studio is located through `vswhere`, its environment
+is brought up by `vcvarsall.bat`, and the dependency archives are merged by `lib.exe`. The two
+toolchains are **not interchangeable** — MinGW and MSVC produce incompatible binaries, and
+some dependencies decide the fate of their own headers at build time (`zlib` settles
+`unistd.h` that way). The builds are therefore kept apart: the MinGW one goes to
+`third_party`, the Visual Studio one to `third_party-msvc`, and neither disturbs the other.
+
+Verified on Windows 10 build 19045, Visual Studio 18 Community, toolset 14.51.36231
+(compiler 19.51.36260.0), x64.
+
+#### Development environment configuration
+
+| Means | Necessarily | For what |
+|---|---|---|
+| [Visual Studio](https://visualstudio.microsoft.com) 2019 or newer | required | the "Desktop development with C++" workload |
+| [GIT](https://git-scm.com) | optional | to check the submodules out and to apply the `lzma` patch; without it the sources are built as they lie on disk |
+| CMake | optional | taken from the Visual Studio installation or from `Program Files`; a separate installation is named by `AWH_CMAKE` |
+| Ninja | optional | taken from the Visual Studio installation or from `PATH`, and named by `AWH_NINJA`; without it the build goes through `NMake Makefiles` in a single job, which is slower, and the script says so |
+
+> Visual Studio 18 carries neither CMake nor Ninja as a component. On the machine this path
+> was verified on both were installed separately.
+
+#### Build third party
+
+```bat
+> git submodule update --init --recursive
+> bat\build_third_party.bat
+```
+
+That single command finds the toolset, brings up its environment and builds all ten
+dependencies. The archives of the nine libraries are merged into `libdependence.lib`; the
+allocator is built after the merge and is deliberately kept out of it. The version of each
+dependency is named in its own script under `bat\third_party` — the same versions the MinGW
+build takes from `build_third_party.sh`.
+
+```bat
+> bat\build_third_party.bat --rebuild  build afresh, disregarding the marks
+> bat\build_third_party.bat --clean    remove what has been built, leaving the sources
+> bat\build_third_party.bat zlib       build a single dependency
+```
+
+> The instruction set is asked of the system itself rather than of the environment
+> variables: under x86-64 emulation those answer about the emulation and not about the
+> machine, and the build would silently go to x64 on an ARM64 machine. To name it by hand:
+> `set AWH_ARCH=x64`.
+
+> `lzma` needs a patch under MSVC: the tag it is built from carries the x64 branch of
+> `memcmplen.h` without the declaration that branch calls. `bat\third_party\006_lzma.bat`
+> applies `patches\lzma\lzma.patch` — the same patch the MinGW build uses — and says so when
+> GIT is absent and the patch could not be applied.
+
+#### Project build
+
+Run from the developer command prompt of the matching instruction set ("x64 Native Tools
+Command Prompt for VS", or the ARM64 one) so that `cl.exe` is on the path:
+
+```bat
+> mkdir build
+> cd build
+
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
+
+> cmake --build .
+```
+
+The dependencies are attached to the freshly built `awh.lib` and `FindAWH.cmake` is written
+for the place of installation at the end of the build — the same two steps the shell scripts
+perform under MinGW, called here as their `.bat` counterparts.
+
+IDN is not looked for on Windows: `cmake\FindDependence.cmake` searches for `libidn2` and
+`iconv` on the other systems only, so `-DCMAKE_BUILD_IDN` does nothing on this path.
+
+#### Build as a shared library (DLL)
+
+Add `-DCMAKE_SHARED_BUILD_LIB=YES` to the same configure line:
+
+```bat
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_SHARED_BUILD_LIB=YES ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
+
+> cmake --build .
+```
+
+The build produces `awh.dll` together with the import library `awh.lib`, and every sample is
+linked against that import library. Installation places the import library at `lib\awh.lib`
+and the DLL at `bin\awh\awh.dll`. A consuming project asks for the shared variant with
+`-DCMAKE_SHARED_LIB_AWH=YES`: `find_package(AWH)` then reports both `AWH_LIBRARY` and
+`AWH_LIBRARY_DLL`. The DLL has to be reachable when the program runs — next to the executable
+or on `PATH`.
+
+The list of exported symbols is collected by the build description
+(`CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS`) rather than by declarations in the code: under native MSVC
+`AWH_SHARED_EXPORT` expands to nothing. Merging the dependency archives is a static-only step
+and is skipped here — the dependencies are linked into the DLL itself.
+
+Both configurations write the same generated `third_party-msvc\cmake\FindAWH.cmake`, and the
+build step rewrites it for the prefix of whichever configuration was built last. Install each
+configuration right after building it, or regenerate the module with
+`bat\build_cmake.bat <prefix>` before installing.
+
+#### What you should know
+
+**The allocator archives are deliberately left out of the merge.** `libdependence.lib` takes
+fourteen of the seventeen built archives; `common.lib`, `tcmalloc_minimal.lib` and
+`low_level_alloc.lib` stay apart and are linked by name. Merging them in would break the
+whole-module allocation interception. The allocator is attached to the program by
+`/INCLUDE:__tcmalloc`, which the build sets itself.
+
+**MSVC archives are not `lib`-prefixed.** The dependencies land as `nts.lib`,
+`zlibstatic.lib`, `bz2_static.lib` and so on, while the merge step produces
+`libdependence.lib` — the one name that keeps the prefix, so that the same find modules serve
+both toolchains.
+
+**A static build proves less than it looks.** There is no linking in it at all, so a missing
+dependency shows up only when something is actually linked — a shared library or a consuming
+program.
 
 ### Make installation packages
 

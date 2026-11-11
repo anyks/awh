@@ -106,7 +106,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Expression() noexcept;
+					explicit Expression() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -206,12 +206,12 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			RegExp() noexcept : _error{""} {}
+			explicit RegExp() noexcept : _error{""} {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~RegExp() noexcept {}
+			~RegExp() noexcept = default;
 	} regexp_t;
 };
 

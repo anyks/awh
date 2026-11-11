@@ -85,9 +85,9 @@ find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${AWH_HEADERS_PATH}/lzma NO_DEFAUL
 find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${AWH_HEADERS_PATH}/zlib NO_DEFAULT_PATH)
 find_path(CITY_INCLUDE_DIR NAMES cityhash/city.h PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
 find_path(AWH_INCLUDE_DIR NAMES awh/server/awh.hpp PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
+find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${AWH_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AWH_HEADERS_PATH}/brotli NO_DEFAULT_PATH)
-find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${AWH_HEADERS_PATH}/pcre2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${AWH_HEADERS_PATH}/nghttp2 NO_DEFAULT_PATH)
 
@@ -99,14 +99,35 @@ endif()
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Устанавливаем префикс поиска библиотеки
-    SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    ##
+     # Приставку «lib» ставит GNU-оснастка, а MSVC именует архив по цели сборки:
+     # установленная библиотека называется «awh.lib». С одной лишь приставкой «lib»
+     # поиск искал бы «libawh.lib» и не нашёл бы заведомо установленную библиотеку
+     ##
+    if (MSVC)
+        # Устанавливаем префикс поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
+    else(MSVC)
+        # Устанавливаем префикс поиска библиотеки
+        SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+    endif(MSVC)
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
-        # Устанавливаем расширение поиска библиотеки
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a")
-        # Ищем саму DLL
-        find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${AWH_BIN_PATH} NO_DEFAULT_PATH)
+        ##
+         # Библиотека импорта у MSVC носит то же расширение «.lib», что и неразделяемая,
+         # а сама DLL именуется по цели сборки - без приставки «lib»
+         ##
+        if (MSVC)
+            # Устанавливаем расширение поиска библиотеки
+            SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+            # Ищем саму DLL
+            find_file(AWH_LIBRARY_DLL NAMES awh.dll PATHS ${AWH_BIN_PATH} NO_DEFAULT_PATH)
+        else()
+            # Устанавливаем расширение поиска библиотеки
+            SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a")
+            # Ищем саму DLL
+            find_file(AWH_LIBRARY_DLL NAMES libawh.dll PATHS ${AWH_BIN_PATH} NO_DEFAULT_PATH)
+        endif()
         # Поиск библиотеки AWH
         find_library(AWH_LIBRARY NAMES awh PATHS ${AWH_LIBRARY_PATH} NO_DEFAULT_PATH)
     # Если нужно загрузить статическую библиотеку
@@ -367,6 +388,15 @@ else()
         ${NGHTTP2_INCLUDE_DIR}
     )
 endif()
+
+##
+ # Образец потребителя в руководстве каталоги заголовков не подключает, поэтому
+ # это делает сам модуль: иначе сборщик не получает ключей включения каталогов
+ # и отказывает на первом же заголовке AWH, хотя тот установлен. Вызов стоит
+ # после всех ветвей поиска, чтобы накрыть любую операционную систему
+##
+# Подключаем каталоги заголовочных файлов к сборке потребителя
+include_directories(${AWH_INCLUDE_DIRS})
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")

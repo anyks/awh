@@ -57,7 +57,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Server() noexcept : host{""}, port(80), family(AF_INET) {}
+					explicit Server() noexcept : host{""}, port(80), family(AF_INET) {}
 				} serv_t;
 			private:
 				// Параметры запрашиваемого сервера
@@ -122,12 +122,12 @@ namespace awh {
 				 *
 				 * @param log объект для работы с логами
 				 */
-				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _auth(nullptr) {}
+				explicit Socks5(const log_t * log) noexcept : awh::socks5_t(log), _auth(nullptr) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Socks5() noexcept {}
+				~Socks5() noexcept = default;
 		} socks5_t;
 	};
 };

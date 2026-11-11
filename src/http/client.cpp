@@ -71,7 +71,7 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 			// Если адрес перенаправления найден
 			if(!location.empty()){
 				// Получаем объект параметров запроса
-				web_t::req_t request = this->_web.request();
+				web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 				// Выполняем парсинг полученного URL-адреса
 				request.url = this->_uri.parse(location);
 				// Выполняем установку параметров запроса

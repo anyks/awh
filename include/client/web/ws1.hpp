@@ -74,6 +74,7 @@ namespace awh {
 				 */
 				friend class Websocket2;
 			private:
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура флагов разрешения обменом данных
 				 *
@@ -85,8 +86,10 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Allow() noexcept : send(true), receive(true) {}
-				} __attribute__((packed)) allow_t;
+					explicit Allow() noexcept : send(true), receive(true) {}
+				} __AWH_PACKED__ allow_t;
+				__AWH_PACK_END__
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура партнёра
 				 *
@@ -98,8 +101,9 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Partner() noexcept : wbit(0), takeover(false) {}
-				} __attribute__((packed)) partner_t;
+					explicit Partner() noexcept : wbit(0), takeover(false) {}
+				} __AWH_PACKED__ partner_t;
+				__AWH_PACK_END__
 				/**
 				 * @brief Объект фрейма Websocket
 				 *
@@ -114,7 +118,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Frame(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Frame(const fmk_t * fmk, const log_t * log) noexcept :
 					 size(AWH_CHUNK_SIZE), methods(fmk, log),
 					 opcode(ws::frame_t::opcode_t::TEXT) {}
 				} frame_t;
@@ -123,23 +127,23 @@ namespace awh {
 				 * 
 				 */
 				typedef struct Intermediate {
-					// Буфер фрагментированного сообщения
-					awh::buffer_t fragments;
-					// Буфер извлечения данных
-					awh::buffer_t extraction;
 					/**
 					 * Флаг приёма фрагментированного сообщения,
 					 * отдельный признак нужен, так как фрагменты нулевой длины не попадают в буфер
 					 */
 					bool fragmented;
+					// Буфер фрагментированного сообщения
+					awh::buffer_t fragments;
+					// Буфер извлечения данных
+					awh::buffer_t extraction;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Intermediate(const fmk_t * fmk, const log_t * log) noexcept :
-					 fragments(fmk, log), extraction(fmk, log), fragmented(false) {}
+					explicit Intermediate(const fmk_t * fmk, const log_t * log) noexcept :
+					 fragmented(false), fragments(fmk, log), extraction(fmk, log) {}
 				} inter_t;
 			private:
 				// Идентификатор подключения
@@ -175,12 +179,6 @@ namespace awh {
 				 */
 				ws_relay_t _relay;
 			private:
-				/**
-				 * Байты фреймов, ожидающие места в буфере отправки сетевого ядра. Сообщение ставится
-				 * в поток отправки целиком или не ставится вовсе, поэтому на провод никогда не уходит
-				 * оборванная последовательность фрагментов
-				 */
-				std::unique_ptr <awh::buffer_t> _outgoing;
 				// Объект для работы с HTTP-протколом
 				ws_t _http;
 				// Объект хэширования
@@ -207,6 +205,13 @@ namespace awh {
 			private:
 				// Метод компрессии данных
 				http_t::compressor_t _compressor;
+			private:
+				/**
+				 * Байты фреймов, ожидающие места в буфере отправки сетевого ядра. Сообщение ставится
+				 * в поток отправки целиком или не ставится вовсе, поэтому на провод никогда не уходит
+				 * оборванная последовательность фрагментов
+				 */
+				std::unique_ptr <awh::buffer_t> _outgoing;
 			private:
 				// Полученные HTTP заголовки
 				std::unordered_multimap <string, string> _headers;
@@ -357,12 +362,12 @@ namespace awh {
 				 * @param text    данные передаются в текстовом виде
 				 */
 				void delivery(const vector <char> & message, const bool text) noexcept;
+			private:
 				/**
 				 * @brief Метод обработки очереди полученных сообщений в пуле потоков
 				 *
 				 */
 				void received() noexcept;
-			private:
 				/**
 				 * @brief Метод остановки пула потоков
 				 *

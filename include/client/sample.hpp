@@ -77,6 +77,7 @@ namespace awh {
 					PROXY_CONNECT = 0x06  // Событие подключения к прокси-серверу
 				};
 			private:
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура работы с прокси-сервером
 				 *
@@ -88,8 +89,9 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Proxy() noexcept : mode(false), answer(0) {}
-				} __attribute__((packed)) proxy_t;
+					explicit Proxy() noexcept : mode(false), answer(0) {}
+				} __AWH_PACKED__ proxy_t;
+				__AWH_PACK_END__
 			private:
 				// Идентификатор подключения
 				uint64_t _bid;

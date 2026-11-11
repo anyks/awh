@@ -104,7 +104,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept : size(0), client{}, server{} {}
+				explicit Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
 		private:
 			/**
@@ -355,7 +355,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Ping(const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Ping(const fmk_t * fmk, const log_t * log) noexcept :
 			 _sock(INVALID_SOCKET), _mode(false), _verb(true),
 			 _net(log), _dns(fmk, log), _socket(fmk, log), _chrono(fmk),
 			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
@@ -364,7 +364,7 @@ namespace awh {
 			 * @brief Деструктор
 			 *
 			 */
-			~Ping() noexcept {}
+			~Ping() noexcept = default;
 	} ping_t;
 };
 

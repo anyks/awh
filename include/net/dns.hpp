@@ -103,6 +103,7 @@ namespace awh {
 				NET_SET = 0x07  // Событие установки параметров сети
 			};
 		private:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Шаблон формата данных DNS-сервера
 			 *
@@ -120,8 +121,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Server() noexcept : port(53), ip{0} {}
-			} __attribute__((packed));
+				explicit Server() noexcept : port(53), ip{0} {}
+			} __AWH_PACKED__;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Шаблон формата данных DNS-кэша
 			 *
@@ -142,11 +145,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Cache() noexcept :
+				explicit Cache() noexcept :
 				 ttl(0), create(0),
 				 localhost(false),
 				 forbidden(false), ip{0} {}
-			} __attribute__((packed));
+			} __AWH_PACKED__;
+			__AWH_PACK_END__
 			/**
 			 * @brief формата данных DNS-кэша
 			 *
@@ -182,7 +186,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Item() noexcept : ttl(0), type(0), record{""} {}
+				explicit Item() noexcept : ttl(0), type(0), record{""} {}
 			} item_t;
 			/**
 			 * @brief Структура подключения
@@ -196,8 +200,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept : size(0), client{}, server{} {}
+				explicit Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Класс бинарного буфера данных
 			 *
@@ -247,8 +252,10 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Buffer() noexcept : _data{0}, _addr{0} {}
-			} __attribute__((packed)) buffer_t;
+					explicit Buffer() noexcept : _data{0}, _addr{0} {}
+			} __AWH_PACKED__ buffer_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура заголовка DNS
 			 *
@@ -271,10 +278,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Header() noexcept :
+				explicit Header() noexcept :
 				 qdcount(0), ancount(0),
 				 nscount(0), arcount(0) {}
-			} __attribute__((packed)) head_t;
+			} __AWH_PACKED__ head_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура флагов DNS запросов
 			 *
@@ -286,8 +295,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				QFlags() noexcept : type(0), cls(0) {}
-			} __attribute__((packed)) q_flags_t;
+				explicit QFlags() noexcept : type(0), cls(0) {}
+			} __AWH_PACKED__ q_flags_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Структура флагов DNS RRs
 			 *
@@ -301,7 +311,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				RRFlags() noexcept : type(0), cls(0), ttl(0), length(0) {}
+				explicit RRFlags() noexcept : type(0), cls(0), ttl(0), length(0) {}
 			} rr_flags_t;
 			/**
 			 * @brief Класс воркера резолвинга
@@ -430,7 +440,7 @@ namespace awh {
 					 * @param family тип протокола интернета AF_INET или AF_INET6
 					 * @param self   объект DNS-резолвера
 					 */
-					Worker(const int32_t family, const DNS * self) noexcept :
+					explicit Worker(const int32_t family, const DNS * self) noexcept :
 					 _sock(INVALID_SOCKET), _mode(false), _family(family),
 					 _qtype(q_type_t::IP), _id(0), _socket(self->_fmk, self->_log), _self(self) {}
 					/**
@@ -786,7 +796,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			DNS(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit DNS(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

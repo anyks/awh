@@ -182,12 +182,12 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					URL() noexcept;
+					explicit URL() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~URL() noexcept {}
+					~URL() noexcept = default;
 			} url_t;
 		private:
 			// Объект IP-адресов
@@ -364,12 +364,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			URI(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit URI(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~URI() noexcept {}
+			~URI() noexcept = default;
 	} uri_t;
 	/**
 	 * Оператор [<<] вывода в поток IP адреса

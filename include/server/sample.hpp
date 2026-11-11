@@ -403,7 +403,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				~Sample() noexcept {}
+				~Sample() noexcept = default;
 		} sample_t;
 	};
 };

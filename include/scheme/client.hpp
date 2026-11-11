@@ -77,7 +77,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 				 mode(false), type(type_t::NONE),
 				 family(scheme_t::family_t::IPV4),
 				 net(log), socks5(log), http(fmk, log) {
@@ -138,7 +138,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Status() noexcept :
+					explicit Status() noexcept :
 					 work(work_t::ALLOW),
 					 real(mode_t::DISCONNECT),
 					 wait(mode_t::DISCONNECT) {}
@@ -194,14 +194,14 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Scheme(const fmk_t * fmk, const log_t * log) noexcept :
 				 awh::scheme_t(fmk, log), receiving(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Scheme() noexcept {}
+				~Scheme() noexcept = default;
 		} scheme_t;
 	};
 };

@@ -75,6 +75,7 @@ namespace awh {
 				UPGRADE = 0x03  // Флаг выполнения переключения протокола
 			};
 		protected:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура партнёра
 			 *
@@ -86,8 +87,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Partner() noexcept : wbit(GZIP_MAX_WBITS), takeover(false) {}
-			} __attribute__((packed)) partner_t;
+				explicit Partner() noexcept :
+				 wbit(GZIP_MAX_WBITS), takeover(false) {}
+			} __AWH_PACKED__ partner_t;
+			__AWH_PACK_END__
 		protected:
 			// Флаг зашифрованных данных
 			bool _encryption;
@@ -335,12 +338,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			WebsocketCore(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit WebsocketCore(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~WebsocketCore() noexcept {}
+			virtual ~WebsocketCore() noexcept = default;
 	} ws_core_t;
 	/**
 	 * Прототип класса сетевого ядра
@@ -471,7 +474,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			WebsocketRelay() noexcept;
+			explicit WebsocketRelay() noexcept;
 			/**
 			 * @brief Деструктор
 			 *

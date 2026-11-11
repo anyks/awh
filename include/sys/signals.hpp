@@ -74,7 +74,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Events() noexcept {}
+					explicit Events() noexcept {}
 				} ev_t;
 			/**
 			 * Для операционной системы MS Windows
@@ -99,7 +99,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Events() noexcept {}
+					explicit Events() noexcept {}
 				} ev_t;
 			#endif
 		private:
@@ -145,7 +145,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Signals(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Signals(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -92,6 +92,11 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
+				// Резервный файловый дескриптор для сброса подключений при исчерпании дескрипторов
+				SOCKET _reserve;
+				// Время последнего предупреждения о перегрузке приёма подключений
+				uint64_t _warned;
+			private:
 				// Объект работы с сокетами
 				socket_t _socket;
 				// Объект кластера
@@ -111,33 +116,27 @@ namespace awh {
 				// Таймер для работы DTLS
 				std::unique_ptr <timer_t> _timer;
 			private:
+				// Список схем сети, у которых приём подключений приостановлен
+				std::set <uint16_t> _paused;
+				// Список схем сети, для которых ожидается таймер возобновления приёма
+				std::set <uint16_t> _resumes;
+				// Список брокеров, подключение которых закрывается после отправки очереди полезной нагрузки
+				std::set <uint64_t> _finishing;
+			private:
 				// Список активных дочерних процессов
 				std::multimap <uint16_t, pid_t> _workers;
 			private:
+				// Список таймеров отправки очереди датаграмм
+				std::map <uint64_t, uint16_t> _flushes;
 				// Список таймаутов на получение данных
 				std::map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
 				// Список таймеров перепосылки рукопожатия DTLS
 				std::map <uint64_t, uint16_t> _retransmits;
-				// Список таймеров отправки очереди датаграмм
-				std::map <uint64_t, uint16_t> _flushes;
 			private:
 				// Список подключённых брокеров
-				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
-			private:
-				// Список брокеров, подключение которых закрывается после отправки очереди полезной нагрузки
-				std::set <uint64_t> _finishing;
-			private:
-				// Список схем сети, у которых приём подключений приостановлен
-				std::set <uint16_t> _paused;
-				// Список схем сети, для которых ожидается таймер возобновления приёма
-				std::set <uint16_t> _resumes;
-			private:
-				// Резервный файловый дескриптор для сброса подключений при исчерпании дескрипторов
-				SOCKET _reserve;
-				// Время последнего предупреждения о перегрузке приёма подключений
-				uint64_t _warned;
+				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;	
 			private:
 				/**
 				 * @brief Метод вызова при подключении к серверу
@@ -638,7 +637,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Core(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Core(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -646,7 +645,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

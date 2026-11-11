@@ -164,30 +164,30 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Version() noexcept;
+			explicit Version() noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param ver устанавливаемая версия
 			 */
-			Version(const char * ver) noexcept;
+			explicit Version(const char * ver) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param ver устанавливаемая версия
 			 */
-			Version(const string & ver) noexcept;
+			explicit Version(const string & ver) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param ver устанавливаемая версия
 			 */
-			Version(const uint32_t ver) noexcept;
+			explicit Version(const uint32_t ver) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Version() noexcept {}
+			~Version() noexcept = default;
 	} ver_t;
 	/**
 	 * @brief Оператор [>>] чтения из потока версии

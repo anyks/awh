@@ -610,7 +610,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 				}
 			}
 			// Выводим результат
-			return result;
+			return static_cast <url_t> (::move(result));
 		};
 		/**
 		 * @brief Функция извлечения данных URL адресов
@@ -666,7 +666,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 				} else result.type = types_t::WRONG;
 			}
 			// Выводим результат
-			return result;
+			return static_cast <url_t> (::move(result));
 		};
 		/**
 		 * @brief Функция извлечения данных IP адресов
@@ -712,7 +712,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 				}
 			}
 			// Выводим результат
-			return result;
+			return static_cast <url_t> (::move(result));
 		};
 		// Очищаем результаты предыдущей работы
 		this->clear();
@@ -744,7 +744,7 @@ awh::NWT::url_t awh::NWT::parse(const string & text) noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return static_cast <url_t> (::move(result));
 }
 /**
  * @brief Метод добавления букв алфавита

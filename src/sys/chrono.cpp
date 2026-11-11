@@ -14072,8 +14072,8 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
  * @param fmk объект фреймворка
  */
 awh::Chrono::Chrono(const fmk_t * fmk) noexcept :
- _zoneOffset(0), _zoneName(zone_t::NONE),
- _leapSecond(true),
+ _zoneName(zone_t::NONE),
+ _leapSecond(true), _zoneOffset(0),
  _century(century_t::WINDOW),
  _yearWindow(DEFAULT_YEAR_WINDOW),
  _yearRollback(DEFAULT_YEAR_ROLLBACK), _fmk(fmk) {

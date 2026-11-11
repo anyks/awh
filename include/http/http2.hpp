@@ -698,7 +698,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Http2(const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Http2(const fmk_t * fmk, const log_t * log) noexcept :
 			 _close(false), _wouldblock(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
 			 _headersSize(0), _maxHeaderListSize(0), _socket(fmk, log),
 			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}

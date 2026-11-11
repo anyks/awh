@@ -53,7 +53,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Data() noexcept :
+					explicit Data() noexcept :
 					 type(nullptr), digest(nullptr),
 					 user(nullptr), pass(nullptr) {}
 				} data_t;
@@ -127,10 +127,15 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
+				 * Базу называем с пространством имён: собственный typedef класса
+				 * повторяет её имя, и без уточнения оснастка MSVC читает обращение
+				 * как вызов конструктором самого себя
+				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""}, _stale(false) {}
+				explicit Auth(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::auth_t(fmk, log), _user{""}, _pass{""}, _stale(false) {}
 		} auth_t;
 	};
 };

@@ -936,7 +936,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 												if(this->_callback.is("complete"))
 													// Выполняем функцию обратного вызова
-													this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
+													this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, static_cast <const vector <char> &> (options->http.body()), options->http.headers());
 												// Если мы получили флаг завершения потока
 												if(flags.find(http2_t::flag_t::END_STREAM) != flags.end()){
 													// Если установлена функция отлова завершения запроса
@@ -1153,9 +1153,11 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const char * buffer
 			 * возвращает пустой результат и при ошибке, поэтому пустое сообщение распознаём заранее;
 			 * байт 0x00 всё равно пропускаем через декомпрессор, чтобы общий контекст оставался согласованным
 			 */
-			const bool blank = (options->inflate && (options->compressor != http_t::compressor_t::NONE) && (options->buffer.extraction.empty() ||
-			                   ((options->compressor == http_t::compressor_t::DEFLATE) && (options->buffer.extraction.size() == 1) &&
-			                   (static_cast <const char *> (options->buffer.extraction)[0] == 0x00))));
+			const bool blank = (
+				options->inflate && (options->compressor != http_t::compressor_t::NONE) && (options->buffer.extraction.empty() ||
+				((options->compressor == http_t::compressor_t::DEFLATE) && (options->buffer.extraction.size() == 1) &&
+				(static_cast <const char *> (options->buffer.extraction)[0] == 0x00)))
+			);
 			// Если данные пришли в сжатом виде
 			if(options->inflate && (options->compressor != http_t::compressor_t::NONE)){
 				/**

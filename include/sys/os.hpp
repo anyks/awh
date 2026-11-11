@@ -22,7 +22,29 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <unistd.h>
+
+/**
+ * Для оснастки MSVC, не несущей слоя POSIX
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <io.h>
+	#include <process.h>
+/**
+ * Для оснастки, несущей слой POSIX
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <unistd.h>
+#endif
+
+/**
+ * Системный заголовок
+ */
 #include <stdint.h>
 
 // Если используется BOOST
@@ -46,11 +68,18 @@
 #if _WIN32 || _WIN64
 	/**
 	 * Подключаем основные заголовочные файлы
+	 *
+	 * Порядок обязателен: winsock2.h идёт строго до windows.h, иначе windows.h
+	 * втягивает устаревший winsock.h, и объявления сокетов сталкиваются -
+	 * оснастка MSVC отвечает на это переопределением типов sockaddr и fd_set
 	 */
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
 	#include <windows.h>
 	#include <sddl.h>
 	#include <process.h>
 	#include <processthreadsapi.h>
+
 	/**
 	 * Заменяем переменную AWH ERROR
 	 */
@@ -88,6 +117,87 @@
 	 */
 	#ifndef getppid
 		#define getppid GetCurrentProcessId
+	#endif
+	/**
+	 * Для оснастки MSVC, не несущей словаря POSIX
+	 *
+	 * Заголовок sys/stat.h у неё есть, но типа mode_t и признаков вида файла
+	 * S_ISDIR и подобных он не даёт: их несёт слой POSIX, которого оснастка не
+	 * имеет. MinGW отдаёт их вместе с оснасткой, потому слой нужен только MSVC.
+	 *
+	 * Числа взяты у MinGW, чтобы обе оснастки Windows вели себя одинаково:
+	 * mode_t там шестнадцатиразрядный, а вид блочного устройства равен 0x6000
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Подключаем заголовок метаданных файла
+		 */
+		#include <sys/stat.h>
+		/**
+		 * Своего mode_t у MSVC нет, потому тип заводим под охраной признака
+		 */
+		#if !defined(__AWH_MSVC_MODE_T__)
+			/**
+			 * Признак не даёт объявить тип повторно: заголовок подключают многие
+			 */
+			#define __AWH_MSVC_MODE_T__
+			// mode_t берётся меры MinGW: unsigned short
+			typedef unsigned short mode_t;
+		#endif
+		/**
+		 * Вида блочного устройства в заголовке оснастки нет, а разбор его спрашивает
+		 */
+		#ifndef _S_IFBLK
+			/**
+			 * Число то же, что у MinGW: обе оснастки Windows узнают вид одинаково
+			 */
+			#define _S_IFBLK 0x6000
+		#endif
+		/**
+		 * Признак каталога объявляем, если его ещё нет
+		 */
+		#if !defined(S_ISDIR)
+			/**
+			 * Каталог узнаём по разряду _S_IFDIR в поле вида _S_IFMT
+			 */
+			#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
+		#endif
+		/**
+		 * Признак обычного файла объявляем, если его ещё нет
+		 */
+		#if !defined(S_ISREG)
+			/**
+			 * Обычный файл узнаём по разряду _S_IFREG в поле вида _S_IFMT
+			 */
+			#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+		#endif
+		/**
+		 * Признак символьного устройства объявляем, если его ещё нет
+		 */
+		#if !defined(S_ISCHR)
+			/**
+			 * Символьное устройство узнаём по разряду _S_IFCHR в поле вида _S_IFMT
+			 */
+			#define S_ISCHR(mode) (((mode) & _S_IFMT) == _S_IFCHR)
+		#endif
+		/**
+		 * Признак блочного устройства объявляем, если его ещё нет
+		 */
+		#if !defined(S_ISBLK)
+			/**
+			 * Блочное устройство узнаём по разряду _S_IFBLK в поле вида _S_IFMT
+			 */
+			#define S_ISBLK(mode) (((mode) & _S_IFMT) == _S_IFBLK)
+		#endif
+		/**
+		 * Признак именованного канала объявляем, если его ещё нет
+		 */
+		#if !defined(S_ISFIFO)
+			/**
+			 * Именованный канал узнаём по разряду _S_IFIFO в поле вида _S_IFMT
+			 */
+			#define S_ISFIFO(mode) (((mode) & _S_IFMT) == _S_IFIFO)
+		#endif
 	#endif
 /**
  * Для операционной системы не являющейся MS Windows

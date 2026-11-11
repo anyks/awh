@@ -75,6 +75,7 @@ namespace awh {
 				// Условная переменная на запись данных
 				std::condition_variable write;
 			} cv_t;
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура итерации записей
 			 * 
@@ -87,8 +88,10 @@ namespace awh {
 				 * @brief Конструктор
 				 * 
 				 */
-				Iterator() noexcept : end(0), begin(0), count(0) {}
-			} __attribute__((packed)) iter_t;
+				explicit Iterator() noexcept : end(0), begin(0), count(0) {}
+			} __AWH_PACKED__ iter_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура параметров максимальных значений
 			 * 
@@ -100,10 +103,11 @@ namespace awh {
 				 * @brief Конструктор
 				 * 
 				 */
-				Max() noexcept :
+				explicit Max() noexcept :
 				 memory(AWH_MAX_MEMORY_QUEUE),
 				 records(AWH_MAX_RECORDS_QUEUE) {}
-			} __attribute__((packed)) max_t;
+			} __AWH_PACKED__ max_t;
+			__AWH_PACK_END__
 		public:
 			/**
 			 * Создаём тип данных добавляемой записи
@@ -322,20 +326,20 @@ namespace awh {
 			 *
 			 * @param queue очередь для перемещения
 			 */
-			Queue(Queue && queue) noexcept;
+			explicit Queue(Queue && queue) noexcept;
 			/**
 			 * @brief Конструктор копирования
 			 *
 			 * @param queue очередь для копирования
 			 */
-			Queue(const Queue & queue) noexcept;
+			explicit Queue(const Queue & queue) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Queue(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

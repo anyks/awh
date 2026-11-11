@@ -4225,10 +4225,10 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- awh::node_t(dns, fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
- _transfer(transfer_t::SYNC), _clusterSize(-1), _clusterAutoRestart(false),
- _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr),
- _reserve(INVALID_SOCKET), _warned(0) {
+ awh::node_t(dns, fmk, log), _reserve(INVALID_SOCKET), _warned(0),
+ _socket(fmk, log), _cluster(this, fmk, log), _transfer(transfer_t::SYNC),
+ _clusterSize(-1), _clusterAutoRestart(false),
+ _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */

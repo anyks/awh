@@ -101,24 +101,24 @@ namespace awh {
 					 *
 					 * @param url параметры падреса
 					 */
-					URL(URL && url) noexcept;
+					explicit URL(URL && url) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param url параметры падреса
 					 */
-					URL(const URL & url) noexcept;
+					explicit URL(const URL & url) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					URL() noexcept;
+					explicit URL() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~URL() noexcept {}
+					~URL() noexcept = default;
 			} url_t;
 		private:
 			// Список букв разрешенных в последовательности
@@ -190,18 +190,18 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			NWT() noexcept;
+			explicit NWT() noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param letters список букв алфавита
 			 */
-			NWT(const string & letters) noexcept;
+			explicit NWT(const string & letters) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~NWT() noexcept {}
+			~NWT() noexcept = default;
 	} nwt_t;
 };
 

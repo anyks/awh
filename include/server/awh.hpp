@@ -664,7 +664,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				~AWH() noexcept {}
+				~AWH() noexcept = default;
 		} awh_t;
 	};
 };

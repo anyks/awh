@@ -114,24 +114,24 @@ namespace awh {
 					 *
 					 * @param ssl объект SSL-параметров
 					 */
-					SSL(SSL && ssl) noexcept;
+					explicit SSL(SSL && ssl) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param ssl объект SSL-параметров
 					 */
-					SSL(const SSL & ssl) noexcept;
+					explicit SSL(const SSL & ssl) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					SSL() noexcept;
+					explicit SSL() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~SSL() noexcept {}
+					~SSL() noexcept = default;
 			} ssl_t;
 		protected:
 			/**
@@ -167,7 +167,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Settings() noexcept :
+				explicit Settings() noexcept :
 				 ipV6only(false),
 				 proto(engine_t::proto_t::RAW),
 				 sonet(scheme_t::sonet_t::TCP),
@@ -540,7 +540,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Node(const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Node(const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
 			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
 			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),
@@ -552,7 +552,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+			explicit Node(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
 			 awh::core_t(fmk, log), _fs(fmk, log), _net(log), _uri(fmk, log),
 			 _engine(fmk, log, &_uri), _sending(sending_t::INSTANT),
 			 _payloadSize(0), _memoryAvailableSize(AWH_WINDOW_SIZE),

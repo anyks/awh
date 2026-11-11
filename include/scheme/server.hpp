@@ -72,7 +72,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Scheme(const fmk_t * fmk, const log_t * log) noexcept :
 				 awh::scheme_t(fmk, log),
 				 _host(SERVER_HOST), _port(SERVER_PORT),
 				 _total(SERVER_TOTAL_CONNECT),
@@ -81,7 +81,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				~Scheme() noexcept {}
+				~Scheme() noexcept = default;
 		} scheme_t;
 	};
 };

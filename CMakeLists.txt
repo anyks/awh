@@ -69,6 +69,23 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру
 EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
+
+##
+ # Запасной путь опознания набора команд: оснастка MSVC исполняется вне оболочки MSYS2,
+ # и `uname` там нет вовсе - обращение выше молча отдаёт пустоту. Пустая строка валит
+ # условие выбора флагов ниже отказом «Unknown arguments specified», причём указывает он
+ # на строку условия, а не на место, где значение потерялось
+ ##
+if (ARCHITECTURE STREQUAL "")
+    # Набор команд берётся у самого CMake, раз внешнего средства нет
+    SET(ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+    # Приводим написание ARM64 к общему для всего файла виду
+    if (ARCHITECTURE MATCHES "^[Aa][Rr][Mm]64$")
+        # Устанавливаем поддерживаемую архитектуру
+        SET(ARCHITECTURE "aarch64")
+    endif()
+endif()
+
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Если операционной системой является Linux
@@ -146,7 +163,14 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
 # Если операционной системой является Windows
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     message(STATUS "Detected OS: Microsoft Windows")
-    SET(DEBUGGER "-ggdb3")
+    ##
+     # Отладочные сведения оснастки MSVC задаются её собственным набором (/Od /Zi)
+     # в блоке оснастки ниже: ключ -ggdb3 ей неведом, а неведомый ключ она принимает
+     # за ИМЯ ФАЙЛА - отказ приходит тогда о ненайденном файле, а не о ключе
+     ##
+    if (NOT MSVC)
+        SET(DEBUGGER "-ggdb3")
+    endif()
 # Если операционная система не определена
 else()
     SET(DEBUGGER "")
@@ -186,20 +210,38 @@ message(STATUS "Using C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILE
 string(TIMESTAMP CURRENT_YEAR "%Y")
 string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 
-# Опции компилятора
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+##
+ # Код библиотеки обязан быть перемещаемым: он ложится и в динамическую библиотеку.
+ # Оснастке MSVC ключ -fPIC неведом, а неведомый ключ она принимает за ИМЯ ФАЙЛА,
+ # поэтому признак этот ставит только оснастка GCC/Clang
+ ##
+if (NOT MSVC)
+    # Опции компилятора
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+endif()
 
 # Устанавливаем параметры игнорирования ошибок для MacOS X
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-framework Carbon -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
-# Устанавливаем параметры игнорирования ошибок для Solaris
-# libc не указывается явно: собиратель подключает её сам после libgcc_s, а явная -lc ставила её
-# раньше, и _Unwind_Resume связывался с раскруткой libc - исключение с очисткой роняло процесс
+##
+ # Устанавливаем параметры игнорирования ошибок для Solaris
+ # libc не указывается явно: собиратель подключает её сам после libgcc_s, а явная -lc ставила её
+ # раньше, и _Unwind_Resume связывался с раскруткой libc - исключение с очисткой роняло процесс
+ ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     SET(AWH_PARAMS "-lsocket -lnsl -Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+    ##
+     # Снятия предупреждений GCC оснастке MSVC неведомы, а неведомый ключ она
+     # принимает за имя файла. Разряд предупреждений у неё свой (/W3) и задаётся
+     # в блоке оснастки ниже, снимать же там нечего
+     ##
+    if (MSVC)
+        SET(AWH_PARAMS "")
+    else()
+        SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+    endif()
 # Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     SET(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
@@ -208,8 +250,94 @@ else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
+##
+ # Флаги оснастки MSVC заводятся порознь: написание у неё своё («/O2» вместо «-O3»), и
+ # флаг, ей неведомый, она не отвергает, а принимает за ИМЯ ФАЙЛА - сборка отвечает
+ # тогда отказом о ненайденном файле, уводя разбор далеко от настоящей причины
+ ##
+if (MSVC)
+    # Уровень оптимизации выпускной сборки
+    SET(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    # Уровень отладочной сборки
+    SET(CMAKE_CXX_FLAGS_DEBUG "/Od /DDEBUG_MODE /Zi")
+    ##
+     # Общие флаги
+     #
+     # /EHsc - обычная для C++ работа исключений; /utf-8 - исходники и строки в UTF-8,
+     # без него MSVC читает их кодовой страницей системы и рвёт кириллицу в сообщениях;
+     # /W3 - уровень предупреждений; /bigobj - в объектном файле AWH разделов больше,
+     # чем допускает обычный предел формата
+     ##
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /W3 /bigobj")
+    ##
+     # Зависимость сжатия LZMA объявляет свои имена берущимися из динамической
+     # библиотеки, пока не сказано обратное
+     #
+     # Собирается она у нас неразделяемой, и без этого признака заголовок её помечает
+     # каждое имя указанием ВЗЯТЬ его у файла рядом. Перевод отказа не даёт, а
+     # связывание отвечает о неразрешённых именах вида __imp_lzma_code - о тех самых,
+     # какие в архиве ЕСТЬ. Указание это ставит только оснастка MSVC, оттого и признак
+     # задаётся здесь
+     ##
+    add_compile_definitions(LZMA_API_STATIC)
+    ##
+     # Снимаем разряд предупреждений об «опасных» приёмах языка C
+     #
+     # Оснастка MSVC объявляет устаревшими приёмы САМОГО ЯЗЫКА - getenv, sscanf,
+     # strerror, - и советует взамен свои, к иным оснасткам не относящиеся. Совет этот
+     # не о дефекте: приёмы эти стоят в стандарте языка, и пользуемся мы ими по
+     # договору - с проверкой отказа и с заведомо ограниченной длиной.
+     #
+     # Заменить их на местные значило бы завести у переносимой библиотеки ветвь под
+     # одну оснастку в нескольких модулях разом. Взамен снят весь разряд, и снят
+     # ЕДИНОЖДЫ, чтобы это было видно: правда о том, что такие приёмы здесь есть,
+     # записана в одном месте, а не растворена по коду отдельными снятиями
+     ##
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    ##
+     # Устаревший слой сокетов windows.h тянет за собой сам, и его надо отсечь
+     #
+     # Заголовок этот подключает winsock.h, если не сказано обратное, и объявления
+     # сокетов приходят тогда дважды - сначала устаревшие, потом нынешние из winsock2.h.
+     # Оснастка отвечает переопределением типов sockaddr и fd_set.
+     #
+     # Ставить признак в заголовке AWH ПОЗДНО: zlib (zconf.h) и bzip2 (bzlib.h) подключают
+     # windows.h сами, а в sys/hash.hpp они стоят до fmk.hpp, то есть до всякого нашего
+     # заголовка. Оттого признак задаётся на строке вызова компилятора - единственном
+     # месте, которое раньше всех включов.
+     #
+     # Отсекается при этом и прочее, что windows.h несёт без нужды: wincrypt.h, ole2.h,
+     # shellapi.h и другие. Приёмы их в AWH не зовутся, а единственный потребитель COM -
+     # работа со ссылками в sys/fs.cpp - получает objbase.h и shlobj.h прямо, из sys/fs.hpp.
+     # Признак NOGDI при этом НЕ ставится: GDI нужен sys/fmk.cpp, там стоит
+     # CONSOLE_FONT_INFOEX и зовётся SetCurrentConsoleFontEx
+     ##
+    add_compile_definitions(WIN32_LEAN_AND_MEAN)
+    ##
+     # Макросы min и max из windows.h подменяют вызовы ::min и ::max
+     #
+     # Имена эти объявлены в стандартной библиотеке, и AWH зовёт их через ::, чтобы не
+     # спорить с одноимёнными членами своих классов. windows.h же заводит их макросами,
+     # и препроцессор переписывает вызов до разбора: оснастка отвечает о недопустимой
+     # лексеме справа от «::» в sys/fmk.cpp и sys/chrono.cpp
+     ##
+    add_compile_definitions(NOMINMAX)
+    ##
+     # Подменяемый распределитель памяти вступает в дело лишь тогда, когда его символ
+     # принудительно втянут в образ
+     #
+     # Сам по себе он никем не зовётся: gperftools перехватывает вызовы Windows правкой
+     # их начал, и делает это при запуске образа. Не втяни связыватель модуль с этим
+     # символом - архив распределителя был бы выброшен целиком, и подмены бы не было.
+     # Ключ этот gperftools задаёт свойством ЦЕЛИ своей сборки, а мы подключаем его
+     # архивы путём к файлу - свойство до нас не доходит, оттого ключ ставим сами.
+     #
+     # Пишется он в параметры связывания, а не в перечень библиотек: флагом CMake
+     # признаёт лишь имя с «-» в начале, а «/INCLUDE:» принял бы за имя библиотеки
+     ##
+    add_link_options(/INCLUDE:__tcmalloc)
 # Если процессор архитектуры ARM
-if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
+elseif (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 # Если процессор архитектуры x86_64
@@ -218,8 +346,14 @@ else()
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
 endif()
 
-# Устанавливаем параметр отладки
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
+##
+ # Оснастке MSVC отладочный набор задан выше её собственным написанием, и общее
+ # назначение ниже перезаписало бы его ключами GCC
+ ##
+if (NOT MSVC)
+    # Устанавливаем параметр отладки
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
+endif()
 
 # Если активирован режим отладки
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -406,6 +540,13 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
+##
+ # Для оснастки MSVC добавляем свой обход каталогов: заголовка dirent.h она не несёт
+ ##
+if (MSVC)
+    LIST(APPEND SOURCE_FILES "${CMAKE_SOURCE_DIR}/src/sys/dirent.cpp")
+endif()
+
 # Задаем именя библиотеки и бинарника
 SET(IP_APP_NAME ip)
 SET(DNS_APP_NAME dns)
@@ -445,23 +586,56 @@ endif (CMAKE_SHARED_BUILD_LIB)
 
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    # Заголовки A-NTS по умолчанию объявляют методы как __declspec(dllimport), и тогда
-    # линковка статичного libnts ищет символы с приставкой __imp_ и отказывает. Сборка
-    # зависимостей делает A-NTS именно статической, поэтому на Windows объявляем это библиотеке:
-    # её global.hpp при ANTS_STATICLIB оставляет объявления без атрибута импорта
+    ##
+     # Заголовки A-NTS по умолчанию объявляют методы как __declspec(dllimport), и тогда
+     # линковка статичного libnts ищет символы с приставкой __imp_ и отказывает. Сборка
+     # зависимостей делает A-NTS именно статической, поэтому на Windows объявляем это библиотеке:
+     # её global.hpp при ANTS_STATICLIB оставляет объявления без атрибута импорта
+     ##
     add_compile_definitions(ANTS_STATICLIB)
-    # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
-    # Устанавливаем необходимые зависимости для MS Windows. Тройка ole32/shell32/uuid нужна
-    # src/sys/fs.cpp: разрешение ярлыков идёт через COM, где CoInitialize и CoCreateInstance
-    # живут в ole32, IID_IShellLinkW — в shell32, а IID_IPersistFile с CLSID_ShellLink — в uuid.
-    # Без них линковка обрывается на нераспознанных __imp_Co* и GUID-символах
-    SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -lole32 -lshell32 -luuid -flto=auto)
+    ##
+     # Заголовки nghttp2 на Windows тоже объявляют имена берущимися из динамической
+     # библиотеки, пока не сказано обратное. Признак этот nghttp2 ставит СВОЕЙ цели
+     # сборки, а мы подключаем его архив путём к файлу - свойство цели до нас не
+     # доходит, и связывание отвечает о неразрешённых именах вида __imp_nghttp2_*
+     ##
+    add_compile_definitions(NGHTTP2_STATICLIB)
+    ##
+     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
+     # Устанавливаем необходимые зависимости для MS Windows. Тройка ole32/shell32/uuid нужна
+     # src/sys/fs.cpp: разрешение ярлыков идёт через COM, где CoInitialize и CoCreateInstance
+     # живут в ole32, IID_IShellLinkW — в shell32, а IID_IPersistFile с CLSID_ShellLink — в uuid.
+     # Без них линковка обрывается на нераспознанных __imp_Co* и GUID-символах
+     ##
+    if (MSVC)
+        ##
+         # Перечень системных библиотек оснастка MSVC требует полными именами файлов:
+         # неведомый ей ключ она не отвергает, а принимает за ИМЯ ФАЙЛА, и «-lws2_32»
+         # искала бы на диске. Стандартная библиотека C++ здесь не называется вовсе:
+         # MSVC подключает её сама по языку файла, а названная вручную она даёт
+         # двойные определения своих символов. Ускорение связывания (-flto) тоже
+         # принадлежит лишь GCC/Clang
+         ##
+        SET(WINFLAGS ws2_32.lib gdi32.lib crypt32.lib Iphlpapi.lib bcrypt.lib ole32.lib shell32.lib uuid.lib)
+    else()
+        SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -lole32 -lshell32 -luuid -flto=auto)
+    endif()
 
-    # Устанавливаем иконку для windows под MinGW.
+    # Устанавливаем иконку для windows
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
-    SET(CMAKE_RC_COMPILER_INIT windres)
-    ENABLE_LANGUAGE(RC)
-    SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
+    ##
+     # Описание значка читает оснастка Windows, и письмо вызова у неё своё: windres
+     # просит «-O coff -i файл -o объект», а rc.exe этих ключей не знает вовсе и
+     # принял бы их за имена файлов. Подменять вызов поэтому можно лишь там, где
+     # читает windres; MSVC вызывает rc.exe сама
+     ##
+    if (NOT MSVC)
+        SET(CMAKE_RC_COMPILER_INIT windres)
+        ENABLE_LANGUAGE(RC)
+        SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
+    else()
+        ENABLE_LANGUAGE(RC)
+    endif()
 
     # Выполняем создание демонстрационных приложений
     add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
@@ -1188,10 +1362,21 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "${
 if (NOT CMAKE_SHARED_BUILD_LIB)
     # Если режим отладки не активирован
     if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
-        # Выполняем запуск скрипта объединения библиотек
-        add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
-        VERBATIM)
+        ##
+         # Сборщик берётся по оснастке: под MSVC оболочки bash на машине может не быть
+         # вовсе, а слияние там делает lib.exe - он принимает архивы прямо, без
+         # разбора на модули, и потому обходится без GNU ar и ranlib
+         ##
+        if (MSVC)
+            # Выполняем запуск скрипта объединения библиотек
+            add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+                COMMAND "${CMAKE_SOURCE_DIR}/bat/build_static_lib.bat" "$<TARGET_FILE:${AWH_LIB_NAME}>"
+            VERBATIM)
+        else()
+            add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+                COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
+            VERBATIM)
+        endif()
     # Если режим отладки активирован
     else()
         # Выполняем установку библиотеки зависимостей
@@ -1246,10 +1431,21 @@ if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 endif()
 
-# Выполняем запуск скрипта генерации CMAKE-файла
-add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-    COMMAND bash "${CMAKE_SOURCE_DIR}/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
-VERBATIM)
+##
+ # Как и сборщик выше: под MSVC правку файла поиска делает bat-сборщик, под остальными
+ # оснастками - прежний скрипт оболочки
+ ##
+if (MSVC)
+    # Выполняем запуск скрипта генерации CMAKE-файла
+    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+        COMMAND "${CMAKE_SOURCE_DIR}/bat/build_cmake.bat" "${CMAKE_INSTALL_PREFIX}"
+    VERBATIM)
+else()
+    # Выполняем запуск скрипта генерации CMAKE-файла
+    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+        COMMAND bash "${CMAKE_SOURCE_DIR}/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
+    VERBATIM)
+endif()
 
 # Устанавливаем сгенерированный CMAKE-файл
-install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")

@@ -256,12 +256,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+			explicit IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~IfNet() noexcept {}
+			~IfNet() noexcept = default;
 	} ifnet_t;
 };
 

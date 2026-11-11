@@ -44,10 +44,40 @@
 #include <sstream>
 #include <cstdlib>
 #include <functional>
+
+/**
+ * Системный модуль
+ */
 #include <fcntl.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/file.h>
+
+/**
+ * Для оснастки MSVC, не несущей слоя POSIX
+ *
+ * Заголовка sys/file.h нет, и он не нужен: приёмы блокировки файла flock в
+ * проекте не зовутся вовсе, потому на этой оснастке он не подключается
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include "dirent.hpp"
+	#include <io.h>
+	#include <process.h>
+/**
+ * Для оснастки, несущей слой POSIX
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <dirent.h>
+	#include <unistd.h>
+	#include <sys/file.h>
+#endif
+
+/**
+ * Системные модули
+ */
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -466,12 +496,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			FS(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit FS(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief деструктор
 			 *
 			 */
-			~FS() noexcept {}
+			~FS() noexcept = default;
 	} fs_t;
 };
 

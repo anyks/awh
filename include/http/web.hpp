@@ -121,13 +121,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Provider() noexcept : version(HTTP_VERSION) {}
+					explicit Provider() noexcept : version(HTTP_VERSION) {}
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 */
-					Provider(const double version) noexcept : version(version) {}
+					explicit Provider(const double version) noexcept : version(version) {}
 			} provider_t;
 			/**
 			 * @brief Класс HTTP-запроса клиента
@@ -168,58 +168,58 @@ namespace awh {
 					 *
 					 * @param request объект параметров запроса клиента
 					 */
-					Request(Request && request) noexcept;
+					explicit Request(Request && request) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param request объект параметров запроса клиента
 					 */
-					Request(const Request & request) noexcept;
+					explicit Request(const Request & request) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Request() noexcept;
+					explicit Request() noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param method метод запроса клиента
 					 */
-					Request(const method_t method) noexcept;
+					explicit Request(const method_t method) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 */
-					Request(const double version) noexcept;
+					explicit Request(const double version) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param url адрес URL-запроса
 					 */
-					Request(const uri_t::url_t & url) noexcept;
+					explicit Request(const uri_t::url_t & url) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 * @param method  метод запроса клиента
 					 */
-					Request(const double version, const method_t method) noexcept;
+					explicit Request(const double version, const method_t method) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param method метод запроса клиента
 					 * @param url    адрес URL-запроса
 					 */
-					Request(const method_t method, const uri_t::url_t & url) noexcept;
+					explicit Request(const method_t method, const uri_t::url_t & url) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 * @param url     адрес URL-запроса
 					 */
-					Request(const double version, const uri_t::url_t & url) noexcept;
+					explicit Request(const double version, const uri_t::url_t & url) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
@@ -227,13 +227,13 @@ namespace awh {
 					 * @param method  метод запроса клиента
 					 * @param url     адрес URL-запроса
 					 */
-					Request(const double version, const method_t method, const uri_t::url_t & url) noexcept;
+					explicit Request(const double version, const method_t method, const uri_t::url_t & url) noexcept;
 				public:
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Request() noexcept {}
+					~Request() noexcept = default;
 			} req_t;
 			/**
 			 * @brief Класс HTTP-ответа сервера
@@ -274,72 +274,72 @@ namespace awh {
 					 *
 					 * @param response объект параметров ответа сервера
 					 */
-					Response(Response && response) noexcept;
+					explicit Response(Response && response) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param response объект параметров ответа сервера
 					 */
-					Response(const Response & response) noexcept;
+					explicit Response(const Response & response) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Response() noexcept;
+					explicit Response() noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param code код ответа сервера
 					 */
-					Response(const uint32_t code) noexcept;
+					explicit Response(const uint32_t code) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 */
-					Response(const double version) noexcept;
+					explicit Response(const double version) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param message сообщение сервера
 					 */
-					Response(const string & message) noexcept;
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param version версия протокола
-					 * @param code    код ответа сервера
-					 */
-					Response(const double version, const uint32_t code) noexcept;
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param code    код ответа сервера
-					 * @param message сообщение сервера
-					 */
-					Response(const uint32_t code, const string & message) noexcept;
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param version версия протокола
-					 * @param message сообщение сервера
-					 */
-					Response(const double version, const string & message) noexcept;
+					explicit Response(const string & message) noexcept;
 					/**
 					 * @brief Конструктор
 					 *
 					 * @param version версия протокола
 					 * @param code    код ответа сервера
+					 */
+					explicit Response(const double version, const uint32_t code) noexcept;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param code    код ответа сервера
 					 * @param message сообщение сервера
 					 */
-					Response(const double version, const uint32_t code, const string & message) noexcept;
+					explicit Response(const uint32_t code, const string & message) noexcept;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param version версия протокола
+					 * @param message сообщение сервера
+					 */
+					explicit Response(const double version, const string & message) noexcept;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param version версия протокола
+					 * @param code    код ответа сервера
+					 * @param message сообщение сервера
+					 */
+					explicit Response(const double version, const uint32_t code, const string & message) noexcept;
 				public:
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Response() noexcept {}
+					~Response() noexcept = default;
 			} res_t;
 		private:
 			/**
@@ -376,7 +376,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Chunk() noexcept;
+					explicit Chunk() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -800,7 +800,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Web(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Web(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

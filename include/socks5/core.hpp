@@ -127,6 +127,7 @@ namespace awh {
 			 */
 			static constexpr uint8_t AVER = 0x01;
 		protected:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура ответа с выбранным методом
 			 *
@@ -138,8 +139,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				ResMethod() noexcept : ver(0x00), method(0x00) {}
-			} __attribute__((packed)) res_method_t;
+				explicit ResMethod() noexcept : ver(0x00), method(0x00) {}
+			} __AWH_PACKED__ res_method_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура ответа на авторизацию
 			 *
@@ -151,8 +154,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Auth() noexcept : ver(0x00), status(0x00) {}
-			} __attribute__((packed)) auth_t;
+				explicit Auth() noexcept : ver(0x00), status(0x00) {}
+			} __AWH_PACKED__ auth_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура запроса
 			 *
@@ -166,10 +171,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Req() noexcept :
+				explicit Req() noexcept :
 				 ver(0x00), cmd(0x00),
 				 rsv(0x00), atyp(0x00) {}
-			} __attribute__((packed)) req_t;
+			} __AWH_PACKED__ req_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура ответа
 			 *
@@ -183,10 +190,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Res() noexcept :
+				explicit Res() noexcept :
 				 ver(0x00), rep(0x00),
 				 rsv(0x00), atyp(0x00) {}
-			} __attribute__((packed)) res_t;
+			} __AWH_PACKED__ res_t;
+			__AWH_PACK_END__
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура ip адреса сервера
 			 *
@@ -198,8 +207,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				IP() noexcept : host(0x00), port(0x00) {}
-			} __attribute__((packed)) ip_t;
+				explicit IP() noexcept : host(0x00), port(0x00) {}
+			} __AWH_PACKED__ ip_t;
+			__AWH_PACK_END__
 		protected:
 			// URL параметры REST запроса
 			uri_t::url_t _url;
@@ -312,12 +322,12 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			Socks5(const log_t * log) noexcept;
+			explicit Socks5(const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~Socks5() noexcept {}
+			virtual ~Socks5() noexcept = default;
 	} socks5_t;
 };
 

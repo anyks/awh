@@ -89,6 +89,17 @@ namespace awh {
 				DISABLED = 0x02  // Экшен деактивации
 			};
 			/**
+			 * Типы ошибок валидации
+			 */
+			enum class validate_t : uint8_t {
+				NONE                 = 0x00, // Не установлено
+				Error                = 0x01, // Ошибка валидации
+				MatchFound           = 0x02, // Валидация пройдена
+				NoSANPresent         = 0x03, // Сеть не распознана
+				MatchNotFound        = 0x04, // Валидация не пройдена
+				MalformedCertificate = 0x05  // Неверный сертификат
+			};
+			/**
 			 * Основные поддерживаемые протоколы
 			 */
 			enum class proto_t : uint8_t {
@@ -131,9 +142,11 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept : size(0), client{}, server{} {}
+				explicit Peer() noexcept :
+				 size(0), client{}, server{} {}
 			} peer_t;
 		public:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура с параметрами для постоянного подключения
 			 *
@@ -146,8 +159,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				KeepAlive() noexcept : cnt(3), idle(1), intvl(2) {}
-			} __attribute__((packed)) alive_t;
+				explicit KeepAlive() noexcept :
+				 cnt(3), idle(1), intvl(2) {}
+			} __AWH_PACKED__ alive_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Класс сетевого пространства
 			 *
@@ -607,17 +622,6 @@ namespace awh {
 					 */
 					~Context() noexcept;
 			} ctx_t;
-			/**
-			 * Типы ошибок валидации
-			 */
-			enum class validate_t : uint8_t {
-				NONE                 = 0x00, // Не установлено
-				Error                = 0x01, // Ошибка валидации
-				MatchFound           = 0x02, // Валидация пройдена
-				NoSANPresent         = 0x03, // Сеть не распознана
-				MatchNotFound        = 0x04, // Валидация не пройдена
-				MalformedCertificate = 0x05  // Неверный сертификат
-			};
 		private:
 			// Флаг проверки сертификата доменного имени
 			bool _verify;

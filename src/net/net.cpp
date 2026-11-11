@@ -2359,6 +2359,7 @@ bool awh::Net::arpa(const string & addr) noexcept {
 			 * Выполняем отлов ошибок
 			 */
 			try {
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура бинарного буфера
 				 *
@@ -2372,8 +2373,10 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					 * @brief Конструктор
 					 *
 					 */
-					Buffer() noexcept : hexset{0,0,0,0}, address{0,0,0,0,0,0,0,0} {}
-				} __attribute__((packed)) buffer;
+					explicit Buffer() noexcept :
+					 hexset{0,0,0,0}, address{0,0,0,0,0,0,0,0} {}
+				} __AWH_PACKED__ buffer;
+				__AWH_PACK_END__
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
 				// Выполняем инициализацию буфера

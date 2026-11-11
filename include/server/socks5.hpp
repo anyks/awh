@@ -85,7 +85,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Settings() noexcept : verify(false) {}
+					explicit Settings() noexcept : verify(false) {}
 				} settings_t;
 			private:
 				// Порт сервера

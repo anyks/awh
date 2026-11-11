@@ -43,9 +43,38 @@
 #include <cstring>
 #include <cstdarg>
 #include <functional>
+
+/**
+ * Системный модуль
+ */
 #include <zlib.h>
-#include <unistd.h>
-#include <sys/file.h>
+
+/**
+ * Для оснастки MSVC, не несущей слоя POSIX
+ *
+ * Заголовка sys/file.h нет, и он не нужен: приёмы блокировки файла flock в
+ * проекте не зовутся вовсе, потому на этой оснастке он не подключается
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <io.h>
+	#include <process.h>
+/**
+ * Для оснастки, несущей слой POSIX
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <unistd.h>
+	#include <sys/file.h>
+#endif
+
+/**
+ * Системный модуль
+ */
 #include <sys/stat.h>
 
 /**
@@ -149,25 +178,25 @@ namespace awh {
 					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 */
-					Payload(Payload && payload) noexcept;
+					explicit Payload(Payload && payload) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 */
-					Payload(const Payload & payload) noexcept;
+					explicit Payload(const Payload & payload) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Payload() noexcept;
+					explicit Payload() noexcept;
 				public:
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Payload() noexcept {}
+					~Payload() noexcept = default;
 			} payload_t;
 		private:
 			// Идентификатор родительского процесса
@@ -596,7 +625,7 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept;
+			explicit Log(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
 			 * @brief Деструктор
 			 *

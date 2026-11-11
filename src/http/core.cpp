@@ -1495,7 +1495,7 @@ awh::buffer_t awh::Http::payload() const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод установки чанка полезной нагрузки
@@ -1761,7 +1761,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Определяем соответствует ли ключ методу запроса
 		if(this->_fmk->compare(key, ":method")){
 			// Получаем объект параметров запроса
-			web_t::req_t request = this->_web.request();
+			web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 			// Устанавливаем версию протокола
 			request.version = 2.f;
 			// Если метод является GET запросом
@@ -1805,7 +1805,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Если ключ запроса соответствует пути запроса
 		} else if(this->_fmk->compare(key, ":path")) {
 			// Получаем объект параметров запроса
-			web_t::req_t request = this->_web.request();
+			web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 			// Выполняем установку пути запроса
 			this->_uri.create(request.url, this->_uri.parse(val));
 			// Выполняем сохранение параметров запроса
@@ -1834,7 +1834,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 		// Если ключ заголовка соответствует схеме протокола
 		} else if(this->_fmk->compare(key, ":scheme")) {
 			// Получаем объект параметров запроса
-			web_t::req_t request = this->_web.request();
+			web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 			// Выполняем установку схемы запроса
 			request.url.schema = val;
 			// Если протокол подключения защищённый а порт установлен неправильный
@@ -1860,7 +1860,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			// Устанавливаем хост
 			this->header("host", val);
 			// Получаем объект параметров запроса
-			web_t::req_t request = this->_web.request();
+			web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 			// Получаем хост запрашиваемого сервера
 			request.url.host = val;
 			// Если данные хоста ещё не установлены
@@ -1932,7 +1932,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			 */
 			try {
 				// Получаем объект параметров ответа
-				web_t::res_t response = this->_web.response();
+				web_t::res_t response = static_cast <web_t::res_t> (::move(this->_web.response()));
 				// Устанавливаем версию протокола
 				response.version = 2.f;
 				// Выполняем установку статуса ответа
@@ -1946,7 +1946,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			 */
 			} catch(const exception &) {
 				// Получаем объект параметров ответа
-				web_t::res_t response = this->_web.response();
+				web_t::res_t response = static_cast <web_t::res_t> (::move(this->_web.response()));
 				// Выполняем установку статуса ответа
 				response.code = 500;
 				// Устанавливаем версию протокола
@@ -2287,7 +2287,7 @@ awh::buffer_t awh::Http::dump() const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод установки бинарного дампа
@@ -2894,7 +2894,7 @@ void awh::Http::mapping(const process_t flag, Http & http) noexcept {
 					// Если адрес перенаправления найден
 					if(!location.empty()){
 						// Получаем объект параметров запроса
-						web_t::req_t request = this->_web.request();
+						web_t::req_t request = static_cast <web_t::req_t> (::move(this->_web.request()));
 						// Выполняем парсинг полученного URL-адреса
 						request.url = this->_uri.parse(location);
 						// Выполняем установку параметров запроса
@@ -2983,7 +2983,7 @@ awh::buffer_t awh::Http::trailer() const noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод получения буфера отправляемых трейлеров (для протокола HTTP/2)
@@ -3094,7 +3094,7 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) const noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод создания запроса для авторизации на прокси-сервере (для протокола HTTP/2)
@@ -3242,7 +3242,7 @@ awh::buffer_t awh::Http::reject(const web_t::res_t & res) const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
@@ -4460,7 +4460,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)

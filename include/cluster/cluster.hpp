@@ -110,7 +110,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Payload() noexcept : size(0), data(nullptr) {}
+				explicit Payload() noexcept : size(0), data(nullptr) {}
 			} payload_t;
 			/**
 			 * @brief Класс воркера
@@ -166,7 +166,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept;
+					explicit Worker(const uint16_t wid, const Cluster * ctx, const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -174,6 +174,7 @@ namespace awh {
 					~Worker() noexcept;
 			} worker_t;
 		private:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура пропускной способности
 			 *
@@ -187,10 +188,11 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Bandwidth() noexcept :
+				explicit Bandwidth() noexcept :
 				 read(AWH_BUFFER_SIZE_RCV),
 				 write(AWH_BUFFER_SIZE_SND) {}
-			} __attribute__((packed)) bandwidth_t;
+			} __AWH_PACKED__ bandwidth_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Структура подключения
 			 *
@@ -204,7 +206,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept : size(0), addr{} {}
+				explicit Peer() noexcept : size(0), addr{} {}
 			} peer_t;
 			/**
 			 * @brief Структура клиента
@@ -225,7 +227,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Client(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 				 sock(INVALID_SOCKET), wid(0),
 				 ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} client_t;
@@ -252,7 +254,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Server(const fmk_t * fmk, const log_t * log) noexcept :
+				explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
 				 sock(INVALID_SOCKET), ipc{""}, fs(fmk, log),
 				 socket(fmk, log), ev(awh::event_t::type_t::EVENT, fmk, log) {}
 			} server_t;
@@ -279,7 +281,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Broker(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Broker(const fmk_t * fmk, const log_t * log) noexcept :
 					 stop(false), pid(::getpid()), date(0),
 					 mfds{INVALID_SOCKET, INVALID_SOCKET},
 					 cfds{INVALID_SOCKET, INVALID_SOCKET},
@@ -306,7 +308,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Broker() noexcept : pid(0), date(0) {}
+					explicit Broker() noexcept : pid(0), date(0) {}
 				} broker_t;
 			#endif
 		private:
@@ -797,7 +799,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Cluster(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Cluster(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
@@ -805,7 +807,7 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

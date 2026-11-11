@@ -87,7 +87,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Request(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
+					explicit Request(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
 				} request_t;
 				/**
 				 * @brief Объект параметров ответа
@@ -103,8 +103,9 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Response(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
+					explicit Response(const fmk_t * fmk, const log_t * log) noexcept : entity(fmk, log) {}
 				} response_t;
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура параметров жизни подключения
 				 *
@@ -117,8 +118,9 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					KeepAlive() noexcept : cnt(0), idle(0), intvl(0) {}
-				} __attribute__((packed)) ka_t;
+					explicit KeepAlive() noexcept : cnt(0), idle(0), intvl(0) {}
+				} __AWH_PACKED__ ka_t;
+				__AWH_PACK_END__
 				/**
 				 * @brief Структура параметров DNS-резолвера
 				 *
@@ -132,7 +134,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					DNS() noexcept : timeout(0), hosts{""}, prefix{""} {}
+					explicit DNS() noexcept : timeout(0), hosts{""}, prefix{""} {}
 				} dns_t;
 				/**
 				 * @brief Структура идентификации сервиса
@@ -146,10 +148,11 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Ident() noexcept :
+					explicit Ident() noexcept :
 					 id{AWH_SHORT_NAME},
 					 ver{AWH_VERSION}, name{AWH_NAME} {}
 				} ident_t;
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура параметров авторизации
 				 *
@@ -161,10 +164,12 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Auth() noexcept :
+					explicit Auth() noexcept :
 					 type(awh::auth_t::type_t::BASIC),
 					 hash(awh::auth_t::hash_t::MD5) {}
-				} __attribute__((packed)) auth_t;
+				} __AWH_PACKED__ auth_t;
+				__AWH_PACK_END__
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура таймаутов на обмен данными в миллисекундах
 				 *
@@ -178,11 +183,12 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					WaitTimeDetect() noexcept :
+					explicit WaitTimeDetect() noexcept :
 					 wait(0), read(READ_TIMEOUT),
 					 write(WRITE_TIMEOUT),
 					 connect(CONNECT_TIMEOUT) {}
-				} __attribute__((packed)) wtd_t;
+				} __AWH_PACKED__ wtd_t;
+				__AWH_PACK_END__
 				/**
 				 * @brief Структура параметров прокси-клиента
 				 *
@@ -196,7 +202,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					ProxyClient() noexcept :
+					explicit ProxyClient() noexcept :
 					 uri{""}, family(scheme_t::family_t::IPV4),
 					 work(client::scheme_t::work_t::DISALLOW) {}
 				} proxy_t;
@@ -213,7 +219,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Encryption() noexcept :
+					explicit Encryption() noexcept :
 					 mode(false), pass{""}, salt{""},
 					 cipher(hash_t::cipher_t::AES128) {}
 				} encryption_t;
@@ -250,7 +256,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Client(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 					 sid(-1), busy(false), sending(false), upgrade(false),
 					 method(awh::web_t::method_t::NONE), agent(client::web_t::agent_t::HTTP),
 					 request(fmk, log), response(fmk, log), core(fmk, log), awh(&core, fmk, log) {}
@@ -281,7 +287,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Settings() noexcept :
+					explicit Settings() noexcept :
 					 chunk(0), attempts(15),
 					 sonet(scheme_t::sonet_t::TCP),
 					 family(scheme_t::family_t::IPV4),

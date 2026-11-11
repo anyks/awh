@@ -141,7 +141,7 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Request(const fmk_t * fmk, const log_t * log) noexcept;
+						explicit Request(const fmk_t * fmk, const log_t * log) noexcept;
 						/**
 						 * @brief Деструктор
 						 *
@@ -149,6 +149,7 @@ namespace awh {
 						~Request() noexcept;
 				} request_t;
 			protected:
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура работы с прокси-сервером
 				 *
@@ -162,10 +163,11 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Proxy() noexcept :
+					explicit Proxy() noexcept :
 					 sid(-1), mode(false),
 					 connect(true), answer(0) {}
-				} __attribute__((packed)) proxy_t;
+				} __AWH_PACKED__ proxy_t;
+				__AWH_PACK_END__
 				/**
 				 * @brief Структура параметров шифрования
 				 *
@@ -179,7 +181,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Encryption() noexcept :
+					explicit Encryption() noexcept :
 					 mode(false), pass{""}, salt{""},
 					 cipher(hash_t::cipher_t::AES128) {}
 				} encryption_t;
@@ -689,7 +691,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~Web() noexcept {}
+				virtual ~Web() noexcept = default;
 		} web_t;
 		/**
 		 * @brief Базовый класс web2-клиента
@@ -709,7 +711,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Ident() noexcept : id{""}, ver{""}, name{""} {}
+					explicit Ident() noexcept : id{""}, ver{""}, name{""} {}
 				} ident_t;
 			protected:
 				// Объект идентификации сервиса
@@ -979,7 +981,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~Web2() noexcept {}
+				virtual ~Web2() noexcept = default;
 		} web2_t;
 	};
 };

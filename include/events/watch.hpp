@@ -43,6 +43,7 @@ namespace awh {
 	 */
 	typedef class AWH_SHARED_EXPORT Watch {
 		private:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief структура участника обмена данными
 			 *
@@ -56,8 +57,9 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Unit() noexcept : sock(INVALID_SOCKET), delay(0) {}
-			} __attribute__((packed)) unit_t;
+				explicit Unit() noexcept : sock(INVALID_SOCKET), delay(0) {}
+			} __AWH_PACKED__ unit_t;
+			__AWH_PACK_END__
 		private:
 			// Мютекс для блокировки потока
 			std::mutex _mtx;
@@ -150,7 +152,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Watch(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Watch(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

@@ -749,7 +749,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Screen() noexcept :
+			explicit Screen() noexcept :
 			 _stop(true), _id(0), _owner(0), _health(health_t::ALIVE),
 			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
@@ -761,7 +761,7 @@ namespace awh {
 			 *
 			 * @param health статус здоровья
 			 */
-			Screen(const health_t health) noexcept :
+			explicit Screen(const health_t health) noexcept :
 			 _stop(true), _id(0), _owner(0), _health(health),
 			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {

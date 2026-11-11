@@ -825,7 +825,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return static_cast <url_t> (::move(result));
 }
 /**
  * @brief Метод генерации ETag хэша текста
@@ -1466,11 +1466,11 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
  */
 awh::URI::URL awh::URI::concat(const url_t & dest, const url_t & src) const noexcept {
 	// Результат работы функции
-	url_t result = dest;
+	url_t result(dest);
 	// Выполняем объединение двух адресов
 	this->combine(result, src);
 	// Выводим результат
-	return result;
+	return static_cast <url_t> (::move(result));
 }
 /**
  * @brief Метод сплита URI на составные части

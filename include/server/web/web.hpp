@@ -122,7 +122,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Ident() noexcept :
+					explicit Ident() noexcept :
 					 id{AWH_SHORT_NAME},
 					 ver{AWH_VERSION},
 					 name{AWH_NAME} {}
@@ -140,7 +140,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Encryption() noexcept :
+					explicit Encryption() noexcept :
 					 mode(false), pass{""}, salt{""},
 					 cipher(hash_t::cipher_t::AES128) {}
 				} encryption_t;
@@ -160,7 +160,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Service() noexcept :
+					explicit Service() noexcept :
 					 alive(false), port(SERVER_PORT),
 					 host{""}, realm{""}, opaque{""},
 					 hash(auth_t::hash_t::MD5),
@@ -632,7 +632,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~Web() noexcept {}
+				virtual ~Web() noexcept = default;
 		} web_t;
 		/**
 		 * @brief Базовый класс web2-сервера
@@ -902,7 +902,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				virtual ~Web2() noexcept {}
+				virtual ~Web2() noexcept = default;
 		} web2_t;
 	};
 };

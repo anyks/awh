@@ -2644,9 +2644,13 @@ void awh::Hash::limitDecompress(const size_t size) noexcept {
  */
 awh::Hash::Hash(const log_t * log) noexcept :
  _wbit(MAX_WBITS), _rounds(5),
- _level{1, Z_DEFAULT_COMPRESSION, ZSTD_CLEVEL_DEFAULT},
+ // Уровень zlib по умолчанию задан числом -1, а поле беззнаковое: приведение оставляем явным
+ _level{1, static_cast <uint32_t> (Z_DEFAULT_COMPRESSION), ZSTD_CLEVEL_DEFAULT},
  _salt{""}, _password{""}, _takeOverCompress(false), _takeOverDecompress(false),
- _limitDecompress(AWH_MAX_BODY_SIZE), _btype{0x00, 0x00, 0xFF, 0xFF}, _zinf({0}), _zdef({0}), _log(log) {}
+ // Байты метки не помещаются в знаковый char, потому приводим их к нему явно
+ _limitDecompress(AWH_MAX_BODY_SIZE),
+ _btype{0x00, 0x00, static_cast <char> (0xFF), static_cast <char> (0xFF)},
+ _zinf({0}), _zdef({0}), _log(log) {}
 /**
  * @brief Деструктор
  *

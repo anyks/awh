@@ -1041,7 +1041,7 @@ awh::buffer_t awh::WebsocketCore::dump() const noexcept {
 		#endif
 	}
 	// Выводим результат
-	return result;
+	return static_cast <buffer_t> (::move(result));
 }
 /**
  * @brief Метод установки бинарного дампа
@@ -1613,7 +1613,7 @@ awh::buffer_t awh::WebsocketCore::reject(const web_t::res_t & res) const noexcep
 	// Выполняем очистку выбранного сабпротокола
 	const_cast <ws_core_t *> (this)->_selectedProtocols.clear();
 	// Выполняем генерацию сообщения ответа
-	return ::move(http_t::reject(res));
+	return static_cast <buffer_t> (::move(http_t::reject(res)));
 }
 /**
  * @brief Метод создания отрицательного ответа (для протокола HTTP/2)
@@ -1678,7 +1678,7 @@ awh::buffer_t awh::WebsocketCore::process(const process_t flag, const web_t::pro
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "Address or request method for WebSocket-client is incorrect");
 					// Выходим из функции
-					return result;
+					return static_cast <buffer_t> (::move(result));
 				}
 			} break;
 			// Если нужно сформировать данные ответа
@@ -1715,7 +1715,7 @@ awh::buffer_t awh::WebsocketCore::process(const process_t flag, const web_t::pro
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "SHA1 key could not be generated, no further work possiblet");
 							// Выходим из функции
-							return result;
+							return static_cast <buffer_t> (::move(result));
 						}
 						// Добавляем заголовок хеша ключа
 						const_cast <ws_core_t *> (this)->header("Sec-WebSocket-Accept", sha1.c_str());
@@ -1731,7 +1731,7 @@ awh::buffer_t awh::WebsocketCore::process(const process_t flag, const web_t::pro
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::CRITICAL, http::error_t::PROTOCOL, "WebSocket-server response code set incorrectly");
 					// Выходим из функции
-					return result;
+					return static_cast <buffer_t> (::move(result));
 				}
 			} break;
 		}
@@ -1760,7 +1760,7 @@ awh::buffer_t awh::WebsocketCore::process(const process_t flag, const web_t::pro
 		#endif
 	}
 	// Выводим результат
-	return ::move(http_t::process(flag, provider));
+	return static_cast <buffer_t> (::move(http_t::process(flag, provider)));
 }
 /**
  * @brief Метод создания выполняемого процесса в бинарном виде (для протокола HTTP/2)

@@ -459,11 +459,11 @@ void awh::server::Http1::process(const uint64_t bid, const uint16_t sid) noexcep
 							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 							if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", 1, bid, request.method, request.url, options->http.body());
+								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", 1, bid, request.method, request.url, static_cast <const vector <char> &> (options->http.body()));
 							// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 							if(this->_callback.is("complete"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", 1, bid, request.method, request.url, options->http.body(), options->http.headers());
+								this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", 1, bid, request.method, request.url, static_cast <const vector <char> &> (options->http.body()), options->http.headers());
 							// Если функция обратного вызова активности потока установлена
 							if(this->_callback.is("stream"))
 								// Выполняем функцию обратного вызова
@@ -1131,11 +1131,11 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 						if(!options->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, options->http.body());
+							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, static_cast <const vector <char> &> (options->http.body()));
 						// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 						if(this->_callback.is("complete"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, options->http.body(), options->http.headers());
+							this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, static_cast <const vector <char> &> (options->http.body()), options->http.headers());
 						// Завершаем работу
 						return;
 					// Формируем ответ, что страница не доступна
@@ -1162,7 +1162,7 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Выполняем извлечение параметров запроса
 					const auto & request = options->http.request();
 					// Получаем параметры ответа
-					const auto response = options->http.response();
+					const auto response = static_cast <awh::web_t::res_t> (::move(options->http.response()));
 					// Выполняем отправку заголовков сообщения
 					const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (buffer), static_cast <size_t> (buffer), bid);
 					/**
@@ -1190,11 +1190,11 @@ void awh::server::Http1::websocket(const uint64_t bid, const uint16_t sid) noexc
 					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
 					if(!web->http.empty(awh::http_t::suite_t::BODY) && this->_callback.is("entity"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, web->http.body());
+						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &)> ("entity", options->sid, bid, request.method, request.url, static_cast <const vector <char> &> (web->http.body()));
 					// Если функция обратного вызова на вывод полученных данных запроса клиента установлена
 					if(this->_callback.is("complete"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, web->http.body(), web->http.headers());
+						this->_callback.call <void (const int32_t, const uint64_t, const awh::web_t::method_t, const uri_t::url_t &, const vector <char> &, const std::unordered_multimap <string, string> &)> ("complete", options->sid, bid, request.method, request.url, static_cast <const vector <char> &> (web->http.body()), web->http.headers());
 					// Если функция обратного вызова активности потока установлена
 					if(this->_callback.is("stream"))
 						// Выполняем функцию обратного вызова

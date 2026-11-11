@@ -77,7 +77,7 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 mode(false), alive(false), close(false),
 						 crypted(false), stopped(false),
 						 sid(1), requests(0), respPong(0),
@@ -89,7 +89,7 @@ namespace awh {
 						 * @brief Деструктор
 						 *
 						 */
-						~Options() noexcept {}
+						~Options() noexcept = default;
 					} options_t;
 				public:
 					/**
@@ -147,13 +147,13 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WEB(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit WEB(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~WEB() noexcept {}
+					~WEB() noexcept = default;
 			} web_t;
 		};
 	};

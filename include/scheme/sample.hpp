@@ -63,7 +63,7 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 */
-						Allow() noexcept : send(true), receive(true) {}
+						explicit Allow() noexcept : send(true), receive(true) {}
 					} allow_t;
 				public:
 					/**
@@ -76,19 +76,18 @@ namespace awh {
 						bool stopped;  // Флаг принудительной остановки
 						allow_t allow; // Объект разрешения обмена данными
 						/**
-						/**
 						 * @brief Конструктор
 						 *
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Options(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Options(const fmk_t * fmk, const log_t * log) noexcept :
 						 alive(false), close(false), stopped(false) {}
 						/**
 						 * @brief Деструктор
 						 *
 						 */
-						~Options() noexcept {}
+						~Options() noexcept = default;
 					} options_t;
 				public:
 					/**
@@ -143,13 +142,13 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Sample(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit Sample(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Sample() noexcept {}
+					~Sample() noexcept = default;
 			} sample_t;
 		};
 	};

@@ -67,7 +67,7 @@ namespace awh {
 						 * @param fmk объект фреймворка
 						 * @param log объект для работы с логами
 						 */
-						Stream(const fmk_t * fmk, const log_t * log) noexcept :
+						explicit Stream(const fmk_t * fmk, const log_t * log) noexcept :
 						 crypted(false), sid(1), http(fmk, log),
 						 compressor(awh::http_t::compressor_t::NONE) {}
 					} stream_t;
@@ -97,7 +97,7 @@ namespace awh {
 							 * @param fmk объект фреймворка
 							 * @param log объект для работы с логами
 							 */
-							Options(const fmk_t * fmk, const log_t * log) noexcept :
+							explicit Options(const fmk_t * fmk, const log_t * log) noexcept :
 							 alive(false), close(false), stopped(false),
 							 requests(0), respPong(0), sendPing(0),
 							 proto(engine_t::proto_t::HTTP1_1), fmk(fmk), log(log) {}
@@ -105,7 +105,7 @@ namespace awh {
 							 * @brief Деструктор
 							 *
 							 */
-							~Options() noexcept {}
+							~Options() noexcept = default;
 					} options_t;
 				public:
 					/**
@@ -187,13 +187,13 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					WEB2(const fmk_t * fmk, const log_t * log) noexcept :
+					explicit WEB2(const fmk_t * fmk, const log_t * log) noexcept :
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~WEB2() noexcept {}
+					~WEB2() noexcept = default;
 			} web2_t;
 		};
 	};

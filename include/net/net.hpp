@@ -133,7 +133,7 @@ namespace awh {
 				 * @param exp регулярное выражение для установки
 				 * @param log объект для работы с логами
 				 */
-				LocalNet(const regexp_t::exp_t & exp, const log_t * log) noexcept :
+				explicit LocalNet(const regexp_t::exp_t & exp, const log_t * log) noexcept :
 				 reserved(false), prefix(0),
 				 end(new Net(exp, log)), begin(new Net(exp, log)) {}
 			} localNet_t;
@@ -632,7 +632,7 @@ namespace awh {
 			 *
 			 * @param log объект для работы с логами
 			 */
-			Net(const log_t * log) noexcept;
+			explicit Net(const log_t * log) noexcept;
 		private:
 			/**
 			 * @brief конструктор
@@ -640,13 +640,13 @@ namespace awh {
 			 * @param exp регулярное выражение для установки
 			 * @param log объект для работы с логами
 			 */
-			Net(const regexp_t::exp_t & exp, const log_t * log) noexcept;
+			explicit Net(const regexp_t::exp_t & exp, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief деструктор
 			 *
 			 */
-			~Net() noexcept {}
+			~Net() noexcept = default;
 	} net_t;
 	/**
 	 * @brief Оператор [>>] чтения из потока IP-адреса

@@ -118,6 +118,7 @@ namespace awh {
 				SCTP = 0x05  // Шифрованное подключение SCTP
 			};
 		public:
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура таймаутов
 			 *
@@ -131,11 +132,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Timeouts() noexcept :
+				explicit Timeouts() noexcept :
 				 wait(0), read(READ_TIMEOUT),
 				 write(WRITE_TIMEOUT),
 				 connect(CONNECT_TIMEOUT) {}
-			} __attribute__((packed)) timeouts_t;
+			} __AWH_PACKED__ timeouts_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Структура буфера полезной нагрузки
 			 *
@@ -147,12 +149,12 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Payload() noexcept : size(0), buffer(nullptr) {}
+				explicit Payload() noexcept : size(0), buffer(nullptr) {}
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Payload() noexcept {}
+				~Payload() noexcept = default;
 			} payload_t;
 		private:
 			/**
@@ -417,7 +419,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept;
+					explicit Broker(const uint16_t sid, const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -487,12 +489,12 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Scheme(const fmk_t * fmk, const log_t * log) noexcept : id(0), alive(false), _fmk(fmk), _log(log) {}
+			explicit Scheme(const fmk_t * fmk, const log_t * log) noexcept : id(0), alive(false), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			virtual ~Scheme() noexcept {}
+			virtual ~Scheme() noexcept = default;
 	} scheme_t;
 };
 

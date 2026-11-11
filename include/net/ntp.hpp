@@ -128,7 +128,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Server() noexcept : port(123), ip{0} {}
+				explicit Server() noexcept : port(123), ip{0} {}
 			};
 			/**
 			 * @brief Шаблон формата данных NTP-сервера
@@ -154,8 +154,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Peer() noexcept : size(0), client{}, server{} {}
+				explicit Peer() noexcept :
+				 size(0), client{}, server{} {}
 			} peer_t;
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура пакетов NTP-запроса
 			 *
@@ -200,7 +202,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Packet() noexcept :
+				explicit Packet() noexcept :
 				 mode(0), stratum(0), poll(0),
 				 precision(0), rootDelay(0),
 				 rootDispersion(0), refId(0),
@@ -208,7 +210,8 @@ namespace awh {
 				 origTimeStampSec(0), origTimeStampSecFrac(0),
 				 receivedTimeStampSec(0), receivedTimeStampSecFrac(0),
 				 transmitedTimeStampSec(0), transmitedTimeStampSecFrac(0) {}
-			} __attribute__((packed)) packet_t;
+			} __AWH_PACKED__ packet_t;
+			__AWH_PACK_END__
 			/**
 			 * @brief Класс воркера резолвинга
 			 *
@@ -281,7 +284,7 @@ namespace awh {
 					 * @param family тип протокола интернета AF_INET или AF_INET6
 					 * @param self   объект NTP-клиента
 					 */
-					Worker(const int32_t family, const NTP * self) noexcept :
+					explicit Worker(const int32_t family, const NTP * self) noexcept :
 					 _sock(INVALID_SOCKET), _mode(false), _family(family),
 					 _socket(self->_fmk, self->_log), _self(self) {}
 					/**
@@ -445,7 +448,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			NTP(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit NTP(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *

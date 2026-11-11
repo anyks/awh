@@ -385,6 +385,7 @@ namespace awh {
 				std::recursive_mutex tz;   // Мютекс контроля добавления временной зоны
 				std::recursive_mutex date; // Мютекс контроля локального объекта даты
 			} mtx_t;
+			__AWH_PACK_BEGIN__
 			/**
 			 * @brief Структура параметров даты и времени
 			 *
@@ -411,31 +412,34 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				DateTime() noexcept :
+				explicit DateTime() noexcept :
 				 dst(false), leap(false),
 				 h12(h12_t::AM), zone(zone_t::NONE),
 				 day(2), date(1), hour(0), month(1),
 				 weeks(0), seconds(0), minutes(0),
 				 year(1970), days(0), offset(0),
 				 milliseconds(0), nanoseconds(0), microseconds(0) {}
-			} __attribute__((packed)) dt_t;
+			} __AWH_PACKED__ dt_t;
+			__AWH_PACK_END__
 		private:
 			// Объект локального времени
 			dt_t _dt;
-		private:
-			/**
-			 * Временная зона, выставленная вызывающей стороной, хранится отдельно от
-			 * локального объекта даты: разбор записи оставляет в объекте зону самой
-			 * записи, и прежде следующий разбор принимал её за выставленную методом
-			 * setTimeZone - зона одной записи применялась к следующей, зоны не несущей
-			 */
-			// Смещение временной зоны, выставленной вызывающей стороной
-			int32_t _zoneOffset;
 			// Обозначение временной зоны, выставленной вызывающей стороной
 			zone_t _zoneName;
 		private:
 			// Признак приёма секунды координации при проверке пригодности записи
 			bool _leapSecond;
+		private:
+			/**
+			 * @brief Смещение временной зоны, выставленной вызывающей стороной
+			 *
+			 * @details Временная зона, выставленная вызывающей стороной, хранится отдельно от
+			 *          локального объекта даты: разбор записи оставляет в объекте зону самой
+			 *          записи, и прежде следующий разбор принимал её за выставленную методом
+			 *          setTimeZone - зона одной записи применялась к следующей, зоны не несущей.
+			 *
+			 */
+			int32_t _zoneOffset;
 		private:
 			// Правило раскрытия двузначного года при разборе записи с ним
 			century_t _century;
@@ -1310,7 +1314,7 @@ namespace awh {
 			 *
 			 * @param fmk объект фреймворка
 			 */
-			Chrono(const fmk_t * fmk) noexcept;
+			explicit Chrono(const fmk_t * fmk) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

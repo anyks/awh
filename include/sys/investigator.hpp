@@ -22,7 +22,29 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <unistd.h>
+
+/**
+ * Для оснастки MSVC, не несущей слоя POSIX
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <io.h>
+	#include <process.h>
+/**
+ * Для оснастки, несущей слой POSIX
+ */
+#else
+	/**
+	 * Подключаем стандартные модули
+	 */
+	#include <unistd.h>
+#endif
+
+/**
+ * Системный модуль
+ */
 #include <sys/types.h>
 
 /**
@@ -59,6 +81,15 @@
  * Для операционной системы Windows
  */
 #elif _WIN32 || _WIN64
+	/**
+	 * Подключаем основные заголовочные файлы
+	 *
+	 * Порядок обязателен: winsock2.h идёт строго до windows.h, иначе windows.h
+	 * втягивает устаревший winsock.h, и объявления сокетов сталкиваются -
+	 * оснастка MSVC отвечает на это переопределением типов sockaddr и fd_set
+	 */
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
 	#include <windows.h>
 	#include <psapi.h>
 	#include <cstdint>
@@ -96,12 +127,12 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			Investigator() noexcept {}
+			explicit Investigator() noexcept = default;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Investigator() noexcept {}
+			~Investigator() noexcept = default;
 	} igtr_t;
 };
 

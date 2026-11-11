@@ -92,31 +92,31 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Message() noexcept;
+				explicit Message() noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param code код сообщения
 				 */
-				Message(const uint16_t code) noexcept;
+				explicit Message(const uint16_t code) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param text текст сообщения
 				 */
-				Message(const string & text) noexcept;
+				explicit Message(const string & text) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param code код сообщения
 				 * @param text текст сообщения
 				 */
-				Message(const uint16_t code, const string & text) noexcept;
+				explicit Message(const uint16_t code, const string & text) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
 				 */
-				~Message() noexcept {}
+				~Message() noexcept = default;
 		} mess_t;
 		/**
 		 * @brief Класс для работы с фреймом WebSocket
@@ -152,6 +152,7 @@ namespace awh {
 					CONTROLUNUSED = 0x0B  // Зарезервированы для будущих управляющих фреймов
 				};
 			public:
+				__AWH_PACK_BEGIN__
 				/**
 				 * @brief Структура шапки
 				 *
@@ -171,11 +172,12 @@ namespace awh {
 					 * @param fin  флаг финального фрейма
 					 * @param mask флаг маскирования сообщения
 					 */
-					Header(const bool fin = true, const bool mask = true) noexcept :
+					explicit Header(const bool fin = true, const bool mask = true) noexcept :
 					 fin(fin), mask(mask), rsv{false, false, false},
 					 size(0x00), state(state_t::NONE), frame(0x00),
 					 payload(0x00), optcode(opcode_t::TEXT) {}
-				} __attribute__((packed)) head_t;
+				} __AWH_PACKED__ head_t;
+				__AWH_PACK_END__
 			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
@@ -268,7 +270,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Frame(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				explicit Frame(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 		} frame_t;
 	};
 };
