@@ -2153,7 +2153,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Portmap(const Portmap &) = delete;
+				Portmap(const Portmap &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

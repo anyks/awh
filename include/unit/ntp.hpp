@@ -807,7 +807,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit NTP(const NTP &) = delete;
+				NTP(const NTP &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

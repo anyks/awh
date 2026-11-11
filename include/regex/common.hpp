@@ -1884,7 +1884,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Sequence(const Sequence & sequence) noexcept :
+				Sequence(const Sequence & sequence) noexcept :
 				 _count(sequence._count), _capacity(0), _records(sequence._records) {
 					/**
 					 * \~russian

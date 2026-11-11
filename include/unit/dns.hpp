@@ -223,7 +223,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Packet(Packet && packet) noexcept;
+						Packet(Packet && packet) noexcept;
 						/**
 						 * \~russian
 						 * @brief Конструктор копирования
@@ -237,7 +237,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Packet(const Packet & packet) noexcept;
+						Packet(const Packet & packet) noexcept;
 					public:
 						/**
 						 * \~russian
@@ -1683,7 +1683,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit DNS(const DNS &) = delete;
+				DNS(const DNS &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

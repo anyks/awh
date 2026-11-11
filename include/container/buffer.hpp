@@ -1740,7 +1740,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Buffer(Buffer && buffer) noexcept;
+			Buffer(Buffer && buffer) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор копирования
@@ -1754,7 +1754,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Buffer(const Buffer & buffer) noexcept;
+			Buffer(const Buffer & buffer) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

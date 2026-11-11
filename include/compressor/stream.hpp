@@ -418,7 +418,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Stream(Stream &&) noexcept;
+				Stream(Stream &&) noexcept;
 				/**
 				 * \~russian
 				 * @brief Запрещаем копирование
@@ -428,7 +428,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Stream(const Stream &) = delete;
+				Stream(const Stream &) = delete;
 			public:
 				/**
 				 * \~russian

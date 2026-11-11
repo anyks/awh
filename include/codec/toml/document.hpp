@@ -1037,7 +1037,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							explicit Index(Index && index) noexcept;
+							Index(Index && index) noexcept;
 							/**
 							 * \~russian
 							 * @brief Деструктор

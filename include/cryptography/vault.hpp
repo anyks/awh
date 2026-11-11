@@ -350,7 +350,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Handle(const Handle &) = delete;
+					Handle(const Handle &) = delete;
 					/**
 					 * \~russian
 					 * @brief Конструктор переноса
@@ -364,7 +364,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Handle(Handle && handle) noexcept;
+					Handle(Handle && handle) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор

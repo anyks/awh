@@ -2079,7 +2079,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Server(const Server &) = delete;
+				Server(const Server &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирующего присваивания удалён

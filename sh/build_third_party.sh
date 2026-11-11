@@ -20,7 +20,7 @@ OS=$(uname -a | awk '{print $1}')
  # лишь первая, и запуск из MSYS отвечал "Operating system not defined", ничего не
  # поясняя. Вход по ssh даёт как раз MSYS, потому отказ этот встречал всякого, кто
  # собирал не из ярлыка
-##
+ ##
 if [[ $OS =~ "MINGW" ]] || [[ $OS =~ "MSYS" ]] || [[ $OS =~ "CLANG" ]]; then
 	OS="Windows"
 fi
@@ -40,7 +40,7 @@ fi
  #
  # Признак AWH_SHELL_SWITCHED ограждает от круга: если оболочка не сменилась и со
  # второго захода, работа продолжается в имеющейся
-##
+ ##
 if [ $OS = "Windows" ] && [ -z "$AWH_SHELL_SWITCHED" ] && [[ ! $MSYSTEM =~ "MINGW" ]] && [[ ! $MSYSTEM =~ "CLANG" ]]; then
 	# Оболочка, отвечающая набору команд машины
 	SHELL_NAME="MINGW64"
@@ -55,7 +55,7 @@ if [ $OS = "Windows" ] && [ -z "$AWH_SHELL_SWITCHED" ] && [[ ! $MSYSTEM =~ "MING
 	 # Вход в оболочку (-l) уводит в каталог домашний, и относительный путь, каким
 	 # скрипт был позван, там уже никуда не ведёт: отказ выходит "No such file or
 	 # directory" при том, что файл на месте
-	##
+	 ##
 	AWH_SHELL_SWITCHED=1 MSYSTEM="$SHELL_NAME" exec /usr/bin/bash -l -c \
 	 'cd "$1" && shift && exec bash "$@"' -- "$(pwd)" "$ROOT/$(basename "$0")" "$@"
 fi
@@ -270,7 +270,7 @@ fi
  # Зависимости, собираемые СВОИМ описанием, остаются на GNU make при любом выборе:
  # density и lizard несут Makefile, а описания для CMake не имеют вовсе, и zlib у
  # систем POSIX настраивается своим configure
-##
+ ##
 BUILDER="$MAKE"
 
 # Описание сборки по умолчанию: у оболочки MSYS2 оно своё
@@ -291,12 +291,16 @@ fi
 
 echo "Build tool: $BUILDER (CMake generator: $GENERATOR)"
 
-# Очистка директории
+##
+ # Функция очистки директории
+ ##
 clean_directory(){
 	git clean -dfx "$1"
 }
 
-# Очистка подпроекта
+##
+ # Функция очистки подпроекта
+ ##
 clean_submodule(){
 	cd "$ROOT/../submodules/$1" || exit 1
 	git clean -dfx
@@ -304,7 +308,9 @@ clean_submodule(){
 	cd "$ROOT" || exit 1
 }
 
-# Функция применения патча
+##
+ # Функция применения патча
+ ##
 apply_patch(){
 	PATCH="$ROOT/patches/$1/$2"
 	# Применённость и наложение проверяем git, затем patch: снимок без .git не даёт git apply
@@ -316,7 +322,9 @@ apply_patch(){
 	fi
 }
 
-# Фукция компенсации неверных каталогов
+##
+ # Фукция компенсации неверных каталогов
+ ##
 restorelibs(){
 	# Если сборка производится в операционной системе Linux
 	if [ $OS = "Windows" ] || [ $OS = "Linux" ]; then

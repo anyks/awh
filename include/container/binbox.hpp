@@ -1061,7 +1061,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit BinBox(BinBox && binbox) noexcept;
+			BinBox(BinBox && binbox) noexcept;
 		public:
 			/**
 			 * \~russian

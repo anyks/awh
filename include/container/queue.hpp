@@ -1188,7 +1188,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Queue(Queue && queue) noexcept;
+			Queue(Queue && queue) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор копирования
@@ -1202,7 +1202,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Queue(const Queue & queue) noexcept;
+			Queue(const Queue & queue) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

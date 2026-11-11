@@ -675,7 +675,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Unit(const Unit &) = delete;
+				Unit(const Unit &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

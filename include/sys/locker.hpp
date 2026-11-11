@@ -489,7 +489,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit LockState(const LockState &) = delete;
+			LockState(const LockState &) = delete;
 		public:
 			/**
 			 * \~russian
@@ -623,7 +623,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Locker(const Locker &) = delete;
+			Locker(const Locker &) = delete;
 		private:
 			/**
 			 * \~russian

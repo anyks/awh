@@ -240,7 +240,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Notifier(const Notifier &) = delete;
+				Notifier(const Notifier &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

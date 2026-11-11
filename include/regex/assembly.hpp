@@ -384,7 +384,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Assembly(Assembly && assembly) noexcept;
+				Assembly(Assembly && assembly) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования

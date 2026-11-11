@@ -615,7 +615,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit ICMP(const ICMP &) = delete;
+				ICMP(const ICMP &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

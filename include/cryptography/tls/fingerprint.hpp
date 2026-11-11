@@ -2331,7 +2331,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Browser(Browser && browser) noexcept;
+						Browser(Browser && browser) noexcept;
 						/**
 						 * \~russian
 						 * @brief Конструктор копирования
@@ -2345,7 +2345,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Browser(const Browser & browser) noexcept;
+						Browser(const Browser & browser) noexcept;
 					public:
 						/**
 						 * \~russian
@@ -3235,7 +3235,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Fingerprint(const Fingerprint &) = delete;
+				Fingerprint(const Fingerprint &) = delete;
 			public:
 				/**
 				 * \~russian

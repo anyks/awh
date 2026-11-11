@@ -445,7 +445,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Filesystem(const Filesystem &) = delete;
+				Filesystem(const Filesystem &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

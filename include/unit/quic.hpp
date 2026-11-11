@@ -4160,7 +4160,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit QuicClient(const QuicClient &) = delete;
+				QuicClient(const QuicClient &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

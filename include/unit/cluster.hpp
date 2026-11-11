@@ -1791,7 +1791,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Cluster(const Cluster &) = delete;
+				Cluster(const Cluster &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)

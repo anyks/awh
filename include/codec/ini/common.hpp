@@ -1268,7 +1268,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Index(Index && index) noexcept;
+					Index(Index && index) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор копирования
@@ -1282,7 +1282,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Index(const Index & index) noexcept;
+					Index(const Index & index) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1586,7 +1586,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Records(Records && records) noexcept;
+					Records(Records && records) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор копирования
@@ -1600,7 +1600,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Records(const Records & records) noexcept;
+					Records(const Records & records) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

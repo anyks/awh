@@ -488,7 +488,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Small_Vector(const Small_Vector &) = delete;
+				Small_Vector(const Small_Vector &) = delete;
 			public:
 				/**
 				 * \~russian
@@ -503,7 +503,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Small_Vector(Small_Vector && other) noexcept :
+				Small_Vector(Small_Vector && other) noexcept :
 				 _size(0), _cap(N), _data(reinterpret_cast <T *> (this->_storage)) {
 					// Переносим содержимое источника
 					this->adopt(std::move(other));
