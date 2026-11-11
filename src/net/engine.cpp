@@ -888,8 +888,11 @@ static bool storeCRLFile(const awh::fs_t & fs, const awh::log_t * log, nts::trus
 		HCERTSTORE sys = ::CertOpenSystemStore(0, name);
 		// Если системное хранилище не открыто
 		if(sys == nullptr){
-			// Выводим в лог сообщение о недоступном хранилище
-			log->print("Failed to open system certificate store", log_t::flag_t::CRITICAL);
+			/**
+			 * Выводим в лог сообщение о недоступном хранилище: имя типа полное, потому что
+			 * помощник живёт вне пространства awh, и короткое log_t отсюда не находится
+			 */
+			log->print("Failed to open system certificate store", awh::log_t::flag_t::CRITICAL);
 			// Выводим признак того, что запас не пополнен
 			return false;
 		}
@@ -2190,10 +2193,13 @@ bool awh::Engine::Context::flush() noexcept {
 					// Запоминаем настоящую длину адреса
 					len = this->_addr->_peer.size;
 				}
-				// Выполняем отправку дейтаграммы: накопитель связи отдаёт ровно одну готовую дейтаграмму
-				sent = ::sendto(this->_addr->sock, data.data, data.size, 0, addr, len);
+				/**
+				 * Выполняем отправку дейтаграммы: накопитель связи отдаёт ровно одну готовую дейтаграмму.
+				 * Буфер приводится к char*: так он объявлен в Winsock, тогда как POSIX-обёртки берут void*
+				 */
+				sent = ::sendto(this->_addr->sock, reinterpret_cast <const char *> (data.data), data.size, 0, addr, len);
 			// Если сокет установлен как потоковый, отправляем байты как есть
-			} else sent = ::send(this->_addr->sock, data.data, data.size, 0);
+			} else sent = ::send(this->_addr->sock, reinterpret_cast <const char *> (data.data), data.size, 0);
 			// Если сокет принял байты
 			if(sent > 0){
 				// Снимаем отправленные байты с накопителя связи
@@ -2296,10 +2302,13 @@ int64_t awh::Engine::Context::feed() noexcept {
 		if(this->_addr->_type == SOCK_DGRAM){
 			// Адрес собеседника, от которого ждём дейтаграмму
 			struct sockaddr * addr = reinterpret_cast <struct sockaddr *> (((this->_type == type_t::SERVER) ? &this->_addr->_peer.client : &this->_addr->_peer.server));
-			// Выполняем приём дейтаграммы
-			got = ::recvfrom(this->_addr->sock, buffer.data(), max, 0, addr, &this->_addr->_peer.size);
+			/**
+			 * Выполняем приём дейтаграммы: буфер приводится к char* под объявление Winsock,
+			 * потому что POSIX-обёртки принимают void* и на Unix приведение ничего не меняет
+			 */
+			got = ::recvfrom(this->_addr->sock, reinterpret_cast <char *> (buffer.data()), max, 0, addr, &this->_addr->_peer.size);
 		// Если сокет установлен как потоковый, читаем поток байтов
-		} else got = ::recv(this->_addr->sock, buffer.data(), max, 0);
+		} else got = ::recv(this->_addr->sock, reinterpret_cast <char *> (buffer.data()), max, 0);
 		// Если байты приняты
 		if(got > 0){
 			// Байты, которые связи ещё не показаны
@@ -4101,8 +4110,8 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 		struct sockaddr_storage peer{};
 		// Длина адреса собеседника
 		socklen_t len = sizeof(peer);
-		// Количество принятых байтов
-		const ssize_t got = ::recvfrom(target._addr->sock, data.data(), data.size(), 0, reinterpret_cast <struct sockaddr *> (&peer), &len);
+		// Количество принятых байтов: буфер приводится к char* под объявление Winsock
+		const ssize_t got = ::recvfrom(target._addr->sock, reinterpret_cast <char *> (data.data()), data.size(), 0, reinterpret_cast <struct sockaddr *> (&peer), &len);
 		// Если дейтаграмма не принята, прикреплять некого
 		if(got <= 0)
 			// Сообщаем, что ничего не обработано

@@ -445,9 +445,17 @@ endif (CMAKE_SHARED_BUILD_LIB)
 
 # Если операционной системой является Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Заголовки A-NTS по умолчанию объявляют методы как __declspec(dllimport), и тогда
+    # линковка статичного libnts ищет символы с приставкой __imp_ и отказывает. Сборка
+    # зависимостей делает A-NTS именно статической, поэтому на Windows объявляем это библиотеке:
+    # её global.hpp при ANTS_STATICLIB оставляет объявления без атрибута импорта
+    add_compile_definitions(ANTS_STATICLIB)
     # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
-    # Устанавливаем необходимые зависимости для MS Windows
-    SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+    # Устанавливаем необходимые зависимости для MS Windows. Тройка ole32/shell32/uuid нужна
+    # src/sys/fs.cpp: разрешение ярлыков идёт через COM, где CoInitialize и CoCreateInstance
+    # живут в ole32, IID_IShellLinkW — в shell32, а IID_IPersistFile с CLSID_ShellLink — в uuid.
+    # Без них линковка обрывается на нераспознанных __imp_Co* и GUID-символах
+    SET(WINFLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -lole32 -lshell32 -luuid -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
