@@ -66554,7 +66554,7 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 																	// Заводим объект сетевого адреса
 																	net_addr_t addr;
 																	// Устанавливаем IPv4-адрес, тип адреса v4 ставит сам
-																	addr.v4(::__awh_trust_cast__ <const struct sockaddr_in> (sa).sin_addr.s_addr);
+																	addr.v4(::__awh_trust_cast__ <const struct sockaddr_in> (*sa).sin_addr.s_addr);
 																	// Получаем строковое представление адреса
 																	destination = static_cast <string> (addr);
 																	// Смещаемся на длину адреса IPv4
@@ -66566,7 +66566,7 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 																	// Буфер IPv6-адреса
 																	array <uint8_t, 16> ip6;
 																	// Копируем IPv6-адрес в буфер
-																	::memcpy(&ip6[0], &::__awh_trust_cast__ <const struct sockaddr_in6> (sa).sin6_addr, 16);
+																	::memcpy(&ip6[0], &::__awh_trust_cast__ <const struct sockaddr_in6> (*sa).sin6_addr, 16);
 																	// Устанавливаем IPv6-адрес, тип адреса v6 ставит сам
 																	addr.v6(ip6);
 																	// Получаем строковое представление адреса
