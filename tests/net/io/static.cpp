@@ -28083,6 +28083,124 @@ TEST_F(IoFixture, IoClientAccessListTest){
 }
 
 /**
+ * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
+ */
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
+
+/**
+ * @brief Тест списка контроля доступа на клиенте SCTP
+ *
+ * @details Клиент SCTP подключается не к одному адресу, а к списку адресов многодомной
+ *          ассоциации, и список контроля доступа обязан проверять КАЖДЫЙ из них: отказ
+ *          наступает, если хотя бы один адрес занесён в чёрный список либо отсутствует
+ *          в белом. Проверка `IoClientAccessListTest` этого пути не касается вовсе - она
+ *          мерит одиночную цель TCP, а обход адресов ассоциации живёт отдельной ветвью
+ *
+ *          Проверяется это ПОВЕДЕНИЕМ, пятью ногами на свежей паре событий каждая:
+ *          чёрный список на свою цель обязан отвергнуть подключение; белый список без
+ *          своей цели обязан отвергнуть его же; белый список со своей целью обязан
+ *          принять. Две последние ноги - различители: белый список на «0.0.0.0» ловит
+ *          обход, разбирающий собственную точку клиента вместо цели, а белый список на
+ *          «1.0.0.127» - искажение порядка октетов в строке адреса
+ *
+ * @warning Ноги «белый список без своей цели» и «белый список со своей целью» обязаны
+ *          идти вместе: первая доказывает, что обход адресов вообще выполняется, вторая -
+ *          что строка адреса собрана верно. По отдельности каждая из них дефект пропускает:
+ *          11.11.2026 обход читал байты самой переменной-указателя вместо адреса, и
+ *          зелёными при этом оставались все проверки набора
+ *
+ * @note Порт и пара событий у каждой ноги свои: illumos отпускает порт неспешно, а
+ *       повторного использования порта там нет вовсе
+ *
+ */
+TEST_F(IoFixture, IoClientAccessListSCTPTest){
+	// Если ядро машины к работе по SCTP не готово
+	if(!::sctpReady())
+		// Пропускаем проверку
+		GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(awh::engine::io::initialize());
+	/**
+	 * @brief Состав одной ноги: список клиента и ожидаемый исход подключения
+	 *
+	 */
+	struct leg_t {
+		// Имя ноги для сообщения об отказе
+		const char * name;
+		// Вид списка контроля доступа клиента
+		awh::event::control_list_t list;
+		// Адрес, заносимый в список клиента
+		const char * value;
+		// Ожидаемый исход подключения: истина, когда подключение обязано пройти
+		bool accepted;
+	};
+	/**
+	 * Ноги проверки: первые две меряют отказ, третья служит положительным контролем,
+	 * а две последних отличают верный обход от обхода, который читает не тот адрес
+	 */
+	const std::vector <leg_t> legs = {
+		{"чёрный список на свою цель", awh::event::control_list_t::BLACK, "127.0.0.1", false},
+		{"белый список без своей цели", awh::event::control_list_t::WHITE, "10.9.8.7", false},
+		{"белый список со своей целью", awh::event::control_list_t::WHITE, "127.0.0.1", true},
+		{"белый список на свою точку", awh::event::control_list_t::WHITE, "0.0.0.0", false},
+		{"белый список на обратный порядок октетов", awh::event::control_list_t::WHITE, "1.0.0.127", false}
+	};
+	/**
+	 * Выполняем перебор ног
+	 */
+	for(const auto & leg : legs){
+		// Выполняем генерацию порта
+		const uint16_t port = ::port();
+		// Добавляем новое событие клиента и сервера SCTP Stream
+		const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+		/**
+		 * Проверяем, что оба идентификатора события созданы успешно
+		 */
+		for(uint8_t i = 0; i < 2; i++)
+			// Проверяем, что идентификатор события больше нуля
+			ASSERT_GT(events[i], 0);
+		// Устанавливаем опции события сервера
+		ASSERT_TRUE(awh::engine::options::set(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес события сервера
+		ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем порт источника события сервера
+		ASSERT_TRUE(awh::engine::source::port::set(events[1], port));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(awh::engine::io::commit(events[1]));
+		// Переводим событие сервера в прослушивание
+		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
+		// Запускаем событие сервера
+		ASSERT_TRUE(awh::engine::io::launch(events[1]));
+		// Устанавливаем опции события клиента
+		ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес назначения события клиента
+		ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
+		// Устанавливаем порт назначения события клиента
+		ASSERT_TRUE(awh::engine::target::port::set(events[0], port));
+		// Заносим адрес в список контроля доступа клиента
+		ASSERT_TRUE(awh::engine::control_list::add(events[0], leg.list, leg.value));
+		// Занесённый адрес обязан в списке клиента числиться
+		ASSERT_EQ(awh::engine::control_list::get(events[0], leg.list).count(leg.value), static_cast <size_t> (1));
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(awh::engine::io::commit(events[0]));
+		// Подключение обязано дать исход, которого ждёт нога
+		if(leg.accepted)
+			// Белый список со своей целью обязан подключение принять
+			ASSERT_TRUE(awh::engine::io::connect(events[0])) << "нога «" << leg.name << "»: подключение отвергнуто, хотя цель в белом списке есть";
+		else
+			// Прочие ноги обязаны подключение отвергнуть
+			ASSERT_FALSE(awh::engine::io::connect(events[0])) << "нога «" << leg.name << "»: подключение прошло, хотя список клиента его запрещает";
+		// Уничтожаем события
+		awh::engine::io::destroy(events[0]);
+		awh::engine::io::destroy(events[1]);
+	}
+}
+
+#endif
+
+/**
  * @brief Тест извещения об освобождении места в очереди отправки
  *
  * @details Подписка `available_t` сообщает, что место в очереди отправки освободилось, и
