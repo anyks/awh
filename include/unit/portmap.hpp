@@ -192,24 +192,30 @@ namespace awh {
 		 *   without a resolution — and the resolution itself is assigned not by the module. The network access
 		 *   devices write those addresses as numbers, and the loss on the name is small next to
 		 *   the diversion of the call to the outside.
+		 *
 		 * - **The NAT-PMP protocol is not polled in an IPv6 network.** RFC 6886 is described only for
 		 *   IPv4, and the protocol has no IPv6 variety at all. Its silence would only prolong
 		 *   the common term of the polling.
+		 *
 		 * - **The UPnP protocol does not create forwardings in an IPv6 network.** There is no address translation
 		 *   there, and the connections through the firewall are permitted by a separate IPv6 firewall service,
 		 *   which not every device provides. The external address and the list are provided by the connection service
 		 *   over an IPv6 link as well, and they are not cut off.
+		 *
 		 * - **The distinguishing mark is issued upon the sending of the request rather than upon the answer.** Under the AUTO
 		 *   polling kind the call is completed by the first answer, but the request of the PCP protocol has
 		 *   already gone out by that time, and the router has the right to create a forwarding by it.
 		 *   Without the mark there would be nothing to remove it by.
+		 *
 		 * - **The network device is given to the multicast explicitly.** A group address in an IPv6 network
 		 *   belongs to the link, and a subscription on a foreign link would leave the multicast without an answer.
 		 *   A system with a properly configured IPv6 network copes by itself as well, but there is no point in relying on its
 		 *   choice when the device has already been assigned.
+		 *
 		 * - **A refusal of joining the discovery group does not interrupt the exchange.** The answer to a discovery
 		 *   request is sent by the device to the single asker rather than into the group: the membership is needed
 		 *   only for the announcements, which the module does not wait for.
+		 *
 		 * - **A discarded answer does not interrupt the waiting.** The engine holds the term by the waiting for
 		 *   an answer and removes it upon the arrival of data without distinguishing whether that is an answer or a foreign
 		 *   datagram. Only the module is capable of distinguishing, and everywhere where an answer is discarded —
@@ -218,6 +224,7 @@ namespace awh {
 		 *   with the remainder rather than anew: a foreign answer does not gift the request any extra time, and the refusal
 		 *   comes in its due turn. The term does not thereby become a limit of the idleness — on
 		 *   an event to which nothing has been sent it is not armed at all.
+		 *
 		 * - **A loss of the state by the router is announced rather than patched up.** The NAT-PMP
 		 *   and PCP protocols carry the counter of the working time of the router, and its rollback means
 		 *   that all the created forwardings have disappeared. The module verifies the counter at every
@@ -225,10 +232,12 @@ namespace awh {
 		 *   anew: which of them are needed and in what order is known only to the caller,
 		 *   while the module conducts one call at a time and keeps no memory of the previous creations.
 		 *   The UPnP protocol has no counter at all, and there is nothing to notice a loss by there.
+		 *
 		 * - **The reception of the announcements is created upon a request rather than by itself.** It holds a socket on
 		 *   the protocol port for the whole time of the work and accepts datagrams from any node of the network.
 		 *   An application that does not need the announcements has no use for all of that, and the reception is enabled by the
 		 *   caller with a call to `announce()`.
+		 *
 		 * - **The module does not join the announcement group.** The announcements are multicast to the all-nodes
 		 *   group addresses — 224.0.0.1 and FF02::1 — the membership in which belongs to every
 		 *   node by the design of the network itself: a multicast to them is delivered by the system without a subscription,
@@ -236,6 +245,7 @@ namespace awh {
 		 *   is accepted by macOS, and by Linux, and by FreeBSD — but there is no need for it either. The difference from
 		 *   the SSDP discovery multicast, where the membership is obligatory, lies exactly in this: there the address
 		 *   is a proper, protocol one, and without a subscription nothing will arrive.
+		 *
 		 * - **The sender of an announcement is selected by the external address rather than by the local network.**
 		 *   What has come from the outside is discarded, while the loopback is let through: an announcement over it comes
 		 *   from a service working on this same machine, and to reject it would mean to reject
@@ -426,90 +436,29 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Mapping {
+					/**
+					 * \~russian
+					 * @brief Признак того, что перенаправление подключения пропускает
+					 *
+					 * @note Заполняется чтением перечня: среди заведённых встречаются и
+					 *       отключённые - место они занимают, а подключений не пропускают.
+					 *       При заведении перенаправления признак не участвует
+					 *
+					 * \~english
+					 * @brief Flag of the forwarding letting the connections through
+					 *
+					 * @note Filled in by the reading of the list: among the created ones there are also
+					 *       disabled ones — they take up a place but do not let the connections through.
+					 *       At the creation of a forwarding the flag does not participate
+					 *
+					 * \~
+					 */
+					bool enabled;
 					// Договор перенаправляемого порта
 					proto_t proto;
-					// Внутренний порт перенаправления
-					uint16_t internalPort;
 					/**
 					 * \~russian
-					 * Внешний порт перенаправления
-					 *
-					 * @warning Запрошенный порт для маршрутизатора лишь пожелание: занятый
-					 *          порт он заменит другим по своему выбору, и объявлять другим следует
-					 *          именно назначенный
-					 *
-					 * @note У пробоя заслона IPv6 внешнего порта нет вовсе: преобразования
-					 *       адресов там не происходит, и подключения приходят прямо на внутренний
-					 *       порт. В итоге такого обращения поле остаётся тем, каким его задал
-					 *       вызывающий, а опознаёт пробой поле `pinhole`
-					 *
-					 * \~english
-					 * External port of the forwarding
-					 *
-					 * @warning The requested port is for the router only a wish: an occupied
-					 *          port it will replace by another one of its own choice, and what should be announced to the others is
-					 *          exactly the assigned one
-					 *
-					 * @note An IPv6 firewall pinhole has no external port at all: no address translation
-					 *       takes place there, and the connections arrive right at the internal
-					 *       port. In the result of such a call the field remains the one which the
-					 *       caller has given it, while a pinhole is recognized by the `pinhole` field
-					 *
-					 * \~
-					 */
-					uint16_t externalPort;
-					// Срок жизни перенаправления в секундах
-					uint32_t lifeTime;
-					/**
-					 * \~russian
-					 * Описание перенаправления, показываемое в настройках маршрутизатора
-					 *
-					 * @note Описание несёт лишь договор UPnP: NAT-PMP и PCP его не имеют,
-					 *       и там оно пропадает
-					 *
-					 * \~english
-					 * Description of the forwarding shown in the settings of the router
-					 *
-					 * @note Only the UPnP protocol carries the description: NAT-PMP and PCP do not have it,
-					 *       and there it disappears
-					 *
-					 * \~
-					 */
-					string description;
-					/**
-					 * \~russian
-					 * Отличительная метка перенаправления
-					 *
-					 * @details Метку эту несёт лишь договор PCP, и она обязана быть одной и
-					 *          той же у просьбы заведения, у её повторов и у просьбы снятия: по метке
-					 *          маршрутизатор и опознаёт, о каком перенаправлении речь.
-					 *
-					 * @note Заполняется модулем при заведении и выдаётся вместе с заведённым
-					 *       перенаправлением. Чтобы снять заведённое в другом запуске, метку
-					 *       следует сохранить и передать в просьбе снятия: без неё маршрутизатор
-					 *       снимать откажется. Договоры NAT-PMP и UPnP метки не имеют, и там поле
-					 *       не участвует
-					 *
-					 * \~english
-					 *
-					 * Distinguishing mark of the forwarding
-					 *
-					 * @details Only the PCP protocol carries this mark, and it is obliged to be one and the
-					 *          same at the creation request, at its repetitions and at the removal request: by the mark
-					 *          the router recognizes which forwarding is being spoken about.
-					 *
-					 * @note Filled in by the module at the creation and issued together with the created
-					 *       forwarding. In order to remove what has been created in another run, the mark
-					 *       should be preserved and passed in the removal request: without it the router
-					 *       will refuse to remove. The NAT-PMP and UPnP protocols have no mark, and there the field
-					 *       does not participate
-					 *
-					 * \~
-					 */
-					vector <uint8_t> nonce;
-					/**
-					 * \~russian
-					 * Опознаватель пробоя заслона IPv6
+					 * @brief Опознаватель пробоя заслона IPv6
 					 *
 					 * @details Опознаватель этот несёт лишь служба заслона IPv6 договора
 					 *          UPnP: пробой заделывается по нему, а не по признакам - одним и тем же
@@ -525,7 +474,7 @@ namespace awh {
 					 *       пробоя, и заделывание им снимает заведённое разрешение
 					 *
 					 * \~english
-					 * Identifier of an IPv6 firewall pinhole
+					 * @brief Identifier of an IPv6 firewall pinhole
 					 *
 					 * @details Only the IPv6 firewall service of the UPnP protocol carries this
 					 *          identifier: a pinhole is patched up by it rather than by the attributes — one and the same
@@ -543,33 +492,47 @@ namespace awh {
 					 * \~
 					 */
 					uint16_t pinhole;
+					// Внутренний порт перенаправления
+					uint16_t internalPort;
 					/**
 					 * \~russian
-					 * Признак того, что перенаправление подключения пропускает
+					 * @brief Внешний порт перенаправления
 					 *
-					 * @note Заполняется чтением перечня: среди заведённых встречаются и
-					 *       отключённые - место они занимают, а подключений не пропускают.
-					 *       При заведении перенаправления признак не участвует
+					 * @warning Запрошенный порт для маршрутизатора лишь пожелание: занятый
+					 *          порт он заменит другим по своему выбору, и объявлять другим следует
+					 *          именно назначенный
+					 *
+					 * @note У пробоя заслона IPv6 внешнего порта нет вовсе: преобразования
+					 *       адресов там не происходит, и подключения приходят прямо на внутренний
+					 *       порт. В итоге такого обращения поле остаётся тем, каким его задал
+					 *       вызывающий, а опознаёт пробой поле `pinhole`
 					 *
 					 * \~english
-					 * Flag of the forwarding letting the connections through
+					 * @brief External port of the forwarding
 					 *
-					 * @note Filled in by the reading of the list: among the created ones there are also
-					 *       disabled ones — they take up a place but do not let the connections through.
-					 *       At the creation of a forwarding the flag does not participate
+					 * @warning The requested port is for the router only a wish: an occupied
+					 *          port it will replace by another one of its own choice, and what should be announced to the others is
+					 *          exactly the assigned one
+					 *
+					 * @note An IPv6 firewall pinhole has no external port at all: no address translation
+					 *       takes place there, and the connections arrive right at the internal
+					 *       port. In the result of such a call the field remains the one which the
+					 *       caller has given it, while a pinhole is recognized by the `pinhole` field
 					 *
 					 * \~
 					 */
-					bool enabled;
+					uint16_t externalPort;
+					// Срок жизни перенаправления в секундах
+					uint32_t lifeTime;
 					/**
 					 * \~russian
-					 * Внешний узел, подключения с которого пропускаются
+					 * @brief Внешний узел, подключения с которого пропускаются
 					 *
 					 * @note Заполняется чтением перечня. Пустое значение означает «с
 					 *       любого узла», и оно же встречается почти всегда
 					 *
 					 * \~english
-					 * External node the connections from which are let through
+					 * @brief External node the connections from which are let through
 					 *
 					 * @note Filled in by the reading of the list. An empty value means «from
 					 *       any node», and it is what is met almost always
@@ -579,14 +542,30 @@ namespace awh {
 					string remoteHost;
 					/**
 					 * \~russian
-					 * Внутренний адрес машины, которой отдаются подключения
+					 * @brief Описание перенаправления, показываемое в настройках маршрутизатора
+					 *
+					 * @note Описание несёт лишь договор UPnP: NAT-PMP и PCP его не имеют,
+					 *       и там оно пропадает
+					 *
+					 * \~english
+					 * @brief Description of the forwarding shown in the settings of the router
+					 *
+					 * @note Only the UPnP protocol carries the description: NAT-PMP and PCP do not have it,
+					 *       and there it disappears
+					 *
+					 * \~
+					 */
+					string description;
+					/**
+					 * \~russian
+					 * @brief Внутренний адрес машины, которой отдаются подключения
 					 *
 					 * @note Заполняется чтением перечня и нужен затем, что перечень общий
 					 *       на всю сеть: по этому полю и видно, чьё перенаправление. При
 					 *       заведении адрес подставляет модуль сам
 					 *
 					 * \~english
-					 * Internal address of the machine to which the connections are given
+					 * @brief Internal address of the machine to which the connections are given
 					 *
 					 * @note Filled in by the reading of the list and is needed because the list is common
 					 *       to the whole network: by this field one sees whose forwarding it is. At the
@@ -595,6 +574,37 @@ namespace awh {
 					 * \~
 					 */
 					string internalClient;
+					/**
+					 * \~russian
+					 * @brief Отличительная метка перенаправления
+					 *
+					 * @details Метку эту несёт лишь договор PCP, и она обязана быть одной и
+					 *          той же у просьбы заведения, у её повторов и у просьбы снятия: по метке
+					 *          маршрутизатор и опознаёт, о каком перенаправлении речь.
+					 *
+					 * @note Заполняется модулем при заведении и выдаётся вместе с заведённым
+					 *       перенаправлением. Чтобы снять заведённое в другом запуске, метку
+					 *       следует сохранить и передать в просьбе снятия: без неё маршрутизатор
+					 *       снимать откажется. Договоры NAT-PMP и UPnP метки не имеют, и там поле
+					 *       не участвует
+					 *
+					 * \~english
+					 *
+					 * @brief Distinguishing mark of the forwarding
+					 *
+					 * @details Only the PCP protocol carries this mark, and it is obliged to be one and the
+					 *          same at the creation request, at its repetitions and at the removal request: by the mark
+					 *          the router recognizes which forwarding is being spoken about.
+					 *
+					 * @note Filled in by the module at the creation and issued together with the created
+					 *       forwarding. In order to remove what has been created in another run, the mark
+					 *       should be preserved and passed in the removal request: without it the router
+					 *       will refuse to remove. The NAT-PMP and UPnP protocols have no mark, and there the field
+					 *       does not participate
+					 *
+					 * \~
+					 */
+					vector <uint8_t> nonce;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -710,62 +720,9 @@ namespace awh {
 					CONTROL     = 0x03  // Вызов действия службы устройства
 				};
 			private:
-				// Вид опроса маршрутизатора
-				type_t _type;
-				// Разновидность сети, в которой ведётся обмен
-				family_t _family;
-				// Просьба, с которой ведётся текущее обращение
-				action_t _action;
-			private:
-				// Количество попыток обращения к маршрутизатору
-				uint8_t _attempts;
-				// Срок ожидания ответа маршрутизатора в миллисекундах
-				uint32_t _delay;
-			private:
-				// Перенаправление, о котором ведётся текущее обращение
-				mapping_t _mapping;
-			private:
 				/**
 				 * \~russian
-				 * Последняя просьба, отправленная по договору PCP
-				 *
-				 * @note Держится затем, что ответ сличается с просьбой средствами кодека:
-				 *       он сверяет и действие, и отличительную метку, и внутренний порт - то
-				 *       есть больше, чем модуль проверил бы сам
-				 *
-				 * \~english
-				 * Last request sent over the PCP protocol
-				 *
-				 * @note It is kept because the answer is verified against the request by the means of the codec:
-				 *       it checks both the action, and the distinguishing mark, and the internal port — that
-				 *       is, more than the module would check by itself
-				 *
-				 * \~
-				 */
-				proto::portmap::pcp::request_t _inquiry;
-				/**
-				 * \~russian
-				 * Отличительная метка перенаправления для договора PCP
-				 *
-				 * @note Метка держится обменом, а не собирается заново на каждую попытку:
-				 *       договор предписывает одну и ту же метку для просьбы, её повторов и
-				 *       снятия заведённого
-				 *
-				 * \~english
-				 * Distinguishing mark of the forwarding for the PCP protocol
-				 *
-				 * @note The mark is kept by the exchange rather than assembled anew for every attempt:
-				 *       the protocol prescribes one and the same mark for a request, its repetitions and
-				 *       the removal of what has been created
-				 *
-				 * \~
-				 */
-				vector <uint8_t> _nonce;
-				// Порядковый номер читаемого перенаправления при чтении перечня
-				uint32_t _index;
-				/**
-				 * \~russian
-				 * Признак того, что спрашивается состояние заслона IPv6
+				 * @brief Признак того, что спрашивается состояние заслона IPv6
 				 *
 				 * @details Договор велит узнать состояние заслона прежде, чем просить о
 				 *          пробое: отключённый заслон и запрет пробоев устройство объявляет
@@ -777,7 +734,7 @@ namespace awh {
 				 *       тем же ходом обмена уходит уже сама просьба о пробое
 				 *
 				 * \~english
-				 * Flag of the state of the IPv6 firewall being asked for
+				 * @brief Flag of the state of the IPv6 firewall being asked for
 				 *
 				 * @details The protocol orders one to learn the state of the firewall before asking for a
 				 *          pinhole: a disabled firewall and a prohibition of the pinholes are announced by the device with
@@ -791,29 +748,78 @@ namespace awh {
 				 * \~
 				 */
 				bool _probe;
-				// Перечень прочитанных у маршрутизатора перенаправлений портов
-				vector <mapping_t> _mappings;
-			private:
-				// Идентификатор события приёма объявлений маршрутизатора
-				event::id_t _announcer;
+				// Признак того, что ответ устройства UPnP прочитан до конца
+				bool _complete;
 				/**
 				 * \~russian
-				 * Идентификаторы событий отправителей объявлений маршрутизатора
+				 * @brief Признак того, что потоковое событие к устройству UPnP подключено
 				 *
-				 * @note Держатся затем, что заведены они движком, а закрывать их обязан
-				 *       модуль: без этого приём объявлений, отключённый вызывающим, оставил бы
-				 *       за собой события отправителей
+				 * @note Соединение держится на весь обмен, а не на один запрос: чтение
+				 *       перечня требует обращения на каждое перенаправление, и рукопожатие на
+				 *       каждое из них означало бы столько же случаев его потерять
 				 *
 				 * \~english
-				 * Event identifiers of the senders of the announcements of the router
+				 * @brief Flag of the stream event to the UPnP device being connected
 				 *
-				 * @note They are kept because they have been created by the engine while the module is obliged to close
-				 *       them: without this the reception of the announcements, disabled by the caller, would leave
-				 *       the events of the senders behind it
+				 * @note The connection is held for the whole exchange rather than for a single request: the reading
+				 *       of the list requires a call for every forwarding, and a handshake for
+				 *       each of them would mean as many occasions to lose it
 				 *
 				 * \~
 				 */
-				vector <event::id_t> _announcers;
+				bool _connected;
+			private:
+				// Вид опроса маршрутизатора
+				type_t _type;
+				// Разновидность сети, в которой ведётся обмен
+				family_t _family;
+				// Просьба, с которой ведётся текущее обращение
+				action_t _action;
+			private:
+				// Количество попыток обращения к маршрутизатору
+				uint8_t _attempts;
+			private:
+				// Срок ожидания ответа маршрутизатора в миллисекундах
+				uint32_t _delay;
+				// Порядковый номер читаемого перенаправления при чтении перечня
+				uint32_t _index;
+			private:
+				/**
+				 * \~russian
+				 * @brief Предел числа переходов, каким рассылается просьба обнаружения
+				 *
+				 * @note Умолчанием стоит своя сеть: устройство доступа лежит на ней же,
+				 *       а разослать просьбу шире значило бы беспокоить чужие. Настройка нужна
+				 *       тем, кто держит устройство на самой машине - поддельному шлюзу
+				 *       проверок, к примеру: предел LOOPBACK не выпускает просьбу наружу вовсе,
+				 *       и обмен идёт по любому устройству машины, не только по петле
+				 *
+				 * \~english
+				 * @brief Limit of the number of the hops with which the request of the discovery is multicast
+				 *
+				 * @note The default is its own network: the device of the access lies on it,
+				 *       and to multicast the request wider would mean disturbing the strangers. The setting is needed
+				 *       by those who keep the device on the machine itself — by the fake gateway of the tests,
+				 *       for example: the limit LOOPBACK does not release the request outside at all,
+				 *       and the exchange goes by any device of the machine, not only by the loopback
+				 *
+				 * \~
+				 */
+				event::hops_t _hops;
+			private:
+				// Идентификатор потокового события обмена с устройством UPnP
+				event::id_t _stream;
+				// Идентификатор события приёма объявлений маршрутизатора
+				event::id_t _announcer;
+			private:
+				// Объект работы с адресами ресурсов
+				uri_t _uri;
+				// Шаг обмена по договору UPnP
+				stage_t _stage;
+				// Объект работы с сетевыми адресами
+				net_addr_t _addr;
+				// Перенаправление, о котором ведётся текущее обращение
+				mapping_t _mapping;
 			private:
 				// Отсчёт времени работы маршрутизатора по договору PCP
 				epoch_t _epochPCP;
@@ -827,21 +833,58 @@ namespace awh {
 				// Обмен по договору NAT-PMP
 				exchange_t _exchangeNATPMP;
 			private:
-				// Шаг обмена по договору UPnP
-				stage_t _stage;
-				// Идентификатор потокового события обмена с устройством UPnP
-				event::id_t _stream;
-			private:
-				// Адрес описания отысканного устройства UPnP
-				string _location;
+				/**
+				 * \~russian
+				 * @brief Сетевое устройство, взятое из маршрута до внешней сети
+				 *
+				 * @note Держится отдельно от заданного настройкой затем, что настройка
+				 *       старше: отыскание маршрута ведётся на каждое обращение, и затирать им
+				 *       заданное вызывающим неверно
+				 *
+				 * \~english
+				 * @brief Network device taken from the route to the external network
+				 *
+				 * @note It is kept separately from the one given by the setting because the setting is
+				 *       senior: the discovery of the route is conducted at every call, and to overwrite with it
+				 *       what has been given by the caller is wrong
+				 *
+				 * \~
+				 */
+				string _link;
+				/**
+				 * \~russian
+				 * @brief Сетевое устройство, которым ведётся обмен
+				 *
+				 * @note Нужно рассылке SSDP в сети IPv6: групповой адрес там принадлежит
+				 *       связи, и без указания устройства он неоднозначен. Не заданное настройкой
+				 *       берётся из маршрута до внешней сети
+				 *
+				 * \~english
+				 * @brief Network device with which the exchange is conducted
+				 *
+				 * @note Needed by the SSDP multicast in an IPv6 network: the group address there belongs to the
+				 *       link, and without an indication of the device it is ambiguous. What has not been given by the setting
+				 *       is taken from the route to the external network
+				 *
+				 * \~
+				 */
+				string _iface;
+				// Адрес маршрутизатора, заданный настройкой
+				string _router;
+				// Собираемый текст запроса к устройству UPnP
+				string _request;
+				// Собираемое тело ответа устройства UPnP
+				string _payload;
 				// Адрес управления службой отысканного устройства UPnP
 				string _control;
 				// Обозначение вида службы отысканного устройства UPnP
 				string _service;
+				// Адрес описания отысканного устройства UPnP
+				string _location;
 			private:
 				/**
 				 * \~russian
-				 * Объект разбора ответа устройства UPnP
+				 * @brief Объект разбора ответа устройства UPnP
 				 *
 				 * @note Разбор ведётся по мере поступления, а не по накопленному целиком:
 				 *       парсер держит своё состояние между чтениями, и подавать ему заново весь
@@ -849,7 +892,7 @@ namespace awh {
 				 *       сколько кусков пришло
 				 *
 				 * \~english
-				 * Object of the parsing of the answer of a UPnP device
+				 * @brief Object of the parsing of the answer of a UPnP device
 				 *
 				 * @note The parsing is conducted as the data arrives rather than over what has been accumulated in full:
 				 *       the parser keeps its state between the readings, and to feed it the whole
@@ -859,159 +902,284 @@ namespace awh {
 				 * \~
 				 */
 				http::parser_http_t _parser;
-				// Собираемый текст запроса к устройству UPnP
-				string _request;
-				// Собираемое тело ответа устройства UPnP
-				string _payload;
-				// Признак того, что ответ устройства UPnP прочитан до конца
-				bool _complete;
-				/**
-				 * \~russian
-				 * Признак того, что потоковое событие к устройству UPnP подключено
-				 *
-				 * @note Соединение держится на весь обмен, а не на один запрос: чтение
-				 *       перечня требует обращения на каждое перенаправление, и рукопожатие на
-				 *       каждое из них означало бы столько же случаев его потерять
-				 *
-				 * \~english
-				 * Flag of the stream event to the UPnP device being connected
-				 *
-				 * @note The connection is held for the whole exchange rather than for a single request: the reading
-				 *       of the list requires a call for every forwarding, and a handshake for
-				 *       each of them would mean as many occasions to lose it
-				 *
-				 * \~
-				 */
-				bool _connected;
-			private:
-				// Объект работы с адресами ресурсов
-				uri_t _uri;
-			private:
-				// Адрес маршрутизатора, заданный настройкой
-				string _router;
-				/**
-				 * \~russian
-				 * Сетевое устройство, которым ведётся обмен
-				 *
-				 * @note Нужно рассылке SSDP в сети IPv6: групповой адрес там принадлежит
-				 *       связи, и без указания устройства он неоднозначен. Не заданное настройкой
-				 *       берётся из маршрута до внешней сети
-				 *
-				 * \~english
-				 * Network device with which the exchange is conducted
-				 *
-				 * @note Needed by the SSDP multicast in an IPv6 network: the group address there belongs to the
-				 *       link, and without an indication of the device it is ambiguous. What has not been given by the setting
-				 *       is taken from the route to the external network
-				 *
-				 * \~
-				 */
-				string _iface;
-				/**
-				 * \~russian
-				 * Предел числа переходов, каким рассылается просьба обнаружения
-				 *
-				 * @note Умолчанием стоит своя сеть: устройство доступа лежит на ней же,
-				 *       а разослать просьбу шире значило бы беспокоить чужие. Настройка нужна
-				 *       тем, кто держит устройство на самой машине - поддельному шлюзу
-				 *       проверок, к примеру: предел LOOPBACK не выпускает просьбу наружу вовсе,
-				 *       и обмен идёт по любому устройству машины, не только по петле
-				 *
-				 * \~english
-				 * Limit of the number of the hops with which the request of the discovery is multicast
-				 *
-				 * @note The default is its own network: the device of the access lies on it,
-				 *       and to multicast the request wider would mean disturbing the strangers. The setting is needed
-				 *       by those who keep the device on the machine itself — by the fake gateway of the tests,
-				 *       for example: the limit LOOPBACK does not release the request outside at all,
-				 *       and the exchange goes by any device of the machine, not only by the loopback
-				 *
-				 * \~
-				 */
-				event::hops_t _hops;
-				/**
-				 * \~russian
-				 * Сетевое устройство, взятое из маршрута до внешней сети
-				 *
-				 * @note Держится отдельно от заданного настройкой затем, что настройка
-				 *       старше: отыскание маршрута ведётся на каждое обращение, и затирать им
-				 *       заданное вызывающим неверно
-				 *
-				 * \~english
-				 * Network device taken from the route to the external network
-				 *
-				 * @note It is kept separately from the one given by the setting because the setting is
-				 *       senior: the discovery of the route is conducted at every call, and to overwrite with it
-				 *       what has been given by the caller is wrong
-				 *
-				 * \~
-				 */
-				string _link;
-				// Адрес маршрутизатора, отысканный по таблице маршрутов
-				unique_ptr <net::addr_t> _address;
-			private:
-				// Объект работы с сетевыми адресами
-				net_addr_t _addr;
 			private:
 				// Кодек описания устройства UPnP
 				proto::portmap::device_t _device;
+				/**
+				 * \~russian
+				 * @brief Последняя просьба, отправленная по договору PCP
+				 *
+				 * @note Держится затем, что ответ сличается с просьбой средствами кодека:
+				 *       он сверяет и действие, и отличительную метку, и внутренний порт - то
+				 *       есть больше, чем модуль проверил бы сам
+				 *
+				 * \~english
+				 * @brief Last request sent over the PCP protocol
+				 *
+				 * @note It is kept because the answer is verified against the request by the means of the codec:
+				 *       it checks both the action, and the distinguishing mark, and the internal port — that
+				 *       is, more than the module would check by itself
+				 *
+				 * \~
+				 */
+				proto::portmap::pcp::request_t _inquiry;
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод обработки ошибок событий обмена с маршрутизатором
+				 * @brief Отличительная метка перенаправления для договора PCP
 				 *
-				 * @param eid         идентификатор события обмена
-				 * @param error       код ошибки события обмена
-				 * @param description описание ошибки события обмена
+				 * @note Метка держится обменом, а не собирается заново на каждую попытку:
+				 *       договор предписывает одну и ту же метку для просьбы, её повторов и
+				 *       снятия заведённого
 				 *
 				 * \~english
-				 * @brief Method of processing the errors of the events of the exchange with the router
+				 * @brief Distinguishing mark of the forwarding for the PCP protocol
 				 *
-				 * @param eid         event identifier of the exchange
-				 * @param error       error code of the event of the exchange
-				 * @param description error description of the event of the exchange
+				 * @note The mark is kept by the exchange rather than assembled anew for every attempt:
+				 *       the protocol prescribes one and the same mark for a request, its repetitions and
+				 *       the removal of what has been created
 				 *
 				 * \~
 				 */
-				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
+				vector <uint8_t> _nonce;
+				// Перечень прочитанных у маршрутизатора перенаправлений портов
+				vector <mapping_t> _mappings;
 				/**
 				 * \~russian
-				 * @brief Метод обработки ответов маршрутизатора
+				 * @brief Идентификаторы событий отправителей объявлений маршрутизатора
 				 *
-				 * @param eid  идентификатор события чтения
-				 * @param data данные, полученные от маршрутизатора
-				 * @param size размер полученных данных
+				 * @note Держатся затем, что заведены они движком, а закрывать их обязан
+				 *       модуль: без этого приём объявлений, отключённый вызывающим, оставил бы
+				 *       за собой события отправителей
 				 *
 				 * \~english
-				 * @brief Method of processing the answers of the router
+				 * @brief Event identifiers of the senders of the announcements of the router
 				 *
-				 * @param eid  event identifier of the reading
-				 * @param data data received from the router
-				 * @param size size of the received data
+				 * @note They are kept because they have been created by the engine while the module is obliged to close
+				 *       them: without this the reception of the announcements, disabled by the caller, would leave
+				 *       the events of the senders behind it
 				 *
 				 * \~
 				 */
-				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				vector <event::id_t> _announcers;
+			private:
+				// Адрес маршрутизатора, отысканный по таблице маршрутов
+				unique_ptr <net::addr_t> _address;
+			private:
 				/**
 				 * \~russian
-				 * @brief Метод обработки истечения срока ожидания ответа маршрутизатора
+				 * @brief Метод отыскания устройства UPnP рассылкой SSDP
 				 *
-				 * @param eid    идентификатор события обмена
-				 * @param action тип действия для истекшего срока ожидания
-				 * @param delay  длительность срока ожидания в миллисекундах
-				 * @return       нужно ли завершить обработчик после истечения срока
+				 * @details Просьба рассылается на групповой адрес: устройство отвечает не
+				 *          сразу, а спустя случайное время в пределах отведённого срока, поэтому
+				 *          ответ приходит обычным чтением события, а не следом за отправкой.
+				 *
+				 * @return результат начала отыскания устройства
 				 *
 				 * \~english
-				 * @brief Method of processing the expiration of the term of waiting for an answer of the router
+				 * @brief Method of finding a UPnP device by an SSDP multicast
 				 *
-				 * @param eid    event identifier of the exchange
-				 * @param action action type for the expired waiting term
-				 * @param delay  duration of the waiting term in milliseconds
-				 * @return       whether the handler should be terminated after the term has expired
+				 * @details The request is multicast to a group address: the device answers not
+				 *          at once but after a random time within the allotted term, therefore
+				 *          the answer arrives by an ordinary reading of the event rather than right after the sending.
+				 *
+				 * @return result of the beginning of the discovery of the device
 				 *
 				 * \~
 				 */
-				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				bool search() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод повторения текущего шага обмена по договору UPnP
+				 *
+				 * @details Устройство приняло подключение, но на запрос не ответило в
+				 *          отведённый срок. Обращение повторяется тем же шагом, на котором стояло:
+				 *          повторять весь обмен с рассылки незачем - устройство уже отыскано.
+				 *
+				 * @note Потоковое событие здесь не уничтожается: запрос вызова действия
+				 *       службы собирается по внутреннему адресу подключённого события, и снять
+				 *       его нужно уже после сборки. Уничтожает старое событие заведение нового
+				 *
+				 * @return результат повторения текущего шага обмена
+				 *
+				 * \~english
+				 * @brief Method of repeating the current step of the exchange over the UPnP protocol
+				 *
+				 * @details The device has accepted the connection but has not answered the request within
+				 *          the allotted term. The call is repeated at the same step at which it stood:
+				 *          there is no point in repeating the whole exchange from the multicast — the device has already been found.
+				 *
+				 * @note The stream event is not destroyed here: the request of the call of an action
+				 *       of the service is assembled by the internal address of the connected event, and it should be removed
+				 *       already after the assembly. The old event is destroyed by the creation of a new one
+				 *
+				 * @return result of repeating the current step of the exchange
+				 *
+				 * \~
+				 */
+				bool repeat() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод чтения описания отысканного устройства UPnP
+				 *
+				 * @return результат начала чтения описания устройства
+				 *
+				 * \~english
+				 * @brief Method of reading the description of a found UPnP device
+				 *
+				 * @return result of the beginning of the reading of the description of the device
+				 *
+				 * \~
+				 */
+				bool describe() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод вызова действия службы отысканного устройства UPnP
+				 *
+				 * @return результат начала вызова действия службы
+				 *
+				 * \~english
+				 * @brief Method of calling an action of the service of a found UPnP device
+				 *
+				 * @return result of the beginning of the call of the action of the service
+				 *
+				 * \~
+				 */
+				bool control() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод прекращения всех ведущихся обменов
+				 *
+				 * \~english
+				 * @brief Method of terminating all the exchanges being conducted
+				 *
+				 * \~
+				 */
+				void cancel() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод разбора прочитанного описания устройства UPnP
+				 *
+				 * \~english
+				 * @brief Method of parsing the read description of a UPnP device
+				 *
+				 * \~
+				 */
+				void described() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разбора ответа службы устройства UPnP
+				 *
+				 * \~english
+				 * @brief Method of parsing the answer of the service of a UPnP device
+				 *
+				 * \~
+				 */
+				void controlled() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод отправки просьбы маршрутизатору по дейтаграммному договору
+				 *
+				 * @param type договор перенаправления, по которому ведётся обмен
+				 * @return     результат отправки просьбы
+				 *
+				 * \~english
+				 * @brief Method of sending a request to the router over a datagram protocol
+				 *
+				 * @param type forwarding protocol over which the exchange is conducted
+				 * @return     result of sending the request
+				 *
+				 * \~
+				 */
+				bool submit(const type_t type) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод прекращения заведённого события обмена
+				 *
+				 * @details Событие заводится прежде, чем собирается просьба, и неудача
+				 *          сборки либо отправки оставила бы его жить до конца обращения: занятый
+				 *          порт и подписка на чтение держались бы там, где обмена уже не будет.
+				 *
+				 * @param type договор перенаправления, по которому ведётся обмен
+				 *
+				 * \~english
+				 * @brief Method of terminating a created exchange event
+				 *
+				 * @details The event is created before the request is assembled, and a failure of the
+				 *          assembly or of the sending would leave it alive until the end of the call: an occupied
+				 *          port and a read subscription would be held where there will be no exchange any more.
+				 *
+				 * @param type forwarding protocol over which the exchange is conducted
+				 *
+				 * \~
+				 */
+				void discard(const type_t type) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод заведения события обмена по дейтаграммному договору
+				 *
+				 * @note Событие пересоздаётся на каждую попытку: назначение получателя на
+				 *       запущенном событии не действует
+				 *
+				 * @param type договор перенаправления, по которому ведётся обмен
+				 * @return     результат заведения события обмена
+				 *
+				 * \~english
+				 * @brief Method of creating an exchange event over a datagram protocol
+				 *
+				 * @note The event is recreated for every attempt: the assignment of the recipient on
+				 *       a launched event has no effect
+				 *
+				 * @param type forwarding protocol over which the exchange is conducted
+				 * @return     result of creating the exchange event
+				 *
+				 * \~
+				 */
+				bool datagram(const type_t type) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод получения записи обмена по договору перенаправления
+				 *
+				 * @param type договор перенаправления, по которому ведётся обмен
+				 * @return     запись обмена по указанному договору
+				 *
+				 * \~english
+				 * @brief Method of getting the exchange record for a forwarding protocol
+				 *
+				 * @param type forwarding protocol over which the exchange is conducted
+				 * @return     exchange record for the specified protocol
+				 *
+				 * \~
+				 */
+				exchange_t & exchange(const type_t type) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения договора, которому принадлежит событие обмена
+				 *
+				 * @note Событие обмена удаляется по завершении обращения, но выданное ему
+				 *       чтение способно прийти уже после удаления: сличать следует, а не
+				 *       принимать всякое событие за оставшийся договор
+				 *
+				 * @param eid идентификатор события обмена
+				 * @return    договор перенаправления, которому принадлежит событие
+				 *
+				 * \~english
+				 * @brief Method of determining the protocol to which an exchange event belongs
+				 *
+				 * @note The exchange event is removed upon the completion of the call, but a reading issued to
+				 *       it is capable of arriving already after the removal: one should verify rather than
+				 *       take every event for the remaining protocol
+				 *
+				 * @param eid event identifier of the exchange
+				 * @return    forwarding protocol to which the event belongs
+				 *
+				 * \~
+				 */
+				type_t belongs(const event::id_t eid) const noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1124,154 +1292,60 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод заведения события обмена по дейтаграммному договору
+				 * @brief Метод обработки ответов маршрутизатора
 				 *
-				 * @note Событие пересоздаётся на каждую попытку: назначение получателя на
-				 *       запущенном событии не действует
-				 *
-				 * @param type договор перенаправления, по которому ведётся обмен
-				 * @return     результат заведения события обмена
+				 * @param eid  идентификатор события чтения
+				 * @param data данные, полученные от маршрутизатора
+				 * @param size размер полученных данных
 				 *
 				 * \~english
-				 * @brief Method of creating an exchange event over a datagram protocol
+				 * @brief Method of processing the answers of the router
 				 *
-				 * @note The event is recreated for every attempt: the assignment of the recipient on
-				 *       a launched event has no effect
-				 *
-				 * @param type forwarding protocol over which the exchange is conducted
-				 * @return     result of creating the exchange event
+				 * @param eid  event identifier of the reading
+				 * @param data data received from the router
+				 * @param size size of the received data
 				 *
 				 * \~
 				 */
-				bool datagram(const type_t type) noexcept;
+				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод прекращения заведённого события обмена
+				 * @brief Метод обработки истечения срока ожидания ответа маршрутизатора
 				 *
-				 * @details Событие заводится прежде, чем собирается просьба, и неудача
-				 *          сборки либо отправки оставила бы его жить до конца обращения: занятый
-				 *          порт и подписка на чтение держались бы там, где обмена уже не будет.
-				 *
-				 * @param type договор перенаправления, по которому ведётся обмен
+				 * @param eid    идентификатор события обмена
+				 * @param action тип действия для истекшего срока ожидания
+				 * @param delay  длительность срока ожидания в миллисекундах
+				 * @return       нужно ли завершить обработчик после истечения срока
 				 *
 				 * \~english
-				 * @brief Method of terminating a created exchange event
+				 * @brief Method of processing the expiration of the term of waiting for an answer of the router
 				 *
-				 * @details The event is created before the request is assembled, and a failure of the
-				 *          assembly or of the sending would leave it alive until the end of the call: an occupied
-				 *          port and a read subscription would be held where there will be no exchange any more.
-				 *
-				 * @param type forwarding protocol over which the exchange is conducted
+				 * @param eid    event identifier of the exchange
+				 * @param action action type for the expired waiting term
+				 * @param delay  duration of the waiting term in milliseconds
+				 * @return       whether the handler should be terminated after the term has expired
 				 *
 				 * \~
 				 */
-				void discard(const type_t type) noexcept;
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод отправки просьбы маршрутизатору по дейтаграммному договору
+				 * @brief Метод обработки ошибок событий обмена с маршрутизатором
 				 *
-				 * @param type договор перенаправления, по которому ведётся обмен
-				 * @return     результат отправки просьбы
+				 * @param eid         идентификатор события обмена
+				 * @param error       код ошибки события обмена
+				 * @param description описание ошибки события обмена
 				 *
 				 * \~english
-				 * @brief Method of sending a request to the router over a datagram protocol
+				 * @brief Method of processing the errors of the events of the exchange with the router
 				 *
-				 * @param type forwarding protocol over which the exchange is conducted
-				 * @return     result of sending the request
+				 * @param eid         event identifier of the exchange
+				 * @param error       error code of the event of the exchange
+				 * @param description error description of the event of the exchange
 				 *
 				 * \~
 				 */
-				bool submit(const type_t type) noexcept;
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод определения договора, которому принадлежит событие обмена
-				 *
-				 * @note Событие обмена удаляется по завершении обращения, но выданное ему
-				 *       чтение способно прийти уже после удаления: сличать следует, а не
-				 *       принимать всякое событие за оставшийся договор
-				 *
-				 * @param eid идентификатор события обмена
-				 * @return    договор перенаправления, которому принадлежит событие
-				 *
-				 * \~english
-				 * @brief Method of determining the protocol to which an exchange event belongs
-				 *
-				 * @note The exchange event is removed upon the completion of the call, but a reading issued to
-				 *       it is capable of arriving already after the removal: one should verify rather than
-				 *       take every event for the remaining protocol
-				 *
-				 * @param eid event identifier of the exchange
-				 * @return    forwarding protocol to which the event belongs
-				 *
-				 * \~
-				 */
-				type_t belongs(const event::id_t eid) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения записи обмена по договору перенаправления
-				 *
-				 * @param type договор перенаправления, по которому ведётся обмен
-				 * @return     запись обмена по указанному договору
-				 *
-				 * \~english
-				 * @brief Method of getting the exchange record for a forwarding protocol
-				 *
-				 * @param type forwarding protocol over which the exchange is conducted
-				 * @return     exchange record for the specified protocol
-				 *
-				 * \~
-				 */
-				exchange_t & exchange(const type_t type) noexcept;
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод приведения кода итога договора PCP к коду причины отказа
-				 *
-				 * @param result код итога, выданный маршрутизатором
-				 * @return       код причины отказа перенаправления
-				 *
-				 * \~english
-				 * @brief Method of bringing a result code of the PCP protocol to a refusal reason code
-				 *
-				 * @param result result code issued by the router
-				 * @return       code of the reason of the refusal of the forwarding
-				 *
-				 * \~
-				 */
-				error_t reason(const proto::portmap::pcp::result_t result) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод приведения кода итога договора NAT-PMP к коду причины отказа
-				 *
-				 * @param result код итога, выданный маршрутизатором
-				 * @return       код причины отказа перенаправления
-				 *
-				 * \~english
-				 * @brief Method of bringing a result code of the NAT-PMP protocol to a refusal reason code
-				 *
-				 * @param result result code issued by the router
-				 * @return       code of the reason of the refusal of the forwarding
-				 *
-				 * \~
-				 */
-				error_t reason(const proto::portmap::natpmp::result_t result) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод приведения кода итога службы UPnP к коду причины отказа
-				 *
-				 * @param result код итога, выданный службой устройства
-				 * @return       код причины отказа перенаправления
-				 *
-				 * \~english
-				 * @brief Method of bringing a result code of a UPnP service to a refusal reason code
-				 *
-				 * @param result result code issued by the service of the device
-				 * @return       code of the reason of the refusal of the forwarding
-				 *
-				 * \~
-				 */
-				error_t reason(const proto::portmap::upnp::result_t result) const noexcept;
+				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1300,26 +1374,53 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод отыскания устройства UPnP рассылкой SSDP
+				 * @brief Метод приведения кода итога договора PCP к коду причины отказа
 				 *
-				 * @details Просьба рассылается на групповой адрес: устройство отвечает не
-				 *          сразу, а спустя случайное время в пределах отведённого срока, поэтому
-				 *          ответ приходит обычным чтением события, а не следом за отправкой.
-				 *
-				 * @return результат начала отыскания устройства
+				 * @param result код итога, выданный маршрутизатором
+				 * @return       код причины отказа перенаправления
 				 *
 				 * \~english
-				 * @brief Method of finding a UPnP device by an SSDP multicast
+				 * @brief Method of bringing a result code of the PCP protocol to a refusal reason code
 				 *
-				 * @details The request is multicast to a group address: the device answers not
-				 *          at once but after a random time within the allotted term, therefore
-				 *          the answer arrives by an ordinary reading of the event rather than right after the sending.
-				 *
-				 * @return result of the beginning of the discovery of the device
+				 * @param result result code issued by the router
+				 * @return       code of the reason of the refusal of the forwarding
 				 *
 				 * \~
 				 */
-				bool search() noexcept;
+				error_t reason(const proto::portmap::pcp::result_t result) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод приведения кода итога службы UPnP к коду причины отказа
+				 *
+				 * @param result код итога, выданный службой устройства
+				 * @return       код причины отказа перенаправления
+				 *
+				 * \~english
+				 * @brief Method of bringing a result code of a UPnP service to a refusal reason code
+				 *
+				 * @param result result code issued by the service of the device
+				 * @return       code of the reason of the refusal of the forwarding
+				 *
+				 * \~
+				 */
+				error_t reason(const proto::portmap::upnp::result_t result) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод приведения кода итога договора NAT-PMP к коду причины отказа
+				 *
+				 * @param result код итога, выданный маршрутизатором
+				 * @return       код причины отказа перенаправления
+				 *
+				 * \~english
+				 * @brief Method of bringing a result code of the NAT-PMP protocol to a refusal reason code
+				 *
+				 * @param result result code issued by the router
+				 * @return       code of the reason of the refusal of the forwarding
+				 *
+				 * \~
+				 */
+				error_t reason(const proto::portmap::natpmp::result_t result) const noexcept;
+			private:
 				/**
 				 * \~russian
 				 * @brief Метод отыскания устройства UPnP рассылкой SSDP на заданную группу
@@ -1370,83 +1471,7 @@ namespace awh {
 				 * \~
 				 */
 				bool membership(const string & group, const bool six) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод чтения описания отысканного устройства UPnP
-				 *
-				 * @return результат начала чтения описания устройства
-				 *
-				 * \~english
-				 * @brief Method of reading the description of a found UPnP device
-				 *
-				 * @return result of the beginning of the reading of the description of the device
-				 *
-				 * \~
-				 */
-				bool describe() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод вызова действия службы отысканного устройства UPnP
-				 *
-				 * @return результат начала вызова действия службы
-				 *
-				 * \~english
-				 * @brief Method of calling an action of the service of a found UPnP device
-				 *
-				 * @return result of the beginning of the call of the action of the service
-				 *
-				 * \~
-				 */
-				bool control() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод повторения текущего шага обмена по договору UPnP
-				 *
-				 * @details Устройство приняло подключение, но на запрос не ответило в
-				 *          отведённый срок. Обращение повторяется тем же шагом, на котором стояло:
-				 *          повторять весь обмен с рассылки незачем - устройство уже отыскано.
-				 *
-				 * @note Потоковое событие здесь не уничтожается: запрос вызова действия
-				 *       службы собирается по внутреннему адресу подключённого события, и снять
-				 *       его нужно уже после сборки. Уничтожает старое событие заведение нового
-				 *
-				 * @return результат повторения текущего шага обмена
-				 *
-				 * \~english
-				 * @brief Method of repeating the current step of the exchange over the UPnP protocol
-				 *
-				 * @details The device has accepted the connection but has not answered the request within
-				 *          the allotted term. The call is repeated at the same step at which it stood:
-				 *          there is no point in repeating the whole exchange from the multicast — the device has already been found.
-				 *
-				 * @note The stream event is not destroyed here: the request of the call of an action
-				 *       of the service is assembled by the internal address of the connected event, and it should be removed
-				 *       already after the assembly. The old event is destroyed by the creation of a new one
-				 *
-				 * @return result of repeating the current step of the exchange
-				 *
-				 * \~
-				 */
-				bool repeat() noexcept;
 			private:
-				/**
-				 * \~russian
-				 * @brief Метод заведения потокового события обмена с устройством UPnP
-				 *
-				 * @param address адрес устройства, с которым ведётся обмен
-				 * @param port    порт устройства, с которым ведётся обмен
-				 * @return        результат заведения потокового события обмена
-				 *
-				 * \~english
-				 * @brief Method of creating a stream event of the exchange with a UPnP device
-				 *
-				 * @param address address of the device with which the exchange is conducted
-				 * @param port    port of the device with which the exchange is conducted
-				 * @return        result of creating the stream event of the exchange
-				 *
-				 * \~
-				 */
-				bool stream(string_view address, const uint16_t port) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод подготовки объекта разбора к чтению ответа устройства UPnP
@@ -1489,6 +1514,24 @@ namespace awh {
 				void connected(const event::id_t eid, const bool ok) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод заведения потокового события обмена с устройством UPnP
+				 *
+				 * @param address адрес устройства, с которым ведётся обмен
+				 * @param port    порт устройства, с которым ведётся обмен
+				 * @return        результат заведения потокового события обмена
+				 *
+				 * \~english
+				 * @brief Method of creating a stream event of the exchange with a UPnP device
+				 *
+				 * @param address address of the device with which the exchange is conducted
+				 * @param port    port of the device with which the exchange is conducted
+				 * @return        result of creating the stream event of the exchange
+				 *
+				 * \~
+				 */
+				bool stream(string_view address, const uint16_t port) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод обработки данных, полученных от устройства UPnP
 				 *
 				 * @param eid  идентификатор потокового события обмена
@@ -1508,24 +1551,20 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод разбора прочитанного описания устройства UPnP
+				 * @brief Метод завершения обмена отказом
+				 *
+				 * @param type  договор перенаправления, по которому вёлся обмен
+				 * @param error код причины отказа
 				 *
 				 * \~english
-				 * @brief Method of parsing the read description of a UPnP device
+				 * @brief Method of completing the exchange with a refusal
+				 *
+				 * @param type  forwarding protocol over which the exchange has been conducted
+				 * @param error code of the reason of the refusal
 				 *
 				 * \~
 				 */
-				void described() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод разбора ответа службы устройства UPnP
-				 *
-				 * \~english
-				 * @brief Method of parsing the answer of the service of a UPnP device
-				 *
-				 * \~
-				 */
-				void controlled() noexcept;
+				void failure(const type_t type, const error_t error) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1554,21 +1593,20 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод завершения обмена отказом
+				 * @brief Метод завершения обмена по одному договору
 				 *
-				 * @param type  договор перенаправления, по которому вёлся обмен
-				 * @param error код причины отказа
+				 * @details Обмены прочих договоров прекращаются: под видом опроса AUTO их
+				 *          ведётся несколько разом, и первый пришедший ответ делает остальные ненужными.
 				 *
 				 * \~english
-				 * @brief Method of completing the exchange with a refusal
+				 * @brief Method of completing the exchange over a single protocol
 				 *
-				 * @param type  forwarding protocol over which the exchange has been conducted
-				 * @param error code of the reason of the refusal
+				 * @details The exchanges of the other protocols are terminated: under the AUTO polling kind several of them
+				 *          are conducted at once, and the first answer that has arrived makes the rest unnecessary.
 				 *
 				 * \~
 				 */
-				void failure(const type_t type, const error_t error) noexcept;
-			private:
+				void complete() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод сверки отсчёта времени работы маршрутизатора
@@ -1689,53 +1727,139 @@ namespace awh {
 				 * \~
 				 */
 				void accepted(const event::id_t eid, const event::id_t oid) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод завершения обмена по одному договору
-				 *
-				 * @details Обмены прочих договоров прекращаются: под видом опроса AUTO их
-				 *          ведётся несколько разом, и первый пришедший ответ делает остальные ненужными.
-				 *
-				 * @param type договор перенаправления, по которому получен ответ
-				 *
-				 * \~english
-				 * @brief Method of completing the exchange over a single protocol
-				 *
-				 * @details The exchanges of the other protocols are terminated: under the AUTO polling kind several of them
-				 *          are conducted at once, and the first answer that has arrived makes the rest unnecessary.
-				 *
-				 * @param type forwarding protocol over which the answer has been received
-				 *
-				 * \~
-				 */
-				void complete(const type_t type) noexcept;
-			private:
-				/**
-				 * \~russian
-				 * @brief Метод прекращения всех ведущихся обменов
-				 *
-				 * \~english
-				 * @brief Method of terminating all the exchanges being conducted
-				 *
-				 * \~
-				 */
-				void cancel() noexcept;
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод установки функций обратного вызова
+				 * @brief Метод получения перечня заведённых перенаправлений портов
 				 *
-				 * @param callback функции обратного вызова
+				 * @details Спрашивает у маршрутизатора, какие перенаправления у него
+				 *          заведены. Перечень выдаётся обратным вызовом `mappings`.
 				 *
+				 * @note Перечень этот общий на всю сеть, а не свой у машины: в нём
+				 *       окажутся и перенаправления, заведённые другими. Чьё именно
+				 *       перенаправление, видно по полю `internalClient`
+				 *
+				 * @note Перечня служба разом не выдаёт: перенаправления читаются по
+				 *       одному, наращивая порядковый номер, и обращений к маршрутизатору
+				 *       выходит столько же, сколько перенаправлений. Мгновенным чтение
+				 *       поэтому не бывает
+				 *
+				 * @warning Перечень выдаёт лишь договор UPnP: у NAT-PMP и PCP чтения
+				 *          заведённых перенаправлений нет вовсе. При ином виде опроса просьба
+				 *          завершается отказом `NOT_SUPPORTED`
+				 *
+				 * @return результат отправки просьбы
 				 *
 				 * \~english
-				 * @brief Method of setting the callback functions
+				 * @brief Method of getting the list of the created port forwardings
 				 *
-				 * @param callback callback functions
+				 * @details Asks the router which forwardings are created on
+				 *          it. The list is issued by the `mappings` callback.
+				 *
+				 * @note This list is common to the whole network rather than being an own one of the machine: in it
+				 *       there will be the forwardings created by others as well. Whose exactly a
+				 *       forwarding is, is visible by the `internalClient` field
+				 *
+				 * @note The service does not provide the list at once: the forwardings are read one by
+				 *       one, incrementing the ordinal number, and there turn out to be as many calls to the router
+				 *       as there are forwardings. The reading is therefore never instantaneous
+				 *
+				 * @warning Only the UPnP protocol provides the list: NAT-PMP and PCP have no reading
+				 *          of the created forwardings at all. Under another polling kind the request
+				 *          is completed with a `NOT_SUPPORTED` refusal
+				 *
+				 * @return result of sending the request
 				 *
 				 * \~
 				 */
-				void callback(const callback_t & callback) noexcept;
+				bool list() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения внешнего адреса маршрутизатора
+				 *
+				 * @return результат отправки просьбы
+				 *
+				 * \~english
+				 * @brief Method of getting the external address of the router
+				 *
+				 * @return result of sending the request
+				 *
+				 * \~
+				 */
+				bool external() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод включения приёма объявлений маршрутизатора
+				 *
+				 * @details Маршрутизатор, перезагрузившись или сменив внешний адрес,
+				 *          рассылает об этом объявление на групповой адрес - десять раз с
+				 *          нарастающим промежутком (RFC 6886, раздел 3.2.1, и RFC 6887, раздел 14.1).
+				 *          Приём объявлений даёт узнать об утрате состояния сразу, а не при
+				 *          следующем обращении: без него сверка отсчёта времени работы срабатывает
+				 *          лишь тогда, когда вызывающий сам о чём-то спросил, а до этого
+				 *          перенаправление уже мертво, но числится живым.
+				 *
+				 * @details Утрата состояния объявляется обратным вызовом `reset`, а
+				 *          сменившийся внешний адрес - обратным вызовом `external`: договор
+				 *          NAT-PMP несёт его прямо в объявлении, и это вторая половина того, ради
+				 *          чего объявление рассылается.
+				 *
+				 * @note Приём заводится по просьбе, а не сам собой: он держит гнездо на
+				 *       договорном порту всё время работы, вступает в группу и принимает
+				 *       дейтаграммы от любого узла сети. Приложению, которому объявления не
+				 *       нужны, всё это ни к чему
+				 *
+				 * @note Оба договора рассылают объявления на один и тот же порт, и
+				 *       разделяются они изданием в первом октете сообщения, как и обычные
+				 *       ответы. Договор UPnP отсчёта времени работы не имеет вовсе, и утрату
+				 *       состояния по нему заметить нечем
+				 *
+				 * @warning Порт объявлений бывает занят другой службой перенаправления,
+				 *          работающей на той же машине: тогда приём завести не удаётся, и метод
+				 *          отвечает отказом. Обращений к маршрутизатору это не отменяет - они
+				 *          ведутся своими событиями и приёма не требуют
+				 *
+				 * @param mode режим приёма объявлений маршрутизатора
+				 * @return     результат включения приёма объявлений
+				 *
+				 * \~english
+				 * @brief Method of enabling the reception of the announcements of the router
+				 *
+				 * @details A router, having rebooted or having changed its external address,
+				 *          multicasts an announcement about this to a group address — ten times with
+				 *          a growing interval (RFC 6886, section 3.2.1, and RFC 6887, section 14.1).
+				 *          The reception of the announcements makes it possible to learn about a loss of the state at once rather than at the
+				 *          next call: without it the verification of the counter of the working time triggers
+				 *          only when the caller has asked about something itself, while before that
+				 *          the forwarding is already dead but is listed as alive.
+				 *
+				 * @details A loss of the state is announced by the `reset` callback, while
+				 *          a changed external address — by the `external` callback: the NAT-PMP
+				 *          protocol carries it right in the announcement, and this is the second half of what
+				 *          the announcement is multicast for.
+				 *
+				 * @note The reception is created upon a request rather than by itself: it holds a socket on
+				 *       the protocol port for the whole time of the work, joins the group and accepts
+				 *       datagrams from any node of the network. An application that does not need the announcements
+				 *       has no use for all of that
+				 *
+				 * @note Both protocols multicast the announcements to one and the same port, and
+				 *      they are separated by the version in the first octet of the message, just like the ordinary
+				 *      answers. The UPnP protocol has no counter of the working time at all, and there is nothing
+				 *      to notice a loss of the state by there
+				 *
+				 * @warning The port of the announcements happens to be occupied by another forwarding service
+				 *          working on the same machine: then the reception cannot be created, and the method
+				 *          answers with a refusal. This does not cancel the calls to the router — they
+				 *          are conducted by their own events and do not require the reception
+				 *
+				 * @param mode mode of the reception of the announcements of the router
+				 * @return     result of enabling the reception of the announcements
+				 *
+				 * \~
+				 */
+				bool announce(const bool mode) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1765,6 +1889,7 @@ namespace awh {
 				 * \~
 				 */
 				void setType(const type_t type) noexcept;
+			public:
 				/**
 				 * \~russian
 				 * @brief Метод получения разновидности сети, в которой ведётся обмен
@@ -1849,26 +1974,6 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод установки адреса маршрутизатора
-				 *
-				 * @details Заданный адрес отменяет отыскание маршрутизатора по таблице
-				 *          маршрутов. Пустой адрес возвращает отыскание.
-				 *
-				 * @param router адрес маршрутизатора для установки
-				 *
-				 * \~english
-				 * @brief Method of setting the address of the router
-				 *
-				 * @details A given address cancels the discovery of the router by the routing
-				 *          table. An empty address returns the discovery.
-				 *
-				 * @param router address of the router to be set
-				 *
-				 * \~
-				 */
-				void setRouter(string_view router) noexcept;
-				/**
-				 * \~russian
 				 * @brief Метод установки сетевого устройства, которым ведётся обмен
 				 *
 				 * @details Нужно рассылке SSDP в сети IPv6: групповой адрес обнаружения
@@ -1897,6 +2002,26 @@ namespace awh {
 				 * \~
 				 */
 				void setIface(string_view iface) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки адреса маршрутизатора
+				 *
+				 * @details Заданный адрес отменяет отыскание маршрутизатора по таблице
+				 *          маршрутов. Пустой адрес возвращает отыскание.
+				 *
+				 * @param router адрес маршрутизатора для установки
+				 *
+				 * \~english
+				 * @brief Method of setting the address of the router
+				 *
+				 * @details A given address cancels the discovery of the router by the routing
+				 *          table. An empty address returns the discovery.
+				 *
+				 * @param router address of the router to be set
+				 *
+				 * \~
+				 */
+				void setRouter(string_view router) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки предела числа переходов рассылки обнаружения
@@ -1931,66 +2056,6 @@ namespace awh {
 				 * \~
 				 */
 				void setHops(const event::hops_t hops) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод получения внешнего адреса маршрутизатора
-				 *
-				 * @return результат отправки просьбы
-				 *
-				 * \~english
-				 * @brief Method of getting the external address of the router
-				 *
-				 * @return result of sending the request
-				 *
-				 * \~
-				 */
-				bool external() noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения перечня заведённых перенаправлений портов
-				 *
-				 * @details Спрашивает у маршрутизатора, какие перенаправления у него
-				 *          заведены. Перечень выдаётся обратным вызовом `mappings`.
-				 *
-				 * @note Перечень этот общий на всю сеть, а не свой у машины: в нём
-				 *       окажутся и перенаправления, заведённые другими. Чьё именно
-				 *       перенаправление, видно по полю `internalClient`
-				 *
-				 * @note Перечня служба разом не выдаёт: перенаправления читаются по
-				 *       одному, наращивая порядковый номер, и обращений к маршрутизатору
-				 *       выходит столько же, сколько перенаправлений. Мгновенным чтение
-				 *       поэтому не бывает
-				 *
-				 * @warning Перечень выдаёт лишь договор UPnP: у NAT-PMP и PCP чтения
-				 *          заведённых перенаправлений нет вовсе. При ином виде опроса просьба
-				 *          завершается отказом `NOT_SUPPORTED`
-				 *
-				 * @return результат отправки просьбы
-				 *
-				 * \~english
-				 * @brief Method of getting the list of the created port forwardings
-				 *
-				 * @details Asks the router which forwardings are created on
-				 *          it. The list is issued by the `mappings` callback.
-				 *
-				 * @note This list is common to the whole network rather than being an own one of the machine: in it
-				 *       there will be the forwardings created by others as well. Whose exactly a
-				 *       forwarding is, is visible by the `internalClient` field
-				 *
-				 * @note The service does not provide the list at once: the forwardings are read one by
-				 *       one, incrementing the ordinal number, and there turn out to be as many calls to the router
-				 *       as there are forwardings. The reading is therefore never instantaneous
-				 *
-				 * @warning Only the UPnP protocol provides the list: NAT-PMP and PCP have no reading
-				 *          of the created forwardings at all. Under another polling kind the request
-				 *          is completed with a `NOT_SUPPORTED` refusal
-				 *
-				 * @return result of sending the request
-				 *
-				 * \~
-				 */
-				bool list() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -2065,76 +2130,19 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод включения приёма объявлений маршрутизатора
+				 * @brief Метод установки функций обратного вызова
 				 *
-				 * @details Маршрутизатор, перезагрузившись или сменив внешний адрес,
-				 *          рассылает об этом объявление на групповой адрес - десять раз с
-				 *          нарастающим промежутком (RFC 6886, раздел 3.2.1, и RFC 6887, раздел 14.1).
-				 *          Приём объявлений даёт узнать об утрате состояния сразу, а не при
-				 *          следующем обращении: без него сверка отсчёта времени работы срабатывает
-				 *          лишь тогда, когда вызывающий сам о чём-то спросил, а до этого
-				 *          перенаправление уже мертво, но числится живым.
+				 * @param callback функции обратного вызова
 				 *
-				 * @details Утрата состояния объявляется обратным вызовом `reset`, а
-				 *          сменившийся внешний адрес - обратным вызовом `external`: договор
-				 *          NAT-PMP несёт его прямо в объявлении, и это вторая половина того, ради
-				 *          чего объявление рассылается.
-				 *
-				 * @note Приём заводится по просьбе, а не сам собой: он держит гнездо на
-				 *       договорном порту всё время работы, вступает в группу и принимает
-				 *       дейтаграммы от любого узла сети. Приложению, которому объявления не
-				 *       нужны, всё это ни к чему
-				 *
-				 * @note Оба договора рассылают объявления на один и тот же порт, и
-				 *       разделяются они изданием в первом октете сообщения, как и обычные
-				 *       ответы. Договор UPnP отсчёта времени работы не имеет вовсе, и утрату
-				 *       состояния по нему заметить нечем
-				 *
-				 * @warning Порт объявлений бывает занят другой службой перенаправления,
-				 *          работающей на той же машине: тогда приём завести не удаётся, и метод
-				 *          отвечает отказом. Обращений к маршрутизатору это не отменяет - они
-				 *          ведутся своими событиями и приёма не требуют
-				 *
-				 * @param mode режим приёма объявлений маршрутизатора
-				 * @return     результат включения приёма объявлений
 				 *
 				 * \~english
-				 * @brief Method of enabling the reception of the announcements of the router
+				 * @brief Method of setting the callback functions
 				 *
-				 * @details A router, having rebooted or having changed its external address,
-				 *          multicasts an announcement about this to a group address — ten times with
-				 *          a growing interval (RFC 6886, section 3.2.1, and RFC 6887, section 14.1).
-				 *          The reception of the announcements makes it possible to learn about a loss of the state at once rather than at the
-				 *          next call: without it the verification of the counter of the working time triggers
-				 *          only when the caller has asked about something itself, while before that
-				 *          the forwarding is already dead but is listed as alive.
-				 *
-				 * @details A loss of the state is announced by the `reset` callback, while
-				 *          a changed external address — by the `external` callback: the NAT-PMP
-				 *          protocol carries it right in the announcement, and this is the second half of what
-				 *          the announcement is multicast for.
-				 *
-				 * @note The reception is created upon a request rather than by itself: it holds a socket on
-				 *       the protocol port for the whole time of the work, joins the group and accepts
-				 *       datagrams from any node of the network. An application that does not need the announcements
-				 *       has no use for all of that
-				 *
-				 * @note Both protocols multicast the announcements to one and the same port, and
-				 *      they are separated by the version in the first octet of the message, just like the ordinary
-				 *      answers. The UPnP protocol has no counter of the working time at all, and there is nothing
-				 *      to notice a loss of the state by there
-				 *
-				 * @warning The port of the announcements happens to be occupied by another forwarding service
-				 *          working on the same machine: then the reception cannot be created, and the method
-				 *          answers with a refusal. This does not cancel the calls to the router — they
-				 *          are conducted by their own events and do not require the reception
-				 *
-				 * @param mode mode of the reception of the announcements of the router
-				 * @return     result of enabling the reception of the announcements
+				 * @param callback callback functions
 				 *
 				 * \~
 				 */
-				bool announce(const bool mode) noexcept;
+				void callback(const callback_t & callback) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -2145,7 +2153,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Portmap(const Portmap &) = delete;
+				explicit Portmap(const Portmap &) = delete;
 				/**
 				 * \~russian
 				 * @brief Оператор копирования (запрещаем)
