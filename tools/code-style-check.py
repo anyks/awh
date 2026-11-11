@@ -42,6 +42,81 @@ def strip_comments_strings(line, in_block):
     return "".join(out), in_block
 
 
+RAW_OPEN = re.compile(r'(?:u8|u|U|L)?R"([^ ()\\\t\r\n"]{0,16})\(')
+RAW_TAIL = re.compile(r"[\s;,\)\]\}]*")
+
+def raw_scan(lines):
+    """Разметка строк по сырым литералам `R"DELIM( … )DELIM"` (§8.5.4).
+
+    Выдаёт три списка по строкам: проекцию кода без содержимого литералов,
+    состояние блочного примечания ПОСЛЕ строки и род строки — `code`, `body`
+    (тело литерала целиком) либо `tail` (закрытие литерала, за которым ничего,
+    кроме знаков окончания оператора).
+
+    Строка ОТКРЫТИЯ остаётся `code`: на ней стоит сам оператор, и комментарий над
+    ним обязателен наравне с прочими. Тело и хвост — данные и продолжение того же
+    оператора, а не новые операторы. Строка, где литерал закрывается и за ним
+    идёт настоящий код, остаётся `code`: иначе пропал бы оператор, начинающийся
+    на ней.
+
+    Разбор обязан знать примечания и обычные строки: запись `R"(` встречается в
+    примечаниях как ТЕКСТ (документация simdjson), и поиск без этого знания
+    открыл бы там область, проглотив остаток файла вместе с настоящими
+    нарушениями.
+    """
+    codes, blocks, kinds = [], [], []
+    in_block = False
+    close = None
+    for raw in lines:
+        line = raw.rstrip("\n")
+        out = []
+        kind = "code"
+        i = 0
+        if close is not None:
+            j = line.find(close)
+            if j < 0:
+                codes.append(""); blocks.append(in_block); kinds.append("body")
+                continue
+            i, close, kind = j + len(close), None, "tail"
+        while i < len(line):
+            if in_block:
+                j = line.find("*/", i)
+                if j < 0:
+                    i = len(line); break
+                i, in_block = j + 2, False
+                continue
+            if line[i:i+2] == "/*":
+                in_block = True; i += 2; continue
+            if line[i:i+2] == "//":
+                break
+            c = line[i]
+            if c in "\"'":
+                q = c; i += 1
+                while i < len(line):
+                    if line[i] == "\\":
+                        i += 2; continue
+                    if line[i] == q:
+                        i += 1; break
+                    i += 1
+                continue
+            m = RAW_OPEN.match(line, i)
+            if m and (i == 0 or not (line[i-1].isalnum() or line[i-1] == "_")):
+                marker = ")" + m.group(1) + '"'
+                j = line.find(marker, m.end())
+                if j < 0:
+                    close = marker
+                    i = len(line)
+                    break
+                i = j + len(marker)
+                continue
+            out.append(c); i += 1
+        rest = "".join(out)
+        if kind == "tail" and not RAW_TAIL.fullmatch(rest):
+            kind = "code"
+        codes.append(rest); blocks.append(in_block); kinds.append(kind)
+    return codes, blocks, kinds
+
+
 def parse_sections(block_lines):
 	"""Разбор doc-блока: {язык: [(tag, blank_before, lineno, conts, width), ...]}"""
 	sections = {}
@@ -1033,20 +1108,25 @@ def check_file(path, lines, members, report, fixes=None):
 
 def check_steps(path, lines, report):
     """§8.5: над каждым оператором — комментарий; закрывающие скобки/препроцессор/макросы/else-цепочки не требуют."""
-    in_block = False
     in_macro = False
     balance = 0
     init_depth = 0
     bodies = find_bodies(lines)
+    codes, blocks, kinds = raw_scan(lines)
     prev_code_raw = ""
     prev_stmt_shape = None
     prev_significant = None   # ('kind', index) kind: comment/code/blank
     block_star = []           # (lineno, indent) строк «*» текущего doc-блока
     for n, raw in enumerate(lines, 1):
         line = raw.rstrip("\n")
-        code, new_block = strip_comments_strings(line, in_block)
+        # Тело сырого литерала — данные образца, а не операторы (§8.5.4): строка
+        # пропускается целиком, чтобы не сдвинуть ни счёт скобок, ни память о
+        # предыдущем операторе
+        if kinds[n - 1] == "body":
+            continue
+        code, new_block = codes[n - 1], blocks[n - 1]
+        in_block = blocks[n - 2] if n > 1 else False
         block_only = (code.strip() == "" and line.strip() != "" and (new_block or in_block or line.strip().startswith(("//", "*", "/*"))))
-        in_block = new_block
         if in_macro:
             in_macro = line.rstrip().endswith("\\")
             prev_significant = ("code", n)
@@ -1097,6 +1177,8 @@ def check_steps(path, lines, report):
         continued = balance > 0 or prev_ctrl or decl_pair or (prev_code_raw.rstrip().endswith((":", ",", "(", "&", "|", "?", "+", "-", "="))) or ("//" in line)
         continued = continued or (prev_code_raw.strip() != "" and prev_stmt_shape and re.match(r"^[\w:>.-]*\s*", st).group(0) and re.match(r"^[\w:>.<-]*", st).group(0) == prev_stmt_shape)
         continued = continued or (init_depth > 0)
+        # Закрытие сырого литерала — хвост оператора, начатого строкой открытия
+        continued = continued or (kinds[n - 1] == "tail")
         continued = continued or bool(re.match(r"^(?:\<\<|>>|&&|\|\|\|->|::|\.|\?|:|[+=*/,-])", st))
         balance += code.count("(") + code.count("[") - code.count(")") - code.count("]")
         if init_depth:
