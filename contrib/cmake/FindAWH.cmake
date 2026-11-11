@@ -4,6 +4,21 @@ SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 # Флаг активации системной установки
 SET(AWH_GLOBAL_INSTALLATION FALSE)
 
+##
+ # Пути поиска берут в кавычки: место, где лежит сам модуль, может содержать пробелы -
+ # префикс CMake по умолчанию на Windows «C:/Program Files (x86)/awh». Без кавычек
+ # пробелы разбивают аргумент на части, и модуль не находит ни библиотеку, ни
+ # заголовки, хотя установка выполнена
+ ##
+
+##
+ # Локальная установка ищется от самого файла: модуль ставится в каталог cmake места
+ # установки, и «..» от него даёт само это место. Прежде сборщик подставлял сюда адрес,
+ # названный при настройке, - две конфигурации MSVC перезаписывали общий порождённый
+ # файл адресом друг друга, а cmake --install --prefix оставлял модуль указывать в
+ # прежнее место. Адрес от себя не зависит ни от дерева сборки, ни от дерева потребителя
+ ##
+
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если произведена установка глобально
@@ -22,8 +37,8 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         SET(AWH_HEADERS_PATH ${AWH_SEARCH_PATH}/include/libawh)
     # Если произведена локальная установка
     else (AWH_GLOBAL_INSTALLATION)
-        # Устанавливаем системный путь поиска зависимостей
-        SET(AWH_SEARCH_PATH ${CMAKE_SOURCE_DIR}/third_party)
+        # Вычисляем место установки от каталога, где лежит сам модуль
+        get_filename_component(AWH_SEARCH_PATH "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
         # Выполняем формирование пути поиска исполняемых файлов
         SET(AWH_BIN_PATH ${AWH_SEARCH_PATH}/bin/awh)
         # Выполняем формирование пути поиска заголовков
@@ -38,25 +53,25 @@ else()
         # Если операцинная система относится к MacOS X
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             # Устанавливаем системный путь поиска зависимостей
-            SET(AWH_SEARCH_PATH /usr/local)
+            SET(AWH_SEARCH_PATH "/usr/local")
             # Выполняем формирование пути поиска библиотек
             SET(AWH_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
         # Если операцинная система относится к Solaris
         elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
             # Устанавливаем системный путь поиска зависимостей
-            SET(AWH_SEARCH_PATH /usr)
+            SET(AWH_SEARCH_PATH "/usr")
             # Выполняем формирование пути поиска библиотек
             SET(AWH_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib/amd64)
        # Если операцинная система относится к Linux
         elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
             # Устанавливаем системный путь поиска зависимостей
-            SET(AWH_SEARCH_PATH /usr)
+            SET(AWH_SEARCH_PATH "/usr")
             # Выполняем формирование пути поиска библиотек
             SET(AWH_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
         # Если операцинная система относится к FreeBSD, NetBSD и OpenBSD
         elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
             # Устанавливаем системный путь поиска зависимостей
-            SET(AWH_SEARCH_PATH /usr/local)
+            SET(AWH_SEARCH_PATH "/usr/local")
             # Выполняем формирование пути поиска библиотек
             SET(AWH_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
         # Если операционная система не определена
@@ -68,8 +83,8 @@ else()
         SET(AWH_HEADERS_PATH ${AWH_SEARCH_PATH}/include/libawh)
     # Если произведена локальная установка
     else (AWH_GLOBAL_INSTALLATION)
-        # Устанавливаем системный путь поиска зависимостей
-        SET(AWH_SEARCH_PATH ${CMAKE_SOURCE_DIR}/third_party)
+        # Вычисляем место установки от каталога, где лежит сам модуль
+        get_filename_component(AWH_SEARCH_PATH "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
         # Выполняем формирование пути поиска библиотек
         SET(AWH_LIBRARY_PATH ${AWH_SEARCH_PATH}/lib)
         # Выполняем формирование пути поиска заголовков
@@ -237,8 +252,8 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${ICONV_INCLUDE_DIR}
     )
     # Выполняем установку указанного списка заголовочных файлов зависимостей
-    install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 # Если операцинная система относится к MS Windows
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если активирован режим отладки
@@ -403,35 +418,35 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
         # Устанавливаем библиотеку AWH
-        install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        install(FILES ${AWH_LIBRARY} DESTINATION "lib")
         # Устанавливаем библиотеку AWH DLL
-        install(FILES ${AWH_LIBRARY_DLL} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+        install(FILES ${AWH_LIBRARY_DLL} DESTINATION "bin")
     # Если нужно загрузить статическую библиотеку
     else (CMAKE_SHARED_LIB_AWH)
         # Устанавливаем библиотеку AWH
-        install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        install(FILES ${AWH_LIBRARY} DESTINATION "lib")
     endif (CMAKE_SHARED_LIB_AWH)
 # Если операцинная система относится к Nix-подобной
 else()
     # Устанавливаем библиотеку AWH
-    install(FILES ${AWH_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${AWH_LIBRARY} DESTINATION "lib")
 endif()
 
 # Если активирован режим отладки
 if (CMAKE_AWH_BUILD_DEBUG)
     # Устанавливаем статическую библиотеку
-    install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${DEPEND_LIBRARY} DESTINATION "lib")
 endif()
 
 # Выполняем установку оставшихся заголовочных файлов зависимостей
-install(DIRECTORY "${LZ4_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${AWH_INCLUDE_DIR}/awh" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${CITY_INCLUDE_DIR}/cityhash" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${NTS_INCLUDE_DIR}/nts" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${LZ4_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${AWH_INCLUDE_DIR}/awh" DESTINATION "include" FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${CITY_INCLUDE_DIR}/cityhash" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NTS_INCLUDE_DIR}/nts" DESTINATION "include" FILES_MATCHING PATTERN "*.hpp")

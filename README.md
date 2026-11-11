@@ -262,9 +262,11 @@ Command Prompt for VS", or the ARM64 one) so that `cl.exe` is on the path:
 > cmake --build .
 ```
 
-The dependencies are attached to the freshly built `awh.lib` and `FindAWH.cmake` is written
-for the place of installation at the end of the build — the same two steps the shell scripts
-perform under MinGW, called here as their `.bat` counterparts.
+The dependencies are attached to the freshly built `awh.lib`, and `FindAWH.cmake` is copied
+into `third_party-msvc\cmake` at the end of the build — the same two steps the shell scripts
+perform under MinGW, called here as their `.bat` counterparts. The module works out the place
+of installation from its own directory, so the copy carries no prefix and needs no
+regeneration when the installation moves.
 
 IDN is not looked for on Windows: `cmake\FindDependence.cmake` searches for `libidn2` and
 `iconv` on the other systems only, so `-DCMAKE_BUILD_IDN` does nothing on this path.
@@ -296,10 +298,11 @@ The list of exported symbols is collected by the build description
 `AWH_SHARED_EXPORT` expands to nothing. Merging the dependency archives is a static-only step
 and is skipped here — the dependencies are linked into the DLL itself.
 
-Both configurations write the same generated `third_party-msvc\cmake\FindAWH.cmake`, and the
-build step rewrites it for the prefix of whichever configuration was built last. Install each
-configuration right after building it, or regenerate the module with
-`bat\build_cmake.bat <prefix>` before installing.
+Both configurations write the same `third_party-msvc\cmake\FindAWH.cmake`, and the bytes are
+identical: the module reads the place of installation from its own location instead of carrying
+a baked-in one. Building the second configuration therefore no longer spoils the module of the
+first, and `cmake --install . --prefix <place>` moves the whole installation — libraries,
+headers, certificates, samples and the find module together.
 
 #### What you should know
 
@@ -317,6 +320,13 @@ both toolchains.
 **A static build proves less than it looks.** There is no linking in it at all, so a missing
 dependency shows up only when something is actually linked — a shared library or a consuming
 program.
+
+**The consumer has to use the same runtime library.** The build compiles with the dynamic CRT
+(`/MD`, and `/MDd` in a debug configuration), and that choice must be uniform across the whole
+image: a program linked against `awh.lib` has to use `/MD` as well, and mixing it with `/MT`
+fails at link time with `LNK2038: mismatch detected for 'RuntimeLibrary'`. A machine without
+Visual Studio needs the Visual C++ Redistributable for the matching toolset; `awh.dll` carries
+the same requirement.
 
 ### Make installation packages
 

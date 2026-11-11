@@ -1368,9 +1368,9 @@ std::pair <string, string> awh::FS::components(const string & addr, const bool a
  * @param path полный путь к файлу или каталогу
  * @return     запрашиваемые метаданные
  */
-mode_t awh::FS::chmod(const string & path) const noexcept {
+uint32_t awh::FS::chmod(const string & path) const noexcept {
 	// Результат работы функции
-	mode_t result = 0;
+	uint32_t result = 0;
 	// Если путь к файлу или каталогу передан
 	if(!path.empty() && (this->type(path) != type_t::NONE)){
 		/**
@@ -1382,7 +1382,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Извлекаем все атрибуты файла
-				return static_cast <mode_t> (::GetFileAttributesW(this->_fmk->convert(address).c_str()));
+				return static_cast <uint32_t> (::GetFileAttributesW(this->_fmk->convert(address).c_str()));
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
@@ -1394,7 +1394,7 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			// Если информационные данные считаны удачно
-			else result = (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
+			else result = static_cast <uint32_t> (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
 		#endif
 	}
 	// Выводим результат
@@ -1404,10 +1404,10 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
  * @brief Метод изменения прав доступа к файлу или каталогу
  *
  * @param path полный путь к файлу или каталогу
- * @param mode метаданные для установки
+ * @param mode метаданные для установки, под MS Windows - атрибуты файла (DWORD)
  * @return     результат работы функции
  */
-bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
+bool awh::FS::chmod(const string & path, const uint32_t mode) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если путь к файлу или каталогу передан
@@ -1427,7 +1427,7 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 		 */
 		#else
 			// Выполняем установку метаданных файла
-			if(!(result = (::chmod(path.c_str(), mode) == 0)) && (errno != 0))
+			if(!(result = (::chmod(path.c_str(), static_cast <mode_t> (mode)) == 0)) && (errno != 0))
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif

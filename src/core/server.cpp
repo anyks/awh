@@ -272,24 +272,22 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 						// Устанавливаем таймаут на подключение к серверу
 						broker->timeout(shm->timeouts.connect, engine_t::method_t::CONNECT);
 						/**
-						 * Определяем тип сокета
+						 * Если операционной системой является Linux или FreeBSD
 						 */
-						switch(static_cast <uint8_t> (this->_settings.sonet)){
-							/**
-							 * Если операционной системой является Linux или FreeBSD
-							 */
-							#if __linux__ || __FreeBSD__
-								// Если тип сокета установлен как SCTP
-								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-									// Устанавливаем параметры сокета
-									broker->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
-								break;
-							#endif
-							// Для всех остальных типов сокетов
-							default:
+						#if __linux__ || __FreeBSD__
+							// Если тип сокета установлен как SCTP
+							if(static_cast <uint8_t> (this->_settings.sonet) == static_cast <uint8_t> (scheme_t::sonet_t::SCTP))
 								// Устанавливаем параметры сокета
-								broker->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
-						}
+								broker->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+							// Для всех остальных типов сокетов
+							else broker->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+						/**
+						 * Для операционной системы не являющейся Linux или FreeBSD
+						 */
+						#else
+							// Устанавливаем параметры сокета
+							broker->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+						#endif
 						// Выполняем разрешение подключения
 						if(broker->addr.accept(shm->_addr)){
 							// Если IP-адрес не получен, тогда выходим. MAC-адрес есть только у клиентов из той же сети:

@@ -1345,18 +1345,25 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     endif (CMAKE_ENABLED_PVS)
 endif()
 
-# Устанавливаем адрес установки, запрет установки в /usr/local
+##
+ # Устанавливаем адрес установки, запрет установки в /usr/local
+ #
+ # Адреса назначения ниже заданы относительными: CMake отсчитывает их от
+ # CMAKE_INSTALL_PREFIX, и потому их переносит cmake --install --prefix. Абсолютный
+ # адрес этот ключ молча игнорирует - установка ушла бы в место, названное при
+ # настройке, а не в место, названное при установке
+ ##
 if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local" OR "${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local/")
     SET(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 endif()
 
 # Устанавливаем сертификаты
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/certs/" DESTINATION "${CMAKE_INSTALL_PREFIX}/certs")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/certs/" DESTINATION "certs")
 
 # Устанавливаем хидеры
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/" DESTINATION "include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
 # Устанавливаем хидеры сторонних библиотек
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h" PATTERN "*.hh" PATTERN "*.hpp")
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "include" FILES_MATCHING PATTERN "*.h" PATTERN "*.hh" PATTERN "*.hpp")
 
 # Устанавливаем библиотеку
 if (NOT CMAKE_SHARED_BUILD_LIB)
@@ -1380,7 +1387,7 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
     # Если режим отладки активирован
     else()
         # Выполняем установку библиотеки зависимостей
-        install(FILES ${DEPEND_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        install(FILES ${DEPEND_LIBRARY} DESTINATION "lib")
     endif()
 endif()
 
@@ -1388,47 +1395,54 @@ endif()
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Если собрана динамическая библиотека
     if (CMAKE_SHARED_BUILD_LIB)
-        # Устанавливаем статическую библиотеку AWH
+        ##
+         # Имя файла задаёт оснастка, а не сборщик: переименование RENAME относится
+         # к установке FILES и PROGRAMS, а в установке целей CMake его молча
+         # пропускает - замерено на 4.3.2 и 4.4.2, отказом это не становится.
+         # MSVC кладёт lib/awh.lib и bin/awh/awh.dll, GNU-оснастка -
+         # lib/libawh.dll.a и bin/awh/libawh.dll; модуль поиска ищет оба набора
+         ##
+        # Устанавливаем библиотеку AWH
         install(TARGETS ${AWH_LIB_NAME}
-            # .lib (import) — для линковки
-            ARCHIVE DESTINATION lib RENAME ${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX} # awh.lib → lib/libawh.dll.a
-            # .dll (Windows) или .so (Linux) — исполняемый модуль
-            RUNTIME DESTINATION bin/${CMAKE_PROJECT_NAME} RENAME ${CMAKE_PROJECT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX} # awh.dll → bin/awh/libawh.dll
+            # Библиотека импорта - для линковки
+            ARCHIVE DESTINATION lib
+            # Исполняемый модуль - для запуска
+            RUNTIME DESTINATION bin/${CMAKE_PROJECT_NAME}
         )
     # Если собрана статическая библиотека
     else (CMAKE_SHARED_BUILD_LIB)
-        # Устанавливаем статическую библиотеку AWH
-        install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib RENAME ${CMAKE_PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX})
+        # Устанавливаем статическую библиотеку AWH: MSVC - lib/awh.lib, GNU-оснастка - lib/libawh.a
+        install(TARGETS ${AWH_LIB_NAME} ARCHIVE DESTINATION lib)
     endif (CMAKE_SHARED_BUILD_LIB)
 # Если операцинная система относится к Nix-подобной
 else()
     # Устанавливаем статическую библиотеку AWH
-    install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(TARGETS ${AWH_LIB_NAME} DESTINATION "lib")
 endif()
 
 # Устанавливаем статическую библиотеку TcMalloc
-install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "lib")
 
 # Устанавливаем исполнительные файлы
-install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${DATE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WS_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${INVESTIGATOR_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${IP_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${DNS_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${NTP_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${PING_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${DATE_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${TIMER_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${PROXY_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${CLIENT_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${SERVER_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WS_CLIENT_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WS_SERVER_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${INVESTIGATOR_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
 
 # Если операционной системой не является Windows
 if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")
 endif()
 
 ##
@@ -1448,4 +1462,4 @@ else()
 endif()
 
 # Устанавливаем сгенерированный CMAKE-файл
-install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "cmake")

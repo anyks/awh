@@ -283,18 +283,23 @@ namespace awh {
 			/**
 			 * @brief Метод получения прав доступа к файлу или каталогу
 			 *
+			 * Значение берётся тридцати двух разрядов: под MS Windows это атрибуты файла
+			 * (DWORD), а mode_t там и под MacOS X шестнадцатиразрядный - он срезал бы
+			 * старшие разряды атрибутов и превратил признак отказа INVALID_FILE_ATTRIBUTES
+			 * в обычные права
+			 *
 			 * @param path полный путь к файлу или каталогу
 			 * @return     запрашиваемые метаданные
 			 */
-			mode_t chmod(const string & path) const noexcept;
+			uint32_t chmod(const string & path) const noexcept;
 			/**
 			 * @brief Метод изменения прав доступа к файлу или каталогу
 			 *
 			 * @param path полный путь к файлу или каталогу
-			 * @param mode метаданные для установки
+			 * @param mode метаданные для установки, под MS Windows - атрибуты файла (DWORD)
 			 * @return     результат работы функции
 			 */
-			bool chmod(const string & path, const mode_t mode) const noexcept;
+			bool chmod(const string & path, const uint32_t mode) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки владельца на файл или каталог
