@@ -66,6 +66,9 @@
  * Устанавливаем пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -172,6 +175,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 */
 	static std::atomic <size_t> watched{0};
+	// Признак того, что сличение образцов ещё идёт
 	static std::atomic <bool> working{true};
 	// Заводим сторож зависания отдельным потоком
 	std::thread watchdog([&samples]() noexcept {
@@ -215,6 +219,9 @@ int main(int argc, char * argv[]) noexcept {
 	watchdog.detach();
 	// Порядковый номер сличаемого образца
 	size_t watch = 0;
+	/**
+	 * Выполняем перебор всех сличаемых образцов
+	 */
 	for(auto & sample : samples){
 		// Сообщаем сторожу, на каком образце стоит сличение
 		watched.store(++watch);
@@ -244,8 +251,9 @@ int main(int argc, char * argv[]) noexcept {
 		}
 		// Собираемые записи обоих деревьев
 		string first = "", second = "";
-		// Выполняем перевод обоих деревьев в запись JSON
+		// Выполняем перевод дерева, собранного из записи JSON, обратно в запись JSON
 		static_cast <void> (bridge.encode(fromJSON, first, codec::bridge_t::format_t::JSON));
+		// Выполняем перевод дерева, собранного из разметки, в запись JSON
 		static_cast <void> (bridge.encode(fromXML, second, codec::bridge_t::format_t::JSON));
 		// Признак совпадения деревьев обеих записей
 		const bool same = (first == second);
@@ -286,8 +294,9 @@ int main(int argc, char * argv[]) noexcept {
 			   bridge.decode(repeat, twice, codec::bridge_t::format_t::XML)){
 				// Собираемые записи обоих деревьев второго круга
 				string before = "", after = "";
-				// Выполняем перевод обоих деревьев в запись JSON
+				// Выполняем перевод дерева первого прохода в запись JSON
 				static_cast <void> (bridge.encode(back, before, codec::bridge_t::format_t::JSON));
+				// Выполняем перевод дерева второго прохода в запись JSON
 				static_cast <void> (bridge.encode(twice, after, codec::bridge_t::format_t::JSON));
 				// Запоминаем неподвижность круга со второго прохода
 				naming = (before == after);

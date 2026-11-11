@@ -83,6 +83,14 @@ static bool multibyte(const std::string & text) noexcept {
 	return false;
 }
 
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
 namespace {
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
@@ -189,11 +197,6 @@ namespace {
 		// Смещение начала события от начала исходного текста
 		uint64_t offset;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Event() noexcept : event(0), quoted(false), valueless(false), append(false), line(0), column(0), offset(0) {}
-		/**
 		 * @brief Оператор сравнения
 		 *
 		 * @param other событие для сравнения
@@ -217,6 +220,11 @@ namespace {
 				(this->offset != other.offset)
 			);
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Event() noexcept : event(0), quoted(false), valueless(false), append(false), line(0), column(0), offset(0) {}
 	};
 
 	/**
@@ -493,6 +501,7 @@ namespace {
 						uint32_t code = (0x20 + (engine() % 0xD000));
 						// Смещаем значение знака за пару суррогатов
 						if(code >= 0xD800)
+							// Выполняем пропуск диапазона, отданного парам суррогатов
 							code += 0x800;
 						/**
 						 * Если знак записывается одним байтом
@@ -761,6 +770,15 @@ namespace {
 			static_cast <int32_t> (settings.emitComments), static_cast <int32_t> (settings.emitBlanks),
 			settings.maxLine, settings.maxName, settings.maxDepth, settings.maxContinuation);
 	}
+	/**
+	 * @brief Функция вывода разбираемого текста настроек шестнадцатеричными кодами
+	 *
+	 * @details Текст выводится знаком к знаку его кодом: разбор наводит отказы
+	 *          намеренно, и управляющие знаки сделали бы выдачу журнала нечитаемой
+	 *
+	 * @param text выводимый текст настроек
+	 *
+	 */
 	void dump(const string & text) noexcept {
 		// Выводим начало записи разбираемого текста настроек
 		::fprintf(stderr, "ini fuzz: text=\"");
@@ -1182,7 +1200,6 @@ namespace {
 	 *
 	 */
 	bool compare(const vector <Event> & first, const vector <Event> & second, const size_t chunk, const string & text) noexcept {
-
 		// Если количество выданных событий разошлось
 		if(first.size() != second.size()){
 			// Выводим сообщение о расхождении количества выданных событий
@@ -1499,6 +1516,15 @@ namespace {
 		// Выводим признак согласия снятия с деревом
 		return true;
 	}
+	/**
+	 * @brief Функция проверки дерева настроек, собранного из разбираемого текста
+	 *
+	 * @param text    разбираемый текст настроек
+	 * @param reading настройки разбора текста настроек
+	 * @param engine  источник псевдослучайных чисел
+	 * @return        признак успешной проверки дерева настроек
+	 *
+	 */
 	bool tree(const string & text, const ini::reader_t::settings_t & reading, mt19937 & engine) noexcept {
 		// Собираемые настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -1680,6 +1706,9 @@ namespace {
 				return false;
 			}
 		}
+		/**
+		 * Если разбор текста настроек ответил отказом
+		 */
 		if(!parsed){
 			// Если причина отказа разбора не названа
 			if(document.error() == ini::error_t::NONE){
@@ -2205,7 +2234,6 @@ namespace {
 						const string after(back.get(keyName, sectionName, subsectionName));
 						// Выполняем учёт свойства исходного дерева настроек
 						offered++;
-
 						/**
 						 * Если значения свойства разошлись
 						 *
@@ -2505,6 +2533,9 @@ namespace {
 					// Выводим результат проверки дерева настроек
 					return false;
 				}
+				/**
+				 * Если перенос значения в дерево настроек удался
+				 */
 				if(planted){
 					// Выполняем учёт удавшегося переноса
 					totals.grafted++;

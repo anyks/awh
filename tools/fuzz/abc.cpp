@@ -49,6 +49,9 @@ using namespace std;
  * Подписываемся на пространство имён контейнеров данных
  */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -163,13 +166,6 @@ namespace {
 		// Глубина вложенности события
 		uint32_t depth;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Event() noexcept :
-		 event(0), type(0), count(0), number(0), integer(0), real(0),
-		 exponent(0), boolean(false), negative(false), indefinite(false), depth(0) {}
-		/**
 		 * @brief Оператор сличения событий
 		 *
 		 * @param other сличаемое событие
@@ -185,6 +181,13 @@ namespace {
 			 (this->boolean != other.boolean) || (this->negative != other.negative) ||
 			 (this->indefinite != other.indefinite) || (this->depth != other.depth));
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Event() noexcept :
+		 event(0), type(0), count(0), number(0), integer(0), real(0),
+		 exponent(0), boolean(false), negative(false), indefinite(false), depth(0) {}
 	};
 
 	/**
@@ -443,11 +446,11 @@ namespace {
 				if(!(indefinite ? writer.mapBegin() : writer.mapBegin(count)))
 					// Выводим признак неудачного построения
 					return false;
+				// Имя поля отображения, уложенное последним
+				string previous;
 				/**
 				 * Выполняем построение всех полей отображения
 				 */
-				// Имя поля отображения, уложенное последним
-				string previous;
 				for(uint64_t i = 0; i < count; i++){
 					/**
 					 * Выполняем сборку имени поля отображения возрастающим: строгий вид
@@ -644,6 +647,19 @@ namespace {
 		// Выводим настройки разбора записи
 		return result;
 	}
+	/**
+	 * @brief Функция разбора двоичной записи контейнера
+	 *
+	 * @param buffer    разбираемая двоичная запись контейнера
+	 * @param chunk     размер куска, каким запись подаётся разбирателю
+	 * @param events    перечень собранных событий разбора
+	 * @param direct    признак приёма октетов прямо в выданное разборщиком место
+	 * @param canonical признак разбора записи строгим видом
+	 * @param depth     предел глубины вложенности записи
+	 * @param content   предел длины строкового и двоичного содержимого записи
+	 * @return          признак успешного разбора записи
+	 *
+	 */
 	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events,
 	 const bool direct = false, const bool canonical = false,
 	 const uint32_t depth = 0, const uint64_t content = 0) noexcept {
@@ -1735,6 +1751,12 @@ namespace {
 		 */
 		return builder.value(value);
 	}
+	/**
+	 * @brief Функция проверки дерева документа, собранного из двоичной записи
+	 *
+	 * @param buffer разбираемая двоичная запись контейнера
+	 *
+	 */
 	void tree(const vector <uint8_t> & buffer) noexcept {
 		// Дерево документа
 		abc::document_t document;

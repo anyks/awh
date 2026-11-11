@@ -216,12 +216,6 @@ namespace {
 		// Смещение начала события от начала исходного текста
 		uint64_t position;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Event() noexcept :
-		 event(0), type(0), style(0), line(0), column(0), depth(0), position(0) {}
-		/**
 		 * @brief Оператор сравнения
 		 *
 		 * @param other событие для сравнения
@@ -238,6 +232,12 @@ namespace {
 				(this->depth != other.depth) || (this->position != other.position)
 			);
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Event() noexcept :
+		 event(0), type(0), style(0), line(0), column(0), depth(0), position(0) {}
 	};
 
 	/**
@@ -801,6 +801,7 @@ namespace {
 			// Выводим построенное имя пары отображения
 			return string(narrowed[engine() % (sizeof(narrowed) / sizeof(narrowed[0]))]);
 		}
+		// Набор имён, из какого имя пары отображения выбирается наудачу
 		static const char * const names[] = {
 			"host", "port", "name", "value", "a", "b", "имя", "key-1", "key_2",
 			"'дословное'", "\"с оградой\"", "0", "true", "no", "null", "~", "с пробелом"
@@ -905,6 +906,15 @@ namespace {
 		// Выводим собранную запись простого значения
 		return result;
 	}
+	/**
+	 * @brief Функция построения записи поточного построения YAML
+	 *
+	 * @param engine источник псевдослучайных чисел
+	 * @param depth  текущая глубина вложенности построения
+	 * @param indent отступ строки, каким построение пишется
+	 * @return       собранная запись поточного построения
+	 *
+	 */
 	string flowed(mt19937 & engine, const uint32_t depth, const uint32_t indent) noexcept {
 		// Признак того, что построение является перечнем значений
 		const bool sequence = ((engine() % 2) == 0);
@@ -2631,6 +2641,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выполняем учёт разбора написания иного
 				totals.tailed++;
 			}
+			/**
+			 * Если разбор текста документа удался
+			 */
 			if(parsed){
 				// Выполняем учёт собранного дерева документа
 				totals.trees++;
@@ -2753,6 +2766,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					unbound.reader.maxDepth = 0;
 					// Выполняем снятие предела длины скалярного значения
 					unbound.reader.maxScalar = 0;
+					/**
+					 * Если разбор перезаписи снятого значения прежнего дерева не вернул
+					 */
 					if(!circled.parse(taken.dump(), unbound) || !(circled == taken)){
 						// Выводим сообщение о нарушении кругового хода
 						::fprintf(stderr, "yaml fuzz: taken value round trip broken, settings %s\n",
@@ -2880,6 +2896,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 							 *
 							 */
 							const bool planted = taken.graft(target);
+							/**
+							 * Если перенос отказал, а причину отказа дерево не назвало
+							 */
 							if(!planted && (target.error() == yaml::error_t::NONE)){
 								// Выводим сообщение об отказе переноса без названной причины
 								::fprintf(stderr, "yaml fuzz: graft refused without a named cause, settings %s\n",
@@ -2891,6 +2910,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 								// Выходим из приложения с ошибкой
 								return EXIT_FAILURE;
 							}
+							/**
+							 * Если перенос значения в дерево удался
+							 */
 							if(planted){
 								// Выполняем учёт удавшегося переноса
 								totals.grafted++;
@@ -3057,7 +3079,6 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					writing.version = false;
 					// Выполняем перезапись дерева выбранным оформлением
 					const string restyled = document.dump(writing);
-
 					/**
 					 * Если перезапись оформлением иным отдала пустоту при непустом дереве
 					 */

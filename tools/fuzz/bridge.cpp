@@ -81,6 +81,9 @@
  * Устанавливаем пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён библиотеки
+ */
 using namespace awh;
 
 
@@ -397,6 +400,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 */
 	static std::atomic <uint64_t> watched{0};
+	// Признак того, что сличение образцов ещё идёт
 	static std::atomic <bool> working{true};
 	/**
 	 * Заводим сторож зависания отдельным потоком

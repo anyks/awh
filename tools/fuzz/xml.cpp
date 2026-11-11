@@ -149,11 +149,6 @@ namespace {
 		// Место атрибута в исходном тексте
 		uint32_t line, column;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Property() noexcept : defaulted(false), line(0), column(0) {}
-		/**
 		 * @brief Оператор сравнения
 		 *
 		 * @param other атрибут для сравнения
@@ -172,6 +167,11 @@ namespace {
 				(this->column != other.column)
 			);
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Property() noexcept : defaulted(false), line(0), column(0) {}
 	};
 
 	/**
@@ -201,11 +201,6 @@ namespace {
 		vector <Property> attributes;
 		// Перечень объявлений пространств имён узла события
 		vector <Property> bindings;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Event() noexcept : event(0), depth(0), line(0), column(0), position(0), space(0), empty(false) {}
 		/**
 		 * @brief Оператор сравнения
 		 *
@@ -248,6 +243,11 @@ namespace {
 			// Выводим результат сличения событий
 			return false;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Event() noexcept : event(0), depth(0), line(0), column(0), position(0), space(0), empty(false) {}
 	};
 
 	/**
@@ -469,7 +469,6 @@ namespace {
 	 * @param depth    текущая глубина вложенности узла разметки
 	 * @param valid    признак построения заведомо правильной разметки
 	 * @param declared признак объявленных описанием типа сущностей
-	 *
 	 * @param external признак объявленной описанием типа ВНЕШНЕЙ сущности
 	 *
 	 */

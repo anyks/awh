@@ -170,14 +170,6 @@ namespace {
 		// Смещение начала события от начала исходного текста
 		uint64_t position;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Event() noexcept :
-		 event(0), type(0), quoting(0), radix(0), integer(0), real(0), boolean(false), trailing(false),
-		 year(0), month(0), day(0), hour(0), minute(0), second(0), nanosecond(0), digits(0),
-		 offset(0), zulu(false), negative(false), spaced(false), line(0), column(0), position(0) {}
-		/**
 		 * @brief Оператор сравнения
 		 *
 		 * @param other событие для сравнения
@@ -200,6 +192,14 @@ namespace {
 				(this->line != other.line) || (this->column != other.column) || (this->position != other.position)
 			);
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Event() noexcept :
+		 event(0), type(0), quoting(0), radix(0), integer(0), real(0), boolean(false), trailing(false),
+		 year(0), month(0), day(0), hour(0), minute(0), second(0), nanosecond(0), digits(0),
+		 offset(0), zulu(false), negative(false), spaced(false), line(0), column(0), position(0) {}
 	};
 
 	/**
@@ -254,6 +254,7 @@ namespace {
 			// Выводим построенное имя ключа
 			return string(narrowed[engine() % (sizeof(narrowed) / sizeof(narrowed[0]))]);
 		}
+		// Набор имён, из какого имя ключа выбирается наудачу
 		static const char * const names[] = {
 			"host", "port", "name", "value", "a", "b", "c", "имя", "key-1", "key_2",
 			"\"с пробелом\"", "'дословное'", "\"\"", "0", "1", "true", "server.host"
@@ -1920,6 +1921,9 @@ namespace {
 		static const char * KINDS[] = {"create", "set-text", "set-integer", "set-real", "erase", "remove"};
 		// Перечень внесённых в дерево настроек правок
 		string trace;
+		/**
+		 * Выполняем внесение трёх случайных правок в дерево настроек
+		 */
 		for(uint32_t i = 0; i < 3; i++){
 			// Собираемое составное имя правимой записи
 			vector <string_view> path;
@@ -1956,11 +1960,11 @@ namespace {
 			}
 			// Выполняем закрытие записи внесённой правки
 			trace.append(") ");
+			// Признак успеха внесённой правки дерева настроек
+			bool edited = true;
 			/**
 			 * Выполняем выбор разновидности вносимой правки
 			 */
-			// Признак успеха внесённой правки дерева настроек
-			bool edited = true;
 			switch(kind){
 				// Если правкой является объявление таблицы
 				case 0: edited = document.create(path); break;
@@ -2226,6 +2230,15 @@ namespace {
 		// Выводим признак согласия снятия с деревом
 		return true;
 	}
+	/**
+	 * @brief Функция проверки дерева настроек переносом снятого с него значения
+	 *
+	 * @param document дерево настроек, с какого снимается владеющее значение
+	 * @param text     текст настроек, выводимый при расхождении ради воспроизведения
+	 * @param settings настройки дерева настроек, какими оно пересобирается
+	 * @return         признак успешной проверки дерева настроек
+	 *
+	 */
 	bool transplant(const toml::document_t & document, const string & text, const toml::document_t::settings_t & settings) noexcept {
 		// Выполняем снятие владеющего значения с дерева настроек
 		const toml::value_t lifted(document);

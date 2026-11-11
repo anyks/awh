@@ -42,6 +42,9 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -509,6 +512,9 @@ namespace {
 					doc.at("/syslog").text().c_str(), again.at("/syslog").text().c_str(),
 					(int) doc.has("/syslog"), (int) again.has("/syslog")
 				);
+			/**
+			 * Выполняем перебор заголовка и расширения записи
+			 */
 			for(const char * area : {"/header", "/extension"}){
 				// Получаем звенья пути области у обоих деревьев
 				const auto first = doc.keys(area), second = again.keys(area);
@@ -754,6 +760,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				static_cast <unsigned long long> (totals.refused[i])
 			);
 	}
+	/**
+	 * Если ни одной записи построить не удалось
+	 */
 	if(totals.records == 0){
 		// Выводим сообщение об отсутствии построенных записей
 		::fprintf(stderr, "%s fuzz: не построено ни одной записи - проверять нечего\n", "cef");
