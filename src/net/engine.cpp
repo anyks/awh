@@ -263,7 +263,7 @@ static void nameText(const nts::x509::name_t & name, string & result) noexcept {
 			// Отделяем следующий признак от уже собранного
 			if(!result.empty())
 				// Добавляем разделитель признаков
-				result.append(1, '/');
+				result.append(1, '\\');
 			// Добавляем обозначение признака и знак равенства
 			result.append(sign + "=");
 			// Если значение несёт разделитель или знак равенства, его берут в кавычки

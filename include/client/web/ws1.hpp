@@ -614,7 +614,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Websocket1(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Websocket1(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -622,7 +622,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Websocket1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

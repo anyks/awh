@@ -534,7 +534,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Http2(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Http2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -542,7 +542,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

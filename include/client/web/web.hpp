@@ -676,7 +676,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Web(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Web(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -684,7 +684,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Web(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -966,7 +966,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Web2(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Web2(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -974,7 +974,7 @@ namespace awh {
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Web2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

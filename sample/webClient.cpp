@@ -311,6 +311,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
+	// Устанавливаем DNS сервера
+	awh.network({}, {"77.88.8.8", "77.88.8.1"}, scheme_t::family_t::IPV4);
 	// Формируем GET запрос
 	// const auto & body = awh.GET(url);
 	// const auto & body = awh.GET(url, {{"Connection", "close"}});
