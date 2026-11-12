@@ -60,16 +60,8 @@ rem  Проверки, замеры, образцы и размытие сбор
 rem  A-NTS одну статическую библиотеку. Разделяемая сборка запрещена общей частью,
 rem  и признак ANTS_STATICLIB она ставит себе сама - без него заголовки объявляют
 rem  символы импортом из DLL, и связывание отвечает сворой __imp_
-rem
-rem  Ключ -mbranch-protection знает только GCC/Clang: cl.exe его не понимает и
-rem  отбрасывает с предупреждением. Проверка a-nts под ARM64 собирала бы и
-rem  ЗАПУСКАЛА пробу, подменяющую operator new на бросающий, - под MSVC ARM64 она
-rem  зависает, и настройка встаёт насмерть. Признак в кэсе пропускает проверку:
-rem  под MSVC она бессмысленна, а ключ всё равно не применяется. Ноги парка это
-rem  не трогает - сценарий только для оснастки MSVC, Unix-сборка идёт своим
-rem  build_third_party.sh
 rem ----------------------------------------------------------------------------
-call "%~dp0_common.bat" :build "%NAME%" "%VERSION%" "-DCMAKE_BUILD_TESTS=OFF -DCMAKE_BUILD_SANITIZE=OFF -DCMAKE_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_SAMPLES=OFF -DCMAKE_BUILD_LIBFUZZER=OFF -DBRANCH_PROTECTION_STANDARD=FALSE -DBRANCH_PROTECTION_BTI=FALSE"
+call "%~dp0_common.bat" :build "%NAME%" "%VERSION%" "-DCMAKE_BUILD_TESTS=OFF -DCMAKE_BUILD_SANITIZE=OFF -DCMAKE_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_SAMPLES=OFF -DCMAKE_BUILD_LIBFUZZER=OFF"
 if errorlevel 1 exit /b 1
 
 rem Заголовки установка кладёт в include\nts сама, раскладка им не нужна
