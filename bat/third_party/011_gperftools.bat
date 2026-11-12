@@ -26,7 +26,8 @@ rem  MinGW заводит от этой метки рабочую ветку, н
 rem
 rem  Правка patches/gperftools/gperftools.patch здесь не нужна: она чинит
 rem  объявление malloc_usable_size на DragonFly и регистры ucontext на illumos,
-rem  а оснастка Visual Studio работает лишь на MS Windows.
+rem  а оснастка Visual Studio работает лишь на MS Windows. Под MSVC ARM64 нужна
+rem  своя правка, gperftools-msvc-arm64.patch: её наложение ведётся ниже.
 rem ----------------------------------------------------------------------------
 set "VPREFIX=gperftools-"
 set "VSUFFIX="
@@ -48,6 +49,46 @@ if /i "%~1"=="--clean" (
 rem Пересборка снимает отметку о сделанном, исходники не трогая
 if /i "%~1"=="--rebuild" (
 	if exist "%SUBMODULES%\%NAME%\.stamp_done_msvc" del /f /q "%SUBMODULES%\%NAME%\.stamp_done_msvc" > nul 2>&1
+)
+
+rem ----------------------------------------------------------------------------
+rem  Перевод исходников ДО правки
+rem
+rem  Порядок не вольный: перевод на метку после правки столкнул бы её с содержимым
+rem  метки, а общая часть сборки переводит исходники ещё раз. Перевод на ту же
+rem  метку правки не трогает, потому он и стоит раньше неё
+rem ----------------------------------------------------------------------------
+call "%~dp0_common.bat" :checkout "%NAME%"
+
+rem ----------------------------------------------------------------------------
+rem  Правка исходников под MSVC ARM64
+rem
+rem  В src/windows/system-alloc.cc символ tc_get_sysalloc_override объявлен, но
+rem  тела не имеет: под MSVC его подменяет tc_get_sysalloc_default через pragma
+rem  /alternatename. Развилка pragma знает лишь _M_IX86 и _M_X64, и на ARM64
+rem  (_M_ARM64) подмена не выходит: InitSystemAllocators зовёт неразрешённый
+rem  символ, и сэмплы падают на LNK2019. Правка добавляет _M_ARM64 к ветке x64 -
+rem  имена символов у обеих без ведущего подчёркивания. На x64 правка инертна.
+rem
+rem  Правку кладёт patches\gperftools\gperftools-msvc-arm64.patch. Повторное
+rem  наложение отказало бы, потому сперва спрашиваем, не наложена ли она уже:
+rem  обратная проверка проходит ровно тогда, когда правка на месте
+rem ----------------------------------------------------------------------------
+set "PATCH=%PATCHES%\gperftools\gperftools-msvc-arm64.patch"
+
+if not "%HAS_GIT%"=="1" (
+	echo [AWH] %NAME%: git is absent, the ARM64 patch is not applied; the ARM64 build may fail
+) else (
+	"%GIT%" -C "%SUBMODULES%\%NAME%" apply --reverse --check "%PATCH%" > nul 2>&1
+	if errorlevel 1 (
+		"%GIT%" -C "%SUBMODULES%\%NAME%" apply "%PATCH%" || (
+			echo [AWH] %NAME%: could not apply %PATCH%
+			exit /b 1
+		)
+		echo [AWH] %NAME%: ARM64 patch applied
+	) else (
+		echo [AWH] %NAME%: ARM64 patch already applied
+	)
 )
 
 rem ----------------------------------------------------------------------------

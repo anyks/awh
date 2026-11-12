@@ -88,6 +88,24 @@ endif()
 
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
+##
+ # Подменяемый распределитель памяти gperftools на Windows правит начала функций времени
+ # исполнения (malloc, free, new) при запуске образа. Разборщик начал у него только для
+ # x86/x64 (ia32_modrm_map, mini_disassembler), и на ARM64 правка возвращает отказ -
+ # процесс падает с кодом 0xC0000409 ещё до main. На ARM64 Windows распределитель потому
+ # не подключаем вовсе: памятью заведёт системный malloc, как уже сделано для OpenBSD,
+ # где аллокатор не собирается. Признак один на все места: и перечень архивов, и ключ
+ # принудительного втягивания символа /INCLUDE:__tcmalloc. Условие нарочно под MSVC:
+ # на Linux aarch64 распределитель вступает обычным слабым символом и работает
+ ##
+if (MSVC AND (ARCHITECTURE MATCHES "aarch64" OR ARCHITECTURE MATCHES "arm*"))
+    # Снимаем распределитель памяти на ARM64 Windows
+    SET(AWH_TCMALLOC_OFF TRUE)
+else()
+    # Оставляем распределитель памяти на прочих платформах
+    SET(AWH_TCMALLOC_OFF FALSE)
+endif()
+
 # Если операционной системой является Linux
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
@@ -341,7 +359,7 @@ if (MSVC)
      # заход по тем же адресам кончается отказом gperftools ещё до main - программа
      # падает с кодом 0xC0000409, не напечатав ничего
      ##
-    if(NOT CMAKE_SHARED_BUILD_LIB)
+    if(NOT CMAKE_SHARED_BUILD_LIB AND NOT AWH_TCMALLOC_OFF)
         add_link_options(/INCLUDE:__tcmalloc)
     endif()
 # Если процессор архитектуры ARM
@@ -458,6 +476,16 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
 else (TcMalloc_FOUND)
     message(FATAL_ERROR "TcMalloc not found")
 endif (TcMalloc_FOUND)
+
+##
+ # На ARM64 Windows распределитель памяти не подключаем: его правка начал функций
+ # Windows на этой архитектуре отказывает (см. AWH_TCMALLOC_OFF выше). Перечень
+ # архивов очищаем одним местом - он идёт и в приложения, и в awh.dll, и в установку
+ ##
+if (AWH_TCMALLOC_OFF)
+    # Удаляем библиотеку TCMalloc: памятью заведёт системный malloc
+    SET(TCMALLOC_LIBRARIES "")
+endif()
 
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
@@ -704,7 +732,9 @@ if (CMAKE_SHARED_BUILD_LIB)
 
         # Втягиваем распределитель памяти в саму библиотеку: программы ниже получают
         # его уже готовым внутри awh.dll и своего не несут
-        target_link_options(${AWH_LIB_NAME} PRIVATE /INCLUDE:__tcmalloc)
+        if(NOT AWH_TCMALLOC_OFF)
+            target_link_options(${AWH_LIB_NAME} PRIVATE /INCLUDE:__tcmalloc)
+        endif()
 
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
@@ -1443,20 +1473,13 @@ if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 ##
- # Как и сборщик выше: под MSVC правку файла поиска делает bat-сборщик, под остальными
- # оснастками - прежний скрипт оболочки
+ # Модуль поиска кладём в набор зависимостей на этапе настройки, а не после сборки.
+ # Прежде его копировал post-build скрипт (bat под MSVC, sh под остальными оснастками) и
+ # подставлял в него адрес установки. Подстановка стала пустой: модуль вычисляет место от
+ # собственного каталога, поэтому дословную копию делает configure_file - без скрипта и без
+ # различия оснасток. Каталог назначения он создаёт сам, а перемену образца отслеживает
  ##
-if (MSVC)
-    # Выполняем запуск скрипта генерации CMAKE-файла
-    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-        COMMAND "${CMAKE_SOURCE_DIR}/bat/build_cmake.bat" "${CMAKE_INSTALL_PREFIX}"
-    VERBATIM)
-else()
-    # Выполняем запуск скрипта генерации CMAKE-файла
-    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-        COMMAND bash "${CMAKE_SOURCE_DIR}/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
-    VERBATIM)
-endif()
+configure_file("${CMAKE_SOURCE_DIR}/contrib/cmake/FindAWH.cmake" "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" COPYONLY)
 
 # Устанавливаем сгенерированный CMAKE-файл
 install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "cmake")

@@ -305,8 +305,8 @@ CMake, где лежит модуль:
 и `C:\awh` он разобрать не сможет.
 
 Минимальные `main.cpp` и `CMakeLists.txt` есть ниже, в разделе "Пример подключения AWH к
-своему проекту". На этом пути в `target_link_libraries` нужно добавить системные библиотеки
-Windows; их перечень и требование к библиотеке времени исполнения - в примечаниях в конце.
+своему проекту". Линкуйте с `${AWH_LIBRARIES}`: системные библиотеки Windows модуль поиска
+кладёт в этот список сам, остаётся лишь взять библиотеку времени исполнения из примечаний в конце.
 
 #### Если нужна DLL, а не статическая библиотека
 
@@ -355,10 +355,10 @@ Windows; их перечень и требование к библиотеке �
 `/MT` требует. Машине без Visual Studio нужен Visual C++ Redistributable под ту же оснастку;
 `awh.dll` несёт то же требование.
 
-**Системные библиотеки Windows называйте сами.** Модуль поиска отдаёт AWH и, в отладочной
-конфигурации, архив зависимостей - больше ничего. Сам подключается только `Ws2_32`, его
-зовёт `#pragma comment(lib, ...)` в заголовках. Остальные добавьте в `target_link_libraries`:
-`ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`, `shell32`, `uuid`.
+**Линкуйте с `${AWH_LIBRARIES}`, а не с `${AWH_LIBRARY}`.** Модуль поиска отдаёт AWH и, в
+отладочной конфигурации, архив зависимостей, а на Windows сам добавляет в этот список системные
+библиотеки: `ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`, `shell32`, `uuid`.
+Линковка одного файла `${AWH_LIBRARY}` оставила бы их вне сборки.
 
 **Аллокатор остаётся вне сведённого архива.** `libdependence.lib` берёт четырнадцать из
 семнадцати собранных архивов. `tcmalloc_minimal.lib` и `common.lib` стоят отдельно и
@@ -469,7 +469,7 @@ endif (AWH_FOUND)
 
 add_executable(my_app main.cpp)
 
-target_link_libraries(my_app PRIVATE ${AWH_LIBRARY})
+target_link_libraries(my_app PRIVATE ${AWH_LIBRARIES})
 ```
 
 #### Пример сборки проекта для MacOS X, Linux, FreeBSD или Solaris
@@ -489,19 +489,18 @@ $ cmake --build .
 
 #### Пример сборки проекта для MS Windows
 
-```bash
-$ mkdir ./build
-$ cd ./build
+```bat
+> mkdir build
+> cd build
 
-$ cmake \
- -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
- -DCMAKE_BUILD_TYPE=Release \
- -DCMAKE_SYSTEM_NAME=Windows \
- -DCMAKE_SHARED_LIB_AWH=YES \
- ..
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_MODULE_PATH=C:/awh/cmake ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
 
-$ cmake --build .
+> cmake --build .
 ```
 
 ---

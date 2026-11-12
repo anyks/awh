@@ -305,8 +305,8 @@ Write forward slashes in `-D` values: CMake reads a backslash as an escape, and 
 becomes an invalid escape sequence.
 
 A minimal `main.cpp` and `CMakeLists.txt` are in "Example include AWH in your project" below.
-On this path you also have to name the Windows system libraries in `target_link_libraries`;
-the notes at the end list them, together with the runtime library you must match.
+Link against `${AWH_LIBRARIES}`: the find module adds the Windows system libraries to that list
+itself, so the only thing left to match is the runtime library the notes at the end describe.
 
 #### If you need a DLL instead of a static library
 
@@ -355,10 +355,10 @@ ordinary CMake project needs no change, but a project that sets `/MT` by hand do
 without Visual Studio needs the Visual C++ Redistributable for the matching toolset; `awh.dll`
 carries the same requirement.
 
-**Name the Windows system libraries yourself.** The find module gives you AWH and, in a debug
-configuration, the dependency archive — nothing else. Only `Ws2_32` is pulled in
-automatically, by a pragma in the headers. Add the rest to your `target_link_libraries`:
-`ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`, `shell32`, `uuid`.
+**Link against `${AWH_LIBRARIES}`, not `${AWH_LIBRARY}`.** The find module gives you AWH and,
+in a debug configuration, the dependency archive, and on Windows it appends the system
+libraries to that list itself: `ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`,
+`shell32`, `uuid`. Linking the single `${AWH_LIBRARY}` file would leave them out.
 
 **The allocator stays out of the merged archive.** `libdependence.lib` takes fourteen of the
 seventeen archives that were built. `tcmalloc_minimal.lib` and `common.lib` are kept apart and
@@ -469,7 +469,7 @@ endif (AWH_FOUND)
 
 add_executable(my_app main.cpp)
 
-target_link_libraries(my_app PRIVATE ${AWH_LIBRARY})
+target_link_libraries(my_app PRIVATE ${AWH_LIBRARIES})
 ```
 
 #### Example project build for MacOS X, Linux, FreeBSD or Solaris
@@ -489,19 +489,18 @@ $ cmake --build .
 
 #### Example project build for MS Windows
 
-```bash
-$ mkdir ./build
-$ cd ./build
+```bat
+> mkdir build
+> cd build
 
-$ cmake \
- -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
- -DCMAKE_BUILD_TYPE=Release \
- -DCMAKE_SYSTEM_NAME=Windows \
- -DCMAKE_SHARED_LIB_AWH=YES \
- ..
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_MODULE_PATH=C:/awh/cmake ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
 
-$ cmake --build .
+> cmake --build .
 ```
 
 ---

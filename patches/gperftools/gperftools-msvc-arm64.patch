@@ -1,0 +1,13 @@
+diff --git a/src/windows/system-alloc.cc b/src/windows/system-alloc.cc
+index 4554780..d3ae9e9 100644
+--- a/src/windows/system-alloc.cc
++++ b/src/windows/system-alloc.cc
+@@ -105,7 +105,7 @@ extern "C" SysAllocator* tc_get_sysalloc_default(SysAllocator *def)
+ 
+ #if defined(_M_IX86)
+ #pragma comment(linker, "/alternatename:_tc_get_sysalloc_override=_tc_get_sysalloc_default")
+-#elif defined(_M_X64)
++#elif defined(_M_X64) || defined(_M_ARM64)
+ #pragma comment(linker, "/alternatename:tc_get_sysalloc_override=tc_get_sysalloc_default")
+ #endif
+ 
