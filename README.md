@@ -155,61 +155,100 @@ $ cmake --build .
 
 ### Build on Windows [Visual Studio]
 
-MSYS2 takes no part in this path. Visual Studio is located through `vswhere`, its environment
-is brought up by `vcvarsall.bat`, and the dependency archives are merged by `lib.exe`. The two
-toolchains are **not interchangeable** — MinGW and MSVC produce incompatible binaries, and
-some dependencies decide the fate of their own headers at build time (`zlib` settles
-`unistd.h` that way). The builds are therefore kept apart: the MinGW one goes to
-`third_party`, the Visual Studio one to `third_party-msvc`, and neither disturbs the other.
+This path builds AWH with the Microsoft compiler. You need neither MSYS2 nor MinGW nor a
+POSIX shell: batch scripts and CMake do all the work. At the end you have a library, a set of
+headers and a `FindAWH.cmake` module, so your own Visual Studio project picks them up with
+`find_package(AWH)`.
+
+The route is four steps, always in this order:
+
+1. Install the tools.
+2. Build the dependencies.
+3. Build the library.
+4. Install it and connect it to your project.
+
+Steps 1 and 2 are done once per machine. Steps 3 and 4 you repeat when you want another
+configuration or another install location.
+
+**Why this path is kept apart from MinGW.** The two compilers produce incompatible binaries,
+and some dependencies decide the fate of their own headers while they are built: `zlib`, for
+one, settles whether `unistd.h` exists. Mixing the results breaks the build silently, so each
+toolchain keeps its own directory — MinGW uses `third_party`, Visual Studio uses
+`third_party-msvc`. Both can live on the same machine, and neither disturbs the other.
 
 Verified on Windows 10 build 19045, Visual Studio 18 Community, toolset 14.51.36231
 (compiler 19.51.36260.0), x64.
 
-#### Development environment configuration
+#### Step 1. Install the tools
 
-| Means | Necessarily | For what |
-|---|---|---|
-| [Visual Studio](https://visualstudio.microsoft.com) 2019 or newer | required | the "Desktop development with C++" workload |
-| [GIT](https://git-scm.com) | optional | to check the submodules out and to apply the `lzma` patch; without it the sources are built as they lie on disk |
-| CMake | optional | taken from the Visual Studio installation or from `Program Files`; a separate installation is named by `AWH_CMAKE` |
-| Ninja | optional | taken from the Visual Studio installation or from `PATH`, and named by `AWH_NINJA`; without it the build goes through `NMake Makefiles` in a single job, which is slower, and the script says so |
+One thing is required:
 
-> Visual Studio 18 carries neither CMake nor Ninja as a component. On the machine this path
-> was verified on both were installed separately.
+- **[Visual Studio](https://visualstudio.microsoft.com) 2019 or newer**, with the "Desktop
+  development with C++" workload. It gives you the compiler, the linker and the Windows SDK.
 
-#### Build third party
+Three more tools help, but none of them is required:
+
+- **CMake.** The script looks for it inside Visual Studio, then in `Program Files\CMake`.
+  Keep it elsewhere and name it by hand: `set AWH_CMAKE=C:\tools\cmake.exe`.
+- **Ninja.** Also looked for inside Visual Studio, then on the `PATH`; `set AWH_NINJA=...`
+  names it by hand. Without it the dependencies are built by `NMake Makefiles` in a single
+  job — slower, but it works, and the script tells you it has fallen back.
+- **[GIT](https://git-scm.com).** Needed to check the submodules out and to apply the `lzma`
+  patch. Without it the sources are built exactly as they lie on disk.
+
+> Visual Studio 18 ships neither CMake nor Ninja. On the machine this path was verified on,
+> both were installed separately.
+
+#### Step 2. Build the dependencies
+
+Any command prompt will do — `cmd.exe` from the Start menu is enough. The script finds Visual
+Studio itself and sets up the compiler environment, so this step needs no developer prompt.
 
 ```bat
 > git submodule update --init --recursive
 > bat\build_third_party.bat
 ```
 
-That single command finds the toolset, brings up its environment and builds all ten
-dependencies. The archives of the nine libraries are merged into `libdependence.lib`; the
-allocator is built after the merge and is deliberately kept out of it. The version of each
-dependency is named in its own script under `bat\third_party` — the same versions the MinGW
-build takes from `build_third_party.sh`.
+That one command builds all ten dependencies: A-NTS, zlib, bzip2, lz4, zstd, lzma, Brotli,
+PCRE2, nghttp2 and the gperftools allocator. Everything lands in `third_party-msvc` — headers
+in `include`, archives in `lib`. The version of each dependency is written in its own script
+under `bat\third_party`, and those are the same versions the MinGW build takes from
+`build_third_party.sh`.
+
+Nine of the ten are libraries, and their archives are merged into one `libdependence.lib`.
+The allocator is built after that merge and is deliberately left out of it; the reason is in
+the notes at the end.
+
+The script remembers what it has already built, so a second run costs almost nothing and
+rebuilds only what changed. Three arguments change that:
 
 ```bat
-> bat\build_third_party.bat --rebuild  build afresh, disregarding the marks
-> bat\build_third_party.bat --clean    remove what has been built, leaving the sources
-> bat\build_third_party.bat zlib       build a single dependency
+> bat\build_third_party.bat --rebuild
+> bat\build_third_party.bat --clean
+> bat\build_third_party.bat zlib
 ```
 
-> The instruction set is asked of the system itself rather than of the environment
-> variables: under x86-64 emulation those answer about the emulation and not about the
-> machine, and the build would silently go to x64 on an ARM64 machine. To name it by hand:
-> `set AWH_ARCH=x64`.
+- `--rebuild` — build everything again, ignoring the marks.
+- `--clean` — remove what has been built, leaving the sources alone.
+- a name such as `zlib` — build that one dependency and nothing else.
 
-> `lzma` needs a patch under MSVC: the tag it is built from carries the x64 branch of
-> `memcmplen.h` without the declaration that branch calls. `bat\third_party\006_lzma.bat`
-> applies `patches\lzma\lzma.patch` — the same patch the MinGW build uses — and says so when
-> GIT is absent and the patch could not be applied.
+Two details are worth knowing before you run it.
 
-#### Project build
+**The architecture is taken from the machine, not from the environment.** Under x86-64
+emulation the environment variables describe the emulation, so an ARM64 machine would
+silently get an x64 build. The script asks the system itself instead. To choose by hand:
+`set AWH_ARCH=x64`, or `set AWH_ARCH=arm64`.
 
-Run from the developer command prompt of the matching instruction set ("x64 Native Tools
-Command Prompt for VS", or the ARM64 one) so that `cl.exe` is on the path:
+**`lzma` needs a patch.** The tag it is built from has an x64 branch in `memcmplen.h` that
+calls a declaration the branch does not contain. `bat\third_party\006_lzma.bat` applies
+`patches\lzma\lzma.patch` — the same patch the MinGW build uses. If GIT is missing, the script
+says that the patch was not applied and that the x64 build may fail.
+
+#### Step 3. Build the library
+
+This step does need a developer prompt, because CMake has to find `cl.exe` on the `PATH`.
+Open "x64 Native Tools Command Prompt for VS" (or the ARM64 one) from the Start menu, go to
+the project directory and run:
 
 ```bat
 > mkdir build
@@ -224,20 +263,60 @@ Command Prompt for VS", or the ARM64 one) so that `cl.exe` is on the path:
 > cmake --build .
 ```
 
-The dependencies are attached to the freshly built `awh.lib`, and `FindAWH.cmake` is copied
-into `third_party-msvc\cmake` at the end of the build — the same two steps the shell scripts
-perform under MinGW, called here as their `.bat` counterparts. The module works out the place
-of installation from its own directory, so the copy carries no prefix and needs no
-regeneration when the installation moves.
+You get `awh.lib` in the build directory and the samples beside it. Two more things happen
+by themselves at the end of the build:
 
-IDN is not looked for on Windows: `cmake\FindDependence.cmake` searches for `libidn2` and
-`iconv` on the other systems only, so `-DCMAKE_BUILD_IDN` does nothing on this path.
+- the dependency archives are merged into `awh.lib`, so the library is self-contained and
+  you do not have to list the dependencies when you link your program;
+- `FindAWH.cmake` is written to `third_party-msvc\cmake`. It works out the install directory
+  from its own location, so it carries no baked-in path and survives a move.
 
-#### Build as a shared library (DLL)
+These are the same two steps the shell scripts perform under MinGW; here they are called as
+their `.bat` counterparts.
 
-Add `-DCMAKE_SHARED_BUILD_LIB=YES` to the same configure line:
+One key does nothing on this path: `-DCMAKE_BUILD_IDN`. `cmake\FindDependence.cmake` looks
+for `libidn2` and `iconv` on the other systems only.
+
+#### Step 4. Install and connect to your project
+
+Still in the build directory:
 
 ```bat
+> cmake --install . --prefix C:\awh
+```
+
+That copies the library, the headers, the certificates, the samples and the find module into
+`C:\awh`. The path may contain spaces. The module reads its own location, so the copy works
+from the new place without being regenerated.
+
+Now point your project at that directory. Configure it with the same compiler and tell CMake
+where the module lives:
+
+```bat
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_MODULE_PATH=C:/awh/cmake ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
+```
+
+Write forward slashes in `-D` values: CMake reads a backslash as an escape, and `C:\awh`
+becomes an invalid escape sequence.
+
+A minimal `main.cpp` and `CMakeLists.txt` are in "Example include AWH in your project" below.
+On this path you also have to name the Windows system libraries in `target_link_libraries`;
+the notes at the end list them, together with the runtime library you must match.
+
+#### If you need a DLL instead of a static library
+
+Build it in its own directory so the two configurations do not overwrite each other. The
+only difference is one key:
+
+```bat
+> mkdir build-dll
+> cd build-dll
+
 > cmake -G Ninja ^
    -DCMAKE_BUILD_TYPE=Release ^
    -DCMAKE_SHARED_BUILD_LIB=YES ^
@@ -248,47 +327,53 @@ Add `-DCMAKE_SHARED_BUILD_LIB=YES` to the same configure line:
 > cmake --build .
 ```
 
-The build produces `awh.dll` together with the import library `awh.lib`, and every sample is
-linked against that import library. Installation places the import library at `lib\awh.lib`
-and the DLL at `bin\awh\awh.dll`. A consuming project asks for the shared variant with
-`-DCMAKE_SHARED_LIB_AWH=YES`: `find_package(AWH)` then reports both `AWH_LIBRARY` and
-`AWH_LIBRARY_DLL`. The DLL has to be reachable when the program runs — next to the executable
-or on `PATH`.
+You get `awh.dll` and an import library named `awh.lib`; the samples link against the import
+library. Installation puts the import library at `lib\awh.lib` and the DLL at
+`bin\awh\awh.dll`.
 
-The list of exported symbols is collected by the build description
-(`CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS`) rather than by declarations in the code: under native MSVC
-`AWH_SHARED_EXPORT` expands to nothing. Merging the dependency archives is a static-only step
-and is skipped here — the dependencies are linked into the DLL itself.
+Your project asks for the shared variant with `-DCMAKE_SHARED_LIB_AWH=YES`, and
+`find_package(AWH)` then reports both `AWH_LIBRARY` and `AWH_LIBRARY_DLL`. Keep the DLL
+reachable at run time — beside the executable or on the `PATH` — otherwise the program does
+not start at all and Windows reports `0xC0000135`.
 
-Both configurations write the same `third_party-msvc\cmake\FindAWH.cmake`, and the bytes are
-identical: the module reads the place of installation from its own location instead of carrying
-a baked-in one. Building the second configuration therefore no longer spoils the module of the
-first, and `cmake --install . --prefix <place>` moves the whole installation — libraries,
-headers, certificates, samples and the find module together.
+Three differences from the static build are worth knowing:
 
-#### What you should know
+- the dependencies are linked into the DLL itself, so the merge into `awh.lib` is skipped;
+- the exported symbols are collected by the build description
+  (`CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS`), not by declarations in the code: under native MSVC
+  `AWH_SHARED_EXPORT` expands to nothing, and you have nothing to decorate;
+- both configurations write the same `FindAWH.cmake`, byte for byte, so building one does not
+  spoil the other.
 
-**The allocator archives are deliberately left out of the merge.** `libdependence.lib` takes
-fourteen of the seventeen built archives; `common.lib`, `tcmalloc_minimal.lib` and
-`low_level_alloc.lib` stay apart and are linked by name. Merging them in would break the
-whole-module allocation interception. The allocator is attached to the program by
-`/INCLUDE:__tcmalloc`, which the build sets itself.
+#### Notes and common pitfalls
 
-**MSVC archives are not `lib`-prefixed.** The dependencies land as `nts.lib`,
-`zlibstatic.lib`, `bz2_static.lib` and so on, while the merge step produces
-`libdependence.lib` — the one name that keeps the prefix, so that the same find modules serve
-both toolchains.
+**Use the same runtime library as AWH.** The build compiles with the dynamic CRT — `/MD`, or
+`/MDd` in a debug configuration — and that choice must be the same across the whole image. A
+program linked against `awh.lib` has to use `/MD` too; mixing it with `/MT` fails at link time
+with `LNK2038: mismatch detected for 'RuntimeLibrary'`. CMake chooses `/MD` by default, so an
+ordinary CMake project needs no change, but a project that sets `/MT` by hand does. A machine
+without Visual Studio needs the Visual C++ Redistributable for the matching toolset; `awh.dll`
+carries the same requirement.
 
-**A static build proves less than it looks.** There is no linking in it at all, so a missing
-dependency shows up only when something is actually linked — a shared library or a consuming
-program.
+**Name the Windows system libraries yourself.** The find module gives you AWH and, in a debug
+configuration, the dependency archive — nothing else. Only `Ws2_32` is pulled in
+automatically, by a pragma in the headers. Add the rest to your `target_link_libraries`:
+`ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`, `shell32`, `uuid`.
 
-**The consumer has to use the same runtime library.** The build compiles with the dynamic CRT
-(`/MD`, and `/MDd` in a debug configuration), and that choice must be uniform across the whole
-image: a program linked against `awh.lib` has to use `/MD` as well, and mixing it with `/MT`
-fails at link time with `LNK2038: mismatch detected for 'RuntimeLibrary'`. A machine without
-Visual Studio needs the Visual C++ Redistributable for the matching toolset; `awh.dll` carries
-the same requirement.
+**The allocator stays out of the merged archive.** `libdependence.lib` takes fourteen of the
+seventeen archives that were built. `tcmalloc_minimal.lib` and `common.lib` are kept apart and
+linked by name; the rest, `low_level_alloc.lib` among them, are kept out of the merge and are
+not linked at all. Merging the allocator in would break the allocation interception: the
+linker pulls an object out of an archive only when a symbol asks for it, and the interception
+needs the object pulled whole. The build attaches it with `/INCLUDE:__tcmalloc` itself.
+
+**A static build proves less than it looks.** Producing `awh.lib` involves no linking at all —
+it is an archive of object files. A missing dependency therefore shows up only where something
+is really linked: the samples, the DLL, or your program.
+
+**MSVC archives are not `lib`-prefixed.** The dependencies land as `nts.lib`, `zlibstatic.lib`,
+`bz2_static.lib` and so on. The merge step keeps the one prefixed name, `libdependence.lib`, so
+that the same find modules serve both toolchains.
 
 ### Make installation packages
 
