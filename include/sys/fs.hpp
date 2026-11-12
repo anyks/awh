@@ -517,6 +517,35 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string fullpath(string_view addr, const bool resolve = false) noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция установки защиты файла «только владелец»
+		 *
+		 * @details В POSIX-системах права ставятся 0600 (чтение и запись одному владельцу), в MS Windows
+		 *          файл получает защищённый список доступа «только владелец и SYSTEM» без наследования
+		 *          прав родительского каталога. Применяется к секретам - приватным ключам и паролям.
+		 *
+		 * @param addr    путь к файлу, каталогу либо ссылке
+		 * @param resolve ложь - защита ставится самому объекту (у символьной ссылки - ссылке, цель не
+		 *                трогается), истина - цели ссылки
+		 * @return        результат работы функции
+		 *
+		 * \~english
+		 * @brief Function of setting the owner-only protection of a file
+		 *
+		 * @details In POSIX systems the permissions are set to 0600 (read and write to the owner alone),
+		 *          in MS Windows the file gets a protected access list for the owner and SYSTEM only,
+		 *          without inheriting the rights of the parent directory. Applied to secrets - private
+		 *          keys and passwords.
+		 *
+		 * @param addr    path to the file, the directory or the link
+		 * @param resolve false - the protection is set on the object itself (on a symbolic link, on the
+		 *                link without touching its target), true - on the target of the link
+		 * @return        result of the work of the function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool protect(string_view addr, const bool resolve = false) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция получения прав доступа к файлу или каталогу
 		 *
 		 * @param addr    путь к файлу или каталогу

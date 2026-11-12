@@ -3004,6 +3004,65 @@ string awh::fs::fullpath(string_view addr, const bool resolve) noexcept {
 	return result;
 }
 /**
+ * @brief Функция установки защиты файла «только владелец»
+ *
+ * @details В POSIX-системах права ставятся 0600 обращением к сеттеру chmod, в MS Windows файл получает
+ *          защищённый список доступа «только владелец и SYSTEM» без наследования прав родителя.
+ *
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param resolve ложь - защита ставится самому объекту (у символьной ссылки - ссылке, цель не
+ *                трогается), истина - цели ссылки
+ * @return        результат работы функции
+ *
+ */
+bool awh::fs::protect(string_view addr, const bool resolve) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если путь к файлу или каталогу передан
+	if(!addr.empty() && (type(addr) != type_t::NONE)){
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			/**
+			 * Извлекаем актуальное значение адреса: с флагом разрешения это адрес цели ссылки,
+			 * без флага - адрес самой ссылки
+			 */
+			const string address = fullpath(addr, resolve);
+			// Если адрес получен правильный
+			if(!address.empty()){
+				// Дескриптор списка безопасности
+				PSECURITY_DESCRIPTOR sd = nullptr;
+				/**
+				 * Собираем защищённый список доступа по строке SDDL: полный доступ владельцу (OW) и
+				 * SYSTEM (SY), наследование прав родителя снято признаком P - чужой каталог не должен
+				 * выдавать доступ к секрету через свои списки
+				 */
+				const BOOL built = ::ConvertStringSecurityDescriptorToSecurityDescriptorW(L"D:P(A;;FA;;;SY)(A;;FA;;;OW)", SDDL_REVISION_1, &sd, nullptr);
+				// Если список собран, ставим его на файл
+				if(built){
+					// Устанавливаем список доступа
+					result = (::SetFileSecurityW(__danube_longpath__(fmk::convert(address)).c_str(), DACL_SECURITY_INFORMATION, sd) != FALSE);
+					// Освобождаем собранный список
+					::LocalFree(sd);
+				}
+			}
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			/**
+			 * Защита «только владелец» в POSIX - это права 0600: чтение и запись одному владельцу.
+			 * Ставит их сеттер chmod, он же держит работу со ссылкой, терпимость к файловым системам
+			 * без lchmod и запись отказа в лог
+			 */
+			result = chmod(addr, (S_IRUSR | S_IWUSR), resolve);
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Функция получения прав доступа к файлу или каталогу
  *
  * @param addr    путь к файлу или каталогу

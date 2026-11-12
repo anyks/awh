@@ -23,6 +23,12 @@
  *          стандарт, а обещание заголовочного файла, что перегрузки различаются лишь
  *          способом задать зону и хранилище
  *
+ *          Эталон всякой проверки берётся на тот же момент, что и проверяемая запись.
+ *          Перегрузки, даты не принимающие, отвечают по текущему моменту, а у сводных
+ *          зон Северной Америки смещение меняется с сезоном: эталон «на сегодня»
+ *          расходился бы с записью на дату на час, и набор краснел бы с ноября по март.
+ *          Обозначение зоны в диагностическом выводе берётся там же, где и сама запись
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -75,18 +81,18 @@ TEST_F(OverloadFixture, ExecutionOverloadDateZoneChronoTest){
 		// Получаем временную зону перечисления
 		const awh::chrono_t::zone_t zone = static_cast <awh::chrono_t::zone_t> (i);
 		// Получаем смещение временной зоны
-		const int32_t offset = this->_chrono->getTimeZone(zone);
+		const int32_t offset = this->_chrono->getTimeZone(zone, OVERLOAD_DATE);
 		// Формируем запись по смещению временной зоны
 		const std::string expected = this->_chrono->format(OVERLOAD_DATE, offset, OVERLOAD_FORMAT);
 		// Выполняем проверку согласованности перегрузки, принимающей зону перечислением
 		ASSERT_EQ(this->_chrono->format(OVERLOAD_DATE, zone, OVERLOAD_FORMAT), expected)
-			<< this->_chrono->format(zone);
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 		// Выполняем проверку согласованности перегрузки, принимающей зону обозначением
-		ASSERT_EQ(this->_chrono->format(OVERLOAD_DATE, this->_chrono->format(zone), OVERLOAD_FORMAT), expected)
-			<< this->_chrono->format(zone);
+		ASSERT_EQ(this->_chrono->format(OVERLOAD_DATE, this->_chrono->format(zone, OVERLOAD_DATE), OVERLOAD_FORMAT), expected)
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 		// Выполняем проверку записи обозначения временной зоны, переданной перечислением
-		ASSERT_EQ(this->_chrono->format(OVERLOAD_DATE, zone, "%Z"), this->_chrono->format(zone))
-			<< this->_chrono->format(zone);
+		ASSERT_EQ(this->_chrono->format(OVERLOAD_DATE, zone, "%Z"), this->_chrono->format(zone, OVERLOAD_DATE))
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 	}
 }
 
@@ -106,18 +112,18 @@ TEST_F(OverloadFixture, ExecutionOverloadStorageZoneChronoTest){
 		// Получаем временную зону перечисления
 		const awh::chrono_t::zone_t zone = static_cast <awh::chrono_t::zone_t> (i);
 		// Получаем смещение временной зоны
-		const int32_t offset = this->_chrono->getTimeZone(zone);
+		const int32_t offset = this->_chrono->getTimeZone(zone, OVERLOAD_DATE);
 		// Формируем запись по смещению временной зоны
 		const std::string expected = this->_chrono->format(offset, OVERLOAD_FORMAT, awh::chrono_t::storage_t::LOCAL);
 		// Выполняем проверку согласованности перегрузки, принимающей зону перечислением
 		ASSERT_EQ(this->_chrono->format(zone, OVERLOAD_FORMAT, awh::chrono_t::storage_t::LOCAL), expected)
-			<< this->_chrono->format(zone);
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 		// Выполняем проверку согласованности перегрузки, принимающей зону обозначением
-		ASSERT_EQ(this->_chrono->format(this->_chrono->format(zone), OVERLOAD_FORMAT, awh::chrono_t::storage_t::LOCAL), expected)
-			<< this->_chrono->format(zone);
+		ASSERT_EQ(this->_chrono->format(this->_chrono->format(zone, OVERLOAD_DATE), OVERLOAD_FORMAT, awh::chrono_t::storage_t::LOCAL), expected)
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 		// Выполняем проверку записи обозначения временной зоны, переданной перечислением
-		ASSERT_EQ(this->_chrono->format(zone, "%Z", awh::chrono_t::storage_t::LOCAL), this->_chrono->format(zone))
-			<< this->_chrono->format(zone);
+		ASSERT_EQ(this->_chrono->format(zone, "%Z", awh::chrono_t::storage_t::LOCAL), this->_chrono->format(zone, OVERLOAD_DATE))
+			<< this->_chrono->format(zone, OVERLOAD_DATE);
 	}
 }
 
