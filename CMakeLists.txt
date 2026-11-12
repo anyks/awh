@@ -334,8 +334,16 @@ if (MSVC)
      #
      # Пишется он в параметры связывания, а не в перечень библиотек: флагом CMake
      # признаёт лишь имя с «-» в начале, а «/INCLUDE:» принял бы за имя библиотеки
+     #
+     # В динамической конфигурации ключ ставится ТОЛЬКО самой библиотеке: распределитель
+     # живёт внутри awh.dll, и второй его копии в образе программы быть не должно.
+     # Правку начал функций Windows каждый экземпляр делает при своём запуске, и второй
+     # заход по тем же адресам кончается отказом gperftools ещё до main - программа
+     # падает с кодом 0xC0000409, не напечатав ничего
      ##
-    add_link_options(/INCLUDE:__tcmalloc)
+    if(NOT CMAKE_SHARED_BUILD_LIB)
+        add_link_options(/INCLUDE:__tcmalloc)
+    endif()
 # Если процессор архитектуры ARM
 elseif (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
@@ -694,11 +702,14 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${WINFLAGS}
         )
 
+        # Втягиваем распределитель памяти в саму библиотеку: программы ниже получают
+        # его уже готовым внутри awh.dll и своего не несут
+        target_link_options(${AWH_LIB_NAME} PRIVATE /INCLUDE:__tcmalloc)
+
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -706,7 +717,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -714,7 +724,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -722,7 +731,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -730,7 +738,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -738,7 +745,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -746,7 +752,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -754,7 +759,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -762,7 +766,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -770,7 +773,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -778,7 +780,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -786,7 +787,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -794,7 +794,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -802,7 +801,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -810,7 +808,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         target_link_libraries(
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
