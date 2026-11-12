@@ -87,44 +87,6 @@ $ ./certs.sh example.com
 $ ./build_third_party.sh --idn
 ```
 
-### Криптографический модуль (A-NTS)
-
-TLS, DTLS и помощники хешей и шифров даёт [A-NTS](https://anyks.com/nts). OpenSSL не входит
-в зависимости сборки; единственное место, где он ещё зовётся, - `certs/certs.sh`: там системный
-`openssl` служит средством создания образцовых сертификатов.
-
-`build_third_party.sh` собирает A-NTS из ветки `main` его подмодуля, поэтому сборка берёт
-библиотеку в её нынешнем виде. Уже собранную копию пропускает отметка
-`submodules/a-nts/.stamp_done` - снимите её, чтобы собрать библиотеку заново:
-
-```bash
-$ rm -f ./submodules/a-nts/.stamp_done
-$ ./build_third_party.sh --idn
-```
-
-Журнал сборки называет использованный коммит (`A-NTS commit: ...`).
-
-#### Доверенные сертификаты
-
-`SSL_CA_FILE` (`include/sys/lib.hpp`) - заданный при сборке адрес файла CA по умолчанию;
-приложение перебивает его полями `node_t::ssl_t::ca` и `capath`. Если заданный файл не найден,
-движок обходит места самой системы: `/etc/ssl/certs/ca-certificates.crt` (Debian, Ubuntu,
-Astra, Alpine, Fedora, OpenWrt), `/etc/pki/tls/certs/ca-bundle.crt` (Red Hat, ALT),
-`/etc/ssl/ca-bundle.pem` (openSUSE), `/etc/ssl/cert.pem` (macOS, семейство BSD),
-`/usr/local/share/certs/ca-root-nss.crt` (дерево портов). Там, где доверие лежит каталогом
-отдельных записей, а не одной связкой - NetBSD (`/etc/openssl/certs`), Solaris и illumos
-(`/etc/certs/CA`), и `/etc/ssl/certs` на прочих - обходится каталог. На Windows доверие
-берут из системного хранилища (`CA`, `AuthRoot`, `ROOT`), файл связки не используется.
-
-#### Отзыв сертификатов (CRL)
-
-`node_t::ssl_t::crl` - файл PEM, который может держать и списки отзыва, и сертификаты; из него
-берут и то и другое. Любой заданный список включает проверку отзыва для **всей** цепочки:
-каждому издателю цепочки нужен свой список, иначе проверка отказывает с `MISSING`. Коды
-отказа печатают с внятной причиной: 15 `REVOKED`, 16 `MISSING`, 17 `OUTDATED`
-(момент проверки позже `nextUpdate`), 18 `FORGED` (подпись списка не сходится
-с ключом издателя). Хранилище без списков отзыв не проверяет вовсе.
-
 ### Сборка на MacOS X, Linux, FreeBSD или Solaris
 
 ```bash
