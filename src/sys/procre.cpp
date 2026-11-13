@@ -110,6 +110,19 @@
 		#include <sys/sysctl.h>
 	#endif
 /**
+ * Для операционной системы DragonFly BSD
+ *
+ * @note Запись о процессе приходит из sys/user.h, который сам подключает sys/kinfo.h:
+ *       функции kinfo_getproc, какой пользуется FreeBSD, у DragonFly нет вовсе
+ *
+ */
+#elif defined(__DragonFly__)
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <sys/user.h>
+	#include <sys/sysctl.h>
+/**
  * Реализация под Sun Solaris
  */
 #elif defined(__sun__)
@@ -123,19 +136,24 @@
 	 * Системные заголовочные файлы
 	 */
 	#include <fcntl.h>
-	#include <sys/dirent.hpp>
 	#include <unistd.h>
 	#include <procfs.h>
+	#include <sys/un.h>
 	#include <sys/stat.h>
 	#include <sys/socket.h>
-	#include <sys/un.h>
+	#include <sys/dirent.hpp>
 	#include <netinet/in.h>
 /**
  * Для операционной системы Windows
  */
 #elif defined(_WIN32) || defined(_WIN64)
 	/**
-	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 * Стандартный заголовочный файл
+	 */
+	#include <cstdint>
+
+	/**
+	 * Подключаем единую точку подключения системных заголовков Microsoft Windows
 	 */
 	#include <sys/macro/win32.hpp>
 
@@ -144,15 +162,14 @@
 	 */
 	#include <psapi.h>
 	#include <iphlpapi.h>
-	#include <cstdint>
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <encoding/ascii.hpp>
-#include <sys/procre.hpp>
 #include <sys/log.hpp>
+#include <sys/procre.hpp>
+#include <encoding/ascii.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -169,13 +186,18 @@ using namespace std;
 	 */
 	namespace procre {
 		/**
+		 * Используем пространство имён AWH
+		 */
+		using namespace awh;
+
+		/**
 		 * @brief Функция извлечения данных из файла
 		 *
 		 * @param filename путь к файлу для извлечения
 		 * @return         содержимое файла
 		 *
 		 */
-		static string read(const string & filename) noexcept {
+		static __AWH_INLINE__ string read(const string & filename) noexcept {
 			// Переменная результата
 			string result = "";
 			/**
@@ -212,13 +234,13 @@ using namespace std;
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -687,13 +709,13 @@ void awh::Process_Resolver::scanning() noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			// Если список идентификаторов процессов получен
 			} else if(bytes > 0) {
@@ -810,8 +832,8 @@ void awh::Process_Resolver::scanning() noexcept {
 										case SOCKINFO_IN: {
 											// Если семейство протокола сокета не определено
 											if((si.psi.soi_proto.pri_in.insi_vflag == 0) &&
-											(si.psi.soi_protocol != IPPROTO_IP) &&
-											(si.psi.soi_protocol != IPPROTO_IPV6))
+											   (si.psi.soi_protocol != IPPROTO_IP) &&
+											   (si.psi.soi_protocol != IPPROTO_IPV6))
 												// Сбрасываем семейство протокола сокета
 												info.family = event::family_t::NONE;
 											// Если семейство протокола сокета определено
@@ -1180,11 +1202,11 @@ void awh::Process_Resolver::scanning() noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback != nullptr){
 				/**
-				 * В NetBSD и OpenBSD системные структуры для сокетов часто закрыты или требуют libkvm и прав root
-				 * Надежный способ из пространства пользователя — парсинг вывода штатных системных утилит (sockstat/fstat)
-				 */
-				/**
-				 * Для операционной системы NetBSD
+				 * @brief Для операционной системы NetBSD
+				 *
+				 * @details В NetBSD и OpenBSD системные структуры для сокетов часто закрыты или требуют libkvm и прав root
+				 *          Надежный способ из пространства пользователя — парсинг вывода штатных системных утилит (sockstat/fstat).
+				 *
 				 */
 				#if defined(__NetBSD__)
 					// Открываем процесс для чтения вывода команды sockstat
@@ -1439,12 +1461,12 @@ void awh::Process_Resolver::scanning() noexcept {
 										iss >> mode >> sz_dv >> local;
 										// Инициализируем путь к сокету
 										string path = "";
+										// Инициализируем строковое значение для чтения оставшейся части строки, которая может содержать путь к сокету
+										string part = "";
 										// Список партиций строки, который будет использоваться для поиска пути к сокету
 										vector <string> parts;
 										// Добавляем локальный адрес в список партиций, так как он может содержать путь к сокету
 										parts.push_back(local);
-										// Инициализируем строковое значение для чтения оставшейся части строки, которая может содержать путь к сокету
-										string part = "";
 										/**
 										 * Читаем оставшиеся части строки, которые могут содержать путь к сокету
 										 */
@@ -1646,13 +1668,13 @@ void awh::Process_Resolver::scanning() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1681,7 +1703,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 			// Заполняем адрес процесса
 			::snprintf(buffer, sizeof(buffer), "/proc/%d/comm", pid);
 			// Структура проверка статистики
-			struct stat info;
+			struct stat info{};
 			// Выполняем извлечение данных статистики
 			const int32_t status = ::stat(buffer, &info);
 			// Если файл существует и это обычный файл
@@ -1690,8 +1712,12 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				FILE * file = ::fopen(buffer, "r");
 				// Если файл открыт удачно
 				if(file != nullptr){
-					// Чтение данных из файла.
-					// Внимание: sizeof(buffer) == 1024, читаем до sizeof(buffer) - 1, чтобы гарантировать нуль-терминатор
+					/**
+					 * @brief Чтение данных из файла
+					 *
+					 * @note Внимание: sizeof(buffer) == 1024, читаем до sizeof(buffer) - 1, чтобы гарантировать нуль-терминатор
+					 *
+					 */
 					const size_t size = ::fread(buffer, sizeof(char), sizeof(buffer) - 1, file);
 					// Если данные из файла прочитаны удачно
 					if(size > 0){
@@ -1734,12 +1760,12 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				// Выполняем формирование результата
 				result.assign(buffer, buffer + size);
 		/**
-		 * Для операционной системы OpenBSD
+		 * @brief Для операционной системы OpenBSD
 		 *
 		 * @details Название процесса берётся у ядра запросом, а не из файловой системы
 		 *          процессов: OpenBSD её убрала целиком - каталога `/proc` там нет
 		 *          вовсе, - и чтение оттуда возвращало пустое название всегда. Ядро
-		 *          же держит название в записи о процессе и отдаёт его запросом
+		 *          же держит название в записи о процессе и отдаёт его запросом.
 		 *
 		 */
 		#elif defined(__OpenBSD__)
@@ -1807,6 +1833,37 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				}
 			}
 		/**
+		 * @brief Для операционной системы DragonFly BSD
+		 *
+		 * @details Название процесса берётся у ядра запросом: файловая система процессов
+		 *          у DragonFly есть, но файла `comm` в ней нет вовсе, и читать название
+		 *          неоткуда. Ядро держит его в записи о процессе и отдаёт запросом
+		 *          `KERN_PROC_PID` в поле `kp_comm`. Указателей отбора у запроса четыре,
+		 *          а не шесть как у OpenBSD: размер записи и число записей ядро здесь
+		 *          не спрашивает. Несуществующий процесс отказом не отмечается - запрос
+		 *          завершается успехом с нулевой длиной, потому длина проверяется
+		 *          наравне с кодом возврата.
+		 *
+		 */
+		#elif defined(__DragonFly__)
+			// Запись о процессе, получаемая у ядра
+			struct kinfo_proc process;
+			// Зануляем запись о процессе
+			::memset(&process, 0, sizeof(process));
+			// Размер записи о процессе
+			size_t length = sizeof(process);
+			// Идентификатор параметра записи о запрошенном процессе
+			int32_t mib[4] = {
+				CTL_KERN,           // Ядро системы
+				KERN_PROC,          // Записи о процессах
+				KERN_PROC_PID,      // Отбор по идентификатору процесса
+				static_cast <int32_t> (pid)
+			};
+			// Если запись о процессе получена и название в ней есть
+			if((::sysctl(mib, 4, &process, &length, nullptr, 0) == 0) && (length > 0) && (process.kp_comm[0] != '\0'))
+				// Устанавливаем название процесса
+				result.assign(process.kp_comm, ::strnlen(process.kp_comm, sizeof(process.kp_comm)));
+		/**
 		 * Реализация под Sun Solaris
 		 */
 		#elif defined(__sun__)
@@ -1862,13 +1919,13 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {pid}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1893,4 +1950,4 @@ awh::Process_Resolver::Process_Resolver() noexcept : _callback(nullptr) {}
  * @brief Деструктор
  *
  */
-awh::Process_Resolver::~Process_Resolver() noexcept {}
+awh::Process_Resolver::~Process_Resolver() noexcept = default;
