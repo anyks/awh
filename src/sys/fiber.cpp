@@ -12,13 +12,12 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации модуля волокон
  *
  * @details Подкладок три, и выбираются они по системе:
  *          - ucontext: macOS, FreeBSD, DragonFly, NetBSD, Solaris, illumos, Linux
  *          - родные волокна: MS Windows
- *          - свой переключатель стека: OpenBSD, где ucontext удалён из системы вовсе
+ *          - свой переключатель стека: OpenBSD, где ucontext удалён из системы вовсе.
  *
  * @note На процессоре Эльбрус ветвь ucontext идёт своим вызовом: `makecontext`
  *       у тамошней glibc нет, вместо неё `makecontext_e2k`, выделяющая волокну ещё
@@ -26,6 +25,7 @@
  *       парная ей `freecontext_e2k` не зовётся, сказано при уничтожении волокна
  *
  * @copyright Copyright © 2026
+ *
  */
 
 /**
@@ -42,7 +42,7 @@
 		#define _XOPEN_SOURCE 700
 	#endif
 	/**
-	 * Возвращаем расширения BSD
+	 * @brief Возвращаем расширения BSD
 	 *
 	 * @warning Отпирание строгого POSIX выше прячет MAP_ANON ВМЕСТЕ с MAP_ANONYMOUS,
 	 *          и отображение безымянной памяти становится недоступно вовсе
@@ -75,7 +75,7 @@
 using namespace std;
 
 /**
- * Если операционной системой является macOS
+ * @brief Если операционной системой является macOS
  *
  * @note Функции ucontext помечены там устаревшими с версии 10.6 и предупреждают о
  *       себе на каждом вызове. Замены им у системы нет: обещанной заменой считаются
@@ -117,14 +117,18 @@ using namespace std;
  * Если операционной системой является MS Windows
  */
 #elif defined(_WIN32) || defined(_WIN64)
-	// Подкладкой служат родные волокна системы
+	/**
+	 * Подкладкой служат родные волокна системы
+	 */
 	#define AWH_FIBER_WINAPI 1
+
 	/**
 	 * @warning Подключать <windows.h> напрямую нельзя: rpcndr.h заводит собственный
 	 *          typedef byte, и при уже подключённом <cstddef> обращение к byte
 	 *          становится двусмысленным — сборка у MinGW рассыпается прямо в заголовках
 	 *          системы. Посредник win32.hpp ставит WIN32_LEAN_AND_MEAN, NOMINMAX
 	 *          и порядок winsock2.h → windows.h за нас
+	 *
 	 */
 	#include <sys/macro/win32.hpp>
 /**
@@ -137,7 +141,35 @@ using namespace std;
 	 */
 	#define AWH_FIBER_ASM 1
 /**
- * Если стандартной библиотекой служит не glibc, а набор команд свой переключатель несёт
+ * @brief Если операционной системой является DragonFly, а набор команд свой переключатель несёт
+ *
+ * @warning У DragonFly `makecontext` МОЛЧА отказывает при стеке меньше MINSIGSTKSZ
+ *          (8192 октета, `sys/signal.h`): управление возвращается, а обстановка
+ *          остаётся неподготовленной - указатель стека в ней от зовущей стороны,
+ *          вход волокна не выставлен. Возврата об отказе у `makecontext` нет, она
+ *          `void`; `swapcontext` после этого отвечает -1, и errno при этом НОЛЬ,
+ *          то есть и по нему причину не назвать. Замерено щупом на стенде
+ *          DragonFly 6.4: при 4096 октетах тело волокна не исполняется, при 8192
+ *          и выше исполняется, страж и TLS на исход не влияют
+ *
+ * @note Порог этот вверх НЕ кругляется: заказчик считает стек под свою работу, а
+ *       страж отводится СВЕРХ заказанного, и заказ «ровно одна страница» законен.
+ *       Своему переключателю он впору - на x86-64 подготовка кладёт 64 октета
+ *       (выравнивание, адрес входа, шесть сберегаемых регистров), на ARM64 -
+ *       двадцать регистров со входом в x30
+ *
+ * @note Набор команд ограждён тем же перечнем, что несёт сам переключатель: за
+ *       его пределами выбор остаётся за ucontext, и отказ там будет честным
+ *       следствием отсутствия подкладки, а не молчаливой подменой
+ *
+ */
+#elif defined(__DragonFly__) && (defined(__x86_64__) || defined(__aarch64__))
+	/**
+	 * Подкладкой служит свой переключатель стека: порога MINSIGSTKSZ у него нет
+	 */
+	#define AWH_FIBER_ASM 1
+/**
+ * @brief Если стандартной библиотекой служит не glibc, а набор команд свой переключатель несёт
  *
  * @warning Судить о наличии ucontext по НАЗВАНИЮ СИСТЕМЫ нельзя. У musl заголовок
  *          <ucontext.h> на месте и объявления в нём есть, а самих getcontext,
@@ -152,16 +184,22 @@ using namespace std;
  * @note Наборы команд перечислены те же, что несёт сам переключатель ниже: за их
  *       пределами выбор остаётся за ucontext, и отказ связывания там будет честным
  *       следствием отсутствия подкладки, а не молчаливой подменой
+ *
  */
 #elif defined(__linux__) && !defined(__GLIBC__) && (defined(__x86_64__) || defined(__aarch64__))
-	// Подкладкой служит свой переключатель стека
+	/**
+	 * Подкладкой служит свой переключатель стека
+	 */
 	#define AWH_FIBER_ASM 1
 /**
- * Если операционной системой является Linux, FreeBSD, DragonFly, NetBSD, Solaris или illumos
+ * Если операционной системой является Linux, FreeBSD, NetBSD, Solaris или illumos
  */
 #else
-	// Подкладкой служит ucontext
+	/**
+	 * Подкладкой служит ucontext
+	 */
 	#define AWH_FIBER_UCONTEXT 1
+
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -173,7 +211,7 @@ using namespace std;
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Системные заголовочные файлы
+	 * @brief Системные заголовочные файлы
 	 *
 	 * @note `unistd.h` нужен `sysconf`, которым спрашивается размер страницы для
 	 *       стража стека волокна: на части систем он приходил попутно, а Solaris
@@ -182,13 +220,15 @@ using namespace std;
 	 */
 	#include <unistd.h>
 	#include <sys/mman.h>
+
 	/**
-	 * Если признак стека системой не заведён, обходимся без него
+	 * @brief Если признак стека системой не заведён, обходимся без него
 	 *
 	 * @warning У OpenBSD признак этот ОБЯЗАТЕЛЕН: память без него стеком быть не
 	 *          вправе, и переход на неё валит процесс немедленно. Проверено опытом
 	 *          на стенде: обычная память из кучи давала отказ сегментации на первом
 	 *          же переходе в волокно
+	 *
 	 */
 	#if !defined(MAP_STACK)
 		/**
@@ -234,6 +274,7 @@ namespace awh {
 		 *
 		 */
 		extern "C" void __awh_fiber_swap__(void ** from, void * to);
+
 		/**
 		 * Если набором команд является x86-64
 		 */
@@ -312,13 +353,24 @@ namespace awh {
 	 */
 	class fiber::Context {
 		public:
+			/**
+			 * @brief Признак роспуска волокна
+			 *
+			 * @note Указателя на журнал контекст НЕ хранит намеренно: уничтожение идёт
+			 *       при сносе того, чему волокно принадлежало, и журнал к тому мигу
+			 *       бывает снесён раньше волокна. Журнал нужен только на заведении,
+			 *       и живёт он ровно столько - доводом, а не полем.
+			 */
+			bool dismissed;
+		public:
 			// Размер стека волокна
 			size_t size;
 		public:
-			// Функция, выполняемая волокном
-			fiber::task_t task;
 			// Состояние волокна
 			fiber::state_t state;
+		public:
+			// Функция, выполняемая волокном
+			fiber::task_t task;
 		public:
 			/**
 			 * Если подкладкой служит ucontext
@@ -350,16 +402,6 @@ namespace awh {
 			char * stack;
 		public:
 			/**
-			 * Признак роспуска волокна
-			 *
-			 * @note Указателя на журнал контекст НЕ хранит намеренно: уничтожение идёт
-			 *       при сносе того, чему волокно принадлежало, и журнал к тому мигу
-			 *       бывает снесён раньше волокна. Журнал нужен только на заведении,
-			 *       и живёт он ровно столько - доводом, а не полем.
-			 */
-			bool dismissed;
-		public:
-			/**
 			 * Если подкладкой служит ucontext
 			 */
 			#if defined(AWH_FIBER_UCONTEXT)
@@ -367,10 +409,10 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Context() noexcept :
-				 size(0), task(nullptr),
+				explicit Context() noexcept :
+				 dismissed(false), size(0), 
 				 state(fiber::state_t::NONE),
-				 stack(nullptr), dismissed(false) {}
+				 task(nullptr), stack(nullptr) {}
 			/**
 			 * Если подкладкой служит ucontext
 			 */
@@ -379,11 +421,11 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Context() noexcept :
-				 size(0), task(nullptr),
+				explicit Context() noexcept :
+				 dismissed(false), size(0),
 				 state(fiber::state_t::NONE),
-				 handle(nullptr), caller(nullptr),
-				 stack(nullptr), dismissed(false) {}
+				 task(nullptr), handle(nullptr),
+				 caller(nullptr), stack(nullptr) {}
 			/**
 			 * Если подкладкой служит свой переключатель стека
 			 */
@@ -392,11 +434,11 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Context() noexcept :
-				 size(0), task(nullptr),
+				explicit Context() noexcept :
+				 dismissed(false), size(0),
 				 state(fiber::state_t::NONE),
-				 handle(nullptr), caller(nullptr),
-				 stack(nullptr), dismissed(false) {}
+				 task(nullptr), handle(nullptr),
+				 caller(nullptr), stack(nullptr) {}
 			#endif
 	};
 
@@ -423,7 +465,7 @@ namespace awh {
 		 *          ядро, а вреда от того, что поток остался волокном, нет
 		 *
 		 */
-		static void __awh_fiber_thread__() noexcept {
+		static __AWH_INLINE__ void __awh_fiber_thread__() noexcept {
 			// Если поток волокном ещё не является
 			if(!::IsThreadAFiber())
 				// Обращаем поток в волокно
@@ -437,7 +479,7 @@ namespace awh {
 	 * @param fiber волокно, работу которого следует выполнить
 	 *
 	 */
-	static void __awh_fiber_body__(fiber::ctx_t * fiber) noexcept {
+	static __AWH_INLINE__ void __awh_fiber_body__(fiber::ctx_t * fiber) noexcept {
 		// Если работа волокна задана
 		if(fiber->task != nullptr)
 			// Выполняем работу волокна
@@ -456,7 +498,7 @@ namespace awh {
 		 * @brief Функция входа волокна
 		 *
 		 */
-		static void __awh_fiber_trampoline__() noexcept {
+		static __AWH_INLINE__ void __awh_fiber_trampoline__() noexcept {
 			// Получаем волокно, в котором идёт выполнение
 			fiber::ctx_t * fiber = __awh_fiber_current__;
 			// Выполняем работу волокна
@@ -474,7 +516,7 @@ namespace awh {
 		 * @param param волокно, работу которого следует выполнить
 		 *
 		 */
-		static VOID CALLBACK __awh_fiber_trampoline__(LPVOID param){
+		static __AWH_INLINE__ VOID CALLBACK __awh_fiber_trampoline__(LPVOID param){
 			// Получаем волокно
 			fiber::ctx_t * fiber = reinterpret_cast <fiber::ctx_t *> (param);
 			// Выполняем работу волокна
@@ -516,7 +558,7 @@ namespace awh {
 		 * @return    указатель стека, готовый к первому переходу
 		 *
 		 */
-		static void * __awh_fiber_prepare__(char * top) noexcept {
+		static __AWH_INLINE__ void * __awh_fiber_prepare__(char * top) noexcept {
 			/**
 			 * Если набором команд является x86-64
 			 */
@@ -566,33 +608,34 @@ namespace awh {
 	#endif
 
 	/**
-	 * Если операционной системой является не MS Windows
+	 * @brief Если операционной системой является не MS Windows
 	 *
 	 * @note Ограда обязательна: `sysconf` берётся из `unistd.h`, а тот подключается
 	 *       под этим же условием. Обращений к посреднику у MS Windows нет вовсе -
 	 *       стек волокну там отводит сама система, и все четыре его вызова стоят в
 	 *       ветвях `mmap`/`munmap`
+	 *
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
-	/**
-	 * @brief Функция получения размера страницы памяти
-	 *
-	 * @details Размер нужен стражу стека волокна: закрывать обращением наотрез система
-	 *          умеет лишь целыми страницами, а размер их у систем разный - 4 КБ у
-	 *          x86-64, 16 КБ у Apple Silicon
-	 *
-	 * @note Спрашивается у системы ОДИН раз за процесс: в пределах процесса он
-	 *       неизменен, а `sysconf` - вызов не из дешёвых
-	 *
-	 * @return размер страницы памяти в октетах
-	 *
-	 */
-	static size_t __awh_fiber_page__() noexcept {
-		// Размер страницы памяти, спрошенный у системы однажды
-		static const size_t result = static_cast <size_t> (::sysconf(_SC_PAGESIZE));
-		// Выводим размер страницы памяти
-		return result;
-	}
+		/**
+		 * @brief Функция получения размера страницы памяти
+		 *
+		 * @details Размер нужен стражу стека волокна: закрывать обращением наотрез система
+		 *          умеет лишь целыми страницами, а размер их у систем разный - 4 КБ у
+		 *          x86-64, 16 КБ у Apple Silicon.
+		 *
+		 * @note Спрашивается у системы ОДИН раз за процесс: в пределах процесса он
+		 *       неизменен, а `sysconf` - вызов не из дешёвых
+		 *
+		 * @return размер страницы памяти в октетах
+		 *
+		 */
+		static __AWH_INLINE__ size_t __awh_fiber_page__() noexcept {
+			// Размер страницы памяти, спрошенный у системы однажды
+			static const size_t result = static_cast <size_t> (::sysconf(_SC_PAGESIZE));
+			// Выводим размер страницы памяти
+			return result;
+		}
 	#endif
 	/**
 	 * @brief Функция заведения волокна
@@ -602,11 +645,22 @@ namespace awh {
 	 * @return     заведённое волокно, либо nullptr при отказе
 	 *
 	 */
-	static fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size) noexcept {
+	static __AWH_INLINE__ fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size) noexcept {
 		// Если работа волокна не задана, заводить нечего
 		if(task == nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::print("Fiber cannot be spawned without a task", awh::log::flag_t::WARNING);
+				log::debug("Fiber cannot be spawned without a task", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Fiber cannot be spawned without a task", log::flag_t::WARNING);
+			#endif
 			// Выводим пустой результат
 			return nullptr;
 		}
@@ -614,8 +668,19 @@ namespace awh {
 		fiber::ctx_t * result = new (std::nothrow) fiber::ctx_t();
 		// Если волокно завести не удалось
 		if(result == nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::print("Fiber object cannot be allocated", awh::log::flag_t::CRITICAL);
+				log::debug("Fiber object cannot be allocated", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Fiber object cannot be allocated", log::flag_t::CRITICAL);
+			#endif
 			// Выводим пустой результат
 			return nullptr;
 		}
@@ -634,7 +699,7 @@ namespace awh {
 		 */
 		#else
 			/**
-			 * Отводим память под стек волокна отображением
+			 * @brief Отводим память под стек волокна отображением
 			 *
 			 * @warning Обычная память из кучи стеком быть не вправе у OpenBSD: там
 			 *          отображение обязано нести признак MAP_STACK
@@ -642,15 +707,26 @@ namespace awh {
 			void * memory = ::mmap(nullptr, (size + __awh_fiber_page__()), (PROT_READ | PROT_WRITE), (MAP_PRIVATE | MAP_ANON | MAP_STACK), -1, 0);
 			// Если память под стек отвести не удалось
 			if(memory == MAP_FAILED){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::print("Fiber stack of %zu bytes cannot be mapped", awh::log::flag_t::CRITICAL, size);
+					log::debug("Fiber stack of %zu bytes cannot be mapped", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL, size);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Fiber stack of %zu bytes cannot be mapped", log::flag_t::CRITICAL, size);
+				#endif
 				// Освобождаем волокно
 				delete result;
 				// Выводим пустой результат
 				return nullptr;
 			}
 			/**
-			 * Закрываем НИЖНЮЮ страницу отображения обращением наотрез
+			 * @brief Закрываем НИЖНЮЮ страницу отображения обращением наотрез
 			 *
 			 * @warning Без неё срыв стека волокна уходит в соседнее отображение МОЛЧА:
 			 *          стек растёт вниз, за нижней границей лежит чужая память, и порча
@@ -665,10 +741,20 @@ namespace awh {
 			 * @note Отказ `mprotect` уничтожающим не считается - волокно без стража
 			 *       работает ровно так же, как работало прежде, - но в журнал заносится
 			 */
-			if(::mprotect(memory, __awh_fiber_page__(), PROT_NONE) != 0){
+			if(::mprotect(memory, __awh_fiber_page__(), PROT_NONE) != 0)
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
 					// Записываем предупреждение в лог
-					awh::log::print("Fiber stack guard page cannot be protected: %s", awh::log::flag_t::WARNING, ::strerror(errno));
-			}
+					log::debug("Fiber stack guard page cannot be protected: %s", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем предупреждение в лог
+					log::print("Fiber stack guard page cannot be protected: %s", log::flag_t::WARNING, ::strerror(errno));
+				#endif
 			// Запоминаем стек волокна, начиная его ЗА стражем
 			result->stack = (reinterpret_cast <char *> (memory) + __awh_fiber_page__());
 		#endif
@@ -685,23 +771,35 @@ namespace awh {
 			// Устанавливаем стек волокна
 			result->context.uc_stack.ss_sp = result->stack;
 			/**
-			 * Если архитектурой процессора является Эльбрус
+			 * @brief Если архитектурой процессора является Эльбрус
 			 *
 			 * @details Кроме стека, отведённого нами, у e2k есть АППАРАТНЫЕ стеки -
 			 *          процедурный и стек связующей информации. Их выделяет система,
 			 *          и выделить их может не суметь, оттого вместо `makecontext`
 			 *          там `makecontext_e2k`, отвечающая исходом. Обычной
 			 *          `makecontext` у glibc Эльбруса нет вовсе: вызов её давал бы
-			 *          отказ связывания
+			 *          отказ связывания.
 			 *
 			 * @warning Отказ здесь обязан снимать и отображение стека: волокно не
 			 *          завелось, и держать его память некому
+			 *
 			 */
 			#if defined(__e2k__)
 				// Если аппаратные стеки волокна выделить не удалось
 				if(::makecontext_e2k(&result->context, reinterpret_cast <void (*)(void)> (&__awh_fiber_trampoline__), 0) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::print("Fiber hardware stacks cannot be allocated: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("Fiber hardware stacks cannot be allocated: %s", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Fiber hardware stacks cannot be allocated: %s", log::flag_t::CRITICAL, ::strerror(errno));
+					#endif
 					// Снимаем отображение стека волокна вместе со стражем
 					::munmap((result->stack - __awh_fiber_page__()), (result->size + __awh_fiber_page__()));
 					// Освобождаем волокно
@@ -724,8 +822,19 @@ namespace awh {
 			result->handle = ::CreateFiber(size, &__awh_fiber_trampoline__, result);
 			// Если волокно системы завести не удалось
 			if(result->handle == nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::print("System fiber cannot be created", awh::log::flag_t::CRITICAL);
+					log::debug("System fiber cannot be created", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("System fiber cannot be created", log::flag_t::CRITICAL);
+				#endif
 				// Освобождаем волокно
 				delete result;
 				// Выводим пустой результат
@@ -798,6 +907,19 @@ bool awh::fiber::resume(ctx_t * fiber) noexcept {
 	if((fiber == nullptr) || (fiber->state == state_t::FINISHED) || (fiber->state == state_t::RUNNING))
 		// Сообщаем, что будить нечего
 		return false;
+	/**
+	 * @brief Если подкладкой служит ucontext
+	 *
+	 * @note Состояние запоминается ДО отметки «выполняется», а не после неё: ниже
+	 *       волокно переводится в RUNNING, и снятый там снимок был бы самим RUNNING.
+	 *       Отказ перехода обязан вернуть волокно в то состояние, в котором оно было
+	 *       до пробуждения - спящим, а не выполняющимся
+	 *
+	 */
+	#if defined(AWH_FIBER_UCONTEXT)
+		// Запоминаем состояние волокна до пробуждения
+		const state_t before = fiber->state;
+	#endif
 	// Запоминаем волокно, из которого идёт пробуждение
 	ctx_t * previous = __awh_fiber_current__;
 	// Отмечаем волокно выполняющимся
@@ -808,8 +930,48 @@ bool awh::fiber::resume(ctx_t * fiber) noexcept {
 	 * Если подкладкой служит ucontext
 	 */
 	#if defined(AWH_FIBER_UCONTEXT)
-		// Переходим в волокно, сложив обстановку разбудившей стороны
-		::swapcontext(&fiber->caller, &fiber->context);
+		/**
+		 * @brief Переходим в волокно, сложив обстановку разбудившей стороны
+		 *
+		 * @warning Возврат `swapcontext` ОБЯЗАН быть прочитан. Отказ его не редкость:
+		 *          у DragonFly `makecontext` молча отказывает при стеке меньше
+		 *          MINSIGSTKSZ и оставляет обстановку неподготовленной (см. выбор
+		 *          подкладки выше). Без чтения возврата пробуждение выдавалось за
+		 *          состоявшееся, а тело волокна не исполнялось вовсе
+		 *
+		 * @note errno на таком отказе бывает НУЛЁМ, потому в запись он не идёт:
+		 *       причина, которую можно назвать, - размер заказанного стека
+		 *
+		 */
+		if(::swapcontext(&fiber->caller, &fiber->context) != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Fiber stack of %zu bytes cannot be switched to", __PRETTY_FUNCTION__, {fiber}, log::flag_t::CRITICAL, fiber->size);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Fiber stack of %zu bytes cannot be switched to", log::flag_t::CRITICAL, fiber->size);
+			#endif
+			// Возвращаем прежнее текущее волокно
+			__awh_fiber_current__ = previous;
+			/**
+			 * @brief Возвращаем волокно в состояние, в котором оно было до пробуждения
+			 *
+			 * @warning Оставлять его выполняющимся НЕЛЬЗЯ: переход не состоялся, тело
+			 *          не начиналось, а в RUNNING волокно не будится повторно, не
+			 *          распускается и не уничтожается - оно залипало бы навсегда вместе
+			 *          со своим отображением стека
+			 *
+			 */
+			fiber->state = before;
+			// Сообщаем, что пробуждение не состоялось
+			return false;
+		}
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
@@ -863,7 +1025,7 @@ bool awh::fiber::dismiss(ctx_t * fiber) noexcept {
 		// Если волокно уже доработало
 		case static_cast <uint8_t> (state_t::FINISHED):
 		/**
-		 * Если волокно ещё не запускалось
+		 * @brief Если волокно ещё не запускалось
 		 *
 		 * @note Будить его незачем: тело не начиналось, кадров нет и держать оно ничего
 		 *       не может. Уничтожение такого волокна дозволено сразу.
@@ -872,16 +1034,18 @@ bool awh::fiber::dismiss(ctx_t * fiber) noexcept {
 		 *       сразу спящим, а NONE остаётся лишь начальным значением конструктора.
 		 *       Ветвь эта - заслон на случай будущей отложенной подготовки стека, а не
 		 *       живой путь. Проверкой она не закрепляется по той же причине
+		 *
 		 */
 		case static_cast <uint8_t> (state_t::NONE):
 			// Сообщаем, что волокно дозволено уничтожить
 			return true;
 		/**
-		 * Если волокно выполняется прямо сейчас
+		 * @brief Если волокно выполняется прямо сейчас
 		 *
 		 * @warning Будить его отсюда НЕЛЬЗЯ: переход шёл бы в стек, на котором лежит
 		 *          кадр этого самого вызова. Признак взведён, и тело выйдет само,
 		 *          спросив dismissed() - но выйдет оно ПОЗЖЕ возврата отсюда
+		 *
 		 */
 		case static_cast <uint8_t> (state_t::RUNNING):
 			// Сообщаем, что уничтожать волокно пока рано
@@ -889,13 +1053,14 @@ bool awh::fiber::dismiss(ctx_t * fiber) noexcept {
 		// Если волокно спит на своём стеке
 		case static_cast <uint8_t> (state_t::SUSPENDED): {
 			// Будим волокно, давая ему выйти
-			awh::fiber::resume(fiber);
+			fiber::resume(fiber);
 			/**
-			 * Выводим признак того, что волокно вышло
+			 * @brief Выводим признак того, что волокно вышло
 			 *
 			 * @note Тело, не спрашивающее признак роспуска, уснёт снова и останется
 			 *       спящим. Ответом тогда будет отказ, и это сведения потребителю, а
 			 *       не молчаливая неудача: уничтожать такое волокно по-прежнему нельзя
+			 *
 			 */
 			return (fiber->state == state_t::FINISHED);
 		}
@@ -920,20 +1085,22 @@ bool awh::fiber::destroy(ctx_t * fiber) noexcept {
 	 *
 	 * @warning Кадры спящего волокна не раскручены, и всё, что они держат, осталось
 	 *          бы неосвобождённым: от объектов на его стеке до захваченных им ресурсов
+	 *
 	 */
 	if(fiber->state == state_t::SUSPENDED)
 		/**
-		 * Отказ выводится ТОЛЬКО кодом возврата
+		 * @brief Отказ выводится ТОЛЬКО кодом возврата
 		 *
 		 * @warning Писать отсюда в журнал НЕЛЬЗЯ. Уничтожение идёт при сносе того, чему
 		 *          волокно принадлежало, и журнал к этому мигу бывает снесён раньше
 		 *          волокна: запись отказа шла бы по снесённому объекту. Найдено это
 		 *          обвалом набора, а не рассуждением. Причину звавший узнаёт вызовом
 		 *          state(), а спящее волокно доводит до уничтожимого вызовом dismiss()
+		 *
 		 */
 		return false;
 	/**
-	 * Если волокно выполняется прямо сейчас, уничтожать его нельзя
+	 * @brief Если волокно выполняется прямо сейчас, уничтожать его нельзя
 	 *
 	 * @warning Уничтожение снимает отображение стека волокна, а на этом самом стеке
 	 *          лежит кадр текущего вызова: возврат пошёл бы по снятому отображению.
@@ -960,6 +1127,8 @@ bool awh::fiber::destroy(ctx_t * fiber) noexcept {
 	 */
 	#else
 		/**
+		 * @brief Если стек волокна отведён
+		 *
 		 * @note На процессоре Эльбрус аппаратные стеки волокна, выделенные
 		 *       `makecontext_e2k`, ядро снимает САМО - вместе со снятием отображения
 		 *       стека ниже. Парную ей `freecontext_e2k` здесь НЕ зовём намеренно, и
@@ -971,11 +1140,11 @@ bool awh::fiber::destroy(ctx_t * fiber) noexcept {
 		 *       Она освобождает стеки С ЗАДЕРЖКОЙ, и до того они висят отображениями:
 		 *       сто тысяч волокон подряд держали их тысячами, а предел отображений на
 		 *       процесс - 65 530, по два на волокно. Снятие же стека отпускает их сразу
+		 *
 		 */
-		// Если стек волокна отведён
 		if(fiber->stack != nullptr)
 			/**
-			 * Снимаем отображение стека волокна ВМЕСТЕ со стражем
+			 * @brief Снимаем отображение стека волокна ВМЕСТЕ со стражем
 			 *
 			 * @warning Снимается отображение от начала СТРАЖА и на размер стека вместе с
 			 *          ним. Сними мы его от `stack` и на `size`, страж остался бы висеть

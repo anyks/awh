@@ -7681,6 +7681,16 @@ namespace port {
 	 */
 	static uint32_t head = 0;
 	/**
+	 * @brief Завершения, сохранённые во время подготовки пересоздания
+	 *
+	 */
+	static vector <completion_t> preserved;
+	/**
+	 * @brief Начало ещё не возвращённой части сохранённых завершений
+	 *
+	 */
+	static size_t preservedHead = 0;
+	/**
 	 * @brief Функция заведения порта завершений
 	 *
 	 * @details Порт заводится один на движок и без ограничения числа потоков
@@ -7731,6 +7741,10 @@ namespace port {
 		::port::count = 0;
 		// Сбрасываем отметку разобранного в пачке
 		::port::head = 0;
+		// Очищаем сохранённые завершения прежнего порта
+		::port::preserved.clear();
+		// Сбрасываем начало сохранённой части
+		::port::preservedHead = 0;
 	}
 	/**
 	 * @brief Функция привязки дескриптора к порту завершений
@@ -8068,10 +8082,11 @@ namespace port {
 	 *
 	 * @param waiting количество ожидаемых завершений, ноль - не ожидать
 	 * @param timeout предел ожидания в миллисекундах, отрицательное значение - без предела
+	 * @param replay  разрешено возвращать сохранённые завершения
 	 * @return        количество забранных завершений либо признак ошибки
 	 *
 	 */
-	static int32_t submit(const uint32_t waiting, const int64_t timeout) noexcept {
+	static int32_t submit(const uint32_t waiting, const int64_t timeout, const bool replay = true) noexcept {
 		/**
 		 * Если разбор прошлой пачки не окончен - забирать новую нельзя
 		 *
@@ -8091,6 +8106,24 @@ namespace port {
 		if(::port::handle == nullptr)
 			// Выводим признак ошибки
 			return -1;
+		// Сначала возвращаем ранее сохранённые пакеты в исходном порядке
+		if(replay && (::port::preservedHead < ::port::preserved.size())){
+			/**
+			 * Заполняем очередную пачку сохранёнными завершениями
+			 */
+			while((::port::count < ENTRIES) && (::port::preservedHead < ::port::preserved.size()))
+				// Возвращаем пакет без повторной подачи его ядру
+				::port::completions[::port::count++] = ::port::preserved[::port::preservedHead++];
+			// Если сохранённый остаток исчерпан
+			if(::port::preservedHead == ::port::preserved.size()){
+				// Освобождаем сохранённые записи
+				::port::preserved.clear();
+				// Сбрасываем начало остатка
+				::port::preservedHead = 0;
+			}
+			// Возвращаем размер восстановленной пачки
+			return static_cast <int32_t> (::port::count);
+		}
 		// Записи завершений, отдаваемые системой
 		OVERLAPPED_ENTRY entries[ENTRIES]{};
 		// Количество забранных записей завершений
@@ -8253,6 +8286,92 @@ namespace port {
 	static __AWH_INLINE__ void release(const uint32_t count) noexcept {
 		// Двигаем отметку разобранного, не выходя за длину забранной пачки
 		::port::head += ((count < (::port::count - ::port::head)) ? count : (::port::count - ::port::head));
+	}
+	/**
+	 * @brief Подтверждаем завершение отменяемых операций до смены порта
+	 *
+	 * @param sockets описатели, переживающие пересоздание
+	 * @return результат подготовки без освобождения записей операций
+	 *
+	 */
+	static bool settle(const set <net::socket_t> & sockets) noexcept {
+		// Сохраняем неразобранную часть текущей пачки
+		vector <completion_t> held(::port::completions + ::port::head, ::port::completions + ::port::count);
+		// Добавляем остаток более поздних сохранённых пакетов
+		held.insert(held.end(), ::port::preserved.begin() + ::port::preservedHead, ::port::preserved.end());
+		// Подготавливаем очередь сохранённых пакетов в исходном порядке
+		::port::preserved.swap(held);
+		// Сбрасываем позицию сохранённой очереди
+		::port::preservedHead = 0;
+		// Освобождаем только место пачки, не записи поданных операций
+		::port::count = 0;
+		// Сбрасываем позицию пачки
+		::port::head = 0;
+		/**
+		 * Запрашиваем отмену всех переживающих пересоздание описателей
+		 */
+		for(const auto sock : sockets){
+			// Если запрос отмены не принят системой
+			if(!::CancelIoEx(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), nullptr)){
+				// Получаем код отказа отмены
+				const DWORD error = ::GetLastError();
+				// Отсутствие незавершённых операций является нормальным исходом
+				if(error != ERROR_NOT_FOUND){
+					// Записываем причину незавершённой подготовки
+					log::print("%s: cannot cancel operations before reinitialization: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::kernel::message(error).c_str());
+					// Сохраняем прежний порт и все записи операций
+					return false;
+				}
+			}
+		}
+		// Ограничиваем суммарное ожидание завершений двумя секундами
+		const ULONGLONG deadline = (::GetTickCount64() + 2000);
+		/**
+		 * Получаем подтверждения завершения без вызова пользовательских обработчиков
+		 */
+		for(;;){
+			// Сбрасываем признак незавершённых системных операций
+			bool pending = false;
+			/**
+			 * Проверяем живые записи наложенного обмена
+			 */
+			for(uint32_t index = 0; index < ::inflight::count; ++index){
+				// Получаем запись из устойчивой страницы
+				const ::inflight::slot_t * slot = ::inflight::at(index);
+				// Если ядро ещё не подтвердило завершение занятой записи
+				if((slot != nullptr) && slot->busy && !HasOverlappedIoCompleted(&slot->overlapped)){
+					// Отмечаем необходимость чтения завершений
+					pending = true;
+					// Прекращаем поиск после первой незавершённой записи
+					break;
+				}
+			}
+			// Если все поданные операции получили терминальное состояние
+			if(!pending)
+				// Разрешаем отвязку с сохранёнными записями завершений
+				return true;
+			// Получаем текущее время для оставшегося ожидания
+			const ULONGLONG now = ::GetTickCount64();
+			// Если истёк общий срок подготовки
+			if(now >= deadline){
+				// Записываем незавершённую отмену
+				log::print("%s: cancellation did not complete before reinitialization", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__);
+				// Сохраняем прежний порт и действующие наложения
+				return false;
+			}
+			// Читаем следующую пачку непосредственно из прежнего порта
+			const int32_t received = ::port::submit(1, static_cast <int64_t> (deadline - now), false);
+			// Если получить завершения не удалось
+			if(received < 0)
+				// Сохраняем уже полученные пакеты и прежний порт
+				return false;
+			// Сохраняем прочитанную пачку без потери чужих завершений
+			::port::preserved.insert(::port::preserved.end(), ::port::completions + ::port::head, ::port::completions + ::port::count);
+			// Освобождаем место для следующей пачки
+			::port::count = 0;
+			// Сбрасываем позицию прочитанной пачки
+			::port::head = 0;
+		}
 	}
 };
 
@@ -79078,10 +79197,6 @@ bool awh::engine::io::reinitialize() noexcept {
 		if(::__awh_pid__ == ::getpid())
 			// Выполняем пинок цикла для разблокировки ожидания событий
 			io::kick();
-		// Если события для обработки подготовлены
-		if(!::local::change.empty())
-			// Выполняем очистку списка подготовленных изменений
-			::local::change.clear();
 		/**
 		 * Снимаем переживающие переинициализацию описатели с прежнего порта завершений
 		 *
@@ -79103,9 +79218,16 @@ bool awh::engine::io::reinitialize() noexcept {
 		 *       повторная привязка отвечает 87, подача приёма принимается (997), данные
 		 *       встречной стороной отправлены, завершение за 3 секунды не приходит (258).
 		 *       С отвязкой: привязка удаётся, завершение приходит с ключом нового порта
-		 *       и тремя октетами. Отвязка снимает и незавершённые обращения, что здесь
-		 *       и требуется: их завершения ждать больше некому
+		 *       и тремя октетами. Незавершённые обращения перед отвязкой должны получить
+		 *       подтверждённое завершение: запрос отмены сам по себе этого не гарантирует.
+		 *       Проверка 13.11.2026 показала отказ немедленной отвязки после отмены
+		 *       и успех после получения отменённого завершения на прежнем порту
 		 *
+		 */
+		// Собираем уникальные описатели до запроса отмены
+		set <net::socket_t> sockets;
+		/**
+		 * Перебираем узлы, сохраняемые при пересоздании
 		 */
 		for(const auto & item : ::__awh_nodes__){
 			/**
@@ -79124,9 +79246,60 @@ bool awh::engine::io::reinitialize() noexcept {
 			const net::socket_t sock = ::io::descriptor(item.second.get());
 			// Если описатель узла заведён
 			if(sock != net::invalid_socket_t)
-				// Выполняем снятие описателя с прежнего порта завершений
-				::port::detach(sock);
+				// Добавляем описатель без повторов для общих сокетов
+				sockets.emplace(sock);
 		}
+		/**
+		 * Сохраняем принятые данные до их разбора обычным циклом
+		 */
+		for(const auto & record : ::pool::fetched){
+			// Если результат приёма ещё не выдан потребителю
+			if(record.ready)
+				// Откладываем смену порта до разбора сохранённого результата
+				return false;
+		}
+		// Подтверждаем завершение отменённых операций до освобождения их памяти
+		if(!::port::settle(sockets))
+			// Возвращаем отказ, сохраняя прежний порт и записи операций
+			return false;
+		/**
+		 * Сохраняем результаты обмена, полученные до смены порта
+		 */
+		for(const auto & completion : ::port::preserved){
+			// Получаем живую запись завершённой операции
+			const ::inflight::slot_t * slot = ::inflight::get(completion.token);
+			// Если живой результат требует разбора, а не повторного ожидания готовности
+			if((slot != nullptr) && !slot->cancelled && (slot->kind != ::inflight::kind_t::POLL) && (completion.res != -static_cast <int32_t> (ERROR_OPERATION_ABORTED)))
+				// Сохраняем порт и результат для обычного опроса перед повторной попыткой
+				return false;
+		}
+		// Запоминаем описатели с уже снятой привязкой
+		set <net::socket_t> detached;
+		/**
+		 * Отвязываем только после подтверждённого завершения операций
+		 */
+		for(const auto sock : sockets){
+			// Если отвязать очередной описатель не удалось
+			if(!::port::detach(sock)){
+				/**
+				 * Возвращаем прежнюю привязку уже отвязанным описателям
+				 */
+				for(const auto previous : detached){
+					// Проверяем действительный возврат к сохранённому старому порту
+					if(::CreateIoCompletionPort(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (previous)), ::port::handle, 0, 0) == nullptr)
+						// Записываем отдельный отказ восстановления привязки
+						log::print("%s: cannot restore descriptor %llu after reinitialization failure", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (previous));
+				}
+				// Не уничтожаем прежний порт после неуспешной отвязки
+				return false;
+			}
+			// Запоминаем действительную отвязку
+			detached.emplace(sock);
+		}
+		// Если события для обработки подготовлены
+		if(!::local::change.empty())
+			// Выполняем очистку списка подготовленных изменений
+			::local::change.clear();
 		// Выполняем снятие очереди опроса вместе со всем учётом подписок
 		::kernel::destroy();
 		/**

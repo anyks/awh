@@ -37,8 +37,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../unit/dns.hpp"
-#include "../unit/quic.hpp"
 #include "../unit/client.hpp"
+#include "../unit/quic/client.hpp"
 #include "../cryptography/tls/coder.hpp"
 #include "../proto/quic/connection.hpp"
 
