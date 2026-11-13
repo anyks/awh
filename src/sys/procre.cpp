@@ -118,10 +118,38 @@
  */
 #elif defined(__DragonFly__)
 	/**
-	 * Системные заголовочные файлы
+	 * Стандартный заголовочный файл
 	 */
+	#include <map>
+
+	/**
+	 * Признак доступности структур ядра пользовательскому коду
+	 *
+	 * @note Записи о сокетах (xsocket, xinpcb, xtcpcb, xunpcb) открыты в заголовках
+	 *       системы только под этим признаком: им же пользуется штатный sockstat
+	 *
+	 */
+	#define _KERNEL_STRUCTURES 1
+
+	/**
+	 * Системные заголовочные файлы
+	 *
+	 * @note Порядок подключений важен: sys/user.h идёт первым, как того требует
+	 *       sys/kinfo.h; sys/socketvar.h подключается раньше netinet/in_pcb.h
+	 *       и sys/unpcb.h, а netinet/tcp_var.h объявляет свою запись о сокете
+	 *       только когда оба предыдущих заголовка уже подключены
+	 *
+	 */
+	#include <sys/un.h>
+	#include <sys/file.h>
 	#include <sys/user.h>
+	#include <sys/unpcb.h>
 	#include <sys/sysctl.h>
+	#include <sys/socket.h>
+	#include <sys/socketvar.h>
+	#include <netinet/in_pcb.h>
+	#include <netinet/tcp_var.h>
+	#include <arpa/inet.h>
 /**
  * Реализация под Sun Solaris
  */
@@ -334,8 +362,9 @@ void awh::Process_Resolver::scanning() noexcept {
 							uint32_t srcPort = 0, dstPort = 0;
 							// Извлекаем информацию о сокете из строки
 							if(::sscanf(buffer, "%*d: %x:%x %x:%x %*x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &srcPort, &target, &dstPort, &inode) == 5){
-								// Устанавливаем порты
+								// Устанавливаем порт источника процесса
 								info.ports.src = static_cast <uint16_t> (srcPort);
+								// Устанавливаем порт назначения процесса
 								info.ports.dst = static_cast <uint16_t> (dstPort);
 								// Выполняем инициализацию объекта IP-адреса источника процесса
 								info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
@@ -361,8 +390,9 @@ void awh::Process_Resolver::scanning() noexcept {
 							if(::sscanf(buffer, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %*x %*x:%*x %*x:%*x %*x %*d %*d %lu",
 							   &source[0], &source[1], &source[2], &source[3], &srcPort,
 							   &target[0], &target[1], &target[2], &target[3], &dstPort, &inode) == 11){
-								// Устанавливаем порты
+								// Устанавливаем порт источника процесса
 								info.ports.src = static_cast <uint16_t> (srcPort);
+								// Устанавливаем порт назначения процесса
 								info.ports.dst = static_cast <uint16_t> (dstPort);
 								// Выполняем инициализацию объекта IP-адреса источника процесса
 								info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
@@ -512,6 +542,8 @@ void awh::Process_Resolver::scanning() noexcept {
 		 * Реализация под Sun Solaris
 		 */
 		#elif defined(__sun__)
+			// Идентификатор своего процесса: его дескрипторы живы и открытия через /proc не требуют
+			const pid_t self = ::getpid();
 			// Читаем информацию о всех процессах из /proc и сопоставляем её с информацией о сокете
 			awh::dir::DIR * dir = awh::dir::opendir("/proc");
 			// Если каталог открыт удачно
@@ -550,9 +582,11 @@ void awh::Process_Resolver::scanning() noexcept {
 									struct stat st{0};
 									// Если путь к сокету существует и является сокетом
 									if((::stat(path, &st) == 0) && S_ISSOCK(st.st_mode)){
-										// Открываем файловый дескриптор для получения информации о сокете
-										int32_t fd = ::open(path, O_RDONLY);
-										// Если файловый дескриптор открыт удачно
+										// Свой процесс отдаёт дескриптор живым: /proc-псевдоним сокета на illumos не открывается даже под root
+										const bool own = (pid == self);
+										// Получаем дескриптор сокета: свой берём по номеру, чужой пробуем открыть через /proc
+										int32_t fd = own ? static_cast <int32_t> (::atoi(entry->d_name)) : ::open(path, O_RDONLY);
+										// Если дескриптор сокета получен
 										if(fd >= 0){
 											// Объект подключения для получения информации о сокете
 											struct sockaddr_storage source{0}, target{0};
@@ -674,8 +708,10 @@ void awh::Process_Resolver::scanning() noexcept {
 													this->_callback(pid, info);
 												}
 											}
-											// Закрываем файловый дескриптор
-											::close(fd);
+											// Чужой дескриптор закрываем, свой остаётся живым в процессе
+											if(!own)
+												// Закрываем файловый дескриптор
+												::close(fd);
 										}
 									}
 								}
@@ -1238,10 +1274,10 @@ void awh::Process_Resolver::scanning() noexcept {
 									pid_t pid = ::atoi(pid_str.c_str());
 									// Читаем удалённый адрес, если он есть
 									iss >> foreign;
-									// Если строка содержит информацию о сетевом сокете
-									if((proto == "tcp") || (proto == "udp")){
+									// Если строка содержит информацию о сетевом сокете: суффикс 6 — тот же разбор, но семейство IPv6
+									if((proto == "tcp") || (proto == "udp") || (proto == "tcp6") || (proto == "udp6")){
 										// Устанавливаем протокол сокета
-										info.protocol = ((proto == "tcp") ? event::protocol_t::TCP : event::protocol_t::UDP);
+										info.protocol = (((proto == "tcp") || (proto == "tcp6")) ? event::protocol_t::TCP : event::protocol_t::UDP);
 										/**
 										 * @brief Функция для парсинга адреса и порта из строки формата "IP.PORT" или "*.*"
 										 *
@@ -1307,31 +1343,18 @@ void awh::Process_Resolver::scanning() noexcept {
 										if(info.family != event::family_t::NONE)
 											// Выполняем функцию обратного вызова
 											this->_callback(pid, info);
-									// Если строка содержит информацию о UNIX-сокете
-									} else if((local == "local") || (proto == "local")) {
+									// Если строка содержит информацию о UNIX-сокете: sockstat называет их stream/dgram/seq, а путь лежит в поле источника
+									} else if(((proto == "stream") || (proto == "dgram") || (proto == "seq")) && (local != "-")) {
 										// Устанавливаем семейство протокола сокета
 										info.family = event::family_t::UDS;
 										// Устанавливаем протокол сокета
 										info.protocol = event::protocol_t::NONE;
 										// Выполняем инициализацию объекта файлового адреса источника процесса
 										info.addresses.src = make_unique <net::addr_fs_t> ();
-										// Переменная для хранения оставшейся части строки после удалённого адреса
-										string rest = "";
-										// Инициализируем путь к сокету значением удалённого адреса (который может содержать путь к сокету)
-										string path = foreign;
-										// Читаем оставшуюся часть строки, которая может содержать путь к сокету
-										std::getline(iss, rest);
-										// Если оставшаяся часть строки не пуста, добавляем её к пути
-										if(!rest.empty())
-											// Добавляем оставшуюся часть строки к пути, так как она может содержать дополнительные компоненты пути к сокету
-											path += rest;
-										// Если путь к сокету не пустой
-										if(!path.empty()){
-											// Устанавливаем файловый адрес источника процесса
-											awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = path;
-											// Выполняем функцию обратного вызова
-											this->_callback(pid, info);
-										}
+										// Устанавливаем файловый адрес источника процесса
+										awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = local;
+										// Выполняем функцию обратного вызова
+										this->_callback(pid, info);
 									}
 								}
 							}
@@ -1370,20 +1393,26 @@ void awh::Process_Resolver::scanning() noexcept {
 									info_t info{};
 									// Получаем идентификатор процесса
 									pid_t pid = ::atoi(pid_str.c_str());
-									// Если строка содержит информацию о сетевом сокете
-									if(mount == "internet"){
-										// Читаем остальные поля строки вывода команды
-										iss >> mode >> proto >> sz_dv >> local;
+									// Если строка содержит информацию о сетевом сокете: internet6 — тот же разбор, но семейство IPv6
+									if((mount == "internet") || (mount == "internet6")){
+										// Читаем поля после протокола: размер и адрес источника
+										iss >> mode >> proto >> sz_dv;
+										// У UDP-сокета поля SZ|DV нет, и адрес источника уже лежит в sz_dv
+										if(sz_dv.find(':') != string::npos)
+											// Переносим адрес источника в своё поле
+											local = sz_dv;
+										// Если поле размера занято размером, адрес источника идёт следующим полем
+										else iss >> local;
 										// Устанавливаем протокол сокета
 										info.protocol = ((proto == "tcp") ? event::protocol_t::TCP :
 														((proto == "udp") ? event::protocol_t::UDP : event::protocol_t::NONE));
 										// Если строка содержит информацию о удалённом адресе
 										if(iss >> arrow){
-											// Если строка содержит символ "<->", это означает, что за ним следует удалённый адрес
-											if(arrow == "<->")
+											// Стрелка "<->" у UDP и "<--" у TCP: за ней следует адрес назначения
+											if((arrow == "<->") || (arrow == "<--"))
 												// Читаем удалённый адрес
 												iss >> foreign;
-											// Если строка не содержит символ "<->", это означает, что удалённый адрес отсутствует, и мы должны использовать значение после "local" в качестве удалённого адреса
+											// Если стрелки нет, поле после адреса источника и есть адрес назначения
 											else foreign = arrow;
 										}
 										/**
@@ -1506,6 +1535,282 @@ void awh::Process_Resolver::scanning() noexcept {
 						::pclose(fp);
 					}
 				#endif
+			}
+		/**
+		 * Для операционной системы DragonFly BSD
+		 *
+		 * @details Дескрипторов в файловой системе процессов DragonFly нет, а запроса
+		 *          KERN_PROC_FILEDESC, каким пользуется FreeBSD, у этой системы нет вовсе.
+		 *          Сокеты приходят списками pcblist, владельцы дескрипторов — запросом
+		 *          kern.file. Сцепка идёт по указателю на объект ядра: поле f_data записи
+		 *          о дескрипторе и поле xso_so записи о сокете указывают на один и тот же
+		 *          socket, потому владелец находится и без прав суперпользователя.
+		 *
+		 */
+		#elif defined(__DragonFly__)
+			// Если функция обратного вызова установлена
+			if(this->_callback != nullptr){
+				// Размер данных для таблицы дескрипторов ядра
+				size_t length = 0;
+				// Узнаем размер необходимых данных для таблицы дескрипторов
+				if((::sysctlbyname("kern.file", nullptr, &length, nullptr, 0) == 0) && (length > 0)){
+					// Добавляем запас на случай открытия новых дескрипторов между двумя вызовами
+					length += (length / 8);
+					// Выделяем память под таблицу дескрипторов
+					auto files = make_unique <char []> (length);
+					// Если таблица дескрипторов получена
+					if(::sysctlbyname("kern.file", files.get(), &length, nullptr, 0) == 0){
+						// Сцепка указателя на socket с идентификатором процесса владельца
+						map <const void *, pid_t> owners;
+						// Вычисляем количество записей о дескрипторах
+						const size_t count = (length / sizeof(struct kinfo_file));
+						// Получаем указатель на таблицу дескрипторов
+						auto * entries = reinterpret_cast <struct kinfo_file *> (files.get());
+						/**
+						 * Переходим по всем записям о дескрипторах
+						 */
+						for(size_t i = 0; i < count; ++i){
+							// Если дескриптор не является сокетом
+							if(entries[i].f_type != DTYPE_SOCKET)
+								// Переходим к следующей записи о дескрипторе
+								continue;
+							// Запоминаем владельца сокета
+							owners[entries[i].f_data] = entries[i].f_pid;
+						}
+						/**
+						 * @brief Функция извлечения пути из адреса UNIX-сокета
+						 *
+						 * @param addr адрес UNIX-сокета
+						 * @return     путь к сокету
+						 *
+						 * @note Ядро заполняет лишь sun_len байт адреса, остаток поля sun_path
+						 *       остаётся незаполненным, потому длина пути берётся из sun_len,
+						 *       а не ищется по завершающему нулю
+						 *
+						 */
+						auto path = [](const struct sockaddr_un * addr) noexcept -> string {
+							// Вычисляем смещение пути внутри адреса UNIX-сокета
+							const size_t offset = (sizeof(struct sockaddr_un) - sizeof(addr->sun_path));
+							// Если длина адреса не превышает смещения пути
+							if(addr->sun_len <= offset)
+								// Возвращаем пустой путь
+								return "";
+							// Возвращаем путь ограниченной длины
+							return string(addr->sun_path, (addr->sun_len - offset));
+						};
+						/**
+						 * @brief Функция передачи метаданных сокета семейства IP
+						 *
+						 * @param inp   запись об оконечной точке сокета
+						 * @param so    запись о сокете
+						 * @param proto протокол сокета
+						 *
+						 */
+						auto report = [&owners, this](const struct inpcb * inp, const struct xsocket * so, const event::protocol_t proto) noexcept -> void {
+							// Ищем владельца сокета
+							const auto owner = owners.find(so->xso_so);
+							// Если владелец сокета не найден
+							if(owner == owners.end())
+								// Выходим из функции
+								return;
+							// Объект для хранения информации о сокете
+							info_t info{};
+							// Устанавливаем протокол сокета
+							info.protocol = proto;
+							// Определяем, соединён ли сокет (есть ли порт назначения)
+							const bool connected = (inp->inp_inc.inc_fport != 0);
+							// Если сокет принадлежит семейству IPv6
+							if(inp->inp_af == AF_INET6){
+								// Устанавливаем семейство адресов сокета
+								info.family = event::family_t::IPV6;
+								// Выполняем инициализацию объекта IP-адреса источника процесса
+								info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
+								// Выполняем инициализацию объекта IP-адреса назначения процесса
+								info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем порт источника процесса
+								info.ports.src = ntohs(inp->inp_inc.inc_lport);
+								// Устанавливаем IP-адрес источника процесса
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &inp->inp_inc.inc_ie.ie6_laddr, 16);
+								// Если адрес назначения существует
+								if(connected){
+									// Устанавливаем порт назначения процесса
+									info.ports.dst = ntohs(inp->inp_inc.inc_fport);
+									// Устанавливаем IP-адрес назначения процесса
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &inp->inp_inc.inc_ie.ie6_faddr, 16);
+								}
+							// Если сокет принадлежит семейству IPv4
+							} else {
+								// Устанавливаем семейство адресов сокета
+								info.family = event::family_t::IPV4;
+								// Выполняем инициализацию объекта IP-адреса источника процесса
+								info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
+								// Выполняем инициализацию объекта IP-адреса назначения процесса
+								info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
+								// Устанавливаем порт источника процесса
+								info.ports.src = ntohs(inp->inp_inc.inc_lport);
+								// Устанавливаем IP-адрес источника процесса
+								awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = inp->inp_inc.inc_laddr.s_addr;
+								// Если адрес назначения существует
+								if(connected){
+									// Устанавливаем порт назначения процесса
+									info.ports.dst = ntohs(inp->inp_inc.inc_fport);
+									// Устанавливаем IP-адрес назначения процесса
+									awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = inp->inp_inc.inc_faddr.s_addr;
+								}
+							}
+							// Выполняем функцию обратного вызова
+							this->_callback(owner->second, info);
+						};
+						/**
+						 * @brief Функция обхода списка сокетов ядра, записанного записями xinpcb
+						 *
+						 * @param name  имя запроса списка сокетов
+						 * @param proto протокол сокетов списка
+						 *
+						 */
+						auto walk = [&report](const char * name, const event::protocol_t proto) noexcept -> void {
+							// Размер данных для списка сокетов
+							size_t size = 0;
+							// Если размер списка сокетов не получен
+							if((::sysctlbyname(name, nullptr, &size, nullptr, 0) != 0) || (size == 0))
+								// Выходим из функции
+								return;
+							// Добавляем запас на случай появления новых сокетов между двумя вызовами
+							size += (size / 8);
+							// Выделяем память под список сокетов
+							auto buffer = make_unique <char []> (size);
+							// Если список сокетов не получен
+							if(::sysctlbyname(name, buffer.get(), &size, nullptr, 0) != 0)
+								// Выходим из функции
+								return;
+							// Буфер для обхода списка сокетов
+							char * ptr = buffer.get();
+							// Вычисляем конец списка сокетов
+							char * end = (ptr + size);
+							/**
+							 * Проходим по всем сокетам списка
+							 */
+							while((ptr + sizeof(struct xinpcb)) <= end){
+								// Получаем запись о сокете
+								auto * item = reinterpret_cast <struct xinpcb *> (ptr);
+								// Если длина записи меньше ожидаемой
+								if(item->xi_len < sizeof(struct xinpcb))
+									// Прекращаем обход списка сокетов
+									break;
+								// Передаем метаданные сокета
+								report(&item->xi_inp, &item->xi_socket, proto);
+								// Переходим к следующей записи списка
+								ptr += item->xi_len;
+							}
+						};
+						// Обходим список сокетов UDP
+						walk("net.inet.udp.pcblist", event::protocol_t::UDP);
+						// Обходим список сокетов RAW
+						walk("net.inet.raw.pcblist", event::protocol_t::RAW);
+						// Обходим список сокетов divert
+						walk("net.inet.divert.pcblist", event::protocol_t::NONE);
+						/**
+						 * Обходим список сокетов TCP: его запись несёт ещё и состояние
+						 * управления передачей, потому вид записи здесь свой
+						 */
+						{
+							// Размер данных для списка сокетов TCP
+							size_t size = 0;
+							// Если размер списка сокетов TCP получен
+							if((::sysctlbyname("net.inet.tcp.pcblist", nullptr, &size, nullptr, 0) == 0) && (size > 0)){
+								// Добавляем запас на случай появления новых сокетов между двумя вызовами
+								size += (size / 8);
+								// Выделяем память под список сокетов TCP
+								auto buffer = make_unique <char []> (size);
+								// Если список сокетов TCP получен
+								if(::sysctlbyname("net.inet.tcp.pcblist", buffer.get(), &size, nullptr, 0) == 0){
+									// Буфер для обхода списка сокетов TCP
+									char * ptr = buffer.get();
+									// Вычисляем конец списка сокетов TCP
+									char * end = (ptr + size);
+									/**
+									 * Проходим по всем сокетам списка TCP
+									 */
+									while((ptr + sizeof(struct xtcpcb)) <= end){
+										// Получаем запись о сокете TCP
+										auto * item = reinterpret_cast <struct xtcpcb *> (ptr);
+										// Если длина записи меньше ожидаемой
+										if(item->xt_len < sizeof(struct xtcpcb))
+											// Прекращаем обход списка сокетов
+											break;
+										// Передаем метаданные сокета
+										report(&item->xt_inp, &item->xt_socket, event::protocol_t::TCP);
+										// Переходим к следующей записи списка
+										ptr += item->xt_len;
+									}
+								}
+							}
+						}
+						/**
+						 * Обходим списки сокетов UNIX: адрес здесь не числовой, а путь
+						 */
+						for(const char * name : {"net.local.stream.pcblist", "net.local.dgram.pcblist"}){
+							// Размер данных для списка сокетов UNIX
+							size_t size = 0;
+							// Если размер списка сокетов UNIX не получен
+							if((::sysctlbyname(name, nullptr, &size, nullptr, 0) != 0) || (size == 0))
+								// Переходим к следующему списку сокетов
+								continue;
+							// Добавляем запас на случай появления новых сокетов между двумя вызовами
+							size += (size / 8);
+							// Выделяем память под список сокетов UNIX
+							auto buffer = make_unique <char []> (size);
+							// Если список сокетов UNIX не получен
+							if(::sysctlbyname(name, buffer.get(), &size, nullptr, 0) != 0)
+								// Переходим к следующему списку сокетов
+								continue;
+							// Буфер для обхода списка сокетов UNIX
+							char * ptr = buffer.get();
+							// Вычисляем конец списка сокетов UNIX
+							char * end = (ptr + size);
+							/**
+							 * Проходим по всем сокетам списка UNIX
+							 */
+							while((ptr + sizeof(struct xunpcb)) <= end){
+								// Получаем запись о сокете UNIX
+								auto * item = reinterpret_cast <struct xunpcb *> (ptr);
+								// Если длина записи меньше ожидаемой
+								if(item->xu_len < sizeof(struct xunpcb))
+									// Прекращаем обход списка сокетов
+									break;
+								// Ищем владельца сокета
+								const auto owner = owners.find(item->xu_socket.xso_so);
+								// Если владелец сокета найден
+								if(owner != owners.end()){
+									// Объект для хранения информации о сокете
+									info_t info{};
+									// Устанавливаем семейство адресов сокета
+									info.family = event::family_t::UDS;
+									// Устанавливаем протокол сокета
+									info.protocol = event::protocol_t::NONE;
+									// Устанавливаем порт источника процесса
+									info.ports.src = 0;
+									// Устанавливаем порт назначения процесса
+									info.ports.dst = 0;
+									// Выполняем инициализацию объекта UNIX-адреса источника процесса
+									info.addresses.src = make_unique <net::addr_fs_t> ();
+									// Выполняем инициализацию объекта UNIX-адреса назначения процесса
+									info.addresses.dst = make_unique <net::addr_fs_t> ();
+									// Устанавливаем UNIX-адрес источника процесса
+									awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = path(&item->xu_addr);
+									// Если адрес назначения существует (сокет соединён)
+									if(item->xu_caddr.sun_family == AF_UNIX)
+										// Устанавливаем UNIX-адрес назначения процесса
+										awh_cast <net::addr_fs_t *> (info.addresses.dst.get())->address = path(&item->xu_caddr);
+									// Выполняем функцию обратного вызова
+									this->_callback(owner->second, info);
+								}
+								// Переходим к следующей записи списка
+								ptr += item->xu_len;
+							}
+						}
+					}
+				}
 			}
 		/**
 		 * Для операционной системы MS Windows

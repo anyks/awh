@@ -32,16 +32,29 @@
 #include <sys/log.hpp>
 
 /**
+ * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, DragonFly, macOS и Solaris
+ *
+ * @note Заголовки подключаются явно: собственный сокет проверки требует sockaddr_in,
+ *       htonl и ntohs, а sys/socket.h, приходящий из posix.hpp, этих имён не выдаёт
+ *
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Системные заголовочные файлы работы с адресами IP
+	 */
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+#endif
+
+/**
  * @brief Тест создания объекта резольвера процессов
  *
  */
 TEST_F(ProcreFixture, CreateProcreTest){
 	// Проверяем создание объекта
 	ASSERT_TRUE(this->_procre != nullptr);
-	
 	// Сбрасываем объект
 	this->_procre.reset();
-	
 	// Проверяем сброс объекта
 	ASSERT_TRUE(this->_procre == nullptr);
 }
@@ -53,10 +66,8 @@ TEST_F(ProcreFixture, CreateProcreTest){
 TEST_F(ProcreFixture, CurrentProcessNameTest){
 	// Проверяем создание объекта
 	ASSERT_TRUE(this->_procre != nullptr);
-
 	// Получаем имя текущего процесса
 	std::string name = this->_procre->name();
-	
 	// Проверяем что имя не пустое
 	ASSERT_FALSE(name.empty());
 }
@@ -68,10 +79,8 @@ TEST_F(ProcreFixture, CurrentProcessNameTest){
 TEST_F(ProcreFixture, InitProcessNameTest){
 	// Проверяем создание объекта
 	ASSERT_TRUE(this->_procre != nullptr);
-
 	// Получаем имя процесса с PID 1
 	std::string name = this->_procre->name(1);
-
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -93,9 +102,62 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			// Проверяем что имя не пустое
 			ASSERT_FALSE(name.empty());
 	#endif
-
+	// Счётчик вызовов функции обратного вызова
+	size_t calls = 0;
+	// Признак того, что обход нашёл собственный сокет проверки
+	bool found = false;
+	// Порт собственного сокета проверки
+	uint16_t port = 0;
+	// Идентификатор самого проверяемого процесса
+	pid_t self = 0;
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, DragonFly, macOS и Solaris
+	 *
+	 * @note Обход возвращает лишь те сокеты, что доступны читающему: без прав
+	 *       суперпользователя чужие процессы закрыты, и на шести образах кластера
+	 *       он не возвращал вовсе ничего, а проверка проходила впустую. Собственный
+	 *       сокет доступен читающему всегда, потому служит порукой того, что обход
+	 *       действительно состоялся
+	 *
+	 * @note У MS Windows своего сокета здесь нет: двоичник набора sys не заводит
+	 *       Winsock, и ::socket отказал бы кодом 10093. Там порукой остаётся счётчик
+	 *       вызовов: таблицы оконечных точек читаются и без заведения Winsock
+	 *
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Запоминаем идентификатор самого проверяемого процесса
+		self = ::getpid();
+		// Создаём собственный сокет UDP
+		const int32_t fd = static_cast <int32_t> (::socket(AF_INET, SOCK_DGRAM, 0));
+		// Если собственный сокет создан
+		if(fd >= 0){
+			// Адрес собственного сокета проверки
+			struct sockaddr_in addr{};
+			// Устанавливаем семейство адресов собственного сокета
+			addr.sin_family = AF_INET;
+			// Устанавливаем адрес петли собственного сокета
+			addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			// Устанавливаем порт, выдаваемый системой
+			addr.sin_port = 0;
+			// Если собственный сокет привязан к адресу
+			if(::bind(fd, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) == 0){
+				// Длина адреса собственного сокета
+				socklen_t length = sizeof(addr);
+				// Если адрес собственного сокета получен
+				if(::getsockname(fd, reinterpret_cast <struct sockaddr *> (&addr), &length) == 0)
+					// Запоминаем порт собственного сокета
+					port = ntohs(addr.sin_port);
+			}
+		}
+	#endif
 	// Устанавливаем функцию обратного вызова для получения информации о процессе
-	this->_procre->on([this](const pid_t pid, const awh::procre_t::info_t & info){
+	this->_procre->on([this, &calls, &found, port, self](const pid_t pid, const awh::procre_t::info_t & info){
+		// Увеличиваем счётчик вызовов функции обратного вызова
+		++calls;
+		// Если обход вернул собственный сокет проверки
+		if((port != 0) && (pid == self) && (info.ports.src == port))
+			// Отмечаем, что собственный сокет найден
+			found = true;
 		// Семейство адресов процесса
 		std::string family = "";
 		// Протокол процесса
@@ -267,4 +329,20 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	});
 	// Запускаем процесс сканирования активных процессов и получения информации о них
 	this->_procre->scanning();
+	/**
+	 * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, DragonFly, macOS и Solaris
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если собственный сокет создан
+		if(fd >= 0)
+			// Закрываем собственный сокет
+			::closesocket(fd);
+	#endif
+	// Проверяем, что обход вернул хотя бы одну запись о сокете
+	ASSERT_GT(calls, static_cast <size_t> (0));
+	// Если собственный сокет проверки привязан
+	if(port != 0){
+		// Проверяем, что обход нашёл собственный сокет проверки
+		ASSERT_TRUE(found);
+	}
 }
