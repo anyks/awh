@@ -8291,10 +8291,11 @@ namespace port {
 	 * @brief Подтверждаем завершение отменяемых операций до смены порта
 	 *
 	 * @param sockets описатели, переживающие пересоздание
+	 * @param all учитывать незавершённые операции всего движка
 	 * @return результат подготовки без освобождения записей операций
 	 *
 	 */
-	static bool settle(const set <net::socket_t> & sockets) noexcept {
+	static bool settle(const set <net::socket_t> & sockets, const bool all = true) noexcept {
 		// Сохраняем неразобранную часть текущей пачки
 		vector <completion_t> held(::port::completions + ::port::head, ::port::completions + ::port::count);
 		// Добавляем остаток более поздних сохранённых пакетов
@@ -8339,7 +8340,7 @@ namespace port {
 				// Получаем запись из устойчивой страницы
 				const ::inflight::slot_t * slot = ::inflight::at(index);
 				// Если ядро ещё не подтвердило завершение занятой записи
-				if((slot != nullptr) && slot->busy && !HasOverlappedIoCompleted(&slot->overlapped)){
+				if((slot != nullptr) && slot->busy && (all || (sockets.count(slot->sock) > 0)) && !HasOverlappedIoCompleted(&slot->overlapped)){
 					// Отмечаем необходимость чтения завершений
 					pending = true;
 					// Прекращаем поиск после первой незавершённой записи
@@ -68484,6 +68485,32 @@ bool awh::engine::io::snapshot(const event::id_t id, const event::id_t dest, vec
 		layout.family = static_cast <uint16_t> (i->second->state.family);
 		// Запоминаем в снимке вид устройства обмена передаваемого события
 		layout.type = static_cast <uint16_t> (i->second->state.type);
+		// Выделяем проверяемую передачу связанного TCP-сокета
+		const bool handoff = (((i->second->state.node == event::node_t::CLIENT) || (i->second->state.node == event::node_t::PEER)) && (i->second->state.type == event::type_t::STREAM) && (i->second->state.protocol == event::protocol_t::TCP) && ((i->second->state.family == event::family_t::IPV4) || (i->second->state.family == event::family_t::IPV6)));
+		// Подготавливаем передачу работающего соединения до дублирования
+		if(handoff){
+			// Резервируем место результата до изменения состояния сокета
+			snapshot.reserve(sizeof(layout));
+			// Сохраняем уже полученные данные для обычного опроса источника
+			if(::pool::pending(sock))
+				// Откладываем передачу до выдачи сохранённого результата
+				return result;
+			// Подтверждаем отмену только передаваемого сокета
+			if(!::port::settle({sock}, false))
+				// Сохраняем прежний порт и записи при отказе подготовки
+				return result;
+			/**
+			 * Проверяем полученные результаты выбранного соединения
+			 */
+			for(const auto & completion : ::port::preserved){
+				// Получаем живую запись сохранённого завершения
+				const auto slot = ::inflight::get(completion.token);
+				// Оставляем полезный результат прежнему владельцу до передачи
+				if((slot != nullptr) && (slot->sock == sock) && !slot->cancelled && (slot->kind != ::inflight::kind_t::POLL) && (completion.res != -static_cast <int32_t> (ERROR_OPERATION_ABORTED)))
+					// Откладываем передачу до обычного разбора результата
+					return result;
+			}
+		}
 		/**
 		 * Снимаем описание устройства обмена ПРЕЖДЕ разбора передаваемого события
 		 *
@@ -68563,12 +68590,16 @@ bool awh::engine::io::snapshot(const event::id_t id, const event::id_t dest, vec
 		 *          завершения его операций уходили бы в чужой порт - с описателем из
 		 *          чужого адресного пространства
 		 *
-		 * @note Отказ отвязки передачу не отменяет: объект вправе и не быть привязан
-		 *       вовсе - скажем, принятое подключение отдаётся работнику прежде, чем
-		 *       по нему взводится приём
+		 * @note При передаче связанного TCP отказ отвязки прекращает снятие снимка.
+		 *       Остальные виды событий сохраняют прежнюю обработку результата
+		 *       и требуют отдельной проверки передачи
 		 *
 		 */
-		::port::detach(sock);
+		const bool detached = ::port::detach(sock);
+		// Не объявляем передачу TCP успешной при отказе отвязки
+		if(handoff && !detached)
+			// Сохраняем прежнее состояние события и пустой результат снимка
+			return result;
 		/**
 		 * Снимаем с учёта привязку описателя к порту завершений
 		 *
@@ -68634,11 +68665,10 @@ bool awh::engine::io::snapshot(const event::id_t id, const event::id_t dest, vec
 		 *          передачи: отдав описание устройства обмена, мы уже не знаем, когда
 		 *          получатель заведёт по нему свой описатель
 		 *
-		 * @warning Отвязать описатель от порта завершений система НЕ ДАЁТ вовсе: связь
-		 *          эта живёт до закрытия описателя, и снять её нечем. Оттого оговорка о
-		 *          прежнем владельце здесь не совет, а запрет: продолжать пользоваться
-		 *          отданным описателем он не вправе - завершений по нему не будет, а
-		 *          новые обращения ушли бы в порт, которому получатель не хозяин
+		 * @warning После передачи прежний владелец не должен подавать новые обращения
+		 *          по отданному сокету: объект обмена общий, и завершения относятся
+		 *          уже к порту получателя. Возврат узла в холодное состояние
+		 *          не передаёт приложению право на одновременную работу двух владельцев
 		 *
 		 * @note Снятие обращений обязательно именно здесь: оставь мы их предъявленными,
 		 *       завершения пришли бы в прежний порт уже по отданному описателю

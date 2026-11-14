@@ -44,10 +44,15 @@ using namespace placeholders;
  * @brief Конструктор
  *
  */
+awh::unit::Server::ClusterRestart::ClusterRestart() noexcept :
+ limit(10), window(30000) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::unit::Server::ClusterParams::ClusterParams() noexcept :
- name{""}, rebirth(false), count(0),
- restartLimit(10), restartWindow(30000),
- mode(event::mode_t::DISABLED) {}
+ rebirth(false), count(0), mode(event::mode_t::DISABLED), name{""} {}
 
 /**
  * @brief Метод удаления связи клиента с сервером
@@ -245,7 +250,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 							// Устанавливаем флаг автоматического возрождения процессов
 							this->_cluster->rebirth(this->_clusterParams.rebirth);
 							// Устанавливаем параметры защиты от цикла перезапусков процессов
-							this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+							this->_cluster->rebirthLimit(this->_clusterParams.restart.limit, this->_clusterParams.restart.window);
 						}
 						// Устанавливаем функцию обратного вызова на событие получения сигнала
 						this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
@@ -264,7 +269,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 						// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
 						this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
 						/**
-						 * Мастер поднимает свои слушающие события ПРЕЖДЕ порождения работников
+						 * @brief Мастер поднимает свои слушающие события ПРЕЖДЕ порождения работников
 						 *
 						 * @details Ветвления у этой системы нет, и слушающего сокета работник
 						 *          не наследует. Принимает подключения мастер сам, а работнику
@@ -319,7 +324,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 							// Устанавливаем флаг автоматического возрождения процессов
 							this->_cluster->rebirth(this->_clusterParams.rebirth);
 							// Устанавливаем параметры защиты от цикла перезапусков процессов
-							this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+							this->_cluster->rebirthLimit(this->_clusterParams.restart.limit, this->_clusterParams.restart.window);
 						}
 						// Устанавливаем функцию обратного вызова на событие получения сигнала
 						this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
@@ -443,7 +448,7 @@ void awh::unit::Server::write(const event::id_t eid, const size_t size, void * c
  */
 void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	/**
-	 * Методы только операционной системы MS Windows
+	 * @brief Методы только операционной системы MS Windows
 	 *
 	 * @note Мастер кластера подключений не обслуживает: приняв подключение, он отдаёт
 	 *       его работнику снимком, а сам о нём забывает. Не досталось работника -
@@ -557,7 +562,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				/**
-				 * Если процесс является родительским
+				 * @brief Если процесс является родительским
 				 *
 				 * @note Событие запуска приходит мастеру ОДНО на весь кластер и несёт его
 				 *       собственный номер процесса, а не номер работника: работники к
@@ -565,7 +570,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 				 */
 				if(this->_cluster->master()){
 					/**
-					 * Мастер здесь не делает ничего
+					 * @brief Мастер здесь не делает ничего
 					 *
 					 * @note Передача слушающих событий идёт не отсюда: порождение работника
 					 *       ещё не значит, что канал с ним связан, а отдать снимок в
@@ -575,12 +580,12 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 				// Если процесс является дочерним
 				} else {
 					/**
-					 * Работник просит передачу событий сам
+					 * @brief Работник просит передачу событий сам
 					 *
 					 * @details Просьба эта и задаёт порядок: к мигу её отправки канал
 					 *          заведомо связан - работник только что по нему написал, -
 					 *          тогда как мастер о связанности канала узнать не может
-					 *          вовсе. Порождение работника связи ещё не означает
+					 *          вовсе. Порождение работника связи ещё не означает.
 					 *
 					 * @warning Просьба уходит ПЕРВЫМ сообщением работника, а передача
 					 *          приходит ПЕРВЫМ сообщением мастера, и оба конца этот
@@ -637,79 +642,43 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 	this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
 }
 /**
- * @brief Метод обработки события получения сообщения от процесса кластера
- *
- * @param pid  идентификатор процесса
- * @param data данные полученного сообщения
- * @param size размер данных полученного сообщения
- *
- */
-void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
-	/**
-	 * Для операционной системы MS Windows
-	 *
-	 * @note Первым сообщением работник получает передачу слушающих событий, и наружу
-	 *       она не отдаётся: это разговор движка с движком, а не сообщение потребителя
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если кластер в работе
-		if(this->_cluster != nullptr){
-			/**
-			 * Если мастер получил объявление работника о готовности к работе
-			 *
-			 * @note Объявление это потребителю не предназначалось: это разговор движка
-			 *       с движком, и наружу он не выходит
-			 */
-			if(!this->_cluster->worker()){
-				// Если сообщение оказалось объявлением о готовности к работе
-				if((size == sizeof(uint8_t)) && (data[0] == server_t::HANDOVER_REQUEST)){
-					// Учитываем работника, готового обслуживать подключения
-					this->handover(pid);
-					// Прерываем выполнение: сообщение потребителю не предназначалось
-					return;
-				}
-			// Если работник принял переданное мастером подключение
-			} else if(this->handover(data, size))
-				// Прерываем выполнение: сообщение потребителю не предназначалось
-				return;
-		}
-	#endif
-	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
-}
-/**
  * Для операционной системы MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Упаковка структуры воркера
+	 *
+	 */
+	__AWH_PACK_BEGIN__
 	/**
 	 * @brief Устройство записи передачи слушающего события
 	 *
 	 * @details Складывается из устройства события и снимка его сокета. Устройство
 	 *          нужно работнику затем, чтобы опознать, которому из своих событий
 	 *          достаётся снимок: событий у сервера бывает несколько, и опознание по
-	 *          порядку следования было бы хрупким
+	 *          порядку следования было бы хрупким.
 	 *
 	 * @note Адрес узла в записи не едет: работник задал его сам, тем же кодом, каким
 	 *       задавал мастер, - у обоих процессов он один и тот же. Едет лишь порт,
 	 *       и едет он опознавателем, а не настройкой
 	 *
 	 */
-	__AWH_PACK_BEGIN__
 	typedef struct Handover {
-		// Семейство адресов слушающего события
-		uint8_t family;
 		// Вид устройства обмена слушающего события
 		uint8_t type;
+		// Семейство адресов слушающего события
+		uint8_t family;
+		// Длина адреса встречной стороны передаваемого события
+		uint8_t length;
 		// Протокол слушающего события
 		uint8_t protocol;
 		// Порт передаваемого события
 		uint16_t port;
-		// Длина адреса встречной стороны передаваемого события
-		uint8_t length;
 		// Размер снимка передаваемого события
 		uint32_t size;
 	} __AWH_PACKED__ handover_t;
 	__AWH_PACK_END__
+
 	/**
 	 * @brief Метод заведения объекта кластера
 	 *
@@ -733,14 +702,14 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Устанавливаем флаг автоматического возрождения процессов
 		this->_cluster->rebirth(this->_clusterParams.rebirth);
 		// Устанавливаем параметры защиты от цикла перезапусков процессов
-		this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+		this->_cluster->rebirthLimit(this->_clusterParams.restart.limit, this->_clusterParams.restart.window);
 	}
 	/**
 	 * @brief Метод учёта работника, готового обслуживать подключения
 	 *
 	 * @details Готовность работник объявляет сам, первым же своим сообщением: к мигу
 	 *          его отправки канал заведомо связан, тогда как порождение работника
-	 *          связи ещё не означает
+	 *          связи ещё не означает.
 	 *
 	 * @param pid идентификатор процесса работника
 	 *
@@ -762,7 +731,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 	 *          принимает мастер, а обслуживает работник. Разделить сам слушающий
 	 *          сокет нельзя - привязка к порту завершений живёт у объекта сокета, и
 	 *          второй процесс её не получает: система отвечает отказом 87, а
-	 *          завершения его приёмов уходят в порт первого процесса
+	 *          завершения его приёмов уходят в порт первого процесса.
 	 *
 	 * @note Мастер при этом не бездельничает: не досталось работника - обслуживает
 	 *       подключение сам, обычным путём
@@ -777,10 +746,11 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Выводим результат отказа: обслуживать подключение придётся самому
 			return false;
 		/**
-		 * Выполняем перебор всех учтённых работников по кругу
+		 * @brief Выполняем перебор всех учтённых работников по кругу
 		 *
 		 * @note Круг проходится целиком: работник вправе пасть между учётом и
 		 *       передачей, и подключение из-за этого терять нельзя
+		 *
 		 */
 		for(size_t i = 0; i < this->_handoverWorkers.size(); i++){
 			// Получаем работника, которому подключение достаётся по очереди
@@ -808,23 +778,25 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Запоминаем протокол подключения
 			record.protocol = static_cast <uint8_t> (engine::io::protocol(cid));
 			/**
-			 * Запоминаем порт встречной стороны подключения
+			 * @brief Запоминаем порт встречной стороны подключения
 			 *
 			 * @note Спрашивается он у движка напрямую: обращения юнита о порте и
 			 *       адресе спрашивают событие сервера, а подключение событием сервера
 			 *       не является - им они отвечают пустотой
+			 *
 			 */
 			record.port = engine::target::port::get(cid);
 			// Запоминаем размер снимка подключения
 			record.size = static_cast <uint32_t> (snapshot.size());
 			/**
-			 * Получаем адрес встречной стороны подключения
+			 * @brief Получаем адрес встречной стороны подключения
 			 *
 			 * @details Едет он затем, что событие подключения у работника заводится
 			 *          узлом клиента, а тому адрес встречной стороны обязателен: без
 			 *          него фиксация настроек отвечает отказом. Заодно адрес этот
 			 *          отдаётся и потребителю - тем же обращением, каким он берётся
-			 *          у приёма своего
+			 *          у приёма своего.
+			 *
 			 */
 			const string target = engine::address::get(cid, ((record.family == static_cast <uint8_t> (event::family_t::IPV6)) ? event::address_t::IPV6 : event::address_t::IPV4));
 			// Запоминаем длину адреса встречной стороны подключения
@@ -844,11 +816,12 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 				// Переходим к работнику следующему
 				continue;
 			/**
-			 * Расстаёмся со своим подключением: обслуживает его теперь работник
+			 * @brief Расстаёмся со своим подключением: обслуживает его теперь работник
 			 *
 			 * @note Снимок уже снят, и объект сокета живёт у работника. Держи мастер
 			 *       свой описатель дальше, подключение не закрылось бы и после того,
 			 *       как работник его закроет
+			 *
 			 */
 			engine::io::destroy(cid);
 			// Выводим успешный результат: подключение отдано работнику
@@ -885,16 +858,17 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Идентификатор своего события сервера, которому подключение принадлежит
 		event::id_t eid = 0;
 		/**
-		 * Выполняем перебор всех своих событий сервера
+		 * @brief Выполняем перебор всех своих событий сервера
 		 *
 		 * @note Событие ищется по устройству: сервер вправе держать их несколько, и
 		 *       подключение обязано достаться тому же событию, каким его принял мастер
+		 *
 		 */
 		for(const auto & event : this->_events){
 			// Если устройство своего события совпадает с устройством подключения
 			if((static_cast <uint8_t> (engine::io::family(event.first)) == record.family) &&
-			 (static_cast <uint8_t> (engine::io::type(event.first)) == record.type) &&
-			 (static_cast <uint8_t> (engine::io::protocol(event.first)) == record.protocol)){
+			   (static_cast <uint8_t> (engine::io::type(event.first)) == record.type) &&
+			   (static_cast <uint8_t> (engine::io::protocol(event.first)) == record.protocol)){
 				// Запоминаем своё событие сервера
 				eid = event.first;
 				// Прерываем поиск
@@ -903,19 +877,31 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		}
 		// Если своего события сервера не нашлось
 		if(eid == 0){
-			// Записываем ошибку в лог
-			log::print("Cluster worker process [%d] has no server event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] has no server event for the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] has no server event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			#endif
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
 		/**
-		 * Заводим событие подключения узлом клиента
+		 * @brief Заводим событие подключения узлом клиента
 		 *
 		 * @details Принятое подключение у работника заводится именно клиентом, а не
 		 *          одноранговым узлом: одноранговый узел заводит себе сам приём
 		 *          подключения, и завести его снаружи нечем. Работа же у обоих одна -
 		 *          связанный обмен, - и потребителю событие отдаётся принятым
-		 *          подключением обычным путём
+		 *          подключением обычным путём.
+		 *
 		 */
 		const event::id_t cid = engine::io::event(
 			event::node_t::CLIENT, static_cast <event::family_t> (record.family),
@@ -923,23 +909,46 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		);
 		// Если событие подключения завести не удалось
 		if(cid == 0){
-			// Записываем ошибку в лог
-			log::print("Cluster worker process [%d] cannot create an event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] cannot create an event for the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] cannot create an event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			#endif
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
 		/**
-		 * Задаём событию подключения адрес встречной стороны
+		 * @brief Задаём событию подключения адрес встречной стороны
 		 *
 		 * @note Узлу клиента адрес этот обязателен: фиксация настроек без него
 		 *       отвечает отказом. Подключение при этом уже связано, и к установке
 		 *       связи адрес отношения не имеет - он лишь описывает встречную сторону
+		 *
 		 */
 		if(!engine::target::port::set(cid, record.port) || !engine::target::set(cid, target)){
 			// Удаляем заведённое событие подключения
 			engine::io::destroy(cid);
-			// Записываем ошибку в лог
-			log::print("Cluster worker process [%d] cannot set the target of the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] cannot set the target of the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] cannot set the target of the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			#endif
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -947,8 +956,19 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		if(!engine::io::restore(cid, snapshot, static_cast <size_t> (record.size))){
 			// Удаляем заведённое событие подключения
 			engine::io::destroy(cid);
-			// Записываем ошибку в лог
-			log::print("Cluster worker process [%d] cannot restore the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] cannot restore the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] cannot restore the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			#endif
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -958,13 +978,67 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		if(!engine::io::launch(cid)){
 			// Удаляем заведённое событие подключения
 			engine::io::destroy(cid);
-			// Записываем ошибку в лог
-			log::print("Cluster worker process [%d] cannot start the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Cluster worker process [%d] cannot start the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Cluster worker process [%d] cannot start the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+			#endif
 		}
 		// Выводим признак того, что сообщение было передачей подключения
 		return true;
 	}
 #endif
+/**
+ * @brief Метод обработки события получения сообщения от процесса кластера
+ *
+ * @param pid  идентификатор процесса
+ * @param data данные полученного сообщения
+ * @param size размер данных полученного сообщения
+ *
+ */
+void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
+	/**
+	 * @brief Для операционной системы MS Windows
+	 *
+	 * @note Первым сообщением работник получает передачу слушающих событий, и наружу
+	 *       она не отдаётся: это разговор движка с движком, а не сообщение потребителя
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Если кластер в работе
+		if(this->_cluster != nullptr){
+			/**
+			 * @brief Если мастер получил объявление работника о готовности к работе
+			 *
+			 * @note Объявление это потребителю не предназначалось: это разговор движка
+			 *       с движком, и наружу он не выходит
+			 *
+			 */
+			if(!this->_cluster->worker()){
+				// Если сообщение оказалось объявлением о готовности к работе
+				if((size == sizeof(uint8_t)) && (data[0] == server_t::HANDOVER_REQUEST)){
+					// Учитываем работника, готового обслуживать подключения
+					this->handover(pid);
+					// Прерываем выполнение: сообщение потребителю не предназначалось
+					return;
+				}
+			// Если работник принял переданное мастером подключение
+			} else if(this->handover(data, size))
+				// Прерываем выполнение: сообщение потребителю не предназначалось
+				return;
+		}
+	#endif
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
+}
 /**
  * @brief Метод обработки событий получения данных сервером
  *
@@ -1230,24 +1304,26 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 				}
 			#endif
 			/**
-			 * Для операционной системы MS Windows
+			 * @brief Для операционной системы MS Windows
 			 *
 			 * @details Работник кластера своего сокета не заводит вовсе - он получает
 			 *          его снимком от мастера, - оттого фиксация у него откладывается
 			 *          целиком. Отложить её позже, у прослушивания, нельзя: к тому мигу
 			 *          сокет уже был бы заведён и привязан, и снимку достался бы узел с
-			 *          чужим описателем
+			 *          чужим описателем.
 			 *
 			 * @note Отложенная фиксация отвечает успехом: событие заведено и принято к
 			 *       работе, а поднимет его приход снимка - обычной же фиксацией
+			 *
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				/**
-				 * Заводим объект кластера, если он ещё не заведён
+				 * @brief Заводим объект кластера, если он ещё не заведён
 				 *
 				 * @note Фиксация вправе случиться прежде запуска юнита: потребитель
 				 *       заводит свои события своим порядком. Роль же процесса нужна
-				 *       именно здесь, оттого объект и заводится по первому требованию
+				 *       именно здесь, оттого объект и заводится по первому требованию.
+				 *
 				 */
 				this->clusterCreate();
 				// Если процесс является работником кластера
@@ -1324,7 +1400,7 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 		// Если событие сервера является актуальным
 		if(this->isActual(eid)){
 			/**
-			 * Методы только операционной системы MS Windows
+			 * @brief Методы только операционной системы MS Windows
 			 *
 			 * @note Запуск работы события у работника кластера откладывается до прихода
 			 *       снимка от мастера: отклик о запуске юнита приходит задолго до него,
@@ -1333,11 +1409,12 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 			 *
 			 * @note Отложенный запуск отвечает успехом: событие принято к работе, а
 			 *       случится запуск следом за прослушиванием, приходом снимка
+			 *
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Если процесс является работником кластера и событие оставлено без сокета
 				if((this->_cluster != nullptr) && this->_cluster->worker() &&
-				 (this->_handover.find(eid) != this->_handover.end()))
+				   (this->_handover.find(eid) != this->_handover.end()))
 					// Выводим успешный результат: запускать работнику нечего
 					return true;
 			#endif
@@ -1488,22 +1565,23 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 		// Если событие сервера является актуальным
 		if(this->isActual(eid)){
 			/**
-			 * Для операционной системы MS Windows
+			 * @brief Для операционной системы MS Windows
 			 *
 			 * @details Работник кластера своего слушающего сокета не заводит вовсе: у
 			 *          этой системы нет ни `SO_REUSEPORT`, ни годного `SO_REUSEADDR`, и
 			 *          привязка работника к тому же порту была бы не разделением работы,
 			 *          а перехватом. Сокет приходит снимком от мастера, оттого
-			 *          прослушивание здесь откладывается до его прихода
+			 *          прослушивание здесь откладывается до его прихода.
 			 *
 			 * @note Отложенное прослушивание отвечает успехом: событие заведено и
 			 *       принято к работе, а о готовности его потребитель узнаёт обычным
 			 *       путём - откликом о запуске
+			 *
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Если процесс является работником кластера и событие оставлено без сокета
 				if((this->_cluster != nullptr) && this->_cluster->worker() &&
-				 (this->_handover.find(eid) != this->_handover.end()))
+				   (this->_handover.find(eid) != this->_handover.end()))
 					// Выводим успешный результат: прослушивать работнику нечего
 					return true;
 			#endif
@@ -1644,19 +1722,20 @@ bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options
 	// Если событие сервера является актуальным
 	if(this->isActual(eid)){
 		/**
-		 * Методы только операционной системы MS Windows
+		 * @brief Методы только операционной системы MS Windows
 		 *
 		 * @details Работник кластера поднимает переданное мастером подключение узлом
 		 *          клиента: одноранговый узел заводит себе приём подключения сам, и
 		 *          завести его снаружи нечем. Настройка переподключения, какую
 		 *          одноранговый узел молча обходит, у клиента настоящая - и
 		 *          подключение, полученное готовым, принялось бы устанавливать связь
-		 *          заново, с временным портом отправителя
+		 *          заново, с временным портом отправителя.
 		 *
 		 * @note Снимается она только у работника и только у этой системы: там
 		 *       расхождение видов узла и создаёт разницу в поведении, а во всех
 		 *       прочих случаях настройка доходит до движка нетронутой - решать за
 		 *       потребителя, чего ему хотеть, не наше дело
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Если процесс является работником кластера
@@ -1683,11 +1762,12 @@ bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, 
 	// Если событие сервера является актуальным
 	if(this->isActual(eid)){
 		/**
-		 * Методы только операционной системы MS Windows
+		 * @brief Методы только операционной системы MS Windows
 		 *
 		 * @note Довод тот же, что и у установки набора настроек: у работника кластера
 		 *       переданное подключение поднято узлом клиента, и переподключение ему
 		 *       не к чему - связь пришла к нему готовой
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Если задаётся переподключение, а процесс является работником кластера
@@ -2261,7 +2341,7 @@ void awh::unit::Server::stop() noexcept {
 			// Выполняем остановку работы основного юнита
 			unit_t::stop();
 		/**
-			 * Операционная система не поддерживается
+		 * Операционная система не поддерживается
 		 */
 		#else
 			/**
@@ -2294,16 +2374,17 @@ void awh::unit::Server::start() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			/**
-			 * Кластер заводится ДО запуска юнита
+			 * @brief Кластер заводится ДО запуска юнита
 			 *
 			 * @details Работник обязан узнать свою роль прежде, чем потребитель заведёт
 			 *          свои события: фиксация их у работника откладывается, а спросить
 			 *          роль не у чего, покуда кластера нет. Установлено прогоном -
 			 *          фиксация случалась раньше запуска кластера, отсрочка не
-			 *          срабатывала, и работник заводил свой сокет вместо переданного
+			 *          срабатывала, и работник заводил свой сокет вместо переданного.
 			 *
 			 * @note Заводится здесь только объект: запускается кластер прежним порядком -
 			 *       откликом о запуске юнита, когда слушающие события мастера уже подняты
+			 *
 			 */
 			this->clusterCreate();
 			// Выполняем получение идентификатора функции обратного вызова
@@ -2339,7 +2420,7 @@ void awh::unit::Server::start() noexcept {
 						// Устанавливаем флаг автоматического возрождения процессов
 						this->_cluster->rebirth(this->_clusterParams.rebirth);
 						// Устанавливаем параметры защиты от цикла перезапусков процессов
-						this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+						this->_cluster->rebirthLimit(this->_clusterParams.restart.limit, this->_clusterParams.restart.window);
 					}
 					// Устанавливаем функцию обратного вызова на событие получения сигнала
 					this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
@@ -2741,13 +2822,13 @@ void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
  */
 void awh::unit::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
 	// Устанавливаем максимальное число подряд идущих быстрых падений процессов
-	this->_clusterParams.restartLimit = limit;
+	this->_clusterParams.restart.limit = limit;
 	// Устанавливаем временное окно «быстрого» падения процесса
-	this->_clusterParams.restartWindow = window;
+	this->_clusterParams.restart.window = window;
 	// Если кластер инициализирован
 	if(this->_cluster != nullptr)
 		// Устанавливаем параметры защиты от цикла перезапусков процессов
-		this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+		this->_cluster->rebirthLimit(this->_clusterParams.restart.limit, this->_clusterParams.restart.window);
 }
 /**
  * @brief Метод получения типа протокола передачи данных между воркерами
@@ -2812,7 +2893,7 @@ bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::actio
  * @brief Конструктор
  *
  */
-awh::unit::Server::Server() noexcept : unit_t(), _cluster(nullptr)
+awh::unit::Server::Server() noexcept : _cluster(nullptr)
 /**
  * Для операционной системы MS Windows
  */

@@ -77,65 +77,8 @@ namespace awh {
 		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Server : public unit_t {
-			private:
-				/**
-				 * \~russian
-				 * @brief Структура параметров кластера
-				 *
-				 * @details Параметры кластера задаются при его создании и не могут быть изменены в процессе работы.
-				 *
-				 * \~english
-				 * @brief Structure of the parameters of the cluster
-				 *
-				 * @details The parameters of the cluster are given at its creation and cannot be changed in the course of the work.
-				 *
-				 * \~
-				 */
-				typedef struct __AWH_SHARED_EXPORT__ ClusterParams {
-					// Имя кластера
-					string name;
-					// Флаг пересоздания процесса при его завершении
-					bool rebirth;
-					// Максимальное количество процессов в кластере
-					uint16_t count;
-					// Максимальное число подряд идущих быстрых падений процессов до остановки кластера (0 — без ограничения, по умолчанию 10)
-					uint16_t restartLimit;
-					// Временное окно «быстрого» (раннего) падения процесса в миллисекундах (по умолчанию 30000)
-					uint64_t restartWindow;
-					// Режим активации кластера (по умолчанию event::mode_t::DISABLED)
-					event::mode_t mode;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					explicit ClusterParams() noexcept;
-					/**
-					 * \~russian
-					 * @brief Деструктор
-					 *
-					 * \~english
-					 * @brief Destructor
-					 *
-					 * \~
-					 */
-					~ClusterParams() noexcept = default;
-				} cluster_params_t;
-			private:
-				// Объект работы с кластером
-				unique_ptr <cluster_t> _cluster;
-			private:
-				// Параметры кластера
-				cluster_params_t _clusterParams;
-			private:
-				// Список идентификаторов событий сервера
-				unordered_map <event::id_t, event::id_t> _events;
 			/**
-			 * Для операционной системы MS Windows
+			 * Для операционной системы Microsoft Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
 				private:
@@ -181,6 +124,108 @@ namespace awh {
 					 * \~
 					 */
 					static constexpr uint8_t HANDOVER_CONNECTION = 0x02;
+			#endif
+			private:
+				/**
+				 * \~russian
+				 * @brief Структура параметров рестарта кластера
+				 *
+				 * \~english
+				 * @brief Cluster restart parameter structure
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ ClusterRestart {
+					// Максимальное число подряд идущих быстрых падений процессов до остановки кластера (0 — без ограничения, по умолчанию 10)
+					uint16_t limit;
+					// Временное окно «быстрого» (раннего) падения процесса в миллисекундах (по умолчанию 30000)
+					uint64_t window;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit ClusterRestart() noexcept;
+				} cluster_restart_t;
+				/**
+				 * \~russian
+				 * @brief Структура параметров кластера
+				 *
+				 * @details Параметры кластера задаются при его создании и не могут быть изменены в процессе работы.
+				 *
+				 * \~english
+				 * @brief Structure of the parameters of the cluster
+				 *
+				 * @details The parameters of the cluster are given at its creation and cannot be changed in the course of the work.
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ ClusterParams {
+					// Флаг пересоздания процесса при его завершении
+					bool rebirth;
+					// Максимальное количество процессов в кластере
+					uint16_t count;
+					// Режим активации кластера (по умолчанию event::mode_t::DISABLED)
+					event::mode_t mode;
+					// Параметры рестарта кластера
+					cluster_restart_t restart;
+					// Имя кластера
+					string name;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit ClusterParams() noexcept;
+				} cluster_params_t;
+			/**
+			 * Для операционной системы Microsoft Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
+				private:
+					/**
+					 * \~russian
+					 * @brief Позиция очереди раздачи подключений между работниками
+					 *
+					 * \~english
+					 * @brief Position of a queue of a distribution of the connections between the workers
+					 *
+					 * \~
+					 */
+					size_t _handoverNext;
+			#endif
+			private:
+				// Параметры кластера
+				cluster_params_t _clusterParams;
+			/**
+			 * Для операционной системы Microsoft Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64) || defined(DOXYGEN)
+				private:
+					/**
+					 * \~russian
+					 * @brief Список работников, объявивших о готовности обслуживать подключения
+					 *
+					 * @note Учитываются они по объявлению, а не по порождению: до
+					 *       связанности канала передать работнику нечего
+					 *
+					 * \~english
+					 * @brief List of the workers having declared a readiness to serve the connections
+					 *
+					 * @note They are accounted by a declaration, and not by a spawning: before
+					 *       the connectedness of a channel there is nothing to pass to a worker
+					 *
+					 * \~
+					 */
+					vector <pid_t> _handoverWorkers;
 					/**
 					 * \~russian
 					 * @brief Список событий сервера работника, оставленных без своего сокета
@@ -207,39 +252,19 @@ namespace awh {
 					 * \~
 					 */
 					unordered_set <event::id_t> _handover;
-					/**
-					 * \~russian
-					 * @brief Позиция очереди раздачи подключений между работниками
-					 *
-					 * \~english
-					 * @brief Position of a queue of a distribution of the connections between the workers
-					 *
-					 * \~
-					 */
-					size_t _handoverNext;
-					/**
-					 * \~russian
-					 * @brief Список работников, объявивших о готовности обслуживать подключения
-					 *
-					 * @note Учитываются они по объявлению, а не по порождению: до
-					 *       связанности канала передать работнику нечего
-					 *
-					 * \~english
-					 * @brief List of the workers having declared a readiness to serve the connections
-					 *
-					 * @note They are accounted by a declaration, and not by a spawning: before
-					 *       the connectedness of a channel there is nothing to pass to a worker
-					 *
-					 * \~
-					 */
-					vector <pid_t> _handoverWorkers;
 			#endif
+			private:
+				// Список идентификаторов событий сервера
+				unordered_map <event::id_t, event::id_t> _events;
 			private:
 				// Список клиентов по идентификатору серверного события
 				unordered_map <event::id_t, list <event::id_t>> _serverClients;
 			private:
 				// Позиция клиента в списке клиентов его сервера
 				unordered_map <event::id_t, list <event::id_t>::iterator> _clientPositions;
+			private:
+				// Объект работы с кластером
+				unique_ptr <cluster_t> _cluster;
 			private:
 				/**
 				 * \~russian
@@ -481,6 +506,29 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Метод заведения объекта кластера
+					 *
+					 * @details Заводится он раньше всего прочего: роль процесса нужна уже
+					 *          при фиксации настроек события - у работника она
+					 *          откладывается, - а спросить её не у чего, покуда кластера
+					 *          нет. Запускается же кластер прежним порядком, откликом о
+					 *          запуске юнита.
+					 *
+					 * \~english
+					 * @brief Method of the creation of the object of the cluster
+					 *
+					 * @details It is started before all the rest: a role of a process is needed already
+					 *         at a fixation of the settings of an event - at a worker it is
+					 *         put off, - and to ask it there is nothing while a cluster
+					 *         is none. A cluster, however, is started by a former order, by a callback about a
+					 *         starting of a unit.
+					 *
+					 * \~
+					 */
+					void clusterCreate() noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод учёта работника, готового обслуживать подключения
 					 *
 					 * @details Объявляет о готовности работник сам, первым же своим
@@ -562,28 +610,6 @@ namespace awh {
 					 * \~
 					 */
 					bool handover(const uint8_t * data, const size_t size) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод заведения объекта кластера
-					 *
-					 * @details Заводится он раньше всего прочего: роль процесса нужна уже
-					 *          при фиксации настроек события - у работника она
-					 *          откладывается, - а спросить её не у чего, покуда кластера
-					 *          нет. Запускается же кластер прежним порядком, откликом о
-					 *          запуске юнита.
-					 *
-					 * \~english
-					 * @brief Method of the creation of the object of the cluster
-					 *
-					 * @details It is started before all the rest: a role of a process is needed already
-					 *         at a fixation of the settings of an event - at a worker it is
-					 *         put off, - and to ask it there is nothing while a cluster
-					 *         is none. A cluster, however, is started by a former order, by a callback about a
-					 *         starting of a unit.
-					 *
-					 * \~
-					 */
-					void clusterCreate() noexcept;
 			#endif
 			private:
 				/**

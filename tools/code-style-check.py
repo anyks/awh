@@ -374,7 +374,11 @@ def is_snake_name(s):
     """snake_case имя в позиции объявления: внутренние подчёркивания, не член/статика/тип."""
     if not s or s.startswith("_") or s in SNAKE_STOP or s.endswith("_t"):
         return False
-    return bool(re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", s))
+    if s.isupper():
+        # константы UPPER_SNAKE (HASH_BYTES) живут по §4.9, а не по §4.2/§4.3
+        return False
+    # первая буква любого регистра: ловит и смешанные имена референсов (F3_freeze, Small_encode)
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+", s))
 
 def c_abi_lines(lines):
     """Строки внутри extern "C" { }: поверхность C сохраняет соглашение имени C (§4.11)."""
@@ -397,6 +401,28 @@ def c_abi_lines(lines):
         if depth <= 0:
             inside = False
             depth = 0
+    return held
+
+def anon_ns_lines(lines):
+    """Строки внутри анонимных namespace { ... } (§4.12): место приватной формы имён."""
+    held = set()
+    stack = []
+    in_block = False
+    for n, raw in enumerate(lines, 1):
+        code, in_block = strip_comments_strings(raw.rstrip("\n"), in_block)
+        if 'anon' in stack:
+            held.add(n)
+        delta = code.count("{") - code.count("}")
+        if delta > 0:
+            m = re.search(r"\bnamespace\s*(\w+)?\s*\{", code)
+            if m and code.count("{") == 1:
+                stack.append("anon" if m.group(1) is None else "named")
+            else:
+                stack.append("other")
+            delta -= 1
+        while delta < 0 and stack:
+            stack.pop()
+            delta += 1
     return held
 
 def collect_members(files):
@@ -936,6 +962,7 @@ def check_file(path, lines, members, report, fixes=None):
     in_block = False
     bodies = find_bodies(lines)
     c_abi = c_abi_lines(lines)
+    anon_ns = anon_ns_lines(lines)
     blank_ctx = None
     prev_code = ""
     static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
@@ -1067,10 +1094,31 @@ def check_file(path, lines, members, report, fixes=None):
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
             call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
-            if call_kw or fname in STD_CALLS:
+            # ключевое слово в позиции типа = конструктор или спец-член: имя класса с заглавной буквы законно
+            ctor_head = bool(re.search(r"\b(?:static|inline|constexpr|consteval|virtual|explicit|friend)\s+$", head))
+            # макрос-атрибут (__AWH_INLINE__, __ANTS_INLINE__) непосредственно перед именем = тип
+            # не писан: конструктор либо оператор преобразования; operator перед именем - то же самое
+            attr_head = bool(re.search(r"\b[A-Za-z_]\w*(?:__|_INLINE)\s+$", head))
+            op_head = bool(re.search(r"\boperator\s*$", head))
+            quals = fm.group(1).split("::")[:-1]
+            # отступ глубже одного таба = метод класса, живущего в namespace: ему §4.2
+            ns_indent = len(code) - len(code.lstrip("\t"))
+            # всё имя в верхнем регистре = вызов макроса чужого API (STACK_OF, BOOL, HANDLE) либо константа
+            if call_kw or fname in STD_CALLS or ctor_head or attr_head or op_head or fname.isupper() or n in c_abi or code.lstrip().startswith("typedef"):
                 pass
-            elif is_snake_name(fname) and "__awh" not in fm.group(1) and n not in c_abi:
+            elif is_snake_name(fname) and "__awh" not in fm.group(1):
                 report(path, n, "ERROR", "§4.2", f"snake_case в имени функции/метода '{fname}' — требуется camelCase")
+            # заглавная первая буква имени функции (KeyGen, Encrypt, Fq_recip без черты) — право
+            # типов (классов и структур); квалифицированный конструктор Class::Class исключён по quals
+            elif fname[:1].isupper() and not (quals and quals[-1] == fname):
+                report(path, n, "ERROR", "§4.2", f"имя функции/метода '{fname}' с заглавной буквы — заглавная первая буква только у типов, функции в camelCase")
+            # §4.12: внутри анонимного namespace приватная форма __awh_/__ants_ обязательна
+            # (смотрим определения с телом), вне анонимных эта форма запрещена; метод —
+            # отступ глубже одного таба либо квалификатор Класс:: перед именем (§4.2)
+            elif n in anon_ns and ns_indent <= 1 and not quals and not re.fullmatch(r"__(?:awh|ants)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
+                report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__ants_{{name}}__ (§4.10)")
+            elif re.fullmatch(r"__(?:awh|ants)_\w+__", fname) and n not in anon_ns:
+                report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная, живёт только внутри анонимного namespace")
         # вид callable в @brief (§7.2): ближайший doc--block над определением обязан называть род
         if fm and not directive_line:
             j = n - 2
@@ -1220,11 +1268,19 @@ def check_steps(path, lines, report):
         prev_ctrl = prev_ctrl or prev_code_raw.strip().startswith("template")
         decl_pair = bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", st)) and bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", prev_code_raw.strip()))
         continued = balance > 0 or prev_ctrl or decl_pair or (prev_code_raw.rstrip().endswith((":", ",", "(", "&", "|", "?", "+", "-", "="))) or ("//" in line)
-        continued = continued or (prev_code_raw.strip() != "" and prev_stmt_shape and re.match(r"^[\w:>.-]*\s*", st).group(0) and re.match(r"^[\w:>.<-]*", st).group(0) == prev_stmt_shape)
+        # одинаковое ведущее слово — продолжение переноса (static_cast (…) в многострочных
+        # выражениях), но НЕ для управляющих слов: if( за if( — новый оператор §8.5
+        shape_word = re.match(r"^[\w:>.<-]*", st).group(0)
+        ctrl_shape = shape_word in ("if", "for", "while", "switch", "else", "case", "return", "do")
+        continued = continued or (prev_code_raw.strip() != "" and prev_stmt_shape and not ctrl_shape and shape_word == prev_stmt_shape)
         continued = continued or (init_depth > 0)
         # Закрытие сырого литерала — хвост оператора, начатого строкой открытия
         continued = continued or (kinds[n - 1] == "tail")
-        continued = continued or bool(re.match(r"^(?:\<\<|>>|&&|\|\|\|->|::|\.|\?|:|[+=*/,-])", st))
+        # ведущая «*» перед идентификатором или «(» — разыменование (*out++ = …),
+        # самостоятельный оператор §8.5, а не продолжение многострочного выражения
+        lead_op = bool(re.match(r"^(?:\<\<|>>|&&|\|\|\|->|::|\.|\?|:|[+=/,-])", st)) or \
+                  bool(st.startswith("*") and not re.match(r"^\*[\w(]", st))
+        continued = continued or lead_op
         balance += code.count("(") + code.count("[") - code.count(")") - code.count("]")
         if init_depth:
             init_depth += st.count("{") - st.count("}")

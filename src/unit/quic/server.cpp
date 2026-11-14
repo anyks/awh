@@ -550,11 +550,11 @@ void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
 	// Если кластер в работе
 	if(this->_cluster != nullptr){
 		// Ищем погибшего работника в списке готовых обслуживать соединения
-		auto i = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), old);
+		auto worker = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), old);
 		// Если погибший работник был учтён
-		if(i != this->_handoverWorkers.end())
+		if(worker != this->_handoverWorkers.end())
 			// Заменяем его возрождённым: место в очереди раздачи соединений сохраняется
-			*i = pid;
+			*worker = pid;
 		/**
 		 * @brief Снимаем маршруты, ведущие к погибшему работнику
 		 *
@@ -590,11 +590,11 @@ void awh::unit::QuicServer::exit(const pid_t pid, const int32_t status) noexcept
 	// Если кластер в работе
 	if(this->_cluster != nullptr){
 		// Ищем завершившегося работника в списке готовых обслуживать соединения
-		auto i = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), pid);
+		auto worker = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), pid);
 		// Если завершившийся работник был учтён
-		if(i != this->_handoverWorkers.end())
+		if(worker != this->_handoverWorkers.end())
 			// Снимаем его с учёта: новые соединения ему больше не достаются
-			this->_handoverWorkers.erase(i);
+			this->_handoverWorkers.erase(worker);
 		/**
 		 * @brief Снимаем маршруты, ведущие к завершившемуся работнику
 		 *
@@ -638,19 +638,19 @@ void awh::unit::QuicServer::sending(const pid_t pid, const size_t size) noexcept
  *
  */
 void awh::unit::QuicServer::rebind(const event::id_t oid, const event::id_t cid) noexcept {
-	// Выполняем поиск сессии прежнего сокета соединения
-	auto i = this->_sessions.find(oid);
+	// Ищем сессию прежнего сокета соединения
+	auto oldSession = this->_sessions.find(oid);
 	// Если сессия соединения не найдена
-	if(i == this->_sessions.end()){
+	if(oldSession == this->_sessions.end()){
 		// Удаляем новый сокет соединения
 		engine::io::destroy(cid);
 		// Выходим из метода
 		return;
 	}
 	// Переносим сессию соединения на новый сокет целиком
-	auto ret = this->_sessions.emplace(cid, std::move(i->second));
+	auto ret = this->_sessions.emplace(cid, std::move(oldSession->second));
 	// Снимаем сессию с прежнего сокета
-	this->_sessions.erase(i);
+	this->_sessions.erase(oldSession);
 	// Если сессия на новый сокет не перенесена
 	if(!ret.second){
 		// Удаляем новый сокет соединения
@@ -835,7 +835,7 @@ bool awh::unit::QuicServer::handover(const uint8_t * data, const size_t size) no
 		return true;
 	}
 	// Ищем свою сессию переданного соединения
-	auto i = this->_keys.find(key);
+	auto route = this->_keys.find(key);
 	/**
 	 * Если соединение у работника уже есть - это миграция пути (RFC 9000 §9)
 	 *
@@ -843,19 +843,19 @@ bool awh::unit::QuicServer::handover(const uint8_t * data, const size_t size) no
 	 *       прежним, со всеми своими ключами и состоянием
 	 *
 	 */
-	if(i != this->_keys.end())
-		// Выполняем перепривязку сессии соединения к новому сокету
-		this->rebind(i->second, cid);
+	if(route != this->_keys.end())
+		// Перепривязываем сессию соединения к новому сокету
+		this->rebind(route->second, cid);
 	// Если соединение новое
 	else
 		// Отдаём соединение потребителю обычным путём принятого соединения
 		this->accept(this->_eid, cid);
 	// Устанавливаем функцию обратного вызова на отчёт движка об установленном подключении сессии
 	engine::io::on(cid, static_cast <engine::callback::connect_t> (std::bind(&QuicServer::connected, this, _1, _2)));
-	// Выполняем поиск сессии принятого соединения
-	auto s = this->_sessions.find(cid);
+	// Ищем сессию принятого соединения
+	auto session = this->_sessions.find(cid);
 	// Если сессия соединения найдена
-	if(s != this->_sessions.end())
+	if(session != this->_sessions.end())
 		/**
 		 * @brief Удерживаем первую датаграмму, принятую мастером, до отчёта движка о подключении
 		 *
@@ -869,7 +869,7 @@ bool awh::unit::QuicServer::handover(const uint8_t * data, const size_t size) no
 		 *          соединения пропадает, а клиент повторяет отправку по кругу
 		 *
 		 */
-		s->second.carried.assign(reinterpret_cast <const char *> (dgram), static_cast <size_t> (record.data));
+		session->second.carried.assign(reinterpret_cast <const char *> (dgram), static_cast <size_t> (record.data));
 	// Выводим признак того, что сообщение было передачей соединения
 	return true;
 }
@@ -1142,7 +1142,7 @@ bool awh::unit::QuicServer::relay(const uint8_t * data, const size_t size) noexc
 	// Получаем идентификатор переданного соединения
 	const string key(reinterpret_cast <const char *> (data + head), length);
 	// Ищем свою сессию переданного соединения
-	auto i = this->_keys.find(key);
+	auto route = this->_keys.find(key);
 	/**
 	 * @brief Если сессии соединения у работника нет - датаграмму обрабатывать некому
 	 *
@@ -1150,7 +1150,7 @@ bool awh::unit::QuicServer::relay(const uint8_t * data, const size_t size) noexc
 	 *       идентификатора. Сообщение пересылки потребителю не предназначалось
 	 *
 	 */
-	if(i == this->_keys.end())
+	if(route == this->_keys.end())
 		// Выводим признак того, что сообщение было пересылкой датаграммы
 		return true;
 	// Получаем данные датаграммы соединения
@@ -1163,7 +1163,7 @@ bool awh::unit::QuicServer::relay(const uint8_t * data, const size_t size) noexc
 	 *       соединение уже подключено и отправку движок разрешает
 	 *
 	 */
-	this->read(i->second, dgram, (size - head - length));
+	this->read(route->second, dgram, (size - head - length));
 	// Выводим признак того, что сообщение было пересылкой датаграммы
 	return true;
 }
@@ -1183,7 +1183,7 @@ bool awh::unit::QuicServer::relay(const pid_t pid, const event::id_t oid, const 
 		// Выводим результат отказа
 		return false;
 	// Ищем путь, на котором соединение передано работнику
-	auto p = this->_routePath.find(this->_handoverKey);
+	auto path = this->_routePath.find(this->_handoverKey);
 	/**
 	 * @brief Если путь мастеру неизвестен - соединение требует полной передачи
 	 *
@@ -1192,7 +1192,7 @@ bool awh::unit::QuicServer::relay(const pid_t pid, const event::id_t oid, const 
 	 *       соединение у работника заново
 	 *
 	 */
-	if((p == this->_routePath.end()) || p->second.empty())
+	if((path == this->_routePath.end()) || path->second.empty())
 		// Выводим результат отказа
 		return false;
 	/**
@@ -1203,7 +1203,7 @@ bool awh::unit::QuicServer::relay(const pid_t pid, const event::id_t oid, const 
 	 *       с перепривязкой сессии к новому сокету
 	 *
 	 */
-	if(p->second != this->peer(oid))
+	if(path->second != this->peer(oid))
 		// Выводим результат отказа
 		return false;
 	// Получаем событие обмена, ведущее к работнику
@@ -1275,10 +1275,10 @@ bool awh::unit::QuicServer::relay(const pid_t pid, const event::id_t oid, const 
  *
  */
 void awh::unit::QuicServer::connected(const event::id_t oid, const bool ok) noexcept {
-	// Выполняем поиск сессии соединения
-	auto i = this->_sessions.find(oid);
+	// Ищем сессию соединения
+	auto session = this->_sessions.find(oid);
 	// Если сессия соединения не найдена
-	if(i == this->_sessions.end())
+	if(session == this->_sessions.end())
 		// Выходим из метода
 		return;
 	// Если подключение движком не установлено
@@ -1289,7 +1289,7 @@ void awh::unit::QuicServer::connected(const event::id_t oid, const bool ok) noex
 		return;
 	}
 	// Если удерживаемой первой датаграммы нет
-	if(i->second.carried.empty())
+	if(session->second.carried.empty())
 		// Выходим из метода
 		return;
 	/**
@@ -1299,9 +1299,9 @@ void awh::unit::QuicServer::connected(const event::id_t oid, const bool ok) noex
 	 *       уже освобождён: указатель на данные обязан пережить разбор
 	 *
 	 */
-	const string datagram = std::move(i->second.carried);
+	const string datagram = std::move(session->second.carried);
 	// Освобождаем буфер удерживаемой датаграммы сессии
-	i->second.carried.clear();
+	session->second.carried.clear();
 	// Скармливаем соединению первую датаграмму, принятую мастером
 	this->read(oid, reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size());
 }
@@ -1469,9 +1469,10 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 			 *          перезаписывается до отчёта движка о подключении и пропадает.
 			 *          У датаграммы приложения (RFC 9221) повторной отправки нет.
 			 *
-			 * @note На POSIX ядро разводит датаграммы четвёркой сокета, и работнику
-			 *       они достаются напрямую: мастеру приходит только миграция, путь
-			 *       которой сменился, и пересылка здесь не срабатывает
+			 * @note На POSIX ядро разводит датаграммы четвёркой сокета, и в
+			 *       установившемся режиме они достаются работнику напрямую. Пересылка
+			 *       срабатывает в окне миграции: путь уже обновлён передачей, а
+			 *       подключённый сокет работника ещё смотрит на прежнего собеседника
 			 *
 			 */
 			if(this->relay(this->_handoverPid, oid, data, size))
@@ -1480,7 +1481,7 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 			// Если передача соединения работнику не выполнена
 			if(!this->handover(this->_handoverPid, oid, data, size)){
 				// Ищем маршрут идентификатора соединения
-				auto r = this->_route.find(this->_handoverKey);
+				auto route = this->_route.find(this->_handoverKey);
 				/**
 				 * @brief Если маршрут не заведён - соединение новое, и мастер берёт его на себя
 				 *
@@ -1490,16 +1491,16 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 				 *       повторит отправку, а маршрут сохраняется
 				 *
 				 */
-				if(r == this->_route.end()){
+				if(route == this->_route.end()){
 					// Запоминаем, что соединение мастер обслуживает сам
 					this->_route[this->_handoverKey] = 0;
 					// Снимаем путь клиента: соединение мастеру передачей не доставалось
 					this->_routePath.erase(this->_handoverKey);
 					// Сбрасываем адресата передачи
 					this->_handoverPid = 0;
-					// Выполняем создание сессии соединения своим ходом
+					// Заводим сессию соединения своим ходом
 					this->accept(this->_eid, oid);
-					// Выполняем обработку принятой датаграммы
+					// Обрабатываем принятую датаграмму
 					this->read(oid, data, size);
 				}
 			}
@@ -2105,7 +2106,7 @@ bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const
 		// Выделяем идентификатор соединения в строку маршрута
 		const string route(reinterpret_cast <const char *> (key.data), static_cast <size_t> (key.size));
 		// Ищем маршрут идентификатора соединения
-		auto i = this->_route.find(route);
+		auto found = this->_route.find(route);
 		// Запоминаем идентификатор соединения для передачи
 		this->_handoverKey = route;
 		/**
@@ -2117,9 +2118,9 @@ bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const
 		 *          и работник у соединения прежний.
 		 *
 		 */
-		if(i != this->_route.end())
+		if(found != this->_route.end())
 			// Запоминаем адресата передачи: нуль - соединение обслуживает сам мастер
-			this->_handoverPid = i->second;
+			this->_handoverPid = found->second;
 		// Если работников, готовых обслуживать соединения, нет вовсе
 		else if(this->_handoverWorkers.empty()){
 			// Запоминаем, что соединение мастер обслуживает сам
@@ -2490,7 +2491,7 @@ bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
 		 *
 		 */
 		if((this->_cluster != nullptr) && !this->_cluster->master())
-			// Выполняем фиксацию настроек события интервала таймеров соединений
+			// Фиксируем настройки события интервала таймеров соединений
 			return engine::io::commit(this->_tid);
 		// Выполняем фиксацию настроек события сервера и события интервала таймеров соединений
 		return (engine::io::commit(this->_eid) && engine::io::commit(this->_tid));
@@ -2519,7 +2520,7 @@ bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
 	 *
 	 */
 	if((this->_cluster != nullptr) && !this->_cluster->master())
-		// Выполняем запуск работы события интервала таймеров соединений
+		// Запускаем событие интервала таймеров соединений
 		return engine::io::launch(this->_tid);
 	// Если запуск события сервера и события интервала таймеров соединений не выполнен
 	if(!engine::io::launch(this->_eid) || !engine::io::launch(this->_tid))
@@ -3548,7 +3549,7 @@ void awh::unit::QuicServer::stop() noexcept {
 			if((this->_cluster != nullptr) && this->_cluster->master())
 				// Останавливаем работу кластера: работники уходят вместе с мастером
 				this->_cluster->stop();
-			// Выполняем остановку работы основного юнита
+			// Останавливаем работу основного юнита
 			unit_t::stop();
 		/**
 		 * @brief Для операционных систем, отличных от MS Windows
@@ -3756,15 +3757,14 @@ void awh::unit::QuicServer::close(const event::id_t oid, const uint64_t code, st
  *
  */
 awh::unit::QuicServer::QuicServer() noexcept :
- _ecn(false), _retry(false),
- _eid(0), _tid(0), _iid(0),
- _listenPort(0), _backlog(0), _ctx(0),
+ _ecn(false), _retry(false), _eid(0), _tid(0), _iid(0),
+ _listenPort(0), _backlog(0), _handoverNext(0), _handoverPid(0), _ctx(0),
  _family(event::family_t::IPV4), _listenType(event::address_t::IPV4),
- _resetKey{""}, _listenHost{""}, _cluster(nullptr) {
-	// Сбрасываем позицию очереди раздачи соединений между работниками
-	this->_handoverNext = 0;
+ _resetKey{""}, _listenHost{""}, _handoverKey{""}, _cluster(nullptr) {
 	// Сбрасываем адресата передачи соединения
 	this->_handoverPid = 0;
+	// Сбрасываем позицию очереди раздачи соединений между работниками
+	this->_handoverNext = 0;
 }
 /**
  * @brief Деструктор
