@@ -21,9 +21,10 @@
  */
 
 /**
- * Стандартный заголовочный файл
+ * Стандартные заголовочные файлы
  */
 #include <vector>
+#include <algorithm>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -44,19 +45,44 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * @brief Инкапсулируем внутренние типы модуля в анонимное пространство имён
+ * @brief Упаковка записи передачи соединения QUIC работнику кластера
  *
  */
-namespace {
-	/**
-	 * @brief Тип внутреннего сообщения между процессами кластера QUIC
-	 *
-	 */
-	enum class quic_cluster_message_t : uint8_t {
-		NONE = 0x00, // Сообщение не определено
-		PORT = 0x01  // Сообщение несёт выделенный дочернему процессу порт прослушивания
-	};
-};
+__AWH_PACK_BEGIN__
+/**
+ * @brief Устройство записи передачи соединения QUIC работнику кластера
+ *
+ * @details Складывается из устройства сокета, адреса встречной стороны, снимка
+ *          сокета, идентификатора соединения и первой датаграммы. Устройство
+ *          нужно работнику затем, чтобы завести сокет тем же узлом, каким его
+ *          завёл мастер, а идентификатор соединения - чтобы отличить новое
+ *          соединение от миграции уже обслуживаемого
+ *
+ * @note Первая датаграмма едет в сообщении намеренно: её принял общий сокет
+ *       мастера, и без неё работник ждал бы повторной отправки клиента целый
+ *       таймаут проверки пути (RFC 9000 §6.2)
+ *
+ */
+typedef struct Handover {
+	// Длина идентификатора соединения QUIC
+	uint8_t key;
+	// Вид устройства обмена передаваемого сокета
+	uint8_t type;
+	// Семейство адресов передаваемого сокета
+	uint8_t family;
+	// Длина адреса встречной стороны передаваемого сокета
+	uint8_t length;
+	// Протокол передаваемого сокета
+	uint8_t protocol;
+	// Порт встречной стороны передаваемого сокета
+	uint16_t port;
+	// Размер снимка передаваемого сокета
+	uint32_t size;
+	// Размер первой датаграммы соединения
+	uint32_t data;
+} __AWH_PACKED__ handover_t;
+// Снимаем упаковку записи передачи соединения
+__AWH_PACK_END__
 
 /**
  * @brief Конструктор сессии соединения
@@ -66,7 +92,7 @@ awh::unit::QuicServer::Session::Session() noexcept :
  handed(false), connected(false), dest(0),
  marking(event::ecn_t::NOT_ECT),
  tunnel(quic::connection_t::INVALID_STREAM),
- datagram{""}, connection(nullptr) {}
+ carried{""}, datagram{""}, connection(nullptr) {}
 
 /**
  * @brief Конструктор параметров кластера
@@ -76,6 +102,31 @@ awh::unit::QuicServer::ClusterParams::ClusterParams() noexcept :
  rebirth(false), mode(event::mode_t::DISABLED),
  count(0), restartLimit(10), restartWindow(30000), name{""} {}
 
+/**
+ * @brief Метод заведения объекта кластера
+ *
+ * @note Зовётся отовсюду, где нужна роль процесса: заводится объект единожды, а
+ *       повторные обращения ничего не делают
+ *
+ */
+void awh::unit::QuicServer::clusterCreate() noexcept {
+	// Если кластер не заказан либо уже заведён - делать нечего
+	if((this->_clusterParams.mode != event::mode_t::ENABLED) || (this->_cluster != nullptr))
+		// Выходим из метода
+		return;
+	// Создаём объект кластера для управления процессами сервера
+	this->_cluster = make_unique <cluster_t> ();
+	// Если имя кластера установлено
+	if(!this->_clusterParams.name.empty())
+		// Устанавливаем название кластера
+		this->_cluster->name(this->_clusterParams.name);
+	// Устанавливаем максимальное количество процессов кластера
+	this->_cluster->count(this->_clusterParams.count);
+	// Устанавливаем флаг автоматического возрождения процессов
+	this->_cluster->rebirth(this->_clusterParams.rebirth);
+	// Устанавливаем параметры защиты от цикла перезапусков процессов
+	this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+}
 /**
  * @brief Метод запуска/остановки работы сервера
  *
@@ -88,17 +139,58 @@ void awh::unit::QuicServer::launch(const event::status_t status) noexcept {
 	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если работа сервера запущена
-		case static_cast <uint8_t> (event::status_t::LAUNCHED):
+		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 			/**
-			 * В режиме кластера дочерний процесс запускает цикл событий раньше, чем
-			 * получает выделенный родительским процессом порт: пока сокет не привязан,
-			 * приложение о запуске не оповещается - оповещение выполнит message()
-			 * после фактической привязки сокета
+			 * Проверяем требуется ли активировать кластер
 			 */
-			if(!this->_awaitingPort)
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("server_status", status);
-		break;
+			switch(static_cast <uint8_t> (this->_clusterParams.mode)){
+				// Если необходимо активировать кластер
+				case static_cast <uint8_t> (event::mode_t::ENABLED): {
+					// Заводим объект кластера для управления процессами сервера
+					this->clusterCreate();
+					// Устанавливаем функцию обратного вызова на событие получения сигнала
+					this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &quic_server_t::exit, this, _1, _2);
+					// Устанавливаем функцию обратного вызова на событие пересоздания процесса
+					this->_cluster->on <void (const pid_t, const pid_t)> ("rebase", &quic_server_t::rebase, this, _1, _2);
+					// Устанавливаем функцию обратного вызова на событие отправки сообщений
+					this->_cluster->on <void (const pid_t, const size_t)> ("sending", &quic_server_t::sending, this, _1, _2);
+					// Устанавливаем функцию обратного вызова на получение событий кластера
+					this->_cluster->on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &quic_server_t::cluster, this, _1, _2);
+					// Устанавливаем функцию обратного вызова на событие получения сообщений
+					this->_cluster->on <void (const pid_t, const uint8_t *, const size_t)> ("message", &quic_server_t::message, this, _1, _2, _3);
+					// Устанавливаем функцию обратного вызова на событие изменения статуса кластера
+					this->_cluster->on <void (const pid_t, const event::status_t)> ("state", static_cast <void (quic_server_t::*)(const pid_t, const event::status_t)> (&quic_server_t::status), this, _1, _2);
+					// Устанавливаем функцию обратного вызова на событие получения ошибок кластера
+					this->_cluster->on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (quic_server_t::*)(const pid_t, const event::error_t, const string &)> (&quic_server_t::error), this, _1, _2, _3);
+					// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
+					this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (quic_server_t::*)(const pid_t, const event::status_t, const size_t)> (&quic_server_t::available), this, _1, _2, _3);
+					/**
+					 * @brief Мастер поднимает свой общий сокет ПРЕЖДЕ порождения работников
+					 *
+					 * @details Разбор идентификаторов соединений ведёт мастер на общем
+					 *          сокете, а работнику отдаёт подключённый сокет снимком.
+					 *          Принимать первую датаграмму соединения мастер обязан уже
+					 *          к мигу порождения работников, иначе соединения первых
+					 *          клиентов достались бы никому.
+					 *
+					 * @note У работника отклик потребителя зовётся из cluster() ПОСЛЕ
+					 *       того, как он связался с мастером и завёл собственные
+					 *       события: своего слушающего сокета он не заводит вовсе
+					 *
+					 */
+					if(!this->_cluster->worker())
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("server_status", status);
+					// Запускаем работу кластера
+					this->_cluster->start();
+				} break;
+				// Если активировать кластер не требуется
+				case static_cast <uint8_t> (event::mode_t::DISABLED):
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("server_status", status);
+				break;
+			}
+		} break;
 		// Если работа сервера подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Завершаем все сессии соединений сервера
@@ -147,6 +239,17 @@ void awh::unit::QuicServer::launch(const event::status_t status) noexcept {
 				// Выполняем получение функции обратного вызова
 				this->_callback.set(fid, this->_callback.id("status"), this->_callback);
 			}
+			/**
+			 * @brief Останавливаем кластер ПОСЛЕ отклика потребителя
+			 *
+			 * @note Работник кластер не останавливает: он не владелец его, и остановка
+			 *       от него была бы отказом с записью в журнал. Уходит работник своим
+			 *       путём - по событию остановки кластера (см. cluster())
+			 *
+			 */
+			if((this->_clusterParams.mode == event::mode_t::ENABLED) && (this->_cluster != nullptr) && this->_cluster->master())
+				// Останавливаем работу кластера
+				this->_cluster->stop();
 		} break;
 	}
 }
@@ -239,6 +342,39 @@ void awh::unit::QuicServer::erase(const event::id_t oid) noexcept {
 	if(connected)
 		// Выполняем функцию обратного вызова о завершённом соединении
 		this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", oid, error);
+	/**
+	 * @brief Снимаем маршруты завершённого соединения
+	 *
+	 * @note Маршрут живёт до завершения соединения: держать его дальше значило бы
+	 *       копить память на всякий когда-либо виденный идентификатор, а отдавать
+	 *       по нему датаграмму - значит отдавать её в пустоту
+	 *
+	 */
+	for(auto it = this->_keys.begin(); it != this->_keys.end();){
+		// Если идентификатор соединения принадлежит завершаемой сессии
+		if(it->second == oid){
+			// Если кластер в работе и соединение обслуживает работник
+			if((this->_cluster != nullptr) && !this->_cluster->master()){
+				// Буфер объявления отвода идентификатора соединения
+				vector <uint8_t> notice;
+				// Оставляем в начале объявления место под опознаватель отвода
+				notice.push_back(quic_server_t::HANDOVER_KEY_REMOVE);
+				// Добавляем в объявление отводимый идентификатор соединения
+				notice.insert(notice.end(), it->first.begin(), it->first.end());
+				// Отправляем мастеру объявление отвода идентификатора соединения
+				this->_cluster->send(notice.data(), notice.size());
+			}
+			// Снимаем маршрут идентификатора соединения
+			this->_route.erase(it->first);
+			// Снимаем путь клиента снятого маршрута
+			this->_routePath.erase(it->first);
+			// Удаляем зеркало маршрутизации и переходим к следующему идентификатору
+			it = this->_keys.erase(it);
+		// Если идентификатор соединения принадлежит другой сессии
+		} else
+			// Переходим к идентификатору следующему
+			++it;
+	}
 	// Уничтожаем событие сессии вместе с его ключами маршрутизации
 	engine::io::destroy(oid);
 }
@@ -382,11 +518,18 @@ void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
 /**
  * @brief Метод формирования адреса удалённого эндпоинта сессии
  *
+ * @note Узел-приёмник хранит адрес собеседника в адресе источника, а клиентский
+ *       узел работника кластера - в цели подключения: его адрес источника свой
+ *
  * @param oid идентификатор события сессии
  * @return    адрес удалённого эндпоинта в виде "адрес:порт"
  *
  */
 string awh::unit::QuicServer::peer(const event::id_t oid) const noexcept {
+	// Если сессия работника кластера заведена клиентским узлом движка
+	if(engine::io::node(oid) == event::node_t::CLIENT)
+		// Выводим адрес удалённого эндпоинта из цели подключения вместе с её портом
+		return (engine::target::get(oid) + ":" + std::to_string(engine::target::port::get(oid)));
 	// Извлекаем адрес удалённого эндпоинта сессии
 	string result = engine::address::get(oid, event::address_t::IPV4);
 	// Если адрес IPv4 не получен
@@ -404,27 +547,35 @@ string awh::unit::QuicServer::peer(const event::id_t oid) const noexcept {
  *
  */
 void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
-	/**
-	 * @brief Выполняем поиск порта, выделенного погибшему дочернему процессу
-	 *
-	 * @details Возрождённому после падения дочернему процессу автоматически возвращаем тот же
-	 *          порт прослушивания, что был у него до гибели: без этого возрождённый процесс
-	 *          остался бы работать в холостую, так как повторная раздача портов не выполняется.
-	 *
-	 */
-	auto i = this->_ports.find(old);
-	// Если погибшему дочернему процессу был выделен порт прослушивания
-	if(i != this->_ports.end()){
-		// Запоминаем порт прослушивания погибшего дочернего процесса
-		const uint16_t port = i->second;
-		// Удаляем привязку порта к идентификатору погибшего дочернего процесса
-		this->_ports.erase(i);
-		// Отправляем возрождённому дочернему процессу его прежний порт прослушивания
-		this->sendPort(pid, port);
-	// Если погибший дочерний процесс работал в холостую - возрождённый тоже остаётся в холостую
-	} else if(this->_idle.erase(old) > 0)
-		// Переносим признак работы в холостую на идентификатор возрождённого процесса
-		this->_idle.insert(pid);
+	// Если кластер в работе
+	if(this->_cluster != nullptr){
+		// Ищем погибшего работника в списке готовых обслуживать соединения
+		auto i = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), old);
+		// Если погибший работник был учтён
+		if(i != this->_handoverWorkers.end())
+			// Заменяем его возрождённым: место в очереди раздачи соединений сохраняется
+			*i = pid;
+		/**
+		 * @brief Снимаем маршруты, ведущие к погибшему работнику
+		 *
+		 * @note Соединения погибли вместе с ним: возрождённый процесс начинает с
+		 *       чистого листа, и держать маршрут на него значило бы отдавать
+		 *       датаграммы миграции в пустоту
+		 *
+		 */
+		for(auto it = this->_route.begin(); it != this->_route.end();){
+			// Если маршрут ведёт к погибшему работнику
+			if(it->second == old){
+				// Снимаем путь клиента снятого маршрута
+				this->_routePath.erase(it->first);
+				// Удаляем маршрут и переходим к следующему
+				it = this->_route.erase(it);
+			// Если маршрут ведёт к другому работнику
+			} else
+				// Переходим к маршруту следующему
+				++it;
+		}
+	}
 	// Выполняем функцию обратного вызова
 	this->_callback.call <void (const pid_t, const pid_t)> ("cluster_rebase", old, pid);
 }
@@ -436,6 +587,35 @@ void awh::unit::QuicServer::rebase(const pid_t old, const pid_t pid) noexcept {
  *
  */
 void awh::unit::QuicServer::exit(const pid_t pid, const int32_t status) noexcept {
+	// Если кластер в работе
+	if(this->_cluster != nullptr){
+		// Ищем завершившегося работника в списке готовых обслуживать соединения
+		auto i = std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), pid);
+		// Если завершившийся работник был учтён
+		if(i != this->_handoverWorkers.end())
+			// Снимаем его с учёта: новые соединения ему больше не достаются
+			this->_handoverWorkers.erase(i);
+		/**
+		 * @brief Снимаем маршруты, ведущие к завершившемуся работнику
+		 *
+		 * @note Соединения его погибли: датаграмма миграции по такому маршруту
+		 *       ушла бы в пустоту, а без маршрута мастер хотя бы ответит
+		 *       сбросом без сохранения состояния
+		 *
+		 */
+		for(auto it = this->_route.begin(); it != this->_route.end();){
+			// Если маршрут ведёт к завершившемуся работнику
+			if(it->second == pid){
+				// Снимаем путь клиента снятого маршрута
+				this->_routePath.erase(it->first);
+				// Удаляем маршрут и переходим к следующему
+				it = this->_route.erase(it);
+			// Если маршрут ведёт к другому работнику
+			} else
+				// Переходим к маршруту следующему
+				++it;
+		}
+	}
 	// Выполняем функцию обратного вызова
 	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, status);
 }
@@ -451,31 +631,679 @@ void awh::unit::QuicServer::sending(const pid_t pid, const size_t size) noexcept
 	this->_callback.call <void (const pid_t, const size_t)> ("cluster_sending", pid, size);
 }
 /**
- * @brief Метод отправки выделенного порта прослушивания дочернему процессу кластера
+ * @brief Метод перепривязки сессии соединения к новому сокету
  *
- * @param pid  идентификатор дочернего процесса
- * @param port выделяемый порт прослушивания
- * @return     результат отправки
+ * @param oid идентификатор события прежнего сокета сессии
+ * @param cid идентификатор события нового сокета сессии
  *
  */
-bool awh::unit::QuicServer::sendPort(const pid_t pid, const uint16_t port) noexcept {
-	// Буфер IPC-сообщения: тег типа сообщения и выделенный порт
-	uint8_t buffer[sizeof(quic_cluster_message_t) + sizeof(uint16_t)] = {0};
-	// Устанавливаем тип сообщения - выделенный порт прослушивания
-	const quic_cluster_message_t message = quic_cluster_message_t::PORT;
-	// Записываем тип сообщения в буфер
-	::memcpy(buffer, &message, sizeof(message));
-	// Записываем выделенный порт в буфер сообщения
-	::memcpy(&buffer[sizeof(message)], &port, sizeof(port));
-	// Если отправка выделенного порта дочернему процессу выполнена
-	if(this->clusterSend(pid, buffer, sizeof(buffer)) > 0){
-		// Запоминаем выделенный дочернему процессу порт для восстановления после возрождения
-		this->_ports[pid] = port;
-		// Возвращаем положительный результат
+void awh::unit::QuicServer::rebind(const event::id_t oid, const event::id_t cid) noexcept {
+	// Выполняем поиск сессии прежнего сокета соединения
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена
+	if(i == this->_sessions.end()){
+		// Удаляем новый сокет соединения
+		engine::io::destroy(cid);
+		// Выходим из метода
+		return;
+	}
+	// Переносим сессию соединения на новый сокет целиком
+	auto ret = this->_sessions.emplace(cid, std::move(i->second));
+	// Снимаем сессию с прежнего сокета
+	this->_sessions.erase(i);
+	// Если сессия на новый сокет не перенесена
+	if(!ret.second){
+		// Удаляем новый сокет соединения
+		engine::io::destroy(cid);
+		// Выходим из метода
+		return;
+	}
+	// Получаем перенесённую сессию соединения
+	session_t & session = ret.first->second;
+	// Устанавливаем функцию обратного вызова на чтение датаграмм сессии
+	engine::io::on(cid, static_cast <engine::callback::read_t> (std::bind(&QuicServer::read, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова на инъекцию объединённых данных сессии
+	engine::io::on(cid, static_cast <engine::callback::inject_t> (std::bind(&QuicServer::inject, this, _1, _2, _3)));
+	// Устанавливаем функцию обратного вызова источника исходящих датаграмм сессии
+	engine::io::on(cid, static_cast <engine::callback::source_t> (std::bind(&QuicServer::source, this, _1, _2, _3)));
+	// Обновляем адрес удалённого эндпоинта соединения адресом нового пути
+	this->endpoint(cid, session.connection.get());
+	/**
+	 * @brief Переносим ключи маршрутизации соединения на новый сокет
+	 *
+	 * @note Ключей у соединения несколько: выданные клиенту идентификаторы живут
+	 *       до их отвода, и клиент вправе адресовать соединение любым из них
+	 *
+	 */
+	for(auto & item : this->_keys){
+		// Если идентификатор соединения принадлежит перепривязываемой сессии
+		if(item.second == oid){
+			// Выделяем идентификатор соединения в ключ маршрутизации
+			const net::origin_key_t route(reinterpret_cast <const uint8_t *> (item.first.data()), static_cast <uint8_t> (item.first.size()));
+			// Снимаем идентификатор соединения с прежнего сокета
+			engine::multicast::unbind(oid, route);
+			// Привязываем идентификатор соединения к новому сокету
+			engine::multicast::bind(cid, route);
+			// Запоминаем новый сокет сессии в зеркале маршрутизации
+			item.second = cid;
+		}
+	}
+	// Снимаем флаг выдачи буфера исходящей датаграммы: выдавался он прежнему сокету
+	session.handed = false;
+	// Сбрасываем признак установленной маркировки: ставилась она прежнему сокету
+	session.marking = event::ecn_t::NOT_ECT;
+	// Применяем маркировку соединения к новому сокету
+	this->mark(cid, session, session.connection->marking());
+	// Удаляем прежний сокет соединения
+	engine::io::destroy(oid);
+}
+/**
+ * @brief Метод учёта работника, готового обслуживать соединения
+ *
+ * @param pid идентификатор процесса работника
+ *
+ */
+void awh::unit::QuicServer::handover(const pid_t pid) noexcept {
+	// Если работник уже учтён - учитывать его снова незачем
+	if(std::find(this->_handoverWorkers.begin(), this->_handoverWorkers.end(), pid) != this->_handoverWorkers.end())
+		// Выходим из метода
+		return;
+	// Запоминаем работника, готового обслуживать соединения
+	this->_handoverWorkers.push_back(pid);
+	// Записываем в лог сообщение о готовности работника обслуживать соединения
+	log::print("Cluster worker process [%d] is ready to serve QUIC connections", log::flag_t::INFO, pid);
+}
+/**
+ * @brief Метод подъёма соединения из снимка, присланного мастером
+ *
+ * @param data данные полученного сообщения
+ * @param size размер данных полученного сообщения
+ * @return     признак того, что сообщение было передачей соединения
+ *
+ */
+bool awh::unit::QuicServer::handover(const uint8_t * data, const size_t size) noexcept {
+	// Если сообщение короче опознавателя с устройством - передачей оно не является
+	if((data == nullptr) || (size < (sizeof(uint8_t) + sizeof(handover_t))) || (data[0] != quic_server_t::HANDOVER_CONNECTION))
+		// Выводим результат
+		return false;
+	// Устройство переданного соединения
+	handover_t record{};
+	// Извлекаем устройство переданного соединения
+	::memcpy(&record, data + sizeof(uint8_t), sizeof(record));
+	// Если остатка сообщения не хватает на адрес, снимок, идентификатор и датаграмму
+	if((size - sizeof(uint8_t) - sizeof(record)) < (static_cast <size_t> (record.length) + static_cast <size_t> (record.size) + static_cast <size_t> (record.key) + static_cast <size_t> (record.data)))
+		// Выводим результат
+		return false;
+	// Смещение снимка передаваемого сокета в сообщении
+	const size_t offset = (sizeof(uint8_t) + sizeof(record) + static_cast <size_t> (record.length));
+	// Получаем адрес встречной стороны переданного соединения
+	const string target(reinterpret_cast <const char *> (data + sizeof(uint8_t) + sizeof(record)), static_cast <size_t> (record.length));
+	// Получаем идентификатор переданного соединения
+	const string key(reinterpret_cast <const char *> (data + offset + static_cast <size_t> (record.size)), static_cast <size_t> (record.key));
+	// Получаем первую датаграмму переданного соединения
+	const uint8_t * dgram = (data + offset + static_cast <size_t> (record.size) + static_cast <size_t> (record.key));
+	/**
+	 * @brief Заводим событие соединения узлом клиента
+	 *
+	 * @details Принятое соединение у работника заводится именно клиентом: серверный
+	 *          узел занял бы общий порт повторно, а он держится мастером. Работа же
+	 *          у подключённого сокета одна - связанный обмен с клиентом.
+	 *
+	 */
+	const event::id_t cid = engine::io::event(
+		event::node_t::CLIENT, static_cast <event::family_t> (record.family),
+		static_cast <event::type_t> (record.type), static_cast <event::protocol_t> (record.protocol)
+	);
+	// Если событие соединения завести не удалось
+	if(cid == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster worker process [%d] cannot create an event for the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster worker process [%d] cannot create an event for the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+		#endif
+		// Выводим признак того, что сообщение было передачей соединения
 		return true;
 	}
-	// Возвращаем значение по умолчанию
-	return false;
+	// Устанавливаем опции поднимаемого сокета соединения
+	engine::options::set(cid, static_cast <uint16_t> (
+		event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR |
+		event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC |
+		(this->_ecn ? event::options::DGRAM_INFO : 0)
+	));
+	/**
+	 * @brief Задаём событию соединения адрес встречной стороны
+	 *
+	 * @note Узлу клиента адрес этот обязателен: фиксация настроек без него отвечает
+	 *       отказом. Сокет при этом уже связан, и к установке связи адрес отношения
+	 *       не имеет - он лишь описывает встречную сторону
+	 *
+	 */
+	if(!engine::target::port::set(cid, record.port) || !engine::target::set(cid, target)){
+		// Удаляем заведённое событие соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster worker process [%d] cannot set the target of the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster worker process [%d] cannot set the target of the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+		#endif
+		// Выводим признак того, что сообщение было передачей соединения
+		return true;
+	}
+	/**
+	 * @brief Поднимаем сокет из присланного снимка, подключаем и запускаем его
+	 *
+	 * @details Фиксация здесь не зовётся намеренно: описатель уже заведён мастером,
+	 *          и заводить второй означало бы занимать порт повторно. Подключение
+	 *          движок берёт лишь у узла в состоянии INITIAL, а запуск переводит его
+	 *          в LAUNCHED - обратный порядок оставляет отправку молча нулевой.
+	 *
+	 */
+	if(!engine::io::restore(cid, data + offset, static_cast <size_t> (record.size)) ||
+	   !engine::io::connect(cid) || !engine::io::launch(cid)){
+		// Удаляем заведённое событие соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster worker process [%d] cannot restore the connection received from the master", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, ::getpid());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster worker process [%d] cannot restore the connection received from the master", log::flag_t::CRITICAL, ::getpid());
+		#endif
+		// Выводим признак того, что сообщение было передачей соединения
+		return true;
+	}
+	// Ищем свою сессию переданного соединения
+	auto i = this->_keys.find(key);
+	/**
+	 * Если соединение у работника уже есть - это миграция пути (RFC 9000 §9)
+	 *
+	 * @note Сессию не заводим заново: клиент сменил адрес, а соединение осталось
+	 *       прежним, со всеми своими ключами и состоянием
+	 *
+	 */
+	if(i != this->_keys.end())
+		// Выполняем перепривязку сессии соединения к новому сокету
+		this->rebind(i->second, cid);
+	// Если соединение новое
+	else
+		// Отдаём соединение потребителю обычным путём принятого соединения
+		this->accept(this->_eid, cid);
+	// Устанавливаем функцию обратного вызова на отчёт движка об установленном подключении сессии
+	engine::io::on(cid, static_cast <engine::callback::connect_t> (std::bind(&QuicServer::connected, this, _1, _2)));
+	// Выполняем поиск сессии принятого соединения
+	auto s = this->_sessions.find(cid);
+	// Если сессия соединения найдена
+	if(s != this->_sessions.end())
+		/**
+		 * @brief Удерживаем первую датаграмму, принятую мастером, до отчёта движка о подключении
+		 *
+		 * @note Без неё работник ждал бы повторной отправки клиента целый таймаут
+		 *       проверки пути (RFC 9000 §6.2)
+		 *
+		 * @warning Скормить её сразу нельзя: узел работника заводится клиентом, а движок
+		 *          позволяет отправку его датаграмм лишь после вызова подписки `connect_t`.
+		 *          До этого отправка уходит получателю явным адресом на уже связанном
+		 *          сокете, система отвечает отказом, и движок уничтожает узел - ответ
+		 *          соединения пропадает, а клиент повторяет отправку по кругу
+		 *
+		 */
+		s->second.carried.assign(reinterpret_cast <const char *> (dgram), static_cast <size_t> (record.data));
+	// Выводим признак того, что сообщение было передачей соединения
+	return true;
+}
+/**
+ * @brief Метод передачи соединения работнику кластера
+ *
+ * @param pid  идентификатор процесса работника
+ * @param oid  идентификатор события сессии, принявшей первую датаграмму
+ * @param data данные первой датаграммы соединения
+ * @param size размер первой датаграммы соединения
+ * @return     признак того, что соединение отдано работнику
+ *
+ */
+bool awh::unit::QuicServer::handover(const pid_t pid, const event::id_t oid, const uint8_t * data, const size_t size) noexcept {
+	// Если данных первой датаграммы нет - передавать нечего
+	if((data == nullptr) || (size == 0))
+		// Выводим результат отказа
+		return false;
+	// Получаем событие обмена, ведущее к работнику
+	const event::id_t dest = this->_cluster->channel(pid);
+	// Если события обмена с работником нет - работник пал
+	if(dest == 0)
+		// Выводим результат отказа
+		return false;
+	// Получаем семейство адресов сессии, принявшей датаграмму
+	const event::family_t family = engine::io::family(oid);
+	/**
+	 * @brief Заводим подключённый сокет соединения узлом клиента
+	 *
+	 * @details Узел клиента, а не сервера: серверный узел занял бы порт повторно,
+	 *          а подключённый сокет ядро различает четвёркой и отдаёт ему
+	 *          датаграммы этого клиента раньше общего сокета мастера.
+	 *
+	 */
+	const event::id_t cid = engine::io::event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	// Если сокет соединения завести не удалось
+	if(cid == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot create a socket for the connection handed to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot create a socket for the connection handed to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Устанавливаем опции подключённого сокета соединения
+	engine::options::set(cid, static_cast <uint16_t> (
+		event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR |
+		event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC |
+		(this->_ecn ? event::options::DGRAM_INFO : 0)
+	));
+	// Получаем адрес встречной стороны соединения
+	const string target = engine::address::get(oid, ((family == event::family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4));
+	/**
+	 * @brief Задаём порты и адрес встречной стороны подключённого сокета
+	 *
+	 * @note Портом источника ставится общий порт кластера: клиент обязан видеть
+	 *       ответ с того же порта, куда слал, иначе он отвергнет его как
+	 *       пришедший не с того пути (RFC 9000 §9)
+	 *
+	 */
+	if(target.empty() || !engine::source::port::set(cid, this->_listenPort) ||
+	  !engine::target::port::set(cid, engine::source::port::get(oid)) || !engine::target::set(cid, target)){
+		// Удаляем заведённый сокет соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot set the endpoint of the connection handed to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot set the endpoint of the connection handed to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	/**
+	 * @brief Фиксируем, подключаем и запускаем подключённый сокет
+	 *
+	 * @details Порядок именно такой: подключение движок берёт лишь у узла в
+	 *          состоянии INITIAL, а запуск переводит его в LAUNCHED. Запуск без
+	 *          подключения оставляет датаграммную отправку молча нулевой.
+	 *
+	 */
+	if(!engine::io::commit(cid) || !engine::io::connect(cid) || !engine::io::launch(cid)){
+		// Удаляем заведённый сокет соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot start the socket of the connection handed to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot start the socket of the connection handed to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Буфер снимка подключённого сокета соединения
+	vector <uint8_t> snapshot;
+	// Если снимок подключённого сокета для процесса работника не снят
+	if(!engine::io::snapshot(cid, dest, snapshot)){
+		// Удаляем заведённый сокет соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot take a snapshot of the connection handed to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot take a snapshot of the connection handed to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Устройство передаваемого соединения
+	handover_t record{};
+	// Запоминаем семейство адресов передаваемого сокета
+	record.family = static_cast <uint8_t> (family);
+	// Запоминаем вид устройства обмена передаваемого сокета
+	record.type = static_cast <uint8_t> (event::type_t::DATAGRAM);
+	// Запоминаем протокол передаваемого сокета
+	record.protocol = static_cast <uint8_t> (event::protocol_t::UDP);
+	// Запоминаем порт встречной стороны соединения
+	record.port = engine::source::port::get(oid);
+	// Запоминаем длину адреса встречной стороны соединения
+	record.length = static_cast <uint8_t> (target.size());
+	// Запоминаем размер снимка передаваемого сокета
+	record.size = static_cast <uint32_t> (snapshot.size());
+	// Запоминаем длину идентификатора соединения
+	record.key = static_cast <uint8_t> (this->_handoverKey.size());
+	// Запоминаем размер первой датаграммы соединения
+	record.data = static_cast <uint32_t> (size);
+	// Буфер сообщения передачи соединения
+	vector <uint8_t> message;
+	// Оставляем в начале сообщения место под опознаватель передачи
+	message.push_back(quic_server_t::HANDOVER_CONNECTION);
+	// Добавляем в сообщение устройство передаваемого соединения
+	message.insert(message.end(), reinterpret_cast <const uint8_t *> (&record), reinterpret_cast <const uint8_t *> (&record) + sizeof(record));
+	// Добавляем в сообщение адрес встречной стороны соединения
+	message.insert(message.end(), target.begin(), target.end());
+	// Добавляем в сообщение снимок передаваемого сокета
+	message.insert(message.end(), snapshot.begin(), snapshot.end());
+	// Добавляем в сообщение идентификатор соединения
+	message.insert(message.end(), this->_handoverKey.begin(), this->_handoverKey.end());
+	// Добавляем в сообщение первую датаграмму соединения
+	message.insert(message.end(), data, data + size);
+	/**
+	 * @brief Если сообщение передачи не помещается в буфер чтения движка
+	 *
+	 * @note Канал кластера принимает сообщение за один приём: большим его движок
+	 *       не прочтёт, и передача оборвалась бы на середине молча
+	 *
+	 */
+	if(message.size() > quic_server_t::HANDOVER_LIMIT){
+		// Удаляем заведённый сокет соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot hand the connection of %zu bytes to the worker [%d]: the message exceeds the limit of %zu bytes", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), message.size(), pid, quic_server_t::HANDOVER_LIMIT);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot hand the connection of %zu bytes to the worker [%d]: the message exceeds the limit of %zu bytes", log::flag_t::CRITICAL, ::getpid(), message.size(), pid, quic_server_t::HANDOVER_LIMIT);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Если отправить передачу работнику не удалось
+	if(this->_cluster->send(pid, message.data(), message.size()) == 0){
+		// Удаляем заведённый сокет соединения
+		engine::io::destroy(cid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot send the connection to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot send the connection to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	/**
+	 * @brief Расстаёмся со своим подключённым сокетом: обслуживает его теперь работник
+	 *
+	 * @note Снимок уже снят, и объект сокета живёт у работника. Держи мастер свой
+	 *       описатель дальше, датаграммы клиента доставались бы тому, кто спросит
+	 *       первым, и соединение шло бы вразнос
+	 *
+	 */
+	engine::io::destroy(cid);
+	/**
+	 * @brief Запоминаем маршрут соединения: обслуживает его работник
+	 *
+	 * @note Сессию, принятую на общем сокете, здесь НЕ снимаем: описатель у неё
+	 *       общий с сервером, подключением мастера она не является. Снятая сессия
+	 *       тотчас получает статус DESTROYED, и запрос адреса отправителя на ней
+	 *       отвечает пустотой, тогда как ключи маршрутизации снимаются отложенно:
+	 *       остаток той же пачки датаграмм пришёл бы на узел без адреса, передача
+	 *       отказала бы уже заведённому маршруту и датаграмма была бы потеряна.
+	 *       Под MS Windows так терялась датаграмма приложения (RFC 9221) - повторной
+	 *       отправки у неё нет, в отличие от потока
+	 *
+	 * @note Сессия следует за отправителем сама: ключ маршрутизации у неё задан
+	 *       идентификатором соединения, а адрес обновляется при смене пути,
+	 *       поэтому миграция клиента проходит разбор у мастера и без пересоздания
+	 *
+	 */
+	this->_route[this->_handoverKey] = pid;
+	// Запоминаем путь клиента, на котором соединение передано работнику
+	this->_routePath[this->_handoverKey] = this->peer(oid);
+	// Выводим успешный результат: соединение отдано работнику
+	return true;
+}
+/**
+ * @brief Метод приёма пересланной мастером датаграммы соединения
+ *
+ * @param data данные полученного сообщения
+ * @param size размер данных полученного сообщения
+ * @return     признак того, что сообщение было пересылкой датаграммы
+ *
+ */
+bool awh::unit::QuicServer::relay(const uint8_t * data, const size_t size) noexcept {
+	// Размер заголовка сообщения пересылки: опознаватель и длина идентификатора
+	const size_t head = (sizeof(uint8_t) + sizeof(uint8_t));
+	// Если сообщение короче заголовка - пересылкой оно не является
+	if((data == nullptr) || (size < head) || (data[0] != quic_server_t::HANDOVER_DATAGRAM))
+		// Выводим результат
+		return false;
+	// Длина идентификатора соединения в сообщении
+	const size_t length = static_cast <size_t> (data[1]);
+	// Если остатка сообщения не хватает на идентификатор и датаграмму
+	if((size - head) < (length + 1))
+		// Выводим результат
+		return false;
+	// Получаем идентификатор переданного соединения
+	const string key(reinterpret_cast <const char *> (data + head), length);
+	// Ищем свою сессию переданного соединения
+	auto i = this->_keys.find(key);
+	/**
+	 * @brief Если сессии соединения у работника нет - датаграмму обрабатывать некому
+	 *
+	 * @note Соединение могло завершиться, а мастер ещё не получил объявления отвода
+	 *       идентификатора. Сообщение пересылки потребителю не предназначалось
+	 *
+	 */
+	if(i == this->_keys.end())
+		// Выводим признак того, что сообщение было пересылкой датаграммы
+		return true;
+	// Получаем данные датаграммы соединения
+	const uint8_t * dgram = (data + head + length);
+	/**
+	 * @brief Скармливаем датаграмму соединению обычным путём принятой датаграммы
+	 *
+	 * @note Сокет соединения прежний и путь клиента не менялся: перепривязка не
+	 *       нужна, а удержание датаграммы до отчёта о подключении тем более -
+	 *       соединение уже подключено и отправку движок разрешает
+	 *
+	 */
+	this->read(i->second, dgram, (size - head - length));
+	// Выводим признак того, что сообщение было пересылкой датаграммы
+	return true;
+}
+/**
+ * @brief Метод пересылки датаграммы уже переданного соединения работнику
+ *
+ * @param pid  идентификатор процесса работника
+ * @param oid  идентификатор события сессии, принявшей датаграмму
+ * @param data данные датаграммы соединения
+ * @param size размер датаграммы соединения
+ * @return     признак того, что датаграмма переслана работнику
+ *
+ */
+bool awh::unit::QuicServer::relay(const pid_t pid, const event::id_t oid, const uint8_t * data, const size_t size) noexcept {
+	// Если данных датаграммы нет - пересылать нечего
+	if((data == nullptr) || (size == 0))
+		// Выводим результат отказа
+		return false;
+	// Ищем путь, на котором соединение передано работнику
+	auto p = this->_routePath.find(this->_handoverKey);
+	/**
+	 * @brief Если путь мастеру неизвестен - соединение требует полной передачи
+	 *
+	 * @note Без пути мастер не отличит миграцию от смены идентификатора, а
+	 *       угадывать путь по одному порту нельзя: полная передача заведёт
+	 *       соединение у работника заново
+	 *
+	 */
+	if((p == this->_routePath.end()) || p->second.empty())
+		// Выводим результат отказа
+		return false;
+	/**
+	 * @brief Сверяем путь отправителя с путём передачи соединения
+	 *
+	 * @note Смена пути означает миграцию (RFC 9000 §9): подключённый сокет работника
+	 *       прежнего клиента больше не узнаёт, и соединение передаётся заново
+	 *       с перепривязкой сессии к новому сокету
+	 *
+	 */
+	if(p->second != this->peer(oid))
+		// Выводим результат отказа
+		return false;
+	// Получаем событие обмена, ведущее к работнику
+	const event::id_t dest = this->_cluster->channel(pid);
+	// Если события обмена с работником нет - работник пал
+	if(dest == 0)
+		// Выводим результат отказа
+		return false;
+	// Буфер сообщения пересылки датаграммы
+	vector <uint8_t> message;
+	// Оставляем в начале сообщения место под опознаватель пересылки
+	message.push_back(quic_server_t::HANDOVER_DATAGRAM);
+	// Добавляем в сообщение длину идентификатора соединения
+	message.push_back(static_cast <uint8_t> (this->_handoverKey.size()));
+	// Добавляем в сообщение идентификатор соединения
+	message.insert(message.end(), this->_handoverKey.begin(), this->_handoverKey.end());
+	// Добавляем в сообщение датаграмму соединения
+	message.insert(message.end(), data, data + size);
+	/**
+	 * @brief Если сообщение пересылки не помещается в буфер чтения движка
+	 *
+	 * @note Канал кластера принимает сообщение за один приём: большим его движок
+	 *       не прочтёт, и пересылка оборвалась бы на середине молча
+	 *
+	 */
+	if(message.size() > quic_server_t::HANDOVER_LIMIT){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot forward the datagram of %zu bytes to the worker [%d]: the message exceeds the limit of %zu bytes", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), message.size(), pid, quic_server_t::HANDOVER_LIMIT);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot forward the datagram of %zu bytes to the worker [%d]: the message exceeds the limit of %zu bytes", log::flag_t::CRITICAL, ::getpid(), message.size(), pid, quic_server_t::HANDOVER_LIMIT);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Если отправить пересылку работнику не удалось
+	if(this->_cluster->send(pid, message.data(), message.size()) == 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("QUIC cluster master process [%d] cannot send the datagram to the worker [%d]", __PRETTY_FUNCTION__, {pid, oid, data, size}, log::flag_t::CRITICAL, ::getpid(), pid);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("QUIC cluster master process [%d] cannot send the datagram to the worker [%d]", log::flag_t::CRITICAL, ::getpid(), pid);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	// Выводим успешный результат: датаграмма переслана работнику
+	return true;
+}
+/**
+ * @brief Метод обработки отчёта движка об установленном подключении сессии
+ *
+ * @param oid идентификатор события сессии
+ * @param ok  результат установления подключения
+ *
+ */
+void awh::unit::QuicServer::connected(const event::id_t oid, const bool ok) noexcept {
+	// Выполняем поиск сессии соединения
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена
+	if(i == this->_sessions.end())
+		// Выходим из метода
+		return;
+	// Если подключение движком не установлено
+	if(!ok){
+		// Завершаем сессию соединения
+		this->erase(oid);
+		// Выходим из метода
+		return;
+	}
+	// Если удерживаемой первой датаграммы нет
+	if(i->second.carried.empty())
+		// Выходим из метода
+		return;
+	/**
+	 * @brief Переносим удерживаемую датаграмму в собственный буфер
+	 *
+	 * @note Разбор датаграммы вправе завершить сессию, а буфер её к тому мгновению
+	 *       уже освобождён: указатель на данные обязан пережить разбор
+	 *
+	 */
+	const string datagram = std::move(i->second.carried);
+	// Освобождаем буфер удерживаемой датаграммы сессии
+	i->second.carried.clear();
+	// Скармливаем соединению первую датаграмму, принятую мастером
+	this->read(oid, reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size());
 }
 /**
  * @brief Метод создания сессии нового соединения
@@ -485,6 +1313,21 @@ bool awh::unit::QuicServer::sendPort(const pid_t pid, const uint16_t port) noexc
  *
  */
 void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const event::id_t oid) noexcept {
+	/**
+	 * @brief Если соединение адресовано работнику кластера
+	 *
+	 * @details Сессию мастер не заводит: соединение обслуживает работник. Отклик
+	 *          на чтение ставится затем, что первую датаграмму движок отдаёт
+	 *          именно ему, сразу после создания сессии, - она и уедет работнику
+	 *          вместе с подключённым сокетом.
+	 *
+	 */
+	if((this->_cluster != nullptr) && this->_cluster->master() && (this->_handoverPid != 0)){
+		// Устанавливаем функцию обратного вызова на чтение датаграмм сессии
+		engine::io::on(oid, static_cast <engine::callback::read_t> (std::bind(&QuicServer::read, this, _1, _2, _3)));
+		// Выходим из метода
+		return;
+	}
 	// Если шаблон контекста безопасности не установлен
 	if(this->_ctx == 0){
 		/**
@@ -548,6 +1391,7 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	 * @note Метка ставится соединению, а не сокету сервера: сокет один на все
 	 *       соединения, и путь одного из них вправе проверку поддержки не пройти,
 	 *       тогда как остальным маркировка сохраняется
+	 *
 	 */
 	this->mark(oid, session, event::ecn_t::ECT0);
 }
@@ -606,9 +1450,63 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 	// Выполняем поиск сессии соединения
 	auto i = this->_sessions.find(oid);
 	// Если сессия соединения не найдена
-	if(i == this->_sessions.end())
+	if(i == this->_sessions.end()){
+		/**
+		 * @brief Если соединение адресовано работнику кластера
+		 *
+		 * @details Сессии у мастера под него нет намеренно: разбор идентификатора
+		 *          соединения ведёт мастер, а обслуживает соединение работник.
+		 *
+		 */
+		if((this->_cluster != nullptr) && this->_cluster->master() && (this->_handoverPid != 0)){
+			/**
+			 * @brief Если соединение уже передано работнику и путь клиента прежний - пересылаем датаграмму
+			 *
+			 * @details Под MS Windows ядро не отдаёт датаграммы подключённому сокету
+			 *          работника раньше общего сокета мастера, и мастер получает весь
+			 *          обмен соединения. Передавать снимок повторно нельзя: перепривязка
+			 *          снимает прежний сокет работника, а удерживаемая датаграмма
+			 *          перезаписывается до отчёта движка о подключении и пропадает.
+			 *          У датаграммы приложения (RFC 9221) повторной отправки нет.
+			 *
+			 * @note На POSIX ядро разводит датаграммы четвёркой сокета, и работнику
+			 *       они достаются напрямую: мастеру приходит только миграция, путь
+			 *       которой сменился, и пересылка здесь не срабатывает
+			 *
+			 */
+			if(this->relay(this->_handoverPid, oid, data, size))
+				// Выходим из метода: датаграмма отдана работнику
+				return;
+			// Если передача соединения работнику не выполнена
+			if(!this->handover(this->_handoverPid, oid, data, size)){
+				// Ищем маршрут идентификатора соединения
+				auto r = this->_route.find(this->_handoverKey);
+				/**
+				 * @brief Если маршрут не заведён - соединение новое, и мастер берёт его на себя
+				 *
+				 * @note Заведённый маршрут означает, что соединение уже живёт у
+				 *       работника: отбирать его нельзя, клиент получил бы сброс
+				 *       вместо продолжения. Датаграмма отбрасывается, клиент
+				 *       повторит отправку, а маршрут сохраняется
+				 *
+				 */
+				if(r == this->_route.end()){
+					// Запоминаем, что соединение мастер обслуживает сам
+					this->_route[this->_handoverKey] = 0;
+					// Снимаем путь клиента: соединение мастеру передачей не доставалось
+					this->_routePath.erase(this->_handoverKey);
+					// Сбрасываем адресата передачи
+					this->_handoverPid = 0;
+					// Выполняем создание сессии соединения своим ходом
+					this->accept(this->_eid, oid);
+					// Выполняем обработку принятой датаграммы
+					this->read(oid, data, size);
+				}
+			}
+		}
 		// Выходим из метода
 		return;
+	}
 	/**
 	 * Сессию ведём указателем, а не удерживаемой ссылкой: ниже вызываются функции
 	 * обратного вызова приложения ("open", а также "read"/"datagram" внутри process),
@@ -626,10 +1524,17 @@ void awh::unit::QuicServer::read(const event::id_t oid, const uint8_t * data, co
 	// Если уведомление о перегрузке пути включено
 	if(this->_ecn){
 		/**
-		 * Извлекаем метаданные принятой датаграммы с события сервера: маркировка
-		 * снимается с заголовка IP-пакета при приёме, а сессии её не хранят
+		 * @brief Извлекаем метаданные принятой датаграммы
+		 *
+		 * @details Маркировка снимается с заголовка IP-пакета при приёме, а сессии её
+		 *          не хранят. Спрашивается она у того события, которое датаграмму
+		 *          приняло: у работника кластера это подключённый сокет соединения,
+		 *          у мастера и одиночного процесса - общий сокет сервера.
+		 *
 		 */
-		const net::dgram_info_t info = engine::io::trafficInfo(this->_eid);
+		const event::id_t src = (((this->_cluster != nullptr) && !this->_cluster->master()) ? oid : this->_eid);
+		// Извлекаем метаданные принятой датаграммы с принявшего её события
+		const net::dgram_info_t info = engine::io::trafficInfo(src);
 		// Выполняем обработку входящей датаграммы с маркировкой перегрузки
 		session->connection->read(data, size, fmk::milliseconds(), info.congestion);
 	// Выполняем обработку входящей датаграммы
@@ -720,15 +1625,66 @@ void awh::unit::QuicServer::reroute(const event::id_t oid, session_t & session) 
 	/**
 	 * Перебираем введённые в обращение идентификаторы соединения
 	 */
-	for(auto & cid : added)
+	for(auto & cid : added){
 		// Привязываем идентификатор соединения к сессии
 		engine::multicast::bind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
+		// Запоминаем зеркало маршрутизации: идентификатор соединения и его сессия
+		this->_keys[string(reinterpret_cast <const char *> (cid.data), cid.size)] = oid;
+		// Если кластер в работе и соединение обслуживает работник
+		if((this->_cluster != nullptr) && !this->_cluster->master()){
+			// Буфер объявления нового идентификатора соединения
+			vector <uint8_t> notice;
+			// Оставляем в начале объявления место под опознаватель ввода
+			notice.push_back(quic_server_t::HANDOVER_KEY_ADD);
+			// Добавляем в объявление длину введённого идентификатора соединения
+			notice.push_back(static_cast <uint8_t> (cid.size));
+			// Добавляем в объявление введённый идентификатор соединения
+			notice.insert(notice.end(), cid.data, cid.data + cid.size);
+			// Извлекаем путь клиента, на котором работник обслуживает соединение
+			const string path = this->peer(oid);
+			// Добавляем в объявление путь клиента вслед за идентификатором
+			notice.insert(notice.end(), path.begin(), path.end());
+			/**
+			 * @brief Объявляем мастеру новый идентификатор соединения
+			 *
+			 * @details Клиент вправе сменить адрес и использовать при этом любой из
+			 *          выданных ему идентификаторов. Мастер встречает такую
+			 *          датаграмму на общем сокете и без объявления отдал бы её
+			 *          другому работнику - тому, у которого соединения нет.
+			 *          Путь едет вместе с идентификатором, чтобы мастер отличил
+			 *          смену идентификатора от миграции и переслал датаграмму
+			 *          без повторной передачи снимка.
+			 *
+			 */
+			this->_cluster->send(notice.data(), notice.size());
+		}
+	}
 	/**
 	 * Перебираем выведенные из обращения идентификаторы соединения
 	 */
-	for(auto & cid : removed)
+	for(auto & cid : removed){
 		// Снимаем идентификатор соединения с сессии
 		engine::multicast::unbind(oid, net::origin_key_t(cid.data, static_cast <uint8_t> (cid.size)));
+		// Выделяем отведённый идентификатор соединения в строку маршрута
+		const string key(reinterpret_cast <const char *> (cid.data), cid.size);
+		// Снимаем зеркало маршрутизации отведённого идентификатора
+		this->_keys.erase(key);
+		// Снимаем маршрут отведённого идентификатора у мастера
+		this->_route.erase(key);
+		// Снимаем путь клиента отведённого идентификатора соединения
+		this->_routePath.erase(key);
+		// Если кластер в работе и соединение обслуживает работник
+		if((this->_cluster != nullptr) && !this->_cluster->master()){
+			// Буфер объявления отвода идентификатора соединения
+			vector <uint8_t> notice;
+			// Оставляем в начале объявления место под опознаватель отвода
+			notice.push_back(quic_server_t::HANDOVER_KEY_REMOVE);
+			// Добавляем в объявление отводимый идентификатор соединения
+			notice.insert(notice.end(), cid.data, cid.data + cid.size);
+			// Отправляем мастеру объявление отвода идентификатора соединения
+			this->_cluster->send(notice.data(), notice.size());
+		}
+	}
 }
 /**
  * @brief Метод обработки событий изменения статуса процесса кластера
@@ -756,139 +1712,97 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 		// Если событие представляет из себя запуск процесса
 		case static_cast <uint8_t> (unit::cluster_t::event_t::START): {
 			/**
-			 * @brief Если процесс является родительским процессом кластера
+			 * @brief Если процесс является мастером кластера
 			 *
-			 * @details Родительский процесс раздаёт порты прослушивания дочерним процессам, а
-			 *          каждый дочерний процесс поднимает собственный сокет на выделенном ему
-			 *          порту после fork (см. message()). Единая для всех систем схема, различие
-			 *          только в политике выделения портов.
+			 * @note Событие запуска приходит мастеру ОДНО на весь кластер и несёт его
+			 *       собственный номер процесса, а не номер работника: работники к
+			 *       этому мигу порождены все
 			 *
 			 */
-			if(this->clusterFamily() == cluster_t::family_t::MASTER){
+			if(this->_cluster->master()){
 				/**
-				 * Определяем диапазон портов: явно заданный диапазон либо единственный
-				 * порт прослушивания, если диапазон не задавался
+				 * @brief Мастер здесь не делает ничего
+				 *
+				 * @note Учёт работников идёт не отсюда: порождение работника ещё не
+				 *       значит, что канал с ним связан, а отдать снимок в несвязанный
+				 *       канал нельзя. Учитывается работник по своей собственной
+				 *       просьбе - она и служит признаком связанности канала
+				 *
 				 */
-				const uint16_t begin = ((this->_portBegin > 0) ? this->_portBegin : this->_listenPort);
-				// Определяем конечный диапазон портов
-				uint16_t end = ((this->_portEnd > 0) ? this->_portEnd : begin);
-				// Если конечный порт меньше начального - выравниваем к единственному порту
-				if(end < begin)
-					// Устанавливаем конечный порт равным начальному
-					end = begin;
-				// Если порт прослушивания определён
-				if(begin > 0){
-					// Формируем пул доступных портов диапазона
-					vector <uint16_t> ports;
-					// Резервируем память под пул портов
-					ports.reserve((end - begin) + 1);
-					/**
-					 * Заполняем пул доступных портов диапазона
-					 */
-					for(uint32_t port = begin; port <= end; ++port)
-						// Добавляем порт в пул доступных портов
-						ports.push_back(static_cast <uint16_t> (port));
-					// Получаем список идентификаторов дочерних процессов кластера
-					const auto workers = this->clusterWorkers();
-					// Индекс выделяемого из пула порта
-					size_t index = 0;
-					// Очищаем список дочерних процессов, работающих в холостую
-					this->_idle.clear();
-					// Очищаем карту выделенных дочерним процессам портов
-					this->_ports.clear();
-					/**
-					 * Раздаём порты прослушивания дочерним процессам: уникальные порты
-					 * диапазона выделяются по порядку, пока не закончатся
-					 */
-					for(const auto & worker : workers){
-						// Если в диапазоне остаётся неиспользованный уникальный порт
-						if(index < ports.size())
-							// Отправляем дочернему процессу очередной уникальный порт диапазона
-							this->sendPort(worker, ports[index]);
-						// Если уникальные порты диапазона исчерпаны
-						else {
-							/**
-							 * Для операционной системы Linux или FreeBSD
-							 *
-							 * @note Оставшимся дочерним процессам достаётся последний порт
-							 *       диапазона: несколько процессов делят его через SO_REUSEPORT,
-							 *       а ядро распределяет между ними входящие датаграммы. Частный
-							 *       случай единственного порта диапазона - он достаётся всем
-							 *
-							 */
-							#if defined(__AWH_CLUSTER_BALANCE__)
-								// Отправляем дочернему процессу последний порт диапазона
-								this->sendPort(worker, ports.back());
-							/**
-							 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
-							 *
-							 * @note Порт выделяется дочернему процессу монопольно (SO_REUSEPORT
-							 *       в этих системах не даёт нескольким процессам полноценно
-							 *       работать на общем порту), поэтому оставшийся без порта
-							 *       дочерний процесс работает в холостую: его идентификатор
-							 *       сохраняется для ручной доотправки порта методом clusterAssign()
-							 *
-							 */
-							#else
-								// Сохраняем дочерний процесс в списке работающих в холостую
-								this->_idle.insert(worker);
-							#endif
-						}
-						// Переходим к следующему порту диапазона
-						++index;
-					}
-				}
-			// Если процесс является дочерним процессом кластера
+			// Если процесс является работником кластера
 			} else {
-				// Если работа юнита ещё не запущена
-				if(!this->working()){
-					/**
-					 * @brief Если унаследованное событие сервера создано
-					 *
-					 * @details Дочерний процесс поднимает собственный сокет только после получения
-					 *          выделенного родительским процессом порта (см. message()), поэтому
-					 *          унаследованное несвязанное событие сервера уничтожается, а оповещение
-					 *          приложения о запуске откладывается флагом ожидания порта.
-					 *
-					 */
-					if(this->_eid != 0){
-						// Снимаем функцию обратного вызова определения сессии
-						engine::io::on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
-						// Снимаем функцию обратного вызова на создание сессии соединения
-						engine::io::on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
-						// Уничтожаем унаследованное событие сервера
-						engine::io::destroy(this->_eid);
-						// Запоминаем унаследованный идентификатор для приведения обращений фасада к собственному событию (см. actual())
-						this->_iid = this->_eid;
-						// Сбрасываем идентификатор события сервера
-						this->_eid = 0;
+				/**
+				 * @brief Работник расстаётся с унаследованным общим сокетом мастера
+				 *
+				 * @details Пересоздание движка после fork описатели не закрывает, и
+				 *          общий сокет мастера остался бы у работника открытым:
+				 *          датаграммы клиентов доставались бы и ему, а сессий под них
+				 *          он не заводит. Уничтожается сокет явно.
+				 *
+				 * @note На MS Windows работник порождается заново и ничего не наследует:
+				 *       своих событий у него к этому мигу нет вовсе, и разбор ниже
+				 *       ничего не делает
+				 *
+				 */
+				if(this->_eid != 0){
+					// Снимаем функцию обратного вызова определения сессии
+					engine::io::on(this->_eid, static_cast <engine::callback::origin_t> (nullptr));
+					// Снимаем функцию обратного вызова на создание сессии соединения
+					engine::io::on(this->_eid, static_cast <engine::callback::accept_t> (nullptr));
+					// Уничтожаем унаследованное событие сервера вместе с его сокетом
+					engine::io::destroy(this->_eid);
+					// Запоминаем унаследованный идентификатор для приведения обращений фасада к собственному событию (см. actual())
+					this->_iid = this->_eid;
+					// Сбрасываем идентификатор события сервера
+					this->_eid = 0;
+				}
+				// Если унаследованное событие интервала таймеров соединений создано
+				if(this->_tid != 0){
+					// Уничтожаем унаследованное событие интервала таймеров соединений
+					engine::io::destroy(this->_tid);
+					// Сбрасываем идентификатор события интервала таймеров соединений
+					this->_tid = 0;
+				}
+				/**
+				 * @brief Заводим собственные события работника
+				 *
+				 * @note Событие сервера работника остаётся НЕПРИВЯЗАННЫМ: общий сокет
+				 *       держит мастер, а работнику достаётся подключённый сокет
+				 *       соединения снимком. Событие нужно лишь опознавателем для
+				 *       обращений фасада; таймер же работник поднимает всерьёз -
+				 *       соединения его живут по своим срокам
+				 *
+				 */
+				if(this->issue(this->_family) != 0){
+					// Если адрес прослушивания сохранён
+					if(!this->_listenHost.empty())
+						// Восстанавливаем адрес прослушивания на событии сервера работника
+						engine::address::set(this->_eid, this->_listenType, this->_listenHost);
+					// Устанавливаем сохранённый порт прослушивания опознавателем
+					engine::source::port::set(this->_eid, this->_listenPort);
+					// Если привязка и запуск события интервала таймеров соединений выполнены
+					if(engine::io::commit(this->_tid) && engine::io::launch(this->_tid)){
+						// Опознаватель просьбы работника о передаче соединений
+						const uint8_t request = quic_server_t::HANDOVER_REQUEST;
+						/**
+						 * @brief Объявляем мастеру о своей готовности обслуживать соединения
+						 *
+						 * @details Просьба эта и задаёт порядок: к мигу её отправки канал
+						 *          заведомо связан - работник только что по нему написал, -
+						 *          тогда как мастер о связанности канала узнать не может вовсе.
+						 *
+						 */
+						this->_cluster->send(&request, sizeof(request));
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("server_status", event::status_t::LAUNCHED);
 					}
-					// Если унаследованное событие интервала таймеров соединений создано
-					if(this->_tid != 0){
-						// Уничтожаем унаследованное событие интервала таймеров соединений
-						engine::io::destroy(this->_tid);
-						// Сбрасываем идентификатор события интервала таймеров соединений
-						this->_tid = 0;
-					}
-					// Взводим флаг ожидания выделенного родительским процессом порта прослушивания
-					this->_awaitingPort = true;
-					// Выполняем получение идентификатора функции обратного вызова
-					const callback_t::id_t fid = this->_callback.id("status");
-					// Если функция обратного вызова установлена
-					if(this->_callback.is(fid))
-						// Переименовываем callback status в server_status
-						this->_callback.set(fid, this->_callback.id("server_status"), this->_callback);
-					// Устанавливаем функцию обратного вызова на запуск системы
-					this->_callback.on <void (const event::status_t)> (fid, static_cast <void (quic_server_t::*)(const event::status_t)> (&quic_server_t::launch), this, _1);
-					// Выполняем запуск работы основного юнита (сокет будет привязан после получения порта)
-					unit_t::start();
 				}
 			}
 		} break;
 		// Если событие представляет из себя остановку процесса
 		case static_cast <uint8_t> (unit::cluster_t::event_t::STOP): {
-			// Если процесс является дочерним процессом кластера и его работа запущена
-			if((this->clusterFamily() == cluster_t::family_t::CHILDREN) && this->working())
+			// Если процесс является работником кластера и его работа запущена
+			if(!this->_cluster->master() && this->working())
 				// Останавливаем работу основного юнита
 				unit_t::stop();
 		} break;
@@ -905,42 +1819,80 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
  *
  */
 void awh::unit::QuicServer::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
-	/**
-	 * Если дочерний процесс ожидает выделенный родительским процессом порт прослушивания
-	 * и получено корректное сообщение
-	 */
-	if(this->_awaitingPort && (data != nullptr) && (size >= sizeof(quic_cluster_message_t))){
-		// Тип полученного сообщения
-		quic_cluster_message_t message = quic_cluster_message_t::NONE;
-		// Извлекаем тип сообщения из полученных данных
-		::memcpy(&message, data, sizeof(message));
-		// Если сообщение несёт выделенный порт прослушивания и его размер корректен
-		if((message == quic_cluster_message_t::PORT) && ((size - sizeof(message)) == sizeof(uint16_t))){
-			// Выделенный родительским процессом порт прослушивания
-			uint16_t port = 0;
-			// Извлекаем выделенный порт прослушивания из полученных данных
-			::memcpy(&port, data + sizeof(message), sizeof(port));
-			// Создаём собственный сокет сервера и таймер соединений в дочернем процессе
-			if(this->issue(this->_family) != 0){
-				// Восстанавливаем адрес прослушивания на собственном сокете
-				if(!this->_listenHost.empty())
-					// Устанавливаем сохранённый адрес прослушивания сервера
-					engine::address::set(this->_eid, this->_listenType, this->_listenHost);
-				// Устанавливаем выделенный родительским процессом порт прослушивания
-				engine::source::port::set(this->_eid, port);
-				// Привязываем собственный сокет и таймер дочернего процесса (SO_REUSEPORT установлен в issue())
-				if(engine::io::commit(this->_eid) && engine::io::commit(this->_tid)){
-					// Сбрасываем флаг ожидания выделенного порта прослушивания
-					this->_awaitingPort = false;
-					/**
-					 * Оповещаем приложение о запуске сервера дочернего процесса: это
-					 * переводит фасад к launch()/listen() на уже привязанном собственном
-					 * сокете дочернего процесса
-					 */
-					this->_callback.call <void (const event::status_t)> ("server_status", event::status_t::LAUNCHED);
-				}
+	// Если кластер в работе
+	if(this->_cluster != nullptr){
+		/**
+		 * @brief Если сообщение получено мастером
+		 *
+		 * @note Служебные сообщения потребителю не предназначались: это разговор
+		 *       юнита с юнитом, и наружу он не выходит
+		 *
+		 */
+		if(this->_cluster->master()){
+			// Если сообщение оказалось просьбой работника о передаче соединений
+			if((data != nullptr) && (size == sizeof(uint8_t)) && (data[0] == quic_server_t::HANDOVER_REQUEST)){
+				// Учитываем работника, готового обслуживать соединения
+				this->handover(pid);
+				// Прерываем выполнение: сообщение потребителю не предназначалось
+				return;
 			}
-		}
+			/**
+			 * @brief Если сообщение оказалось объявлением идентификатора соединения
+			 *
+			 * @details Работник объявляет идентификаторы, которые выдал клиенту и
+			 *          которые клиент вправе использовать при миграции. Без объявления
+			 *          мастер встретил бы датаграмму миграции с незнакомым
+			 *          идентификатором и отдал бы её другому работнику - тому, у
+			 *          которого соединения нет.
+			 *
+			 */
+			if((data != nullptr) && (size > sizeof(uint8_t)) &&
+			  ((data[0] == quic_server_t::HANDOVER_KEY_ADD) || (data[0] == quic_server_t::HANDOVER_KEY_REMOVE))){
+				// Если работник объявил новый идентификатор соединения
+				if(data[0] == quic_server_t::HANDOVER_KEY_ADD){
+					// Длина заголовка объявления: опознаватель и длина идентификатора
+					const size_t head = (sizeof(uint8_t) + sizeof(uint8_t));
+					// Выделяем длину объявленного идентификатора соединения
+					const size_t length = static_cast <size_t> (data[1]);
+					// Если объявление не вмещает идентификатор соединения заявленной длины
+					if((size - head) < length)
+						// Прерываем выполнение: объявление повреждено
+						return;
+					// Выделяем идентификатор соединения из объявления
+					const string key(reinterpret_cast <const char *> (data + head), length);
+					// Выделяем путь клиента, на котором работник обслуживает соединение
+					const string path(reinterpret_cast <const char *> (data + head + length), (size - head - length));
+					// Запоминаем маршрут: соединение обслуживает объявивший работник
+					this->_route[key] = pid;
+					/**
+					 * @brief Запоминаем путь клиента объявленного идентификатора соединения
+					 *
+					 * @note Путь сообщил работник, обслуживающий соединение: смена
+					 *       идентификатора не есть миграция, и датаграмму по нему
+					 *       мастер перешлёт без повторной передачи снимка
+					 *
+					 */
+					this->_routePath[key] = path;
+				// Если работник объявил отвод идентификатора соединения
+				} else {
+					// Выделяем идентификатор соединения из объявления
+					const string key(reinterpret_cast <const char *> (data + sizeof(uint8_t)), size - sizeof(uint8_t));
+					// Снимаем маршрут отведённого идентификатора соединения
+					this->_route.erase(key);
+					// Снимаем путь клиента отведённого идентификатора соединения
+					this->_routePath.erase(key);
+				}
+				// Прерываем выполнение: сообщение потребителю не предназначалось
+				return;
+			}
+		// Если работник получил переданное мастером соединение
+		} else if(this->handover(data, size))
+			// Прерываем выполнение: сообщение потребителю не предназначалось
+			return;
+		// Если работник получил пересланную мастером датаграмму соединения
+		else if(this->relay(data, size))
+			// Прерываем выполнение: сообщение потребителю не предназначалось
+			return;
 	}
 	// Выполняем функцию обратного вызова
 	this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
@@ -972,6 +1924,9 @@ void awh::unit::QuicServer::error(const pid_t pid, const event::error_t error, c
 /**
  * @brief Метод установки адреса удалённого эндпоинта соединению из движка
  *
+ * @note Узел-приёмник хранит адрес собеседника в адресе источника, а клиентский
+ *       узел работника кластера - в цели подключения: его адрес источника свой
+ *
  * @param oid        идентификатор события сессии
  * @param connection соединение, которому устанавливается адрес эндпоинта
  *
@@ -979,12 +1934,25 @@ void awh::unit::QuicServer::error(const pid_t pid, const event::error_t error, c
 void awh::unit::QuicServer::endpoint(const event::id_t oid, quic::connection_t * connection) const noexcept {
 	// Структура сетевого адреса удалённого эндпоинта сессии
 	unique_ptr <net::addr_t> addr = nullptr;
-	// Если структура адреса удалённого эндпоинта в семействе IPv4 не получена
-	if(!engine::address::get(oid, event::address_t::IPV4, addr))
-		// Извлекаем структуру адреса удалённого эндпоинта в семействе IPv6
-		engine::address::get(oid, event::address_t::IPV6, addr);
-	// Устанавливаем адрес удалённого эндпоинта соединению штатной структурой адреса и портом источника
-	connection->address(addr.get(), engine::source::port::get(oid));
+	// Порт удалённого эндпоинта сессии
+	uint16_t port = 0;
+	// Если сессия работника кластера заведена клиентским узлом движка
+	if(engine::io::node(oid) == event::node_t::CLIENT){
+		// Извлекаем структуру адреса удалённого эндпоинта из цели подключения узла
+		engine::target::get(oid, addr);
+		// Извлекаем порт удалённого эндпоинта из цели подключения узла
+		port = engine::target::port::get(oid);
+	// Если сессия заведена узлом-приёмником движка
+	} else {
+		// Если структура адреса удалённого эндпоинта в семействе IPv4 не получена
+		if(!engine::address::get(oid, event::address_t::IPV4, addr))
+			// Извлекаем структуру адреса удалённого эндпоинта в семействе IPv6
+			engine::address::get(oid, event::address_t::IPV6, addr);
+		// Извлекаем порт удалённого эндпоинта из адреса источника узла
+		port = engine::source::port::get(oid);
+	}
+	// Устанавливаем адрес удалённого эндпоинта соединению штатной структурой адреса и портом
+	connection->address(addr.get(), port);
 }
 /**
  * @brief Метод отправки объединённых данных в туннельный поток сессии
@@ -1076,11 +2044,12 @@ void awh::unit::QuicServer::mark(const event::id_t oid, session_t & session, con
 		// Выходим из метода - смена маркировки не требуется
 		return;
 	/**
-	 * Если смена маркировки исходящих датаграмм соединения не выполнена
+	 * @brief Если смена маркировки исходящих датаграмм соединения не выполнена
 	 *
 	 * @note Маркировка ставится событию соединения: движок кладёт её в управляющие
 	 *       данные отправки, и она едет вместе со своей датаграммой. Метка сокета
 	 *       здесь не годится - сокет один на все соединения сервера
+	 *
 	 */
 	if(!engine::qos::ecn::set(oid, this->_family, marking)){
 		/**
@@ -1113,8 +2082,69 @@ void awh::unit::QuicServer::mark(const event::id_t oid, session_t & session, con
  *
  */
 bool awh::unit::QuicServer::origin([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, net::origin_key_t & key) noexcept {
-	// Выводим идентификатор соединения получателя в качестве ключа сессии
-	return quic::route(data, size, quic::connection_t::LOCAL_CID_SIZE, key);
+	// Если идентификатор соединения получателя из датаграммы не извлечён
+	if(!quic::route(data, size, quic::connection_t::LOCAL_CID_SIZE, key))
+		// Выводим отрицательный результат: датаграмма протоколу не принадлежит
+		return false;
+	/**
+	 * @brief Если разбор соединений ведёт мастер кластера
+	 *
+	 * @details Общий сокет один на весь кластер, и разбирает его мастер: ядро
+	 *          разводит датаграммы по четвёрке сокета, а соединение QUIC живёт по
+	 *          идентификатору, и клиент, сменивший адрес, достался бы работнику
+	 *          без сессии. Работнику отдаётся подключённый сокет соединения - он
+	 *          и держит клиента при нём, а миграция возвращает датаграмму мастеру.
+	 *
+	 * @note Передача здесь не выполняется: отклик определения сессии адреса
+	 *       отправителя не несёт, а без него подключённый сокет не завести.
+	 *       Решение запоминается адресатом, а передачу делает создание сессии
+	 *       с первой датаграммой
+	 *
+	 */
+	if((this->_cluster != nullptr) && this->_cluster->master()){
+		// Выделяем идентификатор соединения в строку маршрута
+		const string route(reinterpret_cast <const char *> (key.data), static_cast <size_t> (key.size));
+		// Ищем маршрут идентификатора соединения
+		auto i = this->_route.find(route);
+		// Запоминаем идентификатор соединения для передачи
+		this->_handoverKey = route;
+		/**
+		 * @brief Если соединение уже обслуживается, а датаграмма пришла на общий сокет
+		 *
+		 * @details Так бывает при миграции пути (RFC 9000 §9): клиент сменил адрес,
+		 *          подключённый сокет работника его больше не узнаёт, и датаграмма
+		 *          достаётся общему сокету мастера. Маршрут при этом уже заведён,
+		 *          и работник у соединения прежний.
+		 *
+		 */
+		if(i != this->_route.end())
+			// Запоминаем адресата передачи: нуль - соединение обслуживает сам мастер
+			this->_handoverPid = i->second;
+		// Если работников, готовых обслуживать соединения, нет вовсе
+		else if(this->_handoverWorkers.empty()){
+			// Запоминаем, что соединение мастер обслуживает сам
+			this->_route[route] = 0;
+			// Сбрасываем адресата передачи
+			this->_handoverPid = 0;
+		// Если соединение новое и работники есть
+		} else {
+			// Получаем работника, которому соединение достаётся по очереди
+			const pid_t pid = this->_handoverWorkers.at(this->_handoverNext % this->_handoverWorkers.size());
+			// Передвигаем очередь на работника следующего
+			this->_handoverNext++;
+			/**
+			 * @brief Запоминаем адресата передачи
+			 *
+			 * @note Маршрут заводится только по успешной передаче: неудачную
+			 *       передачу нового соединения мастер берёт на себя, а неудачную
+			 *       передачу миграции отбрасывает, не отбирая соединение у работника
+			 *
+			 */
+			this->_handoverPid = pid;
+		}
+	}
+	// Выводим положительный результат: сессия заводится своим ходом
+	return true;
 }
 /**
  * @brief Метод установки названия кластера
@@ -1229,16 +2259,6 @@ void awh::unit::QuicServer::clusterMode(const event::mode_t mode) noexcept {
 	this->_clusterParams.mode = mode;
 }
 /**
- * @brief Метод получения списка дочерних процессов, не получивших порт прослушивания
- *
- * @return список идентификаторов дочерних процессов, работающих в холостую
- *
- */
-unordered_set <pid_t> awh::unit::QuicServer::clusterIdle() const noexcept {
-	// Возвращаем список дочерних процессов, не получивших порт прослушивания
-	return this->_idle;
-}
-/**
  * @brief Метод получения списка дочерних процессов
  *
  * @return список дочерних процессов
@@ -1251,38 +2271,6 @@ unordered_set <pid_t> awh::unit::QuicServer::clusterWorkers() const noexcept {
 		return this->_cluster->workers();
 	// Возвращаем значение по умолчанию
 	return {};
-}
-/**
- * @brief Метод установки диапазона портов для выделения дочерним процессам кластера
- *
- * @param begin начальный порт диапазона (0 - использовать порт прослушивания)
- * @param end   конечный порт диапазона (0 - использовать порт прослушивания)
- *
- */
-void awh::unit::QuicServer::clusterRange(const uint16_t begin, const uint16_t end) noexcept {
-	// Устанавливаем начальный порт диапазона выделения портов дочерним процессам
-	this->_portBegin = begin;
-	// Устанавливаем конечный порт диапазона выделения портов дочерним процессам
-	this->_portEnd = end;
-}
-/**
- * @brief Метод отправки порта прослушивания конкретному дочернему процессу кластера
- *
- * @param pid  идентификатор дочернего процесса
- * @param port порт прослушивания для дочернего процесса
- * @return     результат отправки порта дочернему процессу
- *
- */
-bool awh::unit::QuicServer::clusterAssign(const pid_t pid, const uint16_t port) noexcept {
-	// Отправляем порт прослушивания дочернему процессу
-	if(this->sendPort(pid, port)){
-		// Исключаем дочерний процесс из списка работающих в холостую
-		this->_idle.erase(pid);
-		// Возвращаем положительный результат
-		return true;
-	}
-	// Возвращаем значение по умолчанию
-	return false;
 }
 /**
  * @brief Метод установки флага автоматического возрождения процессов
@@ -1494,13 +2482,16 @@ bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid)){
 		/**
-		 * В режиме кластера фиксация настроек (привязка сокета) выполняется в каждом
-		 * дочернем процессе после fork на собственном сокете, поэтому на событии
-		 * родительского процесса привязка не производится (см. cluster())
+		 * @brief Если фиксацию заказывает работник кластера
+		 *
+		 * @details Общий сокет держит мастер, а работнику достаётся подключённый сокет
+		 *          соединения снимком. Привяжи работник свой общий сокет, он отобрал
+		 *          бы датаграммы у мастера, а сессий под них не завёл бы.
+		 *
 		 */
-		if((this->_clusterParams.mode == event::mode_t::ENABLED) && (eid == this->_eid))
-			// Возвращаем положительный результат - фиксация отложена в дочерние процессы
-			return true;
+		if((this->_cluster != nullptr) && !this->_cluster->master())
+			// Выполняем фиксацию настроек события интервала таймеров соединений
+			return engine::io::commit(this->_tid);
 		// Выполняем фиксацию настроек события сервера и события интервала таймеров соединений
 		return (engine::io::commit(this->_eid) && engine::io::commit(this->_tid));
 	}
@@ -1515,21 +2506,21 @@ bool awh::unit::QuicServer::commit(const event::id_t eid) noexcept {
  *
  */
 bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
-	/**
-	 * В режиме кластера дочерний процесс пересоздаёт собственное событие сервера с
-	 * новым идентификатором (см. message()), который не совпадает с переданным фасадом
-	 * идентификатором родительского процесса, поэтому запуск ведётся по собственному
-	 * событию сервера без проверки актуальности переданного идентификатора
-	 */
-	if(this->_clusterParams.mode == event::mode_t::ENABLED){
-		// Если собственное событие сервера дочернего процесса не создано
-		if(this->_eid == 0)
-			// Возвращаем значение по умолчанию
-			return false;
 	// Если событие сервера не актуально
-	} else if(!this->isActual(eid))
+	if(!this->isActual(eid))
 		// Возвращаем значение по умолчанию
 		return false;
+	/**
+	 * @brief Если запуск заказывает работник кластера
+	 *
+	 * @note Событие сервера работника не привязано и не запускается: приём ведут
+	 *       подключённые сокеты соединений, а от события сервера работнику нужен
+	 *       лишь опознаватель для обращений фасада
+	 *
+	 */
+	if((this->_cluster != nullptr) && !this->_cluster->master())
+		// Выполняем запуск работы события интервала таймеров соединений
+		return engine::io::launch(this->_tid);
 	// Если запуск события сервера и события интервала таймеров соединений не выполнен
 	if(!engine::io::launch(this->_eid) || !engine::io::launch(this->_tid))
 		// Возвращаем значение по умолчанию
@@ -1685,7 +2676,7 @@ uint16_t awh::unit::QuicServer::getPort(const event::id_t eid) const noexcept {
 bool awh::unit::QuicServer::setPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid)){
-		// Кэшируем порт прослушивания для пересоздания сокета в дочернем процессе кластера
+		// Запоминаем порт: к нему мастер привязывает передаваемый работнику сокет, а работник восстанавливает его на своём событии
 		if(eid == this->_eid)
 			// Сохраняем порт прослушивания сервера
 			this->_listenPort = port;
@@ -2458,13 +3449,13 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	// Запоминаем семейство адресов события сервера
 	this->_family = ((family == event::family_t::IPV6) ? event::family_t::IPV6 : event::family_t::IPV4);
 	/**
-	 * Снимаем уведомление о перегрузке пути, если система отметок не выдаёт
+	 * @brief Снимаем уведомление о перегрузке пути, если система отметок не выдаёт
 	 *
 	 * @details Отметку ставит маршрутизатор, а показывает её принимающему уже ядро.
 	 *          Показывают не все: NetBSD и OpenBSD по IPv4 не показывают вовсе. Помечай
 	 *          мы там свои пакеты поддержкой отметок, обратных не увидели бы никогда -
 	 *          и договор велел бы признать проверку несостоявшейся и отметки отключить
-	 *          (RFC 9000 §13.4.2). Здесь тот же исход достигается сразу, без лишнего круга
+	 *          (RFC 9000 §13.4.2). Здесь тот же исход достигается сразу, без лишнего круга.
 	 *
 	 * @note Управление заторами от этого не страдает: оно переходит на потери, которые
 	 *       видны всегда. Теряется один сигнал из двух, и только там, где его и нет
@@ -2547,28 +3538,32 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
  *
  */
 void awh::unit::QuicServer::stop() noexcept {
-	/**
-	 * Для операционных систем, отличных от MS Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		/**
-		 * В режиме кластера работу останавливает родительский процесс: он не запускает
-		 * собственный цикл событий (working() остаётся ложным), а лишь супервизирует
-		 * дочерние процессы, поэтому остановка кластера не гейтится на working()
-		 */
-		if(this->_clusterParams.mode == event::mode_t::ENABLED){
-			// Если кластер инициализирован
-			if(this->_cluster != nullptr)
-				// Останавливаем работу кластера (каждый дочерний процесс остановит свой сокет)
-				this->_cluster->stop();
-			// Выходим из метода
-			return;
-		}
-	#endif
 	// Если работа юнита запущена
-	if(this->working())
-		// Выполняем остановку работы основного юнита
-		unit_t::stop();
+	if(this->working()){
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если кластер в работе и процесс является мастером
+			if((this->_cluster != nullptr) && this->_cluster->master())
+				// Останавливаем работу кластера: работники уходят вместе с мастером
+				this->_cluster->stop();
+			// Выполняем остановку работы основного юнита
+			unit_t::stop();
+		/**
+		 * @brief Для операционных систем, отличных от MS Windows
+		 *
+		 * @note Кластер здесь останавливается откликом о завершении работы юнита
+		 *       (см. launch()): сперва потребитель завершает свои соединения, и лишь
+		 *       затем уходят работники. Общий сокет мастера к тому мигу уже уничтожен,
+		 *       и новых соединений кластер не принимает
+		 *
+		 */
+		#else
+			// Выполняем остановку работы основного юнита
+			unit_t::stop();
+		#endif
+	}
 }
 /**
  * @brief Метод запуска сервера
@@ -2578,61 +3573,28 @@ void awh::unit::QuicServer::start() noexcept {
 	// Если работа юнита ещё не запущена
 	if(!this->working()){
 		/**
-		 * Для операционных систем, отличных от MS Windows
+		 * @brief Для операционной системы MS Windows кластер заводится ДО запуска юнита
+		 *
+		 * @details Работник у этой системы порождается заново той же строкой доводов,
+		 *          и отличает его лишь метка роли в окружении: спросить её не у чего,
+		 *          покуда объекта кластера нет. Знать роль нужно раньше, чем
+		 *          потребитель заведёт свои события, - иначе работник завёл бы
+		 *          собственный общий сокет вместо ожидаемой передачи соединений.
+		 *
+		 * @note Заводится здесь только объект: запускается кластер прежним порядком -
+		 *       откликом о запуске юнита, когда общий сокет мастера уже поднят
+		 *
+		 * @note На системах, отличных от MS Windows, роль известна и без кластера:
+		 *       работник порождается fork'ом и отличается от мастера собственным номером
+		 *       процесса (см. Unit::master()). Объект там заводится тем же откликом о
+		 *       запуске юнита - раньше он не нужен
+		 *
 		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			/**
-			 * В режиме кластера родительский процесс выступает супервизором: он не
-			 * поднимает собственный сокет, а раздаёт порты дочерним процессам (см.
-			 * cluster()), каждый из которых поднимает собственный сокет сервера после
-			 * fork. Схема единая для всех систем, различается лишь политика выделения
-			 * портов дочерним процессам
-			 */
-			if(this->_clusterParams.mode == event::mode_t::ENABLED){
-				// Если кластер не инициализирован
-				if(this->_cluster == nullptr){
-					// Создаём объект кластера для управления процессами сервера
-					this->_cluster = make_unique <cluster_t> ();
-					// Если имя кластера установлено
-					if(!this->_clusterParams.name.empty())
-						// Устанавливаем название кластера
-						this->_cluster->name(this->_clusterParams.name);
-					// Устанавливаем максимальное количество процессов кластера
-					this->_cluster->count(this->_clusterParams.count);
-					// Устанавливаем флаг автоматического возрождения процессов
-					this->_cluster->rebirth(this->_clusterParams.rebirth);
-					// Устанавливаем параметры защиты от цикла перезапусков процессов
-					this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
-				}
-				// Устанавливаем функцию обратного вызова на событие получения сигнала
-				this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &quic_server_t::exit, this, _1, _2);
-				// Устанавливаем функцию обратного вызова на событие пересоздания процесса
-				this->_cluster->on <void (const pid_t, const pid_t)> ("rebase", &quic_server_t::rebase, this, _1, _2);
-				// Устанавливаем функцию обратного вызова на событие отправки сообщений
-				this->_cluster->on <void (const pid_t, const size_t)> ("sending", &quic_server_t::sending, this, _1, _2);
-				// Устанавливаем функцию обратного вызова на получение событий кластера
-				this->_cluster->on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &quic_server_t::cluster, this, _1, _2);
-				// Устанавливаем функцию обратного вызова на событие получения сообщений
-				this->_cluster->on <void (const pid_t, const uint8_t *, const size_t)> ("message", &quic_server_t::message, this, _1, _2, _3);
-				// Устанавливаем функцию обратного вызова на событие изменения статуса кластера
-				this->_cluster->on <void (const pid_t, const event::status_t)> ("state", static_cast <void (quic_server_t::*)(const pid_t, const event::status_t)> (&quic_server_t::status), this, _1, _2);
-				// Устанавливаем функцию обратного вызова на событие получения ошибок кластера
-				this->_cluster->on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (quic_server_t::*)(const pid_t, const event::error_t, const string &)> (&quic_server_t::error), this, _1, _2, _3);
-				// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
-				this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (quic_server_t::*)(const pid_t, const event::status_t, const size_t)> (&quic_server_t::available), this, _1, _2, _3);
-				// Запускаем работу кластера (сокеты серверов поднимаются в дочерних процессах после fork)
-				this->_cluster->start();
-				// Выходим из метода
-				return;
-			}
+		#if defined(_WIN32) || defined(_WIN64)
+			// Заводим объект кластера для управления процессами сервера
+			this->clusterCreate();
 		#endif
-		/**
-		 * @brief Выполняем получение идентификатора функции обратного вызова
-		 *
-		 * @details Одиночный процесс (MS Windows либо режим без кластера): сервер поднимается
-		 *          штатным образом на собственном сокете.
-		 *
-		 */
+		// Выполняем получение идентификатора функции обратного вызова
 		const callback_t::id_t fid = this->_callback.id("status");
 		// Если функция обратного вызова установлена
 		if(this->_callback.is(fid))
@@ -2794,11 +3756,16 @@ void awh::unit::QuicServer::close(const event::id_t oid, const uint64_t code, st
  *
  */
 awh::unit::QuicServer::QuicServer() noexcept :
- _ecn(false), _retry(false), _awaitingPort(false),
- _eid(0), _tid(0), _iid(0), _portEnd(0), _portBegin(0),
+ _ecn(false), _retry(false),
+ _eid(0), _tid(0), _iid(0),
  _listenPort(0), _backlog(0), _ctx(0),
  _family(event::family_t::IPV4), _listenType(event::address_t::IPV4),
- _resetKey{""}, _listenHost{""}, _cluster(nullptr) {}
+ _resetKey{""}, _listenHost{""}, _cluster(nullptr) {
+	// Сбрасываем позицию очереди раздачи соединений между работниками
+	this->_handoverNext = 0;
+	// Сбрасываем адресата передачи соединения
+	this->_handoverPid = 0;
+}
 /**
  * @brief Деструктор
  *

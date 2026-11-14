@@ -3042,7 +3042,7 @@ bool awh::fs::protect(string_view addr, const bool resolve) noexcept {
 				// Если список собран, ставим его на файл
 				if(built){
 					// Устанавливаем список доступа
-					result = (::SetFileSecurityW(__danube_longpath__(fmk::convert(address)).c_str(), DACL_SECURITY_INFORMATION, sd) != FALSE);
+					result = (::SetFileSecurityW(__awh_longpath__(fmk::convert(address)).c_str(), DACL_SECURITY_INFORMATION, sd) != FALSE);
 					// Освобождаем собранный список
 					::LocalFree(sd);
 				}

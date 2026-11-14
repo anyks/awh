@@ -640,12 +640,17 @@ namespace awh {
 	/**
 	 * @brief Функция заведения волокна
 	 *
+	 * @note Принудительной подстановки здесь нет намеренно: в ветви ucontext ниже
+	 *       зовётся `getcontext`, который GCC считает возвращающим дважды и встраивать
+	 *       в помеченную `always_inline` функцию отказывается наотрез - отказ этот
+	 *       ошибкой сборки на любой ступени оптимизации, вплоть до `-O0`
+	 *
 	 * @param task функция, выполняемая волокном
 	 * @param size размер стека волокна в октетах
 	 * @return     заведённое волокно, либо nullptr при отказе
 	 *
 	 */
-	static __AWH_INLINE__ fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size) noexcept {
+	static fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size) noexcept {
 		// Если работа волокна не задана, заводить нечего
 		if(task == nullptr){
 			/**

@@ -233,8 +233,6 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	server.clusterName("ANYKS");
 	// Устанавливаем количество вокеров кластера для сервера
 	server.clusterCount(4);
-	// Устанавливаем диапазон портов кластера для сервера
-	server.clusterRange(2222, 2232);
 	// Включаем режим кластера для сервера
 	server.clusterMode(event::mode_t::ENABLED);
 	// Локальные транспортные параметры соединений QUIC (RFC 9000 §7.4)
@@ -261,9 +259,8 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	server.retry(true);
 	// Включаем уведомление о перегрузке пути (RFC 9000 §13.4)
 	server.ecn(true);
-	// Устанавливаем хост и порт сервера
-	// if(server.setPort(2222) && server.setHost("127.0.0.1")){
-	if(server.setHost("127.0.0.1")){
+	// Устанавливаем хост и порт сервера: порт один на весь кластер, разбор соединений ведёт мастер
+	if(server.setPort(2222) && server.setHost("127.0.0.1")){
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие установленного соединения QUIC

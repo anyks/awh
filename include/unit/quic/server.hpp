@@ -39,6 +39,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <vector>
 #include <cstdint>
 #include <string_view>
 
@@ -106,6 +107,140 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * @brief Признак введения идентификатора соединения в обращение
+				 *
+				 * @details Работник сообщает мастеру идентификатор, которым клиент
+				 *          станет адресовать соединение: мастер обязан знать его,
+				 *          чтобы вернуть мигрировавшую датаграмму тому же работнику.
+				 *          За опознавателем едут длина идентификатора, сам
+				 *          идентификатор и путь клиента "адрес:порт", на котором
+				 *          соединение обслуживается: по нему мастер отличает
+				 *          миграцию от смены идентификатора и пересылает датаграмму
+				 *          без повторной передачи снимка.
+				 *
+				 * \~english
+				 * @brief Sign of an introduction of an identifier of a connection into the circulation
+				 *
+				 * @details A worker reports to a master an identifier by which a client
+				 *          will address a connection: a master is obliged to know it
+				 *          in order to return a migrated datagram to that same worker.
+				 *          After the recogniser go a length of the identifier, the
+				 *          identifier itself and a path of the client "address:port" on
+				 *          which the connection is served: by it a master distinguishes
+				 *          a migration from a change of the identifier and forwards a
+				 *          datagram without a repeated transfer of the snapshot.
+				 *
+				 * \~
+				 */
+				static constexpr uint8_t HANDOVER_KEY_ADD = 0x03;
+				/**
+				 * \~russian
+				 * @brief Признак объявления работника о готовности обслуживать соединения
+				 *
+				 * @details Объявляется работник сам, и объявление это служит мастеру
+				 *          признаком связанности канала: порождение работника связи
+				 *          ещё не означает, а написанное работником - означает.
+				 *
+				 * @note Значение выбрано непечатным намеренно: объявление уходит
+				 *       первым сообщением работника и с полезной нагрузкой не
+				 *       смешивается
+				 *
+				 * \~english
+				 * @brief Sign of the declaration by a worker of a readiness to serve the connections
+				 *
+				 * @details It is declared by a worker itself, and this declaration serves a master as
+				 *          a sign of the connectedness of a channel: a spawning of a worker does not
+				 *          mean it yet, while what is written by a worker - does mean.
+				 *
+				 * @note A value is chosen unprintable on purpose: a declaration goes as the
+				 *       first message of a worker and is not mixed with a useful
+				 *       payload
+				 *
+				 * \~
+				 */
+				static constexpr uint8_t HANDOVER_REQUEST = 0x01;
+				/**
+				 * \~russian
+				 * @brief Предельный размер сообщения передачи соединения
+				 *
+				 * @details Предел задан буфером чтения сетевого движка: сообщение передачи
+				 *          принимается каналом кластера за один приём, и большим его
+				 *          движок не прочтёт. Датаграмма QUIC заведомо меньше предела
+				 *          (RFC 9000 §14), запас уходит на снимок сокета и адрес.
+				 *
+				 * \~english
+				 * @brief A limiting size of a message of a transfer of a connection
+				 *
+				 * @details The limit is set by a buffer of reading of a network engine: a message of a transfer
+				 *          is received by a channel of a cluster in one reception, and an engine will not read
+				 *          a larger one. A datagram of QUIC is knowingly smaller than the limit
+				 *          (RFC 9000 §14), the margin goes to a snapshot of a socket and an address.
+				 *
+				 * \~
+				 */
+				static constexpr size_t HANDOVER_LIMIT = 0x10000;
+				/**
+				 * \~russian
+				 * @brief Признак пересылки датаграммы уже переданного соединения
+				 *
+				 * @details Соединение передаётся работнику один раз, а дальше его датаграммы
+				 *          мастер пересылает сообщением с идентификатором соединения.
+				 *          Повторная передача снимком снимала бы у работника прежний сокет
+				 *          и перезаписывала удерживаемую датаграмму до отчёта движка о
+				 *          подключении: датаграмма приложения (RFC 9221) повторной отправки
+				 *          не имеет и пропадала бы безвозвратно. Так идёт обмен под MS Windows,
+				 *          где ядро не отдаёт датаграммы подключённому сокету работника
+				 *          раньше общего сокета мастера.
+				 *
+				 * \~english
+				 * @brief Sign of a forwarding of a datagram of an already transferred connection
+				 *
+				 * @details A connection is transferred to a worker once, and further its datagrams
+				 *          are forwarded by a master with a message carrying an identifier of the
+				 *          connection. A repeated transfer by a snapshot would remove a former
+				 *          socket of a worker and overwrite a held datagram before a report of an
+				 *          engine about a connection: a datagram of an application (RFC 9221)
+				 *          has no repeated sending and would be lost irretrievably. This is how
+				 *          the exchange goes under MS Windows, where a kernel does not give
+				 *          datagrams to a connected socket of a worker before a common socket
+				 *          of a master.
+				 *
+				 * \~
+				 */
+				static constexpr uint8_t HANDOVER_DATAGRAM = 0x05;
+				/**
+				 * \~russian
+				 * @brief Признак выведения идентификатора соединения из обращения
+				 *
+				 * \~english
+				 * @brief Sign of a withdrawal of an identifier of a connection from the circulation
+				 *
+				 * \~
+				 */
+				static constexpr uint8_t HANDOVER_KEY_REMOVE = 0x04;
+				/**
+				 * \~russian
+				 * @brief Признак передачи соединения работнику
+				 *
+				 * @details Опознаватель ставится первым октетом сообщения: работник
+				 *          отличает им передачу движка от сообщения потребителя.
+				 *          Едет с ним и первая датаграмма соединения - её принял
+				 *          мастер, и терять её нельзя.
+				 *
+				 * \~english
+				 * @brief Sign of the transfer of a connection to a worker
+				 *
+				 * @details A recogniser is set as the first octet of a message: a worker
+				 *          separates by it an engine transfer from a consumer message.
+				 *          A first datagram of a connection goes with it as well - it was
+				 *          received by a master, and it must not be lost.
+				 *
+				 * \~
+				 */
+				static constexpr uint8_t HANDOVER_CONNECTION = 0x02;
+			private:
+				/**
+				 * \~russian
 				 * @brief Класс сессии соединения
 				 *
 				 * \~english
@@ -170,6 +305,30 @@ namespace awh {
 						 */
 						uint64_t tunnel;
 					public:
+						/**
+						 * \~russian
+						 * @brief Первая датаграмма соединения, принятая мастером и переданная
+						 *        работнику кластера вместе с подключённым сокетом
+						 *
+						 * @details Держится до отчёта движка об установленном подключении: узел
+						 *          работника заводится клиентом, а отправлять датаграмму движок
+						 *          позволяет лишь после вызова подписки `connect_t`. Скормить
+						 *          её раньше - значит потерять ответ соединения: движок отвергнет
+						 *          отправку и уничтожит узел.
+						 *
+						 * \~english
+						 * @brief The first datagram of a connection, accepted by a master and transferred
+						 *        to a worker of a cluster together with a connected socket
+						 *
+						 * @details It is held up to a report of an engine about an established connection: a node
+						 *          of a worker is started as a client, and an engine allows to send a datagram
+						 *          only after a call of the `connect_t` subscription. To feed it
+						 *          earlier means to lose a response of a connection: an engine will reject
+						 *          a sending and will destroy a node.
+						 *
+						 * \~
+						 */
+						string carried;
 						/**
 						 * \~russian
 						 * @brief Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
@@ -259,8 +418,6 @@ namespace awh {
 				bool _ecn;
 				// Флаг проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
 				bool _retry;
-				// Флаг ожидания дочерним процессом выделенного родительским процессом порта
-				bool _awaitingPort;
 			private:
 				// Идентификатор события сервера
 				event::id_t _eid;
@@ -285,15 +442,45 @@ namespace awh {
 				 */
 				event::id_t _iid;
 			private:
-				// Конечный порт диапазона выделения портов дочерним процессам (0 - использовать порт прослушивания)
-				uint16_t _portEnd;
-				// Начальный порт диапазона выделения портов дочерним процессам (0 - использовать порт прослушивания)
-				uint16_t _portBegin;
 				// Порт прослушивания сервера
 				uint16_t _listenPort;
 			private:
 				// Максимальный размер очереди ожидания соединений
 				uint32_t _backlog;
+			private:
+				/**
+				 * \~russian
+				 * @brief Позиция очереди раздачи соединений между работниками
+				 *
+				 * \~english
+				 * @brief Position of a queue of a distribution of the connections between the workers
+				 *
+				 * \~
+				 */
+				size_t _handoverNext;
+			private:
+				/**
+				 * \~russian
+				 * @brief Адресат передачи соединения, разобранный на общей датаграмме
+				 *
+				 * @details Решение принимает отклик определения сессии, а передачу делает
+				 *          создание сессии с первой датаграммой: адреса отправителя отклик
+				 *          определения сессии не несёт, а без него подключённый сокет
+				 *          соединения не завести. Нуль означает, что соединение обслуживает
+				 *          сам мастер.
+				 *
+				 * \~english
+				 * @brief An addressee of a transfer of a connection, parsed on a common datagram
+				 *
+				 * @details The decision is made by a callback of a definition of a session, while a transfer
+				 *          is made by a creation of a session with a first datagram: a callback of a definition
+				 *          of a session does not carry an address of the sender, and without it a connected
+				 *          socket of a connection cannot be created. A zero means that a connection
+				 *          is served by a master itself.
+				 *
+				 * \~
+				 */
+				pid_t _handoverPid;
 			private:
 				// Идентификатор шаблона контекста безопасности
 				tls::coder::id_t _ctx;
@@ -305,18 +492,18 @@ namespace awh {
 				 * \~russian
 				 * @brief Тип адреса прослушивания (IPv4 или IPv6)
 				 *
-				 * @details Параметры прослушивания, кэшируемые для пересоздания сокета в дочернем
-				 *          процессе кластера. Фасад настраивает событие сервера в родительском
-				 *          процессе, а каждый дочерний процесс поднимает собственный сокет после
-				 *          fork, поэтому адрес, порт и размер очереди сохраняются заранее.
+				 * @details Параметры прослушивания, кэшируемые для заведения подключённых сокетов
+				 *          кластера. Мастер разбирает идентификатор соединения на общем сокете и
+				 *          отдаёт работнику сокет, привязанный к тому же адресу и порту, поэтому
+				 *          адрес и порт сохраняются заранее.
 				 *
 				 * \~english
 				 * @brief Listen address type (IPv4 or IPv6)
 				 *
-				 * @details Listening parameters are cached to allow for socket recreation within a
-				 *          cluster's child processes. The facade configures the server event in the
-				 *          parent process, while each child process sets up its own socket after the fork;
-				 *          therefore, the address, port, and queue size are stored in advance.
+				 * @details Listening parameters are cached to allow for a creation of the connected
+				 *          sockets of a cluster. A master parses an identifier of a connection on a
+				 *          common socket and gives a worker a socket bound to that same address and port;
+				 *          therefore, the address and the port are stored in advance.
 				 *
 				 * \~
 				 */
@@ -342,48 +529,141 @@ namespace awh {
 				string _resetKey;
 				// Хост прослушивания сервера
 				string _listenHost;
+				/**
+				 * \~russian
+				 * @brief Идентификатор соединения, разобранный на общей датаграмме
+				 *
+				 * @details Едет вместе с адресатом передачи: создание сессии ключа маршрутизации
+				 *          не получает, а записать маршрут и объявить его работнику нужно
+				 *          именно этим идентификатором.
+				 *
+				 * \~english
+				 * @brief An identifier of a connection, parsed on a common datagram
+				 *
+				 * @details It goes together with an addressee of a transfer: a creation of a session does not
+				 *          receive a key of a routing, while it is necessary to write a route and to declare
+				 *          it to a worker namely by this identifier.
+				 *
+				 * \~
+				 */
+				string _handoverKey;
 			private:
 				// Локальные транспортные параметры соединений
 				quic::params::params_t _params;
 			private:
 				/**
 				 * \~russian
-				 * @brief Идентификаторы дочерних процессов, не получивших порт прослушивания при
-				 *        раздаче родительским процессом (работают в холостую без сокета сервера).
-				 *        Заполняется только на системах, где порт выделяется дочернему процессу
-				 *        монопольно (macOS/Solaris/OpenBSD/NetBSD), и позволяет доотправить порт
-				 *        такому процессу вручную (clusterIdle()/clusterAssign())
+				 * @brief Список работников, объявивших о готовности обслуживать соединения
+				 *
+				 * @note Учитываются они по объявлению, а не по порождению: до
+				 *       связанности канала передать работнику нечего
 				 *
 				 * \~english
-				 * @brief Identifiers of the child processes that got no listening port at a
-				 *        distribution by a parent process (working idle without a server socket).
-				 *        It is filled only on the systems where a port is allotted to a child process
-				 *        monopolously (macOS/Solaris/OpenBSD/NetBSD), and allows to send a port additionally
-				 *        to such a process by hand (clusterIdle()/clusterAssign())
+				 * @brief List of the workers having declared a readiness to serve the connections
+				 *
+				 * @note They are accounted by a declaration, and not by a spawning: before
+				 *       the connectedness of a channel there is nothing to pass to a worker
 				 *
 				 * \~
 				 */
-				unordered_set <pid_t> _idle;
+				vector <pid_t> _handoverWorkers;
+			private:
+				/**
+				 * \~russian
+				 * @brief Маршрут мастера: идентификатор соединения и обслуживающий его работник
+				 *
+				 * @details Ведёт его мастер. Датаграмма мигрировавшего клиента приходит на
+				 *          общий сокет мастера, и по идентификатору соединения мастер
+				 *          находит прежнего работника. Нулевой идентификатор процесса
+				 *          означает, что соединение мастер обслуживает сам.
+				 *
+				 * \~english
+				 * @brief A route of a master: an identifier of a connection and a worker serving it
+				 *
+				 * @details It is kept by a master. A datagram of a migrated client arrives at a
+				 *          common socket of a master, and by an identifier of a connection a master
+				 *          finds a former worker. A zero process identifier
+				 *          means that a connection is served by a master itself.
+				 *
+				 * \~
+				 */
+				map <string, pid_t> _route;
+				/**
+				 * \~russian
+				 * @brief Путь клиента, на котором соединение передано работнику
+				 *
+				 * @details Ведёт его мастер рядом с маршрутом: адрес и порт встречной стороны
+				 *          на мгновение передачи. Пока датаграммы приходят с того же пути,
+				 *          мастер пересылает их работнику сообщением, а снимок не передаёт
+				 *          повторно. Смена пути означает миграцию (RFC 9000 §9): подключённый
+				 *          сокет работника прежнего клиента больше не узнаёт, и соединение
+				 *          передаётся заново с перепривязкой сессии.
+				 *
+				 * @note Пустое значение означает, что путь мастеру неизвестен: идентификатор
+				 *       объявлен работником, а не передан мастером. Такая датаграмма требует
+				 *       полной передачи - угадывать путь по одному порту нельзя.
+				 *
+				 * \~english
+				 * @brief A path of a client on which a connection is transferred to a worker
+				 *
+				 * @details It is kept by a master alongside the route: an address and a port of
+				 *          a remote side at the moment of a transfer. While datagrams arrive from
+				 *          that same path, a master forwards them to a worker with a message and
+				 *          does not transfer a snapshot repeatedly. A change of a path means a
+				 *          migration (RFC 9000 §9): a connected socket of a worker does not
+				 *          recognise a former client any more, and a connection is transferred
+				 *          anew with a rebinding of a session.
+				 *
+				 * @note An empty value means that a path is unknown to a master: an identifier
+				 *       is declared by a worker, and not transferred by a master. Such a datagram
+				 *       requires a full transfer - it is impossible to guess a path by one port.
+				 *
+				 * \~
+				 */
+				map <string, string> _routePath;
+				/**
+				 * \~russian
+				 * @brief Зеркало маршрутизации работника: идентификатор соединения и его сессия
+				 *
+				 * @details Ведёт его работник. При миграции мастер передаёт новый сокет
+				 *          соединения, которое у работника уже есть: по идентификатору
+				 *          работник находит свою сессию и перепривязывает её к новому
+				 *          сокету, а не заводит соединение заново.
+				 *
+				 * \~english
+				 * @brief A mirror of a routing of a worker: an identifier of a connection and its session
+				 *
+				 * @details It is kept by a worker. At a migration a master transfers a new socket
+				 *          of a connection which a worker already has: by an identifier
+				 *          a worker finds its session and rebinds it to a new
+				 *          socket, and does not start a connection anew.
+				 *
+				 * \~
+				 */
+				map <string, event::id_t> _keys;
 			private:
 				// Список сессий соединений по идентификаторам событий
 				map <event::id_t, session_t> _sessions;
-				/**
-				 * \~russian
-				 * @brief Порт прослушивания, выделенный каждому дочернему процессу при раздаче
-				 *        родительским процессом. Позволяет автоматически вернуть возрождённому
-				 *        (после падения) дочернему процессу тот же порт, что был у него до гибели
-				 *
-				 * \~english
-				 * @brief A listening port, allotted to each child process at a distribution by a
-				 *        parent process. It allows to return automatically to a revived
-				 *        (after a fall) child process that same port which it had before a death
-				 *
-				 * \~
-				 */
-				unordered_map <pid_t, uint16_t> _ports;
 			private:
 				// Объект работы с кластером
 				unique_ptr <cluster_t> _cluster;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод заведения объекта кластера
+				 *
+				 * @note Зовётся отовсюду, где нужна роль процесса: заводится объект единожды, а
+				 *       повторные обращения ничего не делают
+				 *
+				 * \~english
+				 * @brief Method of a creation of an object of the cluster
+				 *
+				 * @note It is called from everywhere where a role of a process is needed: an object is created once, while
+				 *       repeated calls do nothing
+				 *
+				 * \~
+				 */
+				void clusterCreate() noexcept;
 			private:
 				/**
 				 * \~russian
@@ -487,11 +767,19 @@ namespace awh {
 				 * @param oid идентификатор события сессии
 				 * @return    адрес удалённого эндпоинта в виде "адрес:порт"
 				 *
+				 * @note Узел-приёмник хранит адрес собеседника в адресе источника,
+				 *       а клиентский узел работника кластера - в цели подключения:
+				 *       его адрес источника свой
+				 *
 				 * \~english
 				 * @brief Method of forming the address of the remote endpoint of a session
 				 *
 				 * @param oid event identifier of the session
 				 * @return    address of the remote endpoint in the form "address:port"
+				 *
+				 * @note A receiver node keeps the address of the peer in the address of
+				 *       the source, while a client node of a cluster worker keeps it in
+				 *       the target of the connection: its address of the source is its own
 				 *
 				 * \~
 				 */
@@ -545,25 +833,175 @@ namespace awh {
 				 * \~
 				 */
 				void sending(const pid_t pid, const size_t size) noexcept;
+			private:
 				/**
 				 * \~russian
-				 * @brief Метод отправки выделенного порта прослушивания дочернему процессу кластера
+				 * @brief Метод перепривязки сессии соединения к новому сокету
 				 *
-				 * @param pid  идентификатор дочернего процесса
-				 * @param port выделяемый порт прослушивания
-				 * @return     результат отправки
+				 * @details Миграция клиента (RFC 9000 §9) меняет четвёрку сокета, и прежний
+				 *          подключённый сокет датаграммы нового пути уже не принимает.
+				 *          Соединение при этом то же самое: сессия переезжает на новый
+				 *          сокет целиком, со всеми своими ключами маршрутизации.
+				 *
+				 * @param oid идентификатор события прежнего сокета сессии
+				 * @param cid идентификатор события нового сокета сессии
 				 *
 				 * \~english
-				 * @brief Method of sending an allocated listening port to a child process of the cluster
+				 * @brief Method of a rebinding of a session of a connection to a new socket
 				 *
-				 * @param pid  identifier of the child process
-				 * @param port listening port being allocated
-				 * @return     result of the sending
+				 * @details A migration of a client (RFC 9000 §9) changes a quadruple of a socket, and a former
+				 *          connected socket does not accept datagrams of a new path already.
+				 *          A connection at that is the same one: a session moves to a new
+				 *          socket wholly, with all its keys of a routing.
+				 *
+				 * @param oid event identifier of the former socket of the session
+				 * @param cid event identifier of the new socket of the session
 				 *
 				 * \~
 				 */
-				bool sendPort(const pid_t pid, const uint16_t port) noexcept;
+				void rebind(const event::id_t oid, const event::id_t cid) noexcept;
 			private:
+				/**
+				 * \~russian
+				 * @brief Метод учёта работника, готового обслуживать соединения
+				 *
+				 * @param pid идентификатор процесса работника
+				 *
+				 * \~english
+				 * @brief Method of an accounting of a worker ready to serve the connections
+				 *
+				 * @param pid process identifier of the worker
+				 *
+				 * \~
+				 */
+				void handover(const pid_t pid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод подъёма соединения из снимка, присланного мастером
+				 *
+				 * @param data данные полученного сообщения
+				 * @param size размер данных полученного сообщения
+				 * @return     признак того, что сообщение было передачей соединения
+				 *
+				 * \~english
+				 * @brief Method of a raising of a connection from a snapshot sent by a master
+				 *
+				 * @param data data of the received message
+				 * @param size size of the data of the received message
+				 * @return     sign that the message was a transfer of a connection
+				 *
+				 * \~
+				 */
+				bool handover(const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод передачи соединения работнику кластера
+				 *
+				 * @details Мастер разбирает идентификатор соединения на общем сокете, заводит
+				 *          подключённый сокет на том же публичном порту и отдаёт его работнику
+				 *          снимком вместе с первой датаграммой. Дальше клиент и работник
+				 *          обмениваются напрямую: мастер в потоке данных не участвует.
+				 *
+				 * @param pid  идентификатор процесса работника
+				 * @param oid  идентификатор события сессии, принявшей первую датаграмму
+				 * @param data данные первой датаграммы соединения
+				 * @param size размер первой датаграммы соединения
+				 * @return     признак того, что соединение отдано работнику
+				 *
+				 * \~english
+				 * @brief Method of a transfer of a connection to a worker of the cluster
+				 *
+				 * @details A master parses an identifier of a connection on a common socket, creates
+				 *          a connected socket on that same public port and gives it to a worker
+				 *          by a snapshot together with a first datagram. Further a client and a worker
+				 *          exchange directly: a master does not participate in a flow of the data.
+				 *
+				 * @param pid  process identifier of the worker
+				 * @param oid  event identifier of the session having received a first datagram
+				 * @param data data of the first datagram of the connection
+				 * @param size size of the first datagram of the connection
+				 * @return     sign that the connection is given to a worker
+				 *
+				 * \~
+				 */
+				bool handover(const pid_t pid, const event::id_t oid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод приёма пересланной мастером датаграммы соединения
+				 *
+				 * @param data данные полученного сообщения
+				 * @param size размер данных полученного сообщения
+				 * @return     признак того, что сообщение было пересылкой датаграммы
+				 *
+				 * \~english
+				 * @brief Method of a reception of a datagram of a connection forwarded by a master
+				 *
+				 * @param data data of the received message
+				 * @param size size of the data of the received message
+				 * @return     sign that the message was a forwarding of a datagram
+				 *
+				 * \~
+				 */
+				bool relay(const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод пересылки датаграммы уже переданного соединения работнику
+				 *
+				 * @details Мастер сверяет путь отправителя с путём, на котором соединение
+				 *          передано, и при совпадении отдаёт работнику одну датаграмму с
+				 *          идентификатором соединения. Снимок сокета не передаётся и сессия
+				 *          работника не перепривязывается: соединение живо и сокет его прежний.
+				 *
+				 * @param pid  идентификатор процесса работника
+				 * @param oid  идентификатор события сессии, принявшей датаграмму
+				 * @param data данные датаграммы соединения
+				 * @param size размер датаграммы соединения
+				 * @return     признак того, что датаграмма переслана работнику
+				 *
+				 * \~english
+				 * @brief Method of a forwarding of a datagram of an already transferred connection to a worker
+				 *
+				 * @details A master compares a path of a sender with a path on which a connection
+				 *          is transferred, and at a coincidence gives a worker one datagram with
+				 *          an identifier of the connection. A snapshot of a socket is not transferred
+				 *          and a session of a worker is not rebound: the connection is alive and
+				 *          its socket is former.
+				 *
+				 * @param pid  process identifier of the worker
+				 * @param oid  event identifier of the session having received a datagram
+				 * @param data data of the datagram of the connection
+				 * @param size size of the datagram of the connection
+				 * @return     sign that the datagram is forwarded to a worker
+				 *
+				 * \~
+				 */
+				bool relay(const pid_t pid, const event::id_t oid, const uint8_t * data, const size_t size) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод обработки отчёта движка об установленном подключении сессии
+				 *
+				 * @details Ставится работнику кластера на сокет, переданный мастером: лишь
+				 *          с этого отчёта движок позволяет отправку датаграмм узла клиента,
+				 *          и удерживаемая первая датаграмма скармливается соединению здесь.
+				 *
+				 * @param oid идентификатор события сессии
+				 * @param ok  результат установления подключения
+				 *
+				 * \~english
+				 * @brief Method of processing a report of an engine about an established connection of a session
+				 *
+				 * @details It is set to a worker of a cluster on a socket transferred by a master: only
+				 *          from this report an engine allows a sending of datagrams of a node of a client,
+				 *          and a held first datagram is fed to a connection here.
+				 *
+				 * @param oid event identifier of the session
+				 * @param ok  result of the establishment of a connection
+				 *
+				 * \~
+				 */
+				void connected(const event::id_t oid, const bool ok) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод создания сессии нового соединения
@@ -580,6 +1018,7 @@ namespace awh {
 				 * \~
 				 */
 				void accept(const event::id_t eid, const event::id_t oid) noexcept;
+			private:
 				/**
 				 * \~russian
 				 * @brief Метод обработки просроченных таймеров соединений
@@ -989,33 +1428,6 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод получения списка дочерних процессов, не получивших порт прослушивания
-				 *
-				 * @note На системах, где порт выделяется дочернему процессу монопольно
-				 *       (macOS/Solaris/OpenBSD/NetBSD), при нехватке портов диапазона часть
-				 *       дочерних процессов остаётся без сокета сервера. Их идентификаторы
-				 *       возвращаются здесь, чтобы приложение могло доотправить им порт
-				 *       вручную методом clusterAssign()
-				 *
-				 * @return список идентификаторов дочерних процессов, работающих в холостую
-				 *
-				 * \~english
-				 * @brief Method of getting the list of the child processes that have not received a listening port
-				 *
-				 * @note On the systems where a port is allocated to a child process exclusively
-				 *       (macOS/Solaris/OpenBSD/NetBSD), at a shortage of the ports of the range a part of the
-				 *       child processes is left without a server socket. Their identifiers
-				 *       are returned here so that the application can send them a port additionally
-				 *       by hand with the clusterAssign() method
-				 *
-				 * @return list of the identifiers of the child processes working idly
-				 *
-				 * \~
-				 */
-				unordered_set <pid_t> clusterIdle() const noexcept;
-			public:
-				/**
-				 * \~russian
 				 * @brief Метод получения списка дочерних процессов
 				 *
 				 * @return список дочерних процессов
@@ -1028,62 +1440,6 @@ namespace awh {
 				 * \~
 				 */
 				unordered_set <pid_t> clusterWorkers() const noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод установки диапазона портов для выделения дочерним процессам кластера
-				 *
-				 * @note Родительский процесс раздаёт порты из диапазона дочерним процессам,
-				 *       каждый из которых поднимает собственный сокет сервера. На Linux/FreeBSD
-				 *       порт может повторяться (несколько процессов делят его через SO_REUSEPORT),
-				 *       на прочих системах порт выделяется дочернему процессу монопольно.
-				 *       Пустой диапазон означает использование единственного порта прослушивания
-				 *
-				 * @param begin начальный порт диапазона (0 - использовать порт прослушивания)
-				 * @param end   конечный порт диапазона (0 - использовать порт прослушивания)
-				 *
-				 * \~english
-				 * @brief Method of setting the range of the ports for allocating to the child processes of the cluster
-				 *
-				 * @note The parent process distributes the ports from the range to the child processes,
-				 *       each of which raises its own server socket. On Linux/FreeBSD
-				 *       a port may repeat (several processes share it through SO_REUSEPORT),
-				 *       on the other systems a port is allocated to a child process exclusively.
-				 *       An empty range means the use of a single listening port
-				 *
-				 * @param begin initial port of the range (0 — use the listening port)
-				 * @param end   final port of the range (0 — use the listening port)
-				 *
-				 * \~
-				 */
-				void clusterRange(const uint16_t begin, const uint16_t end) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Метод отправки порта прослушивания конкретному дочернему процессу кластера
-				 *
-				 * @note Позволяет вручную поднять сервер на дочернем процессе, которому при
-				 *       автоматической раздаче порт не достался (см. clusterIdle()). Дочерний
-				 *       процесс поднимает собственный сокет на полученном порту
-				 *
-				 * @param pid  идентификатор дочернего процесса
-				 * @param port порт прослушивания для дочернего процесса
-				 * @return     результат отправки порта дочернему процессу
-				 *
-				 * \~english
-				 * @brief Method of sending a listening port to a particular child process of the cluster
-				 *
-				 * @note Makes it possible to raise a server by hand on a child process which has not got a port at
-				 *       the automatic distribution (see clusterIdle()). The child
-				 *       process raises its own socket on the received port
-				 *
-				 * @param pid  identifier of the child process
-				 * @param port listening port for the child process
-				 * @return     result of sending the port to the child process
-				 *
-				 * \~
-				 */
-				bool clusterAssign(const pid_t pid, const uint16_t port) noexcept;
 			public:
 				/**
 				 * \~russian

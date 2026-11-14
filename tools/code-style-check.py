@@ -973,6 +973,20 @@ def check_file(path, lines, members, report, fixes=None):
             for m in re.finditer(r"//\s*(.*)$", line):
                 if eng_words.search(m.group(1)):
                     report(path, n, "ERROR", "§2.3", f"английский в комментарии .cpp: '{m.group(1)[:60]}'")
+            # Заглушки-комментарии (§8.5): глагол-заполнитель без предмета либо одно слово
+            for m in re.finditer(r"//\s*(.*)$", line):
+                text = m.group(1).strip()
+                if re.match(r"^(?:Выполняем|Делаем|Ждём|Ждем)\b", text):
+                    report(path, n, "ERROR", "§8.5", f"глагол-заполнитель без предмета: '{text[:50]}' — комментарий описывает действие и предмет")
+                elif re.fullmatch(r"[А-Яа-яЁёA-Za-z]+", text) and len(text) >= 2:
+                    report(path, n, "ERROR", "§8.5", f"однословный комментарий-заглушка: '{text[:50]}' — опишите действие и предмет")
+            # Тот же запрет на строках doc-блока (§8.5): «* Выполняем …» — та же заглушка.
+            # Исключение — канонические маркеры try/catch эталона (kqueue.cpp, ssh.cpp)
+            dm = re.match(r"\s*\*\s+(\S.*)$", line)
+            if dm:
+                dtext = dm.group(1).strip()
+                if re.match(r"^(?:Выполняем|Делаем|Ждём|Ждем)\b", dtext) and dtext != "Выполняем перехват ошибок":
+                    report(path, n, "ERROR", "§8.5", f"глагол-заполнитель без предмета: '{dtext[:50]}' — doc-блок описывает действие и предмет")
             cm = re.match(r"\s*/\*\*?\s*(.*)$", line)
             if cm and eng_words.search(cm.group(1)):
                 report(path, n, "ERROR", "§2.3", f"английский в doc-комментарии .cpp: '{cm.group(1)[:60]}'")
@@ -990,6 +1004,11 @@ def check_file(path, lines, members, report, fixes=None):
                     report(path, n, "ERROR", "§6.6", f"над «{lm.group(1)}» строчный комментарий — по §6.6 заголовок цикла/switch требует doc-блок /** */")
                 else:
                     report(path, n, "ERROR", "§6.6", f"над «{lm.group(1)}» нет комментария — поставьте блок /** */ непосредственно перед заголовком")
+        # тело функции утрамбовано в одну строку (§8.7)
+        if re.match(r"^\s*(?:\[\[.*?\]\]\s*)?(?:static\s+|inline\s+|constexpr\s+|virtual\s+|explicit\s+)*"
+                    r"(?:[A-Za-z_]\w*(?:__|_INLINE)\s+)*"
+                    r"[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+(?:\w+::)*~?\w+\s*\(.*\)\s*(?:const\s*)?(?:noexcept\s*)?\{[^{}]*;[^{}]*\}\s*;?\s*$", code):
+            report(path, n, "ERROR", "§8.7", "тело функции утрамбовано в одну строку — сигнатура и действия на своих строках")
         # закрывание блочного комментария, склеенное с кодом (§1.4)
         gm = re.match(r"^(\s*)\*/(\s*\S.*)$", line)
         if gm:
@@ -1042,6 +1061,7 @@ def check_file(path, lines, members, report, fixes=None):
         directive_line = code.lstrip().startswith("#")
         # snake_case в именах функций/методов (§4.2), кроме внутренней статики __awh_{name}__ (§4.10)
         fm = re.match(r"^\s*(?:static\s+|inline\s+|constexpr\s+|virtual\s+|explicit\s+)*"
+                      r"(?:[A-Za-z_]\w*(?:__|_INLINE)\s+)*"
                       r"[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+((?:\w+::)*~?\w+)\s*\(", code)
         if fm and not directive_line and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
@@ -1051,6 +1071,19 @@ def check_file(path, lines, members, report, fixes=None):
                 pass
             elif is_snake_name(fname) and "__awh" not in fm.group(1) and n not in c_abi:
                 report(path, n, "ERROR", "§4.2", f"snake_case в имени функции/метода '{fname}' — требуется camelCase")
+        # вид callable в @brief (§7.2): ближайший doc--block над определением обязан называть род
+        if fm and not directive_line:
+            j = n - 2
+            while j >= 0 and (lines[j].strip() == "" or lines[j].strip().startswith(("*", "/**", "*/"))):
+                bm = re.match(r"\s*\*\s*@brief\s+(.*)$", lines[j])
+                if bm:
+                    brief = bm.group(1).strip()
+                    if not re.match(r"^(?:Функция|Метод|Конструктор|Деструктор|Function|Method|Constructor|Destructor)\b", brief):
+                        report(path, j + 1, "ERROR", "§7.2", f"@brief без рода callable: '{brief[:50]}' — начинается с Функция/Метод/Конструктор/Деструктор")
+                    break
+                if lines[j].strip().startswith("/**"):
+                    break
+                j -= 1
         # snake_case в объявлениях переменных и параметров (§4.3)
         for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]\w*)\s*(?==[^=]|;|,|\)|\()", code):
             name = vm.group(1)
@@ -1076,6 +1109,18 @@ def check_file(path, lines, members, report, fixes=None):
         # m_/s_ префиксы
         if re.search(r"(?<![\w.>-])(m_[a-z]\w*|s_[a-z]\w*)\b", code):
             report(path, n, "ERROR", "§4.4", "префиксы m_/s_ запрещены — члены с нижним подчёркиванием на конце")
+        # короткие имена 1-2 знака вне счётчиков цикла (§4.3): имя говорит о содержимом
+        if not re.match(r"\s*for\s*\(", code) and n not in c_abi:
+            for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]{1,2}[0-9]?)\s*(?==[^=]|;|,|\)|\()", code):
+                short = vm.group(1)
+                if short in ("ok", "id", "to", "in", "on", "no", "do", "if"):
+                    continue
+                before = code[:vm.start()]
+                if re.match(r"\s*typedef\b", code) or directive_line:
+                    continue
+                if re.search(r"(?:__\w*__|::|\b(?:return|offsetof|sizeof|static_cast|reinterpret_cast|struct|union|enum))$", before.rstrip()) or re.search(r"<[^>]*$", before):
+                    continue
+                report(path, n, "ERROR", "§4.3", f"имя '{short}' из 1-2 знаков ничего не сообщает (§4.3) — только счётчикам цикла i/j/k")
         # this-> для известных членов
         for mm in re.finditer(r"(?<![\w_])(_\w+)(?![\w_])", code):
             name = mm.group(1)
