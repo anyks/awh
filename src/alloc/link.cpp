@@ -31,7 +31,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <alloc/link.hpp>
+#include "internal/link.hpp"
 
 /**
  * Если набором команд является x86-64

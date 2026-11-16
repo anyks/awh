@@ -115,12 +115,16 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "spin.hpp"
-#include "source.hpp"
 #include "classes.hpp"
-#include "../sys/macro/global.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../../include/alloc/source.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -153,7 +157,9 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Huge {
 			public:
-				// Начальная длина таблицы поиска крупной выдачи в местах
+				/**
+				 * Начальная длина таблицы поиска крупной выдачи в местах
+				 */
 				static constexpr size_t TABLE = 64;
 				/**
 				 * Номер разряда, которым отмечается крупная выдача

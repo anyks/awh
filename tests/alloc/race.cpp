@@ -48,10 +48,10 @@
  * Наши модули
  */
 #include <alloc/source.hpp>
-#include <alloc/pages.hpp>
-#include <alloc/classes.hpp>
-#include <alloc/central.hpp>
-#include <alloc/cache.hpp>
+#include "../../src/alloc/internal/pages.hpp"
+#include "../../src/alloc/internal/classes.hpp"
+#include "../../src/alloc/internal/central.hpp"
+#include "../../src/alloc/internal/cache.hpp"
 
 /**
  * Подключаем внутренние тела встраиваемых методов модуля

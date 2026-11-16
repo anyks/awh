@@ -172,17 +172,21 @@
 #include <sys/log.hpp>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
-#include <alloc/spin.hpp>
-#include <alloc/huge.hpp>
-#include <alloc/pages.hpp>
 #include <alloc/alloc.hpp>
-#include <alloc/guard.hpp>
-#include <alloc/cache.hpp>
-#include <alloc/profile.hpp>
-#include <alloc/central.hpp>
-#include <alloc/classes.hpp>
+
+/**
+ * Подключаем внутренние заголовочные файлы встраиваемых методов модуля
+ */
+#include "internal/spin.hpp"
+#include "internal/huge.hpp"
+#include "internal/pages.hpp"
+#include "internal/guard.hpp"
+#include "internal/cache.hpp"
+#include "internal/profile.hpp"
+#include "internal/central.hpp"
+#include "internal/classes.hpp"
 
 /**
  * Подключаем внутренние тела встраиваемых методов модуля
@@ -1855,7 +1859,7 @@ namespace {
 			// Отдавать пора
 			return true;
 		// Получаем состояние страничной кучи
-		const alloc::Pages::state_t heap = machinery->central.heap();
+		const alloc::pages_t::state_t heap = machinery->central.heap();
 		// Определяем свободное в куче, но системе не отданное
 		const size_t idle = ((heap.free > heap.purged) ? (heap.free - heap.purged) : 0);
 		// Выводим признак перекрытия порога свободного
@@ -2418,7 +2422,7 @@ namespace {
 		// Если область выдана
 		if(result != nullptr){
 			// Учитываем выданное прикладному коду
-			__awh_alloc_account__(cache, static_cast <int64_t> ((served > 0) ? served : (((size + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
+			__awh_alloc_account__(cache, static_cast <int64_t> ((served > 0) ? served : (((size + (alloc::pages_t::PAGE - 1)) / alloc::pages_t::PAGE) * alloc::pages_t::PAGE)));
 			// Берём выданную область под учёт места выдачи
 			__awh_alloc_enrol__(result, size);
 		}
@@ -2568,7 +2572,7 @@ namespace {
 		 * страницы нарезаются от начала куска. Оттого выдача сверх разрядов выровнена
 		 * всегда, и добиваться выравнивания приведением адреса не требуется
 		 */
-		if(alignment <= alloc::Pages::PAGE){
+		if(alignment <= alloc::pages_t::PAGE){
 			// Требуемый размер, заведомо выходящий за разряды
 			size_t need = size;
 			// Если размер обслуживается разрядами
@@ -2613,7 +2617,7 @@ namespace {
 			// Если область выдана
 			if(result != nullptr){
 				// Учитываем выданное прикладному коду
-				__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> ((served > 0) ? served : (((need + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
+				__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> ((served > 0) ? served : (((need + (alloc::pages_t::PAGE - 1)) / alloc::pages_t::PAGE) * alloc::pages_t::PAGE)));
 				/**
 				 * Берём выданную область под учёт места выдачи
 				 *
@@ -4642,7 +4646,7 @@ size_t awh::alloc::allocator::property(const property_t property) noexcept {
 		// Если требуется свободное в страничной куче
 		case static_cast <uint8_t> (property_t::PAGEFREE): {
 			// Получаем состояние страничной кучи
-			const Pages::state_t heap = ::machinery->central.heap();
+			const pages_t::state_t heap = ::machinery->central.heap();
 			// Выводим свободное в куче, но системе не отданное
 			return ((heap.free > heap.purged) ? (heap.free - heap.purged) : 0);
 		}
@@ -4791,7 +4795,7 @@ awh::alloc::region_t awh::alloc::allocator::resolve(const void * addr) noexcept 
 	 * Разыменование нулевого указателя со смещением - самый частый сбой обращения, и
 	 * отличить его от обращения к чужой памяти важнее всего прочего
 	 */
-	if(reinterpret_cast <uintptr_t> (addr) < static_cast <uintptr_t> (Pages::PAGE)){
+	if(reinterpret_cast <uintptr_t> (addr) < static_cast <uintptr_t> (pages_t::PAGE)){
 		// Отмечаем адрес нулевой страницей
 		result.origin = origin_t::NULLPAGE;
 		// Выводим сведения о разобранном адресе
@@ -4918,7 +4922,7 @@ awh::alloc::region_t awh::alloc::allocator::resolve(const void * addr) noexcept 
 	 * @note Спрашиваем кучу ЧЕРЕЗ центральные списки, а не напрямую
 	 *
 	 * @details Замок кучи держат они, и всякое обращение к ней идёт под ним. Прежде здесь стоял
-	 *          прямой вызов, и он читал список кусков, покуда куча правила его в `Pages::grow`;
+	 *          прямой вызов, и он читал список кусков, покуда куча правила его в `pages_t::grow`;
 	 *          ThreadSanitizer называл эту гонку каждым прогоном ворошителя.
 	 *
 	 */
@@ -4931,7 +4935,7 @@ awh::alloc::region_t awh::alloc::allocator::resolve(const void * addr) noexcept 
 	// Записываем адрес начала области
 	result.begin = begin;
 	// Записываем размер области
-	result.size = (pages * Pages::PAGE);
+	result.size = (pages * pages_t::PAGE);
 	// Отмечаем область живой либо освобождённой
 	result.origin = (live ? origin_t::LIVE : origin_t::FREED);
 	/**

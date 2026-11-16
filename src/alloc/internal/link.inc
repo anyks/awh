@@ -32,7 +32,7 @@
 /**
  * Подключаем заголовочный файл модуля
  */
-#include <alloc/link.hpp>
+#include "link.hpp"
 
 /**
  * Пространство имён фреймворка
@@ -56,7 +56,7 @@ namespace awh {
 		 * @return      перемешанный указатель
 		 *
 		 */
-		__AWH_INLINE__ void * link_t::mangle(const void * block, void * value) noexcept {
+		__AWH_INLINE__ void * link_t::mangle([[maybe_unused]] const void * block, void * value) noexcept {
 			/**
 			 * Признак AWH_ALLOC_NO_MANGLE снимает заслон списка свободных блоков
 			 *
@@ -68,8 +68,6 @@ namespace awh {
 			 * обращений к памяти. Умолчание - заслон включён
 			 */
 			#if defined(AWH_ALLOC_NO_MANGLE)
-				// Обходим перемешивание: блок к делу не идёт
-				(void) block;
 				// Выводим указатель как есть
 				return value;
 			#endif

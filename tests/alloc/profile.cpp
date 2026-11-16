@@ -29,6 +29,12 @@
 #include "suite.hpp"
 
 /**
+ * Подключаем внутренние заголовки модуля
+ */
+#include "../../src/alloc/internal/profile.hpp"
+#include "../../src/alloc/internal/trace.hpp"
+
+/**
  * Стандартные модули
  */
 #include <vector>

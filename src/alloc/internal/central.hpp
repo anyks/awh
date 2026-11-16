@@ -88,7 +88,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include "../sys/macro/global.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian

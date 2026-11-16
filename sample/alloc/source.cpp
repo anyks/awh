@@ -23,7 +23,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <alloc/alloc.hpp>
-#include <alloc/pages.hpp>
+#include "../../src/alloc/internal/pages.hpp"
 #include <alloc/source.hpp>
 
 /**

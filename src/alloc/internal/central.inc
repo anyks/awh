@@ -33,7 +33,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "pages.inc"
-#include <alloc/central.hpp>
+#include "central.hpp"
 
 /**
  * Пространство имён фреймворка

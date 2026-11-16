@@ -27,8 +27,8 @@
  * Подключаем наши модули
  */
 #include <alloc/alloc.hpp>
-#include <alloc/classes.hpp>
-#include <alloc/cache.hpp>
+#include "../../src/alloc/internal/classes.hpp"
+#include "../../src/alloc/internal/cache.hpp"
 
 /**
  * Подключаем внутренние тела встраиваемых методов модуля

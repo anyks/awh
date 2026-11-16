@@ -90,10 +90,10 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
-#include "source.hpp"
-#include "../sys/macro/global.hpp"
+#include "../../../include/alloc/source.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian

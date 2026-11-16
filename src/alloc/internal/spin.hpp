@@ -70,7 +70,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include "../sys/macro/global.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -82,6 +82,11 @@
  * \~
  */
 namespace awh {
+	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
 	/**
 	 * \~russian
 	 * @brief Пространство имён распределителя памяти
@@ -103,13 +108,17 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Spin {
 			public:
-				// Число оборотов кружения прежде уступки времени
+				/**
+				 * Число оборотов кружения прежде уступки времени
+				 */
 				static constexpr uint32_t ROUNDS = 64;
-				// Число уступок времени, после какого замок считается заклинившим
+				/**
+				 * Число уступок времени, после какого замок считается заклинившим
+				 */
 				static constexpr uint32_t STUCK = 1024;
 			private:
 				// Признак захваченности замка
-				std::atomic <uint32_t> _held;
+				atomic_uint32_t _held;
 			private:
 				/**
 				 * \~russian
@@ -230,13 +239,15 @@ namespace awh {
 				 */
 				constexpr Spin() noexcept : _held(0) {}
 		} spin_t;
+
 		/**
 		 * Сторож постоянного заведения замка
 		 *
 		 * Сличение это вычисляется на этапе сборки и требует, чтобы конструктор годился
 		 * в постоянное выражение. Снимут `constexpr` - сборка встанет здесь
 		 */
-		static_assert((sizeof(spin_t) > 0) && [](){ constexpr Spin probe; static_cast <void> (probe); return true; }(), "замок обязан заводиться постоянным значением");
+		static_assert((sizeof(spin_t) > 0) && [](){ constexpr Spin probe; static_cast <void> (probe); return true; }(), "the lock must be set using a constant value");
+
 		/**
 		 * \~russian
 		 * @brief Класс удержания замка на время жизни

@@ -99,9 +99,10 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
-#include "../sys/macro/global.hpp"
+#include "../../../include/alloc/symbol.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -114,6 +115,11 @@
  */
 namespace awh {
 	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
 	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
@@ -123,48 +129,6 @@ namespace awh {
 	 * \~
 	 */
 	namespace alloc {
-		/**
-		 * \~russian
-		 * @brief Сведения об адресе стека вызовов
-		 *
-		 * @note Строки указывают на память образа и на память средств системы: годны
-		 *       они до следующего обращения к разбору В ТОМ ЖЕ ПОТОКЕ, а копировать их
-		 *       обязан тот, кому они нужны дольше. Оговорка о потоке не лишняя: у
-		 *       MS Windows название образа хранится за нами, и буфер под него свой у
-		 *       каждого потока - разбор в чужом потоке строку не трогает
-		 *
-		 * \~english
-		 * @brief Information about a call stack address
-		 *
-		 * @note The strings point to image memory and system facility memory: they
-		 *       are valid until the next resolution call IN THE SAME THREAD, and
-		 *       whoever needs them longer must copy them. The thread caveat is not
-		 *       superfluous: on MS Windows the image name is stored by us, and the
-		 *       buffer for it is per-thread - resolution in a foreign thread does
-		 *       not touch the string
-		 *
-		 * \~
-		 */
-		typedef struct __AWH_SHARED_EXPORT__ Symbol {
-			// Название образа, которому принадлежит адрес
-			const char * image;
-			// Название функции, которой принадлежит адрес
-			const char * name;
-			// Адрес начала функции
-			const void * begin;
-			// Смещение разбираемого адреса от начала функции
-			ptrdiff_t offset;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			explicit Symbol() noexcept;
-		} symbol_t;
 		/**
 		 * \~russian
 		 * @brief Класс съёма стека вызовов
@@ -186,7 +150,7 @@ namespace awh {
 				 * на всяком потоке, идущем путём разбора мест выдачи. Обычное поле давало
 				 * бы состязание по стандарту
 				 */
-				std::atomic <bool> _warmed;
+				atomic_bool _warmed;
 				/**
 				 * \~russian
 				 * @brief Признак заведённого ключа - НЕДЕЛИМЫЙ
@@ -210,7 +174,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <bool> _keyed;
+				atomic_bool _keyed;
 			public:
 				/**
 				 * \~russian

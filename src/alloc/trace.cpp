@@ -74,7 +74,7 @@
 /**
  * Подключаем заголовочный файл
  */
-#include <alloc/trace.hpp>
+#include "internal/trace.hpp"
 
 /**
  * @brief Пространство имён вспомогательных средств
@@ -253,6 +253,13 @@ namespace {
 		}
 	#endif
 };
+
+/**
+ * @brief Конструктор Symbol
+ *
+ */
+awh::alloc::Symbol::Symbol() noexcept :
+ offset(0), name(nullptr), image(nullptr), begin(nullptr) {}
 
 /**
  * @brief Метод заведения съёма стека вызовов
@@ -686,13 +693,6 @@ const char * awh::alloc::Trace::name() const noexcept {
 		return "_Unwind_Backtrace";
 	#endif
 }
-
-/**
- * @brief Конструктор Symbol
- *
- */
-awh::alloc::Symbol::Symbol() noexcept :
- image(nullptr), name(nullptr), begin(nullptr), offset(0) {}
 /**
  * @brief Конструктор
  *

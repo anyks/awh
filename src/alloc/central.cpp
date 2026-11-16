@@ -31,10 +31,10 @@
 #include <sys/fmk.hpp>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем внутренние заголовочные файлы встраиваемых методов модуля
  */
-#include <alloc/link.hpp>
-#include <alloc/central.hpp>
+#include "internal/link.hpp"
+#include "internal/central.hpp"
 
 /**
  * Подключаем внутренние тела встраиваемых методов модуля
@@ -91,6 +91,16 @@ namespace {
 		return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
 	}
 };
+
+/**
+ * Метка разряда обязана вмещаться в байт
+ *
+ * Куче она отдаётся числом, а хранится там байтом на страницу куска - на том стоит
+ * быстрый путь освобождения. Вырасти число разрядов свыше двухсот пятидесяти четырёх -
+ * куча отвергла бы метку старших разрядов, и области их не размечались бы вовсе.
+ * Сторож этот валит сборку, а не работу
+ */
+static_assert((awh::alloc::Classes::LIMIT + 1) <= 255, "the digit marker does not fit into a byte");
 
 /**
  * @brief Конструктор
@@ -153,16 +163,16 @@ void awh::alloc::Central::reset() noexcept {
 	for(size_t i = 0; i < Classes::LIMIT; i++){
 		// Захватываем замок разряда
 		this->_lists[i].lock.acquire();
+		// Обнуляем число выданных кэшам блоков
+		this->_lists[i].live = 0;
+		// Обнуляем число свободных блоков
+		this->_lists[i].count = 0;
+		// Обнуляем число нарезанных областей
+		this->_lists[i].regions = 0;
 		// Обнуляем голову списка свободных блоков
 		this->_lists[i].top = nullptr;
 		// Обнуляем хвост цепочки областей разряда
 		this->_lists[i].tail = nullptr;
-		// Обнуляем число свободных блоков
-		this->_lists[i].count = 0;
-		// Обнуляем число выданных кэшам блоков
-		this->_lists[i].live = 0;
-		// Обнуляем число нарезанных областей
-		this->_lists[i].regions = 0;
 		// Освобождаем замок разряда
 		this->_lists[i].lock.release();
 	}
@@ -177,26 +187,17 @@ void awh::alloc::Central::reset() noexcept {
 		/**
 		 * Перебираем списки придержанных областей
 		 */
-		for(size_t i = 0; i <= Pages::PAGES; i++)
+		for(size_t i = 0; i <= pages_t::PAGES; i++)
 			// Обнуляем голову списка придержанных областей
 			this->_kept[i] = nullptr;
 		// Обнуляем объём придержанного
 		this->_keptBytes.store(0, std::memory_order_relaxed);
 	}
-	// Обнуляем разряды размеров
-	this->_classes = nullptr;
 	// Обнуляем страничную кучу
 	this->_pages = nullptr;
+	// Обнуляем разряды размеров
+	this->_classes = nullptr;
 }
-/**
- * Метка разряда обязана вмещаться в байт
- *
- * Куче она отдаётся числом, а хранится там байтом на страницу куска - на том стоит
- * быстрый путь освобождения. Вырасти число разрядов свыше двухсот пятидесяти четырёх -
- * куча отвергла бы метку старших разрядов, и области их не размечались бы вовсе.
- * Сторож этот валит сборку, а не работу
- */
-static_assert((awh::alloc::Classes::LIMIT + 1) <= 255, "the digit marker does not fit into a byte");
 /**
  * @brief Метод нарезки новой области под разряд
  *
@@ -259,21 +260,25 @@ bool awh::alloc::Central::carve(const size_t index) noexcept {
 		}
 	}
 	/**
-	 * Считаем число блоков по ДЕЙСТВИТЕЛЬНО выданной области
+	 * @brief Число блоков, вмещающихся в действительно выданную область
 	 *
-	 * Число разряда посчитано от затребованного числа страниц, а выдано могло быть
-	 * больше: лишние страницы иначе легли бы мёртвым грузом
+	 * @note Считаем число блоков по ДЕЙСТВИТЕЛЬНО выданной области
+	 *
+	 * @details Число разряда посчитано от затребованного числа страниц, а выдано могло быть
+	 *          больше: лишние страницы иначе легли бы мёртвым грузом.
+	 *
 	 */
-	// Число блоков, вмещающихся в действительно выданную область
-	const size_t carved = (((served > pages) ? ((served * Pages::PAGE) / size) : blocks));
+	const size_t carved = (((served > pages) ? ((served * pages_t::PAGE) / size) : blocks));
 	/**
-	 * Нарезаем область на блоки и связываем их в цепочку
+	 * @brief Ищем запись области нарезанного куска
 	 *
-	 * Связываем от конца к началу: так голова цепочки приходится на начало области,
-	 * а выдача блоков подряд идёт по возрастанию адреса и щадит упреждающее чтение
+	 * @note Нарезаем область на блоки и связываем их в цепочку
+	 *
+	 * @details Связываем от конца к началу: так голова цепочки приходится на начало области,
+	 *          а выдача блоков подряд идёт по возрастанию адреса и щадит упреждающее чтение.
+	 *
 	 */
-	// Ищем запись области нарезанного куска
-	Pages::span_t * span = this->_pages->scope(base);
+	pages_t::span_t * span = this->_pages->scope(base);
 	// Если запись области не нашлась
 	if(span == nullptr){
 		// Возвращаем куче область: без её записи нарезать нельзя
@@ -341,12 +346,12 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	if((count == 0) || (head == nullptr) || (tail == nullptr))
 		// Изымать нечего
 		return 0;
+	// Число пройденных областей поиска
+	size_t passed = 0;
 	// Захватываем замок разряда
 	hold_t hold(this->_lists[index].lock);
 	// Область, чья стопка кормит набор
-	Pages::span_t * span = this->_lists[index].top;
-	// Число пройденных областей поиска
-	size_t passed = 0;
+	pages_t::span_t * span = this->_lists[index].top;
 	/**
 	 * Ищем первую область со свободными блоками, осушенные унося к хвосту
 	 *
@@ -371,7 +376,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 			break;
 		}
 		// Запоминаем следующую область прежде переноса
-		Pages::span_t * subsequent = span->next;
+		pages_t::span_t * subsequent = span->next;
 		// Уносим осушенную область к хвосту цепочки
 		this->tail(index, span);
 		// Переходим к следующей области
@@ -388,10 +393,10 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 	}
 	// Число действительно изъятых блоков
 	size_t result = 0;
-	// Голова изъятой цепочки
-	void * first = nullptr;
 	// Хвост изъятой цепочки
 	void * last = nullptr;
+	// Голова изъятой цепочки
+	void * first = nullptr;
 	/**
 	 * Снимаем со стопок требуемое число блоков
 	 */
@@ -408,7 +413,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 				break;
 			}
 			// Запоминаем следующую область прежде переноса
-			Pages::span_t * subsequent = span->next;
+			pages_t::span_t * subsequent = span->next;
 			// Уносим осушенную область к хвосту цепочки
 			this->tail(index, span);
 			// Переходим к следующей области
@@ -463,7 +468,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
  * @param span  переносимая область
  *
  */
-void awh::alloc::Central::tail(const size_t index, Pages::span_t * span) noexcept {
+void awh::alloc::Central::tail(const size_t index, pages_t::span_t * span) noexcept {
 	// Если переносить нечего либо область уже хвост
 	if((span == nullptr) || (span == this->_lists[index].tail))
 		// Переносить нечего
@@ -520,13 +525,13 @@ size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const b
 	// Число отданных куче областей
 	size_t result = 0;
 	// Цепочка областей, перестоявших окно
-	Pages::span_t * freed = nullptr;
+	pages_t::span_t * freed = nullptr;
 	/**
 	 * Обходим цепочку разряда, изымая перестоявшие области
 	 */
-	for(Pages::span_t * record = this->_lists[index].top; record != nullptr;){
+	for(pages_t::span_t * record = this->_lists[index].top; record != nullptr;){
 		// Запоминаем следующую область прежде изъятия
-		Pages::span_t * subsequent = record->next;
+		pages_t::span_t * subsequent = record->next;
 		// Если область покоится дольше окна
 		if((record->idled != 0) && (all || ((now - record->idled) >= SPAN_WINDOW))){
 			// Если изымается хвост цепочки, хвост уходит к прежней соседке
@@ -560,12 +565,12 @@ size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const b
 	 * собирает из них и бывший общий кусок целиком
 	 */
 	while(freed != nullptr){
-		// Запоминаем следующую область цепочки возврата
-		Pages::span_t * span = freed->next;
-		// Запоминаем число блоков возвращаемой области
-		const size_t total = freed->total;
 		// Признак состоявшегося возврата области куче
 		bool released = false;
+		// Запоминаем следующую область цепочки возврата
+		pages_t::span_t * span = freed->next;
+		// Запоминаем число блоков возвращаемой области
+		const size_t total = freed->total;
 		/**
 		 * Возвращаем область куче под её замком
 		 *
@@ -638,7 +643,7 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 		// Запоминаем следующий блок прежде перестройки связей
 		void * subsequent = ::__awh_central_following__(block);
 		// Ищем область, которой принадлежит блок
-		Pages::span_t * span = this->_pages->scope(block);
+		pages_t::span_t * span = this->_pages->scope(block);
 		// Если область блока не нашлась - блок не наш, дальше без него
 		if(span == nullptr){
 			// Переходим к следующему блоку
@@ -824,7 +829,7 @@ void * awh::alloc::Central::recall(const size_t pages) noexcept {
 	// Головой списка становится следующая область
 	this->_kept[pages] = kept->next;
 	// Определяем объём выдаваемой области
-	const size_t held = (pages * Pages::PAGE);
+	const size_t held = (pages * pages_t::PAGE);
 	// Читаем объём придержанного
 	const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
 	// Уменьшаем объём придержанного, не уходя ниже нуля (под замком, оттого чтение-запись раздельны)
@@ -846,7 +851,7 @@ bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 		// Придерживать нечего
 		return false;
 	// Определяем объём придерживаемой области
-	const size_t held = (pages * Pages::PAGE);
+	const size_t held = (pages * pages_t::PAGE);
 	// Захватываем замок придержки
 	hold_t hold(this->_reserve);
 	// Если потолок придержки перебран
@@ -886,10 +891,10 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 	if(this->_pages == nullptr)
 		// Отдавать нечего
 		return 0;
-	// Снятая с придержки цепочка областей
-	kept_t * taken = nullptr;
 	// Объём отданного куче
 	size_t result = 0;
+	// Снятая с придержки цепочка областей
+	kept_t * taken = nullptr;
 	/**
 	 * Снимаем придержанное ОДНИМ заходом, а не по области за раз
 	 *
@@ -917,7 +922,7 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 				// Головой списка становится следующая область
 				this->_kept[i] = kept->next;
 				// Определяем объём изъятой области
-				const size_t held = (i * Pages::PAGE);
+				const size_t held = (i * pages_t::PAGE);
 				// Читаем объём придержанного
 				const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
 				// Уменьшаем объём придержанного, не уходя ниже нуля (под замком)
@@ -979,13 +984,13 @@ void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
 	 * Счёт страниц у размера близ предела переполняется в нуль, и сверка с куском
 	 * пропустила бы САМЫЙ крупный запрос вглубь кучи - той нашлась бы нулевая область
 	 */
-	if(size > (static_cast <size_t> (-1) - (Pages::PAGE - 1)))
+	if(size > (static_cast <size_t> (-1) - (pages_t::PAGE - 1)))
 		// Отвечаем отказом
 		return nullptr;
 	// Определяем требуемое число страниц кучи
-	const size_t pages = ((size + (Pages::PAGE - 1)) / Pages::PAGE);
+	const size_t pages = ((size + (pages_t::PAGE - 1)) / pages_t::PAGE);
 	// Если требуемое число страниц не помещается в кусок кучи
-	if(pages > Pages::PAGES)
+	if(pages > pages_t::PAGES)
 		// Отвечаем отказом
 		return nullptr;
 	/**
@@ -1003,7 +1008,7 @@ void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
 			// Записываем действительно выданный размер
 			if(served != nullptr)
 				// Размер придержанной области известен точно
-				(* served) = (pages * Pages::PAGE);
+				(* served) = (pages * pages_t::PAGE);
 			// Выводим придержанную область
 			return kept;
 		}
@@ -1021,7 +1026,7 @@ void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
 	 */
 	if(served != nullptr)
 		// Записываем действительно выданный размер
-		(* served) = (taken * Pages::PAGE);
+		(* served) = (taken * pages_t::PAGE);
 	// Выводим выданную кучей область
 	return result;
 }
@@ -1039,13 +1044,13 @@ bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
 		// Расширять нечего
 		return false;
 	// Сверяем размер на переполнение при приведении к границе страницы
-	if(size > (static_cast <size_t> (-1) - (Pages::PAGE - 1)))
+	if(size > (static_cast <size_t> (-1) - (pages_t::PAGE - 1)))
 		// Расширять нечего
 		return false;
 	// Определяем требуемое число страниц кучи
-	const size_t pages = ((size + (Pages::PAGE - 1)) / Pages::PAGE);
+	const size_t pages = ((size + (pages_t::PAGE - 1)) / pages_t::PAGE);
 	// Если требуемое число страниц не помещается в кусок кучи
-	if(pages > Pages::PAGES)
+	if(pages > pages_t::PAGES)
 		// Расширять некуда
 		return false;
 	/**
@@ -1060,12 +1065,14 @@ bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
 			return true;
 	}
 	/**
-	 * Отказ роста - повод отдать придержанное и попробовать снова
+	 * @brief Если придерживать нечего
 	 *
-	 * Растёт область за счёт СВОБОДНЫХ соседей, а придержанная область для кучи занята:
-	 * не отдав её, мы своею же придержкой заслоняем себе рост
-	 */
-	// Если придерживать нечего
+	 * @note Отказ роста - повод отдать придержанное и попробовать снова
+	 *
+	 * @details Растёт область за счёт СВОБОДНЫХ соседей, а придержанная область для кучи занята:
+	 *          не отдав её, мы своею же придержкой заслоняем себе рост.
+	 *
+	 */ 
 	if(this->_keptBytes.load(std::memory_order_relaxed) == 0)
 		// Расти некуда
 		return false;
@@ -1161,10 +1168,10 @@ size_t awh::alloc::Central::purge(const uint64_t now, const bool all) noexcept {
 	size_t result = 0;
 	// Место перебора списков свободных областей
 	size_t cursor = 0;
-	// Изымаемые области
-	void * spans[Pages::BATCH];
 	// Признаки состоявшейся отдачи
-	bool given[Pages::BATCH];
+	bool given[pages_t::BATCH];
+	// Изымаемые области
+	void * spans[pages_t::BATCH];
 	/**
 	 * Отдаём память пачками, отпуская замок кучи на время обращения к системе
 	 *
@@ -1176,7 +1183,7 @@ size_t awh::alloc::Central::purge(const uint64_t now, const bool all) noexcept {
 	 * Пачками, а не всё разом: изъятые области никому не выдаются, и изыми мы их все,
 	 * куча на время отдачи осталась бы пустой
 	 */
-	while(cursor <= (Pages::LISTS + 1)){
+	while(cursor <= (pages_t::LISTS + 1)){
 		// Число изъятых областей
 		size_t count = 0;
 		/**
@@ -1186,7 +1193,7 @@ size_t awh::alloc::Central::purge(const uint64_t now, const bool all) noexcept {
 			// Захватываем замок кучи
 			hold_t hold(this->_heap);
 			// Изымаем очередную пачку областей
-			count = this->_pages->detach(now, all, spans, Pages::BATCH, &cursor);
+			count = this->_pages->detach(now, all, spans, pages_t::BATCH, &cursor);
 		}
 		// Если изъять нечего
 		if(count == 0)
@@ -1356,7 +1363,7 @@ awh::alloc::Pages::state_t awh::alloc::Central::heap() noexcept {
 	// Если куча не заведена
 	if(this->_pages == nullptr)
 		// Выводим пустое состояние
-		return Pages::state_t();
+		return pages_t::state_t();
 	// Захватываем замок кучи
 	hold_t hold(this->_heap);
 	// Выводим состояние кучи копией: за её замком оно жить не должно

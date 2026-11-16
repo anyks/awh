@@ -98,7 +98,11 @@
  * Наши модули
  */
 #include "pages.hpp"
-#include "../sys/macro/global.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian

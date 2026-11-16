@@ -37,7 +37,7 @@
 /**
  * Наши модули
  */
-#include <alloc/guard.hpp>
+#include "../../src/alloc/internal/guard.hpp"
 #include <alloc/source.hpp>
 
 /**

@@ -32,11 +32,11 @@
  * Подключаем наши модули
  */
 #include <alloc/source.hpp>
-#include <alloc/pages.hpp>
-#include <alloc/huge.hpp>
-#include <alloc/guard.hpp>
-#include <alloc/trace.hpp>
-#include <alloc/profile.hpp>
+#include "../../src/alloc/internal/pages.hpp"
+#include "../../src/alloc/internal/huge.hpp"
+#include "../../src/alloc/internal/guard.hpp"
+#include "../../src/alloc/internal/trace.hpp"
+#include "../../src/alloc/internal/profile.hpp"
 
 /**
  * Подключаем внутренние тела встраиваемых методов модуля

@@ -119,9 +119,9 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include "trace.hpp"
+#include "symbol.hpp"
 #include "source.hpp"
-#include "profile.hpp"
+#include "holding.hpp"
 
 /**
  * Подключаем заголовочный файл проекта

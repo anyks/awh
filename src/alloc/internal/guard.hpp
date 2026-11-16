@@ -128,8 +128,12 @@
  * Наши модули
  */
 #include "spin.hpp"
-#include "source.hpp"
-#include "../sys/macro/global.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../../include/alloc/source.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -162,9 +166,13 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Guard {
 			public:
-				// Начальная длина таблицы поиска заслонённого блока в местах
+				/**
+				 * Начальная длина таблицы поиска заслонённого блока в местах
+				 */
 				static constexpr size_t TABLE = 256;
-				// Наибольший размер, выдаваемый под заслонами, в байтах
+				/**
+				 * Наибольший размер, выдаваемый под заслонами, в байтах
+				 */
 				static constexpr size_t MAXIMUM = (1u * 1024u * 1024u);
 				/**
 				 * \~russian

@@ -99,8 +99,13 @@
  */
 #include "spin.hpp"
 #include "trace.hpp"
-#include "source.hpp"
-#include "../sys/macro/global.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../../include/alloc/source.hpp"
+#include "../../../include/alloc/holding.hpp"
+#include "../../../include/sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -122,44 +127,6 @@ namespace awh {
 	 * \~
 	 */
 	namespace alloc {
-		/**
-		 * \~russian
-		 * @brief Сведения об удерживаемом прикладным кодом блоке
-		 *
-		 * @note Массив стека указывает на память самой записи: годен он лишь внутри
-		 *       отклика перебора, а нужен дольше - копировать
-		 *
-		 * \~english
-		 * @brief Information about a block held by the application
-		 *
-		 *
-		 * @note The frames array points to the record's own memory: it is valid only
-		 *       inside the enumeration callback; copy it if needed longer
-		 *
-		 * \~
-		 */
-		typedef struct __AWH_SHARED_EXPORT__ Holding {
-			// Затребованный размер блока в байтах
-			size_t size;
-			// Глубина снятого стека вызовов
-			size_t depth;
-			// Отметка времени выдачи в миллисекундах
-			uint64_t stamp;
-			// Адрес удерживаемого блока
-			const void * block;
-			// Стек вызовов места выдачи
-			const void * const * frames;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			explicit Holding() noexcept;
-		} holding_t;
 		/**
 		 * \~russian
 		 * @brief Класс учёта мест выдачи памяти

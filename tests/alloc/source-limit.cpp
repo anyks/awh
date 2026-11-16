@@ -30,8 +30,8 @@
 /**
  * Подключаем слои с независимыми замками
  */
-#include <alloc/huge.hpp>
-#include <alloc/guard.hpp>
+#include "../../src/alloc/internal/huge.hpp"
+#include "../../src/alloc/internal/guard.hpp"
 
 /**
  * @brief Инкапсулируем перехват системных вызовов
