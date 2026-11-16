@@ -174,6 +174,7 @@ if (${GTest_FOUND})
                 io/parameterized.cpp
                 io/blocking.cpp
                 io/xdp.cpp
+                io/xdp-hw.cpp
             )
         # Если не нужно собрать тесты для работы с модулем ввода-вывода
         else()

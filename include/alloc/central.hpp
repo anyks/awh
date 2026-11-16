@@ -398,8 +398,18 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод отдачи куче покоящихся областей разряда
 				 *
+				 * @param index номер разряда
+				 * @param now   текущее время в миллисекундах
+				 * @param all   признак отдачи покоящихся областей без сверки окна
+				 * @return      число отданных куче областей
+				 *
 				 * \~english
 				 * @brief Method of returning idling regions of a class to the heap
+				 *
+				 * @param index class index
+				 * @param now   current time in milliseconds
+				 * @param all   sign of returning idling regions without checking the window
+				 * @return      number of regions returned to the heap
 				 *
 				 * \~
 				 */
@@ -408,8 +418,14 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод переноса области в хвост цепочки разряда
 				 *
+				 * @param index номер разряда
+				 * @param span  переносимая область
+				 *
 				 * \~english
 				 * @brief Method of moving a region to the tail of the class chain
+				 *
+				 * @param index class index
+				 * @param span  region being moved
 				 *
 				 * \~
 				 */
@@ -538,16 +554,18 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод возврата памяти, выданной сверх разрядов
 				 *
-				 * @param addr адрес возвращаемой памяти
-				 * @param now  текущее время в миллисекундах
-				 * @return     признак возврата памяти
+				 * @param addr    адрес возвращаемой памяти
+				 * @param now     текущее время в миллисекундах
+				 * @param keeping признак разрешённой придержки
+				 * @return        признак возврата памяти
 				 *
 				 * \~english
 				 * @brief Method of returning memory allocated beyond the size classes
 				 *
-				 * @param addr address of the memory being returned
-				 * @param now  current time in milliseconds
-				 * @return     sign of the memory having been returned
+				 * @param addr    address of the memory being returned
+				 * @param now     current time in milliseconds
+				 * @param keeping sign of the retention being permitted
+				 * @return        sign of the memory having been returned
 				 *
 				 * \~
 				 */
@@ -593,6 +611,7 @@ namespace awh {
 				 * @param index номер разряда, либо LIMIT если память выдана сверх разрядов
 				 * @param begin адрес начала области, которой принадлежит адрес
 				 * @param size  размер области в байтах
+				 * @param hint  место хранения подсказки поиска, либо nullptr
 				 * @return      признак того, что адрес выдан нами
 				 *
 				 * \~english
@@ -603,6 +622,7 @@ namespace awh {
 				 *              size classes
 				 * @param begin start address of the region the address belongs to
 				 * @param size  region size in bytes
+				 * @param hint  place to store the lookup hint, or nullptr
 				 * @return      sign of the address having been allocated by us
 				 *
 				 * \~
@@ -714,8 +734,9 @@ namespace awh {
 				 *       восемь пришлись ровно на изъятые области. Оттого отказ при
 				 *       ненулевом числе изъятых - повод подождать, а не отвечать отказом
 				 *
-				 * @param pages требуемое число страниц кучи
-				 * @return      адрес выданной области либо nullptr
+				 * @param pages  требуемое число страниц кучи
+				 * @param served место под действительно выданное число страниц, либо nullptr
+				 * @return       адрес выданной области либо nullptr
 				 *
 				 * \~english
 				 * @brief Method of taking a span from the heap, awaiting withheld ones
@@ -727,8 +748,9 @@ namespace awh {
 				 *       withdrawn regions. Hence refusal with a non-zero number of withdrawn is
 				 *       reason to wait, not to answer with refusal
 				 *
-				 * @param pages required number of heap pages
-				 * @return      address of the taken region or nullptr
+				 * @param pages  required number of heap pages
+				 * @param served place for the number of pages actually served, or nullptr
+				 * @return       address of the taken region or nullptr
 				 *
 				 * \~
 				 */

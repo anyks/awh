@@ -44,7 +44,7 @@ namespace {
 	 * @param size размер затираемой области в байтах
 	 *
 	 */
-	static __AWH_INLINE__ void erase(void * addr, const size_t size) noexcept {
+	static __AWH_INLINE__ void __awh_vessel_erase__(void * addr, const size_t size) noexcept {
 		// Если затирать нечего
 		if((addr == nullptr) || (size == 0))
 			// Выходим из функции
@@ -52,7 +52,7 @@ namespace {
 		// Получаем изменчивый указатель на область
 		volatile uint8_t * target = reinterpret_cast <volatile uint8_t *> (addr);
 		/**
-		 * Выполняем перебор всех байтов области
+		 * Перебираем все байты области
 		 */
 		for(size_t i = 0; i < size; i++)
 			// Затираем очередной байт области
@@ -118,9 +118,19 @@ bool awh::alloc::Vessel::reserve(const size_t capacity) noexcept {
 	this->_area = allocator::secure(capacity, &this->_shelter);
 	// Если область не выдана
 	if(this->_area == nullptr){
-		// Записываем отказ выдачи в журнал
-		awh::log::print("Secret vessel: unable to allocate protected memory of %zu bytes",
-		 awh::log::flag_t::CRITICAL, capacity);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ выдачи в журнал
+			log::debug("Secret vessel: unable to allocate protected memory of %zu bytes", __PRETTY_FUNCTION__, {capacity}, log::flag_t::CRITICAL, capacity);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ выдачи в журнал
+			log::print("Secret vessel: unable to allocate protected memory of %zu bytes", log::flag_t::CRITICAL, capacity);
+		#endif
 		// Отвечаем отказом
 		return false;
 	}
@@ -135,22 +145,42 @@ bool awh::alloc::Vessel::reserve(const size_t capacity) noexcept {
 		if(this->_secrecy == secrecy_t::STRICT){
 			// Освобождаем заведённое
 			this->wipe();
-			// Записываем отказ заведения в журнал
-			awh::log::print("Secret vessel: memory locking is unavailable, strict vessel refuses to hold the secret",
-			 awh::log::flag_t::CRITICAL);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ заведения в журнал
+				log::debug("Secret vessel: memory locking is unavailable, strict vessel refuses to hold the secret", __PRETTY_FUNCTION__, {capacity}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ заведения в журнал
+				log::print("Secret vessel: memory locking is unavailable, strict vessel refuses to hold the secret", log::flag_t::CRITICAL);
+			#endif
 			// Отвечаем отказом
 			return false;
 		}
-		// Записываем понижение защиты в журнал
-		awh::log::print("Secret vessel: memory locking is unavailable, the secret may reach the swap",
-		 awh::log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ заведения в журнал
+			log::debug("Secret vessel: memory locking is unavailable, the secret may reach the swap", __PRETTY_FUNCTION__, {capacity}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем понижение защиты в журнал
+			log::print("Secret vessel: memory locking is unavailable, the secret may reach the swap", log::flag_t::WARNING);
+		#endif
 	}
 	// Запоминаем ёмкость приёмника
 	this->_capacity = capacity;
 	// Занятого в приёмнике пока нет
 	this->_length = 0;
 	// Затираем содержимое приёмника
-	::erase(this->_area, capacity);
+	::__awh_vessel_erase__(this->_area, capacity);
 	// Закрываем область приёмника
 	static_cast <void> (allocator::shield(this->_area, false));
 	// Выводим результат выполнения операции
@@ -211,7 +241,7 @@ bool awh::alloc::Vessel::drop() noexcept {
 	 * затирания приёмника, а приёмник ради того и заведён, чтобы лишнего в нём не
 	 * лежало
 	 */
-	::erase((reinterpret_cast <uint8_t *> (this->_area) + this->_length), 1);
+	::__awh_vessel_erase__((reinterpret_cast <uint8_t *> (this->_area) + this->_length), 1);
 	// Закрываем область приёмника
 	static_cast <void> (allocator::shield(this->_area, false));
 	// Выводим результат выполнения операции
@@ -233,7 +263,7 @@ void awh::alloc::Vessel::wipe() noexcept {
 		 */
 		static_cast <void> (allocator::shield(this->_area, true));
 		// Затираем содержимое приёмника
-		::erase(this->_area, this->_capacity);
+		::__awh_vessel_erase__(this->_area, this->_capacity);
 		// Освобождаем область приёмника
 		allocator::release(this->_area);
 		// Сбрасываем адрес области приёмника

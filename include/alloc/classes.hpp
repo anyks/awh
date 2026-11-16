@@ -131,16 +131,26 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Classes {
 			public:
-				// Выравнивание выдаваемых блоков в байтах
+				/**
+				 * Выравнивание выдаваемых блоков в байтах
+				 */
 				static constexpr size_t ALIGN = 16;
 				/**
-				 * Наибольший размер, какой разряды СПОСОБНЫ обслужить, в байтах
-				 *
-				 * Это ёмкость таблиц поиска, а не действующая граница: та задаётся при
-				 * построении и по умолчанию много ниже. Ёмкость стоит лишних 768 октет
-				 * статической памяти на таблицу крупных запросов, и больше ничего
+				 * Наибольшее число разрядов
 				 */
-				static constexpr size_t MAXIMUM = (128u * 1024u);
+				static constexpr size_t LIMIT = 96;
+				/**
+				 * Порог, до которого поиск разряда идёт мелкой таблицей
+				 */
+				static constexpr size_t SMALL = 1024;
+				/**
+				 * Шаг крупной таблицы поиска в байтах
+				 */
+				static constexpr size_t STEP_LARGE = 128;
+				/**
+				 * Шаг мелкой таблицы поиска в байтах
+				 */
+				static constexpr size_t STEP_SMALL = ALIGN;
 				/**
 				 * Действующая граница разрядов по умолчанию, в байтах
 				 *
@@ -169,14 +179,14 @@ namespace awh {
 				 * задаётся настройкой `classLimit`
 				 */
 				static constexpr size_t DEFAULT = (32u * 1024u);
-				// Наибольшее число разрядов
-				static constexpr size_t LIMIT = 96;
-				// Порог, до которого поиск разряда идёт мелкой таблицей
-				static constexpr size_t SMALL = 1024;
-				// Шаг мелкой таблицы поиска в байтах
-				static constexpr size_t STEP_SMALL = ALIGN;
-				// Шаг крупной таблицы поиска в байтах
-				static constexpr size_t STEP_LARGE = 128;
+				/**
+				 * Наибольший размер, какой разряды СПОСОБНЫ обслужить, в байтах
+				 *
+				 * Это ёмкость таблиц поиска, а не действующая граница: та задаётся при
+				 * построении и по умолчанию много ниже. Ёмкость стоит лишних 768 октет
+				 * статической памяти на таблицу крупных запросов, и больше ничего
+				 */
+				static constexpr size_t MAXIMUM = (128u * 1024u);
 			private:
 				// Число заведённых разрядов
 				size_t _count;
@@ -187,6 +197,7 @@ namespace awh {
 				 * поля берутся из одной строки памяти, и второе чтение ничего не стоит
 				 */
 				size_t _maximum;
+			private:
 				// Размер блока каждого разряда в байтах
 				size_t _size[LIMIT];
 				// Число страниц кучи на область каждого разряда
@@ -202,8 +213,11 @@ namespace awh {
 				 * за концом массива - и читал бы мусор, а не отказывал
 				 */
 				uint8_t _small[(SMALL / STEP_SMALL) + 2];
-				// Таблица поиска разряда для крупных запросов
+				/**
+				 * Таблица поиска разряда для крупных запросов
+				 */
 				uint8_t _large[(MAXIMUM / STEP_LARGE) + 2];
+			private:
 				/**
 				 * Разрядность таблиц поиска связана с числом разрядов
 				 *
@@ -213,18 +227,20 @@ namespace awh {
 				 * пяти - и номера начали бы усекаться молча, отдавая на всякий крупный
 				 * запрос чужой разряд
 				 */
-				static_assert((LIMIT <= 255), "номер разряда обязан помещаться в октет таблиц поиска");
+				static_assert((LIMIT <= 255), "The bit number must be placed in the octet of the lookup tables");
 			public:
 				/**
 				 * \~russian
 				 * @brief Метод построения таблиц разрядов
 				 *
-				 * @return число заведённых разрядов
+				 * @param limit требуемое число разрядов, либо нуль ради числа по умолчанию
+				 * @return      число заведённых разрядов
 				 *
 				 * \~english
 				 * @brief Method of building the class tables
 				 *
-				 * @return number of classes created
+				 * @param limit required number of classes, or zero for the default number
+				 * @return      number of classes created
 				 *
 				 * \~
 				 */

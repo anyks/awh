@@ -227,24 +227,6 @@ namespace awh {
 						 * \~
 						 */
 						size_t operator()(const origin_t & id) const noexcept;
-					public:
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * @note Ключевого слова explicit здесь быть не должно: unordered_map
-						 *       создаёт объект хеш-функции списочной инициализацией, а та
-						 *       явный конструктор не берёт
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * @note The explicit keyword must not be here: unordered_map creates the hash function
-						 *       object by list initialization, and that does not take an explicit constructor
-						 *
-						 * \~
-						 */
-						Origin_Hash() noexcept = default;
 				} origin_hash_t;
 			private:
 				/**
@@ -304,10 +286,10 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ UDP_Server {
-					// Начальный порт диапазона для выделения портов UDP серверов
-					uint16_t begin;
 					// Конечный порт диапазона для выделения портов UDP серверов
 					uint16_t end;
+					// Начальный порт диапазона для выделения портов UDP серверов
+					uint16_t begin;
 					// Количество выделенных портов для UDP-серверов
 					uint16_t count;
 					// Список идентификаторов активных событий UDP-серверов

@@ -224,7 +224,7 @@ namespace {
 	 * @return          адрес функции из требуемого поля
 	 *
 	 */
-	static __AWH_INLINE__ const void * pick(const alloc::functions_t & functions, const size_t index) noexcept {
+	static __AWH_INLINE__ const void * __awh_pe_pick__(const alloc::functions_t & functions, const size_t index) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -259,7 +259,7 @@ namespace {
 	 * @param addr      записываемый адрес
 	 *
 	 */
-	static __AWH_INLINE__ void put(alloc::functions_t & functions, const size_t index, void * addr) noexcept {
+	static __AWH_INLINE__ void __awh_pe_put__(alloc::functions_t & functions, const size_t index, void * addr) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -289,7 +289,7 @@ namespace {
 	 */
 	#if defined(_M_X64) || defined(__x86_64__)
 		/**
-		 * @brief Измерение длины поля адресации команды x86-64 (ModRM + SIB + смещение)
+		 * @brief Функция измерения длины поля адресации команды x86-64 (ModRM + SIB + смещение)
 		 *
 		 * @note Собрано из трёх повторявшихся разборов в одно: там терялось четырёхоктетное
 		 *       смещение у формы `mod=00` с основанием 101 в байте масштаба (`[index*scale +
@@ -304,7 +304,7 @@ namespace {
 			// Длина поля начинается с самого байта ModRM
 			size_t length = 1;
 			// Извлекаем поле регистра-основания
-			const uint8_t rm = static_cast <uint8_t> (field[0] & 0x07u);
+			const uint8_t rmField = static_cast <uint8_t> (field[0] & 0x07u);
 			// Извлекаем поле вида адресации
 			const uint8_t mod = static_cast <uint8_t> ((field[0] >> 6) & 0x03u);
 			// Регистровая адресация: ни байта масштаба, ни смещения
@@ -312,13 +312,13 @@ namespace {
 				// Поле измерено
 				return length;
 			// Адресация от счётчика команд: перенос в мостик увёл бы обращение мимо
-			if((mod == 0x00u) && (rm == 0x05u))
+			if((mod == 0x00u) && (rmField == 0x05u))
 				// Отвечаем отказом
 				return 0;
 			// Основание адресации: у формы с байтом масштаба берётся из него
-			uint8_t base = rm;
+			uint8_t base = rmField;
 			// Если адресация идёт через байт масштаба
-			if(rm == 0x04u){
+			if(rmField == 0x04u){
 				// Основание берём из байта масштаба
 				base = static_cast <uint8_t> (field[1] & 0x07u);
 				// Учитываем байт масштаба
@@ -825,19 +825,21 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		// Команда чтения адреса по метке: LDR X16, +8
 		const uint32_t ldr = 0x58000050u;
 		// Команда перехода по регистру: BR X16
-		const uint32_t br = 0xD61F0200u;
+		const uint32_t branch = 0xD61F0200u;
 		/**
-		 * Регистр X16 (IP0) на входе функции затираем по соглашению о вызовах,
-		 * оттого пользоваться им здесь безопасно
+		 * @brief Записываем команду чтения адреса
+		 *
+		 * @details Регистр X16 (IP0) на входе функции затираем по соглашению о вызовах,
+		 *          оттого пользоваться им здесь безопасно.
+		 *
 		 */
-		// Записываем команду чтения адреса
 		::memcpy(buffer, &ldr, sizeof(ldr));
 		// Записываем команду перехода
-		::memcpy(buffer + 4, &br, sizeof(br));
+		::memcpy(buffer + 4, &branch, sizeof(branch));
 		// Записываем адрес подставляемой функции
 		::memcpy(buffer + 8, &target, sizeof(target));
 		// Публикуем прежнюю функцию до включения перехода на наш отклик
-		put(originals, index, patch.body);
+		__awh_pe_put__(originals, index, patch.body);
 		// Переносим собранное на вход функции
 		::memcpy(entry, buffer, PATCH_SIZE);
 		// Возвращаем прежние права доступа
@@ -876,7 +878,6 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		 * Относительный переход достаёт не далее двух гигабайт, а наши функции лежат в
 		 * образе программы - от библиотеки времени исполнения это семь гигабайт и более
 		 */
-		// Берём память под мостик до нашей функции
 		uint8_t * bridge = reinterpret_cast <uint8_t *> (this->nearby(entry, 14));
 		// Если память под мостик не выдана
 		if(bridge == nullptr)
@@ -889,12 +890,14 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 			// Отвечаем отказом
 			return false;
 		/**
-		 * Собираем мостик: абсолютный переход на нашу функцию
+		 * @brief Записываем команду абсолютного перехода
 		 *
-		 * Команда FF 25 с нулевым смещением берёт адрес перехода из восьми байт,
-		 * лежащих сразу за нею
-		 */
-		// Записываем команду абсолютного перехода
+		 * @note Собираем мостик: абсолютный переход на нашу функцию
+		 *
+		 * @details Команда FF 25 с нулевым смещением берёт адрес перехода из восьми байт,
+		 *          лежащих сразу за нею.
+		 *
+		 */ 
 		bridge[0] = 0xFFu;
 		// Записываем вид операнда команды перехода
 		bridge[1] = 0x25u;
@@ -915,13 +918,6 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 			const uint8_t * command = (reinterpret_cast <const uint8_t *> (entry) + offsets[i]);
 			// Определяем длину очередной команды
 			const size_t length = (((i + 1) < count) ? (offsets[i + 1] - offsets[i]) : (moved - offsets[i]));
-			/**
-			 * Если команда - условный переход по однобайтовому смещению
-			 *
-			 * Смещение его считается от адреса следующей команды, и перенос требует
-			 * пересчёта. Пересчитанное смещение в один байт уже не уложится, оттого
-			 * команда пересобирается в двухбайтовый вид с четырёхбайтовым смещением
-			 */
 			/**
 			 * Переносим безусловный переход с пересчётом смещения
 			 *
@@ -958,7 +954,14 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 				::memcpy((relay + used + 1), &narrow, sizeof(narrow));
 				// Учитываем занятое командой место
 				used += 5;
-			} else if((command[0] >= 0x70u) && (command[0] <= 0x7Fu)){
+			/**
+			 * Если команда - условный переход по однобайтовому смещению
+			 *
+			 * Смещение его считается от адреса следующей команды, и перенос требует
+			 * пересчёта. Пересчитанное смещение в один байт уже не уложится, оттого
+			 * команда пересобирается в двухбайтовый вид с четырёхбайтовым смещением
+			 */
+			} else if((command[0] >= 0x70u) && (command[0] <= 0x7Fu)) {
 				// Определяем настоящую цель перехода
 				const uint8_t * aim = (command + 2 + static_cast <intptr_t> (static_cast <int8_t> (command[1])));
 				/**
@@ -1046,7 +1049,7 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		// Записываем смещение перехода
 		::memcpy(buffer + 1, &narrow, sizeof(narrow));
 		// Публикуем прежнюю функцию до включения перехода на наш отклик
-		put(originals, index, patch.body);
+		__awh_pe_put__(originals, index, patch.body);
 		// Переносим собранное на вход функции
 		::memcpy(entry, buffer, moved);
 		// Возвращаем прежние права доступа
@@ -1154,7 +1157,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 			// Получаем адрес входа
 			entries[library][i] = reinterpret_cast <void *> (::GetProcAddress(modules[library], NAMES[i]));
 			// Если вход непригоден либо замена не задана
-			if(!this->suits(entries[library][i]) || (pick(hooks, i) == nullptr))
+			if(!this->suits(entries[library][i]) || (__awh_pe_pick__(hooks, i) == nullptr))
 				// Отмечаем обязательную группу непригодной
 				fit = false;
 		}
@@ -1199,7 +1202,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 				// Подменять отсутствующую функцию не требуется
 				continue;
 			// Проверяем пригодность входа и наличие замены
-			aligned = (this->suits(entries[library][i]) && (pick(hooks, i) != nullptr));
+			aligned = (this->suits(entries[library][i]) && (__awh_pe_pick__(hooks, i) != nullptr));
 			// Если измерение экспортируется, оно тоже должно сохранять исходную CRT
 			if(i == (PATCH_TOTAL - 1))
 				// Не оставляем системное измерение над нашими блоками
@@ -1255,7 +1258,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 		 */
 		for(size_t i = 0; i < PATCH_COUNT; i++){
 			// Если очередная подмена не установлена
-			if(!this->apply(this->_patches[library][i], entries[library][i], pick(targets[library], i), __awh_pe_originals__[library], i)){
+			if(!this->apply(this->_patches[library][i], entries[library][i], __awh_pe_pick__(targets[library], i), __awh_pe_originals__[library], i)){
 				/**
 				 * Возвращаем обе библиотеки в исходное состояние
 				 */
@@ -1289,7 +1292,7 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 				// Подменять нечего
 				continue;
 			// Если очередная подмена не установлена
-			if(!this->apply(this->_patches[library][i], entries[library][i], pick(targets[library], i), __awh_pe_originals__[library], i)){
+			if(!this->apply(this->_patches[library][i], entries[library][i], __awh_pe_pick__(targets[library], i), __awh_pe_originals__[library], i)){
 				/**
 				 * Снимаем всю выровненную группу этой библиотеки
 				 */
@@ -1398,7 +1401,7 @@ bool awh::alloc::PECapture::foreign(const void * ptr) const noexcept {
  *          захвата. Перехваченные входы и без того отдают владельцу через
  *          наборы с номером библиотеки, а generic-путь без контекста библиотеки
  *          отвечает пустым набором: блок молча утекает - так безопаснее, чем
- *          унести его не в ту кучу и валить процесс
+ *          унести его не в ту кучу и валить процесс.
  *
  * @param ptr разбираемый указатель
  * @return    пустой набор: владелец неизвестен и отдавать некому
@@ -1450,6 +1453,6 @@ awh::alloc::PECapture::PECapture() noexcept :
  *          намеренно не возвращается вовсе.
  *
  */
-awh::alloc::PECapture::~PECapture() noexcept {}
+awh::alloc::PECapture::~PECapture() noexcept = default;
 
 #endif

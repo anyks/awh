@@ -56,10 +56,8 @@ namespace {
 	 * Прежняя основная зона процесса
 	 *
 	 * Объявлена здесь, а не рядом с нашей зоной: к ней обращается выравнивающая выдача,
-	 * а та стоит выше по файлу - объявления в безымянном пространстве видны лишь ниже
-	 * себя
+	 * а та стоит выше по файлу - объявления в безымянном пространстве видны лишь ниже себя
 	 */
-	// Прежняя основная зона процесса
 	static ::malloc_zone_t * __awh_zone_previous__ = nullptr;
 	// Отклик перед ветвлением процесса
 	static void (* __awh_zone_before__)() = nullptr;
@@ -75,7 +73,7 @@ namespace {
 	 * @return     размер блока, либо нуль если блок не наш
 	 *
 	 */
-	static size_t measure(::malloc_zone_t * zone, const void * ptr) noexcept {
+	static size_t __awh_zone_measure__(::malloc_zone_t * zone, const void * ptr) noexcept {
 		// Зона нам известна, а спрашивают о чужом указателе
 		(void) zone;
 		// Если измерять нечем либо нечего
@@ -99,7 +97,7 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * reserve(::malloc_zone_t * zone, size_t size) noexcept {
+	static void * __awh_zone_reserve__(::malloc_zone_t * zone, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Выводим выданную нашим распределителем память
@@ -114,21 +112,22 @@ namespace {
 	 * @return      адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * reserveZeroed(::malloc_zone_t * zone, size_t count, size_t size) noexcept {
+	static void * __awh_zone_reserve_zeroed__(::malloc_zone_t * zone, size_t count, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Выводим выданную нашим распределителем память
 		return (* __awh_zone_hooks__.calloc)(count, size);
 	}
 	/**
-	 * @brief Функция выделения памяти зоной с выравниванием по странице
+	 * @brief Функция выделения памяти зоной с выравниванием по заданной границе
 	 *
-	 * @param zone зона, у которой просят
-	 * @param size требуемый размер в байтах
-	 * @return     адрес выданной памяти либо nullptr
+	 * @param zone      зона, у которой просят
+	 * @param alignment граница выравнивания
+	 * @param size      требуемый размер в байтах
+	 * @return          адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * reserveAligned(::malloc_zone_t * zone, size_t alignment, size_t size) noexcept {
+	static void * __awh_zone_reserve_aligned__(::malloc_zone_t * zone, size_t alignment, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		/**
@@ -170,14 +169,14 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * reservePaged(::malloc_zone_t * zone, size_t size) noexcept {
+	static void * __awh_zone_reserve_paged__(::malloc_zone_t * zone, size_t size) noexcept {
 		/**
 		 * Выдаём страничным выравниванием
 		 *
 		 * Выравнивание берём у системы, а не у своей страницы: `valloc` обещает
 		 * выравнивание по странице СИСТЕМЫ, и обещание это проверяемо снаружи
 		 */
-		return ::reserveAligned(zone, static_cast <size_t> (::getpagesize()), size);
+		return ::__awh_zone_reserve_aligned__(zone, static_cast <size_t> (::getpagesize()), size);
 	}
 	/**
 	 * @brief Функция выделения памяти зоной пачкой
@@ -189,7 +188,7 @@ namespace {
 	 * @return       число выданных блоков
 	 *
 	 */
-	static unsigned reserveBatch(::malloc_zone_t * zone, size_t size, void ** blocks, unsigned count) noexcept {
+	static unsigned __awh_zone_reserve_batch__(::malloc_zone_t * zone, size_t size, void ** blocks, unsigned count) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Число выданных блоков
@@ -222,7 +221,7 @@ namespace {
 	 * @param count  число освобождаемых блоков
 	 *
 	 */
-	static void discardBatch(::malloc_zone_t * zone, void ** blocks, unsigned count) noexcept {
+	static void __awh_zone_discard_batch__(::malloc_zone_t * zone, void ** blocks, unsigned count) noexcept {
 		// Зона нам известна
 		(void) zone;
 		/**
@@ -242,7 +241,7 @@ namespace {
 	 * @param ptr  адрес освобождаемой памяти
 	 *
 	 */
-	static void discard(::malloc_zone_t * zone, void * ptr) noexcept {
+	static void __awh_zone_discard__(::malloc_zone_t * zone, void * ptr) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Освобождаем память нашим распределителем
@@ -256,7 +255,7 @@ namespace {
 	 * @param size размер освобождаемого блока
 	 *
 	 */
-	static void discardSized(::malloc_zone_t * zone, void * ptr, size_t size) noexcept {
+	static void __awh_zone_discard_sized__(::malloc_zone_t * zone, void * ptr, size_t size) noexcept {
 		// Размер нам известен и без подсказки
 		(void) zone; (void) size;
 		// Освобождаем память нашим распределителем
@@ -271,7 +270,7 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * resize(::malloc_zone_t * zone, void * ptr, size_t size) noexcept {
+	static void * __awh_zone_resize__(::malloc_zone_t * zone, void * ptr, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Выводим выданную нашим распределителем память
@@ -283,7 +282,7 @@ namespace {
 	 * @param zone разрушаемая зона
 	 *
 	 */
-	static void demolish(::malloc_zone_t * zone) noexcept {
+	static void __awh_zone_demolish__(::malloc_zone_t * zone) noexcept {
 		/**
 		 * Разрушать нечего
 		 *
@@ -300,7 +299,7 @@ namespace {
 	 * @return     объём отданного в байтах
 	 *
 	 */
-	static size_t relieve(::malloc_zone_t * zone, size_t goal) noexcept {
+	static size_t __awh_zone_relieve__(::malloc_zone_t * zone, size_t goal) noexcept {
 		// Отдача памяти системе ведётся самим распределителем по его настройке
 		(void) zone; (void) goal;
 		// Отдавать по требованию системы нечего
@@ -314,17 +313,23 @@ namespace {
 	 * @return     признак принадлежности адреса зоне
 	 *
 	 */
-	static boolean_t claimed(::malloc_zone_t * zone, void * ptr) noexcept {
+	static boolean_t __awh_zone_claimed__(::malloc_zone_t * zone, void * ptr) noexcept {
 		// Выводим признак принадлежности адреса нашей зоне
-		return static_cast <boolean_t> (::measure(zone, ptr) != 0);
+		return static_cast <boolean_t> (::__awh_zone_measure__(zone, ptr) != 0);
 	}
 	/**
 	 * @brief Функция перечисления блоков зоны для средств разбора памяти
 	 *
-	 * @return признак успеха перечисления
+	 * @param task     задача, чья память перечисляется
+	 * @param context  контекст средства разбора
+	 * @param type     вид перечисляемой памяти
+	 * @param base     начало перечисляемой области
+	 * @param reader   средство чтения памяти задачи
+	 * @param recorder отклик, куда складывать перечисленные диапазоны
+	 * @return         признак успеха перечисления
 	 *
 	 */
-	static kern_return_t enumerate(::task_t task, void * context, unsigned type, ::vm_address_t base,
+	static kern_return_t __awh_zone_enumerate__(::task_t task, void * context, unsigned type, ::vm_address_t base,
 	 ::memory_reader_t reader, ::vm_range_recorder_t recorder) noexcept {
 		/**
 		 * Перечислять блоки мы не умеем
@@ -345,7 +350,7 @@ namespace {
 	 * @return     размер, выдаваемый зоной на такой запрос
 	 *
 	 */
-	static size_t rounded(::malloc_zone_t * zone, size_t size) noexcept {
+	static size_t __awh_zone_rounded__(::malloc_zone_t * zone, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Отвечаем запрошенным: округление разрядами - дело самого распределителя
@@ -358,7 +363,7 @@ namespace {
 	 * @return     признак целостности
 	 *
 	 */
-	static boolean_t sound(::malloc_zone_t * zone) noexcept {
+	static boolean_t __awh_zone_sound__(::malloc_zone_t * zone) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Отвечаем целостностью
@@ -367,16 +372,21 @@ namespace {
 	/**
 	 * @brief Функция печати состояния зоны
 	 *
+	 * @param zone    зона, чьё состояние просят напечатать
+	 * @param verbose признак подробной печати
+	 *
 	 */
-	static void describe(::malloc_zone_t * zone, boolean_t verbose) noexcept {
+	static void __awh_zone_describe__(::malloc_zone_t * zone, boolean_t verbose) noexcept {
 		// Печатать нечего: состояние распределителя опрашивается его же средствами
 		(void) zone; (void) verbose;
 	}
 	/**
 	 * @brief Функция захвата замков зоны перед ветвлением процесса
 	 *
+	 * @param zone зона, чьи замки захватывают перед ветвлением
+	 *
 	 */
-	static void freeze(::malloc_zone_t * zone) noexcept {
+	static void __awh_zone_freeze__(::malloc_zone_t * zone) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Если отклик перед ветвлением задан
@@ -387,8 +397,10 @@ namespace {
 	/**
 	 * @brief Функция освобождения замков зоны после ветвления процесса
 	 *
+	 * @param zone зона, чьи замки освобождают после ветвления
+	 *
 	 */
-	static void thaw(::malloc_zone_t * zone) noexcept {
+	static void __awh_zone_thaw__(::malloc_zone_t * zone) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Если отклик у родителя задан
@@ -399,8 +411,11 @@ namespace {
 	/**
 	 * @brief Функция сбора статистики зоны
 	 *
+	 * @param zone  зона, чью статистику собирают
+	 * @param stats место, куда складывать статистику
+	 *
 	 */
-	static void collect(::malloc_zone_t * zone, ::malloc_statistics_t * stats) noexcept {
+	static void __awh_zone_collect__(::malloc_zone_t * zone, ::malloc_statistics_t * stats) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Если собирать некуда
@@ -438,10 +453,11 @@ namespace {
 	/**
 	 * @brief Функция определения занятости зоны
 	 *
-	 * @return признак занятости зоны
+	 * @param zone зона, чью занятость определяют
+	 * @return     признак занятости зоны
 	 *
 	 */
-	static boolean_t busy(::malloc_zone_t * zone) noexcept {
+	static boolean_t __awh_zone_busy__(::malloc_zone_t * zone) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Отвечаем незанятостью
@@ -450,16 +466,21 @@ namespace {
 	/**
 	 * @brief Функция включения записи обращений к адресу
 	 *
+	 * @param zone    зона, для какой просят запись обращений
+	 * @param address адрес, чьи обращения записывать
+	 *
 	 */
-	static void trace(::malloc_zone_t * zone, void * address) noexcept {
+	static void __awh_zone_trace__(::malloc_zone_t * zone, void * address) noexcept {
 		// Записи обращений мы не ведём: съём у распределителя будет свой
 		(void) zone; (void) address;
 	}
 	/**
 	 * @brief Функция перезаведения замков зоны у потомка ветвления
 	 *
+	 * @param zone зона, чьи замки перезаводят у потомка
+	 *
 	 */
-	static void relock(::malloc_zone_t * zone) noexcept {
+	static void __awh_zone_relock__(::malloc_zone_t * zone) noexcept {
 		// Зона нам известна
 		(void) zone;
 		// Если отклик у потомка задан
@@ -481,7 +502,7 @@ namespace {
 	 * @return обслуживающая зона либо nullptr
 	 *
 	 */
-	static ::malloc_zone_t * defaultZone() noexcept {
+	static ::malloc_zone_t * __awh_zone_default_zone__() noexcept {
 		// Перечень зон процесса
 		::vm_address_t * zones = nullptr;
 		// Число зон в перечне
@@ -510,7 +531,7 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * priorMalloc(size_t size) noexcept {
+	static void * __awh_zone_prior_malloc__(size_t size) noexcept {
 		// Если прежней зоны нет
 		if(::__awh_zone_previous__ == nullptr)
 			// Выдавать нечего
@@ -526,7 +547,7 @@ namespace {
 	 * @return      адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * priorCalloc(size_t count, size_t size) noexcept {
+	static void * __awh_zone_prior_calloc__(size_t count, size_t size) noexcept {
 		// Если прежней зоны нет
 		if(::__awh_zone_previous__ == nullptr)
 			// Выдавать нечего
@@ -542,7 +563,7 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * priorRealloc(void * ptr, size_t size) noexcept {
+	static void * __awh_zone_prior_realloc__(void * ptr, size_t size) noexcept {
 		// Если прежней зоны нет
 		if(::__awh_zone_previous__ == nullptr)
 			// Выдавать нечего
@@ -568,7 +589,7 @@ namespace {
 	 * @return    размер блока, либо нуль если блок не прежней зоны
 	 *
 	 */
-	static size_t priorMeasure(const void * ptr) noexcept {
+	static size_t __awh_zone_prior_measure__(const void * ptr) noexcept {
 		// Если измерять нечего либо нечем
 		if((ptr == nullptr) || (::__awh_zone_previous__ == nullptr) || (::__awh_zone_previous__->size == nullptr))
 			// Измерять нечего
@@ -582,7 +603,7 @@ namespace {
 	 * @param ptr адрес освобождаемой памяти
 	 *
 	 */
-	static __AWH_INLINE__ void priorFree(void * ptr) noexcept {
+	static __AWH_INLINE__ void __awh_zone_prior_free__(void * ptr) noexcept {
 		// Если освобождать нечего
 		if(ptr == nullptr)
 			// Освобождать нечего
@@ -604,7 +625,7 @@ namespace {
 		 *          освобождении блока чужой зоны
 		 *
 		 * @note Тот же круг и по той же причине разорван у измерения блока - см. предупреждение
-		 *       при `priorMeasure`. Разница одна: там он вскрылся сразу, у ветвления процесса,
+		 *       при `__awh_zone_prior_measure__`. Разница одна: там он вскрылся сразу, у ветвления процесса,
 		 *       а здесь пролежал незамеченным - блоки, выданные мимо нас, в наборе проверок
 		 *       не освобождаются
 		 *
@@ -680,7 +701,7 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	 */
 	::malloc_default_purgeable_zone();
 	// Получаем прежнюю основную зону процесса
-	::malloc_zone_t * previous = ::defaultZone();
+	::malloc_zone_t * previous = ::__awh_zone_default_zone__();
 	// Если прежней основной зоны нет
 	if(previous == nullptr)
 		// Отвечаем отказом
@@ -693,57 +714,57 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	 */
 	::__awh_zone_previous__ = previous;
 	// Запоминаем прежнее выделение памяти
-	this->_originals.malloc = &::priorMalloc;
+	this->_originals.malloc = &::__awh_zone_prior_malloc__;
 	// Запоминаем прежнее освобождение памяти
-	this->_originals.free = &::priorFree;
+	this->_originals.free = &::__awh_zone_prior_free__;
 	// Запоминаем прежнее выделение обнулённой памяти
-	this->_originals.calloc = &::priorCalloc;
+	this->_originals.calloc = &::__awh_zone_prior_calloc__;
 	// Запоминаем прежнее изменение размера выделенной памяти
-	this->_originals.realloc = &::priorRealloc;
+	this->_originals.realloc = &::__awh_zone_prior_realloc__;
 	// Запоминаем прежнее измерение блока
-	this->_originals.msize = &::priorMeasure;
+	this->_originals.msize = &::__awh_zone_prior_measure__;
 	// Обнуляем средства разбора нашей зоны
 	::memset(&::__awh_zone_introspect__, 0, sizeof(::__awh_zone_introspect__));
 	// Задаём метод перечисления блоков зоны
-	::__awh_zone_introspect__.enumerator = &::enumerate;
+	::__awh_zone_introspect__.enumerator = &::__awh_zone_enumerate__;
 	// Задаём метод определения хорошего размера блока
-	::__awh_zone_introspect__.good_size = &::rounded;
+	::__awh_zone_introspect__.good_size = &::__awh_zone_rounded__;
 	// Задаём метод проверки целостности зоны
-	::__awh_zone_introspect__.check = &::sound;
+	::__awh_zone_introspect__.check = &::__awh_zone_sound__;
 	// Задаём метод печати состояния зоны
-	::__awh_zone_introspect__.print = &::describe;
+	::__awh_zone_introspect__.print = &::__awh_zone_describe__;
 	// Задаём метод включения записи обращений к адресу
-	::__awh_zone_introspect__.log = &::trace;
+	::__awh_zone_introspect__.log = &::__awh_zone_trace__;
 	// Задаём метод захвата замков зоны перед ветвлением процесса
-	::__awh_zone_introspect__.force_lock = &::freeze;
+	::__awh_zone_introspect__.force_lock = &::__awh_zone_freeze__;
 	// Задаём метод освобождения замков зоны после ветвления процесса
-	::__awh_zone_introspect__.force_unlock = &::thaw;
+	::__awh_zone_introspect__.force_unlock = &::__awh_zone_thaw__;
 	// Задаём метод сбора статистики зоны
-	::__awh_zone_introspect__.statistics = &::collect;
+	::__awh_zone_introspect__.statistics = &::__awh_zone_collect__;
 	// Задаём метод определения занятости зоны
-	::__awh_zone_introspect__.zone_locked = &::busy;
+	::__awh_zone_introspect__.zone_locked = &::__awh_zone_busy__;
 	// Задаём метод перезаведения замков зоны у потомка ветвления
-	::__awh_zone_introspect__.reinit_lock = &::relock;
+	::__awh_zone_introspect__.reinit_lock = &::__awh_zone_relock__;
 	// Обнуляем нашу зону
 	::memset(&::__awh_zone__, 0, sizeof(::__awh_zone__));
 	// Задаём зоне метод определения размера блока
-	::__awh_zone__.size = &::measure;
+	::__awh_zone__.size = &::__awh_zone_measure__;
 	// Задаём зоне метод выделения памяти
-	::__awh_zone__.malloc = &::reserve;
+	::__awh_zone__.malloc = &::__awh_zone_reserve__;
 	// Задаём зоне метод выделения обнулённой памяти
-	::__awh_zone__.calloc = &::reserveZeroed;
+	::__awh_zone__.calloc = &::__awh_zone_reserve_zeroed__;
 	// Задаём зоне метод выделения памяти с выравниванием по странице
-	::__awh_zone__.valloc = &::reservePaged;
+	::__awh_zone__.valloc = &::__awh_zone_reserve_paged__;
 	// Задаём зоне метод освобождения памяти
-	::__awh_zone__.free = &::discard;
+	::__awh_zone__.free = &::__awh_zone_discard__;
 	// Задаём зоне метод изменения размера памяти
-	::__awh_zone__.realloc = &::resize;
+	::__awh_zone__.realloc = &::__awh_zone_resize__;
 	// Задаём зоне метод разрушения
-	::__awh_zone__.destroy = &::demolish;
+	::__awh_zone__.destroy = &::__awh_zone_demolish__;
 	// Задаём зоне метод выделения памяти пачкой
-	::__awh_zone__.batch_malloc = &::reserveBatch;
+	::__awh_zone__.batch_malloc = &::__awh_zone_reserve_batch__;
 	// Задаём зоне метод освобождения памяти пачкой
-	::__awh_zone__.batch_free = &::discardBatch;
+	::__awh_zone__.batch_free = &::__awh_zone_discard_batch__;
 	// Задаём зоне название, видимое средствами разбора памяти
 	::__awh_zone__.zone_name = TITLE;
 	// Задаём зоне средства разбора
@@ -763,13 +784,13 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	 * `posix_memalign`. Пустым оно и было, пока не вскрылось съёмом стека упавшего
 	 * потомка ветвления
 	 */
-	::__awh_zone__.memalign = &::reserveAligned;
+	::__awh_zone__.memalign = &::__awh_zone_reserve_aligned__;
 	// Задаём зоне метод освобождения памяти с известным размером
-	::__awh_zone__.free_definite_size = &::discardSized;
+	::__awh_zone__.free_definite_size = &::__awh_zone_discard_sized__;
 	// Задаём зоне метод отдачи системе свободной памяти
-	::__awh_zone__.pressure_relief = &::relieve;
+	::__awh_zone__.pressure_relief = &::__awh_zone_relieve__;
 	// Задаём зоне метод опознания принадлежности адреса
-	::__awh_zone__.claimed_address = &::claimed;
+	::__awh_zone__.claimed_address = &::__awh_zone_claimed__;
 	// Вносим нашу зону в перечень зон процесса
 	::malloc_zone_register(&::__awh_zone__);
 	/**
@@ -791,7 +812,7 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	 * Сверяем, а не полагаемся: перестановка может и не удаться. Отчитаться успехом,
 	 * не сверив, значило бы обещать захват там, где его нет
 	 */
-	if(::defaultZone() != &::__awh_zone__){
+	if(::__awh_zone_default_zone__() != &::__awh_zone__){
 		// Изымаем нашу зону из перечня
 		::malloc_zone_unregister(&::__awh_zone__);
 		/**
@@ -799,7 +820,7 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 		 *
 		 * Возвращаем тем же приёмом: изъятие с повторным внесением ставит её первой
 		 */
-		if(::defaultZone() != previous){
+		if(::__awh_zone_default_zone__() != previous){
 			// Изымаем прежнюю основную зону
 			::malloc_zone_unregister(previous);
 			// Вносим прежнюю основную зону заново
@@ -833,7 +854,7 @@ void awh::alloc::ZoneCapture::release() noexcept {
 	/**
 	 * Возвращаем прежнюю основную зону в начало перечня
 	 */
-	if((::__awh_zone_previous__ != nullptr) && (::defaultZone() != ::__awh_zone_previous__)){
+	if((::__awh_zone_previous__ != nullptr) && (::__awh_zone_default_zone__() != ::__awh_zone_previous__)){
 		// Изымаем прежнюю основную зону
 		::malloc_zone_unregister(::__awh_zone_previous__);
 		// Вносим прежнюю основную зону заново

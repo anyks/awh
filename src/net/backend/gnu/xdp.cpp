@@ -23,6 +23,8 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <chrono>
+#include <thread>
 #include <vector>
 #include <cerrno>
 #include <cstdint>
@@ -138,6 +140,28 @@
 		 */
 		constexpr uint32_t FRAME_COUNT = 4096;
 		/**
+		 * @brief Шаг ожидания между попытками привязки сокета при занятости очереди
+		 *
+		 * @details Снос сокета AF_XDP нулевого копирования сбрасывает очередь устройства,
+		 *          и следующая привязка к той же очереди отвечает EBUSY, пока драйвер
+		 *          не закончит сброс. Замер 16.11.2026 на Intel I210/igb, ядро 7.2,
+		 *          по шести образцам на точку: без паузы успех 0 из 6, при 20 мс - 4 из 6,
+		 *          при 50 и 100 мс - 6 из 6. Шаг в 25 мс лежит внутри этого окна,
+		 *          потому до успеха доводит повтор, а не одна пауза.
+		 *
+		 */
+		constexpr uint32_t BIND_PAUSE_MS = 25;
+		/**
+		 * @brief Предел попыток привязки сокета AF_XDP при занятости очереди
+		 *
+		 * @details Двенадцать попыток с шагом 25 мс дают 300 мс ожидания - шестикратный
+		 *          запас к измеренной верхней границе окна в 50 мс. Прочие коды отказа
+		 *          не повторяются вовсе: они окончательные, и повтор лишь затянул бы
+		 *          отказ заведения.
+		 *
+		 */
+		constexpr uint32_t BIND_RETRY_LIMIT = 12;
+		/**
 		 * @brief Размер одного кадра памяти UMEM
 		 *
 		 */
@@ -159,7 +183,7 @@
 		 */
 		static __AWH_INLINE__ void refillFill(net::xdp::socket_t & sock) noexcept {
 			// Сколько кадров можно отдать кольцу наполнения
-			const uint32_t want = std::min <uint32_t> (RING_SIZE, static_cast <uint32_t> (sock.freeFrames.size()));
+			const uint32_t want = ::min <uint32_t> (RING_SIZE, static_cast <uint32_t> (sock.freeFrames.size()));
 			// Если отдавать нечего
 			if(want == 0)
 				// Выходим из функции
@@ -430,7 +454,7 @@
 		// Смещение кадра в области UMEM
 		const uint64_t addr = desc->addr;
 		// Число копируемых байт (не больше буфера)
-		const uint32_t n = std::min <uint32_t> (desc->len, size);
+		const uint32_t n = ::min <uint32_t> (desc->len, size);
 		// Указатель на данные кадра
 		void * data = ::xsk_umem__get_data(state->area, addr);
 		// Копируем датаграмму в буфер
@@ -518,8 +542,38 @@
 			scfg.xdp_flags = ((mode == net::xdp::mode_t::NATIVE) ? XDP_FLAGS_DRV_MODE : XDP_FLAGS_SKB_MODE);
 			// Нулевое копирование в нативном режиме, иначе копирующая привязка
 			scfg.bind_flags = ((mode == net::xdp::mode_t::NATIVE) ? XDP_ZEROCOPY : XDP_COPY);
-			// Заводим сокет AF_XDP и кольца приёма/отправки
-			if(::xsk_socket__create(&state->xsk, iface.c_str(), queue, state->umem, &state->rx, &state->tx, &scfg) != 0){
+			// Признак заведения сокета AF_XDP
+			bool bound = false;
+			/**
+			 * @brief Заводим сокет AF_XDP и кольца приёма/отправки, повторяя лишь занятость очереди
+			 *
+			 * @details Область UMEM к этой минуте уже заведена и остаётся годной:
+			 *          повторять нужно одну привязку, а не всё заведение. Занятость
+			 *          очереди преходящая и уходит сама, прочие коды отказа
+			 *          окончательные и повтору не подлежат.
+			 *
+			 */
+			for(uint32_t i = 0; i < BIND_RETRY_LIMIT; i++){
+				// Пробуем завести сокет AF_XDP и кольца приёма/отправки
+				if(::xsk_socket__create(&state->xsk, iface.c_str(), queue, state->umem, &state->rx, &state->tx, &scfg) == 0){
+					// Отмечаем успех заведения сокета
+					bound = true;
+					// Прекращаем попытки привязки
+					break;
+				}
+				// Если отказ не занятостью очереди, он окончательный
+				if(errno != EBUSY)
+					// Прекращаем попытки привязки
+					break;
+				// Если предел попыток исчерпан, ожидать больше нечего
+				if((i + 1) >= BIND_RETRY_LIMIT)
+					// Прекращаем попытки привязки
+					break;
+				// Ожидаем завершения сброса очереди драйвером
+				this_thread::sleep_for(chrono::milliseconds(BIND_PAUSE_MS));
+			}
+			// Если сокет AF_XDP заведён не был
+			if(!bound){
 				// Освобождаем ресурсы состояния при отказе
 				release(* state);
 				// Освобождаем само состояние

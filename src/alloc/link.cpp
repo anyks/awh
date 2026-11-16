@@ -69,7 +69,7 @@ namespace {
 	 * @return показание счётчика тактов
 	 *
 	 */
-	static uint64_t ticking() noexcept {
+	static uint64_t __awh_link_ticking__() noexcept {
 		/**
 		 * Если набором команд является x86-64
 		 */
@@ -127,7 +127,7 @@ namespace {
 	 * @return      перемешанное число
 	 *
 	 */
-	static uint64_t stir(uint64_t value) noexcept {
+	static uint64_t __awh_link_stir__(uint64_t value) noexcept {
 		// Перемешиваем разряды числа
 		value += 0x9E3779B97F4A7C15ULL;
 		// Рассеиваем старшие разряды первой ступенью
@@ -166,13 +166,13 @@ void awh::alloc::Link::seed() noexcept {
 	 * процесс прежде первой строки `main`. Оттого показание времени снимается КОМАНДОЙ
 	 * набора, а не вызовом библиотеки
 	 */
-	uint64_t result = ::stir(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&anchor)));
+	uint64_t result = ::__awh_link_stir__(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&anchor)));
 	// Примешиваем место кода самого распределителя
-	result ^= ::stir(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&Link::_cookie)));
+	result ^= ::__awh_link_stir__(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&Link::_cookie)));
 	// Примешиваем показание счётчика тактов
-	result ^= ::stir(::ticking());
+	result ^= ::__awh_link_stir__(::__awh_link_ticking__());
 	// Перемешиваем собранное ещё раз
-	result = ::stir(result);
+	result = ::__awh_link_stir__(result);
 	// Закрепляем зерно, не допуская нуля
 	Link::_cookie = static_cast <uintptr_t> (result | 1);
 }

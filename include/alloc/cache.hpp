@@ -199,6 +199,17 @@ namespace awh {
 		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Cache {
+			private:
+				/**
+				 * \~russian
+				 * @brief Управляющий кэшами имеет доступ к связи и занятости
+				 *
+				 * \~english
+				 * @brief A manager of the caches has an access to a linkage and an occupancy
+				 *
+				 * \~
+				 */
+				friend class Caches;
 			public:
 				/**
 				 * Предел кэша потока по умолчанию в байтах
@@ -236,71 +247,32 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Метод пополнения разряда пачкой блоков у центральных списков
-				 *
-				 * @warning Список разряда обязан быть ПУСТ: взятая пачка кладётся головой
-				 *          напрямую, и лежавшее в списке прежде потерялось бы молча -
-				 *          блоки остались бы выданными кэшу навсегда. Единственный
-				 *          звавший, `alloc`, заходит сюда лишь при исчерпанном списке, а
-				 *          просьба опустошиться, исполняемая здесь же, опустошает все
-				 *          разряды прежде набора
-				 *
-				 * @note Холодный хвост быстрого пути выдачи: вынесен в файл кода, чтобы
-				 *       подстановка тащила за собою лишь снятие блока с головы списка
-				 *
-				 * @param index номер разряда
-				 * @return      адрес выданного блока либо nullptr
+				 * @brief Структура списка свободных блоков одного разряда
 				 *
 				 * \~english
-				 * @brief Method of refilling a class with a batch from the central lists
-				 *
-				 * @warning The class list MUST be empty: the batch taken is placed at the head
-				 *          directly, and whatever lay in the list before would be lost silently -
-				 *          the blocks would remain issued to the cache forever. The only caller,
-				 *          `alloc`, enters here only with the list exhausted, and the flush
-				 *          request executed right here empties all classes before taking
-				 *
-				 * @note Cold tail of the fast allocation path: moved into the code file so that
-				 *       the substitution carries only taking a block off the list head
-				 *
-				 * @param index class index
-				 * @return      address of the issued block or nullptr
+				 * @brief Structure of the free-block list for a single rank
 				 *
 				 * \~
 				 */
-				void * refill(const size_t index) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод отдачи излишка центральным спискам
-				 *
-				 * @note Холодный хвост быстрого пути возврата: перебор предела - случай
-				 *       редкий, и держать его в подставляемом теле незачем
-				 *
-				 * \~english
-				 * @brief Method of giving the excess back to the central lists
-				 *
-				 * @note Only the excess beyond the cache limit is returned: the cache keeps a
-				 *       working set at hand
-				 *
-				 * \~
-				 */
-				void relieve() noexcept;
-				/**
-				 * \~russian
-				 * @brief Список свободных блоков одного разряда
-				 *
-				 *
-				 * \~english
-				 * @brief Free block list of one size class
-				 *
-				 * \~
-				 */
-				typedef struct List {
-					// Голова списка свободных блоков
-					void * free;
+				typedef struct __AWH_SHARED_EXPORT__ List {
 					// Число свободных блоков в списке
 					size_t count;
+					// Голова списка свободных блоков
+					void * free;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit List() noexcept;
 				} list_t;
+			private:
+				// Признак занятости кэша живым потоком
+				bool _busy;
 			private:
 				/**
 				 * Наблюдаемый разряд плюс единица, нуль если наблюдения нет
@@ -310,25 +282,27 @@ namespace awh {
 				 * снимается пробуждением кэша - освобождением в наблюдаемый список
 				 */
 				size_t _watch;
-				// Миг начала наблюдения в миллисекундах
-				uint64_t _watched;
+				// Освобождено этим потоком с последней проверки порога отдачи
+				size_t _freed;
 				// Занятое наблюдаемого списка при начале наблюдения в байтах
 				size_t _stocked;
 			private:
-				/**
-				 * Управляющий, заведший кэш
-				 *
-				 * Хранится в самом кэше, а не поток-локально: отклик завершения потока
-				 * зовётся системой уже ПОСЛЕ разрушения поток-локальных мест, и
-				 * поток-локальный указатель на управляющего к тому времени обнулён.
-				 * Проверено опытом на macOS
-				 */
-				class Caches * _owner;
-				// Центральные списки
-				central_t * _central;
-				// Разряды размеров
-				classes_t * _classes;
+				// Миг начала наблюдения в миллисекундах
+				uint64_t _watched;
 			private:
+				/**
+				 * Предел, заданный приложением
+				 *
+				 * Рабочий предел двумя строками выше служит ещё и рычагом просьбы
+				 * опустошиться: ставя её, чужой поток обнуляет рабочий предел, и хозяин
+				 * заходит в отдачу излишка на первом же освобождении - там просьбу и
+				 * видит. Заданный приложением предел на это время хранится здесь и
+				 * возвращается на место, едва просьба исполнена
+				 *
+				 * Заведено взамен чтения просьбы на быстром пути: то стоило около пяти
+				 * сотых на трёх сценариях замера, а это не стоит ничего
+				 */
+				atomic_size_t _kept;
 				/**
 				 * \~russian
 				 * @brief Лежащее в кэше НЕДЕЛИМО по той же причине, что и накопленное
@@ -350,7 +324,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <size_t> _bytes;
+				atomic_size_t _bytes;
 				/**
 				 * \~russian
 				 * @brief Предел кэша НЕДЕЛИМ по той же причине, что и лежащее в кэше
@@ -384,20 +358,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <size_t> _limit;
-				/**
-				 * Предел, заданный приложением
-				 *
-				 * Рабочий предел двумя строками выше служит ещё и рычагом просьбы
-				 * опустошиться: ставя её, чужой поток обнуляет рабочий предел, и хозяин
-				 * заходит в отдачу излишка на первом же освобождении - там просьбу и
-				 * видит. Заданный приложением предел на это время хранится здесь и
-				 * возвращается на место, едва просьба исполнена
-				 *
-				 * Заведено взамен чтения просьбы на быстром пути: то стоило около пяти
-				 * сотых на трёх сценариях замера, а это не стоит ничего
-				 */
-				std::atomic <size_t> _kept;
+				atomic_size_t _limit;
 			private:
 				/**
 				 * \~russian
@@ -436,9 +397,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <int64_t> _tally;
-				// Освобождено этим потоком с последней проверки порога отдачи
-				size_t _freed;
+				atomic_int64_t _tally;
 			private:
 				/**
 				 * \~russian
@@ -506,7 +465,24 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <bool> _yield;
+				atomic_bool _yield;
+			private:
+				// Следующий кэш в общем списке
+				Cache * _next;
+				// Центральные списки
+				central_t * _central;
+				// Разряды размеров
+				classes_t * _classes;
+			private:
+				/**
+				 * Управляющий, заведший кэш
+				 *
+				 * Хранится в самом кэше, а не поток-локально: отклик завершения потока
+				 * зовётся системой уже ПОСЛЕ разрушения поток-локальных мест, и
+				 * поток-локальный указатель на управляющего к тому времени обнулён.
+				 * Проверено опытом на macOS
+				 */
+				class Caches * _owner;
 			private:
 				/**
 				 * Подсказка поиска куска по адресу
@@ -523,12 +499,59 @@ namespace awh {
 				void * _hint;
 			private:
 				// Списки свободных блоков по разрядам
-				list_t _lists[Classes::LIMIT];
+				list_t _lists[classes_t::LIMIT];
 			private:
-				// Следующий кэш в общем списке
-				Cache * _next;
-				// Признак занятости кэша живым потоком
-				bool _busy;
+				/**
+				 * \~russian
+				 * @brief Метод пополнения разряда пачкой блоков у центральных списков
+				 *
+				 * @warning Список разряда обязан быть ПУСТ: взятая пачка кладётся головой
+				 *          напрямую, и лежавшее в списке прежде потерялось бы молча -
+				 *          блоки остались бы выданными кэшу навсегда. Единственный
+				 *          звавший, `alloc`, заходит сюда лишь при исчерпанном списке, а
+				 *          просьба опустошиться, исполняемая здесь же, опустошает все
+				 *          разряды прежде набора
+				 *
+				 * @note Холодный хвост быстрого пути выдачи: вынесен в файл кода, чтобы
+				 *       подстановка тащила за собою лишь снятие блока с головы списка
+				 *
+				 * @param index номер разряда
+				 * @return      адрес выданного блока либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of refilling a class with a batch from the central lists
+				 *
+				 * @warning The class list MUST be empty: the batch taken is placed at the head
+				 *          directly, and whatever lay in the list before would be lost silently -
+				 *          the blocks would remain issued to the cache forever. The only caller,
+				 *          `alloc`, enters here only with the list exhausted, and the flush
+				 *          request executed right here empties all classes before taking
+				 *
+				 * @note Cold tail of the fast allocation path: moved into the code file so that
+				 *       the substitution carries only taking a block off the list head
+				 *
+				 * @param index class index
+				 * @return      address of the issued block or nullptr
+				 *
+				 * \~
+				 */
+				void * refill(const size_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отдачи излишка центральным спискам
+				 *
+				 * @note Холодный хвост быстрого пути возврата: перебор предела - случай
+				 *       редкий, и держать его в подставляемом теле незачем
+				 *
+				 * \~english
+				 * @brief Method of giving the excess back to the central lists
+				 *
+				 * @note Only the excess beyond the cache limit is returned: the cache keeps a
+				 *       working set at hand
+				 *
+				 * \~
+				 */
+				void relieve() noexcept;
 			private:
 				/**
 				 * \~russian
@@ -548,27 +571,6 @@ namespace awh {
 				 * \~
 				 */
 				size_t drain(const size_t index, const size_t count) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения мига наблюдения за ростом
-				 *
-				 * @details Часы стоят лишь на наблюдении мёртвого запаса: зовутся по
-				 *          разу на освобождении в переросший порог список, а не на каждом
-				 *          освобождении
-				 *
-				 * @return миг в миллисекундах
-				 *
-				 * \~english
-				 * @brief Method of getting the growth observation instant
-				 *
-				 * @details The clock is used only for dead stock observation: called once
-				 *          per free into a list past the threshold, not per every free
-				 *
-				 * @return instant in milliseconds
-				 *
-				 * \~
-				 */
-				static uint64_t ticking() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -769,18 +771,9 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Cache() noexcept;
-			/**
-			 * \~russian
-			 * @brief Управляющий кэшами имеет доступ к связи и занятости
-			 *
-			 * \~english
-			 * @brief A manager of the caches has an access to a linkage and an occupancy
-			 *
-			 * \~
-			 */
-			friend class Caches;
+				explicit Cache() noexcept;
 		} cache_t;
+
 		/**
 		 * Ключ хранения кэша для быстрого пути macOS
 		 *
@@ -809,11 +802,40 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			#define AWH_ALLOC_TSD 1
-			// Ключ места потока
+			#define AWH_ALLOC_TSD 1 
+
+			/**
+			 * \~russian
+			 * @brief Ключ места потока
+			 *
+			 * \~english
+			 * @brief Flow location key
+			 *
+			 * \~
+			 */
 			extern pthread_key_t __awh_alloc_tsd__;
-			// Признак готовности захвата
-			extern std::atomic <bool> __awh_alloc_armed__;
+
+			/**
+			 * \~russian
+			 * @brief Признак готовности захвата
+			 *
+			 * \~english
+			 * @brief Indication that a target is ready to be locked on
+			 *
+			 * \~
+			 */
+			extern atomic_bool __awh_alloc_armed__;
+			/**
+			 * \~russian
+			 * @brief Номер места потока для прямого чтения, либо AWH_ALLOC_NOSLOT
+			 *
+			 * \~english
+			 * @brief Stream slot number for direct reading, or AWH_ALLOC_NOSLOT
+			 *
+			 * \~
+			 */
+			extern atomic_size_t __awh_alloc_direct__;
+
 			/**
 			 * \~russian
 			 * @brief Прямое чтение места потока, минуя вызов
@@ -852,8 +874,7 @@ namespace awh {
 			 * \~
 			 */
 			static constexpr size_t AWH_ALLOC_NOSLOT = static_cast <size_t> (-1);
-			// Номер места потока для прямого чтения, либо AWH_ALLOC_NOSLOT
-			extern std::atomic <size_t> __awh_alloc_direct__;
+
 			/**
 			 * \~russian
 			 * @brief Функция получения основания места потока
@@ -889,9 +910,19 @@ namespace awh {
 			 * \~
 			 */
 			#define AWH_ALLOC_MIRROR 1
-			// Зеркало места потока
+
+			/**
+			 * \~russian
+			 * @brief Зеркало места потока
+			 *
+			 * \~english
+			 * @brief Mirror of the flow's location
+			 *
+			 * \~
+			 */
 			extern __thread cache_t * __awh_alloc_mirror__ __attribute__((tls_model("initial-exec")));
 		#endif
+
 		/**
 		 * \~russian
 		 * @brief Класс управления поток-локальными кэшами
@@ -903,17 +934,26 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Caches {
 			private:
-				// Центральные списки
-				central_t * _central;
-				// Разряды размеров
-				classes_t * _classes;
-			private:
-				// Замок общего списка кэшей
-				spin_t _lock;
-				// Общий список заведённых кэшей
-				cache_t * _caches;
-				// Число заведённых кэшей
-				size_t _count;
+				/**
+				 * \~russian
+				 * @brief Наименьшая доля запаса, отводимая кэшу потока
+				 *
+				 * @details Доля, делённая на многие сотни потоков, обратилась бы в ничто, и кэш
+				 *          перестал бы работать кэшем вовсе: расход упёрся бы в запас, а скорость
+				 *          - в общий замок центральных списков. Ниже этой границы доля не идёт, и
+				 *          запас при многих потоках честно перебирается
+				 *
+				 * \~english
+				 * @brief The least share of a reserve, allotted to a cache of a thread
+				 *
+				 * @details A share, divided by many hundreds of threads, would turn into a nothing, and a cache
+				 *          would stop working as a cache at all: a consumption would run into a reserve, and a speed
+				 *          - into a common lock of the central lists. Below this bound a share does not go, and a
+				 *          reserve at many threads is honestly overspent.
+				 *
+				 * \~
+				 */
+				static constexpr size_t SHARE = (1u * 1024u * 1024u);
 				/**
 				 * \~russian
 				 * @brief Общий на процесс запас кэшей потоков в байтах
@@ -970,29 +1010,16 @@ namespace awh {
 				 * \~
 				 */
 				static constexpr size_t BUDGET = (256u * 1024u * 1024u);
-				/**
-				 * \~russian
-				 * @brief Наименьшая доля запаса, отводимая кэшу потока
-				 *
-				 * @details Доля, делённая на многие сотни потоков, обратилась бы в ничто, и кэш
-				 *          перестал бы работать кэшем вовсе: расход упёрся бы в запас, а скорость
-				 *          - в общий замок центральных списков. Ниже этой границы доля не идёт, и
-				 *          запас при многих потоках честно перебирается
-				 *
-				 * \~english
-				 * @brief The least share of a reserve, allotted to a cache of a thread
-				 *
-				 * @details A share, divided by many hundreds of threads, would turn into a nothing, and a cache
-				 *          would stop working as a cache at all: a consumption would run into a reserve, and a speed
-				 *          - into a common lock of the central lists. Below this bound a share does not go, and a
-				 *          reserve at many threads is honestly overspent.
-				 *
-				 * \~
-				 */
-				static constexpr size_t SHARE = (1u * 1024u * 1024u);
 			private:
-				// Общий на процесс запас кэшей потоков в байтах
-				std::atomic <size_t> _budget;
+				// Признак заведённости ключа завершения потока
+				bool _keyed;
+			private:
+				// Число заведённых кэшей
+				size_t _count;
+			private:
+				// Замок общего списка кэшей
+				spin_t _lock;
+			private:
 				/**
 				 * \~russian
 				 * @brief Предел кэша потока НЕДЕЛИМ: читается он не только под замком
@@ -1014,10 +1041,16 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				std::atomic <size_t> _limit;
+				atomic_size_t _limit;
+				// Общий на процесс запас кэшей потоков в байтах
+				atomic_size_t _budget;
 			private:
-				// Признак заведённости ключа завершения потока
-				bool _keyed;
+				// Общий список заведённых кэшей
+				cache_t * _caches;
+				// Центральные списки
+				central_t * _central;
+				// Разряды размеров
+				classes_t * _classes;
 			private:
 				/**
 				 * \~russian

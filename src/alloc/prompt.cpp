@@ -55,20 +55,6 @@
  */
 namespace {
 	/**
-	 * Знаки управления набором
-	 */
-	// Знак возврата на один шаг
-	static constexpr uint8_t BACKSPACE = 0x08;
-	/**
-	 * Знак удаления предыдущего
-	 *
-	 * Имя взято НЕ `DELETE`: тот занят макросом у `<winnt.h>` MS Windows
-	 * (`#define DELETE 0x00010000`), и объявление с таким именем не собирается вовсе -
-	 * препроцессор подставляет на его место число. `RUBOUT` - историческое имя того же
-	 * знака 0x7F, и макросом оно не занято нигде
-	 */
-	static constexpr uint8_t RUBOUT = 0x7F;
-	/**
 	 * Наибольшее число знаков, у каких помнится ширина
 	 *
 	 * Правка опечатки обязана снимать ЗНАК, а не байт: у кодировки UTF-8 буква занимает
@@ -81,16 +67,31 @@ namespace {
 	 */
 	static constexpr size_t WIDTHS = 256;
 	/**
+	 * Знак возврата на один шаг
+	 */
+	static constexpr uint8_t BACKSPACE = 0x08;
+	/**
+	 * Знак удаления предыдущего
+	 *
+	 * Имя взято НЕ `DELETE`: тот занят макросом у `<winnt.h>` MS Windows
+	 * (`#define DELETE 0x00010000`), и объявление с таким именем не собирается вовсе -
+	 * препроцессор подставляет на его место число. `RUBOUT` - историческое имя того же
+	 * знака 0x7F, и макросом оно не занято нигде
+	 */
+	static constexpr uint8_t RUBOUT = 0x7F;
+
+	/**
 	 * @brief Функция определения байта продолжения кодировки UTF-8
 	 *
 	 * @param byte разбираемый байт
 	 * @return     признак байта продолжения
 	 *
 	 */
-	static bool trailing(const uint8_t byte) noexcept {
+	static constexpr bool __awh_prompt_trailing__(const uint8_t byte) noexcept {
 		// Выводим признак байта продолжения: старшие разряды его суть 10
 		return ((byte & 0xC0u) == 0x80u);
 	}
+
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
@@ -176,20 +177,6 @@ namespace {
 					// Отмечаем эхо снятым
 					this->_muted = true;
 				}
-				/**
-				 * @brief Деструктор
-				 *
-				 */
-				~Silence() noexcept {
-					// Если эхо было снято
-					if(this->_muted)
-						// Возвращаем прежние настройки терминала
-						static_cast <void> (::tcsetattr(this->_tty, TCSAFLUSH, &this->_saved));
-					// Если терминал был открыт
-					if(this->_tty >= 0)
-						// Закрываем терминал
-						static_cast <void> (::close(this->_tty));
-				}
 			public:
 				/**
 				 * Копированию снятие эха не подлежит
@@ -204,6 +191,20 @@ namespace {
 				 * Присваивание вернуло бы настройки дважды по той же причине
 				 */
 				Silence & operator = (const Silence &) = delete;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~Silence() noexcept {
+					// Если эхо было снято
+					if(this->_muted)
+						// Возвращаем прежние настройки терминала
+						static_cast <void> (::tcsetattr(this->_tty, TCSAFLUSH, &this->_saved));
+					// Если терминал был открыт
+					if(this->_tty >= 0)
+						// Закрываем терминал
+						static_cast <void> (::close(this->_tty));
+				}
 		} silence_t;
 	#endif
 };
@@ -311,7 +312,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 		// Число принятых знаков
 		size_t takenSymbols = 0;
 		/**
-		 * Выполняем приём знаков набора
+		 * Принимаем знаки набора
 		 */
 		for(;;){
 			// Принимаемый знак
@@ -345,7 +346,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 					// Числим знак одним байтом
 					width = 1;
 				/**
-				 * Выполняем снятие всех байтов знака
+				 * Снимаем все байты знака
 				 */
 				for(uint8_t i = 0; i < width; i++)
 					// Снимаем очередной байт знака
@@ -363,7 +364,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 				break;
 			}
 			// Если принятый байт продолжает знак
-			if(::trailing(static_cast <uint8_t> (symbol))){
+			if(::__awh_prompt_trailing__(static_cast <uint8_t> (symbol))){
 				// Если знак, какой он продолжает, помнится
 				if((takenSymbols > 0) && (((takenSymbols - 1u) % WIDTHS) < WIDTHS))
 					// Расширяем последний принятый знак
@@ -422,7 +423,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 		// Число принятых знаков
 		size_t symbols = 0;
 		/**
-		 * Выполняем приём знаков набора
+		 * Принимаем знаки набора
 		 */
 		for(;;){
 			// Принимаемый знак
@@ -459,7 +460,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 					// Числим знак одним байтом
 					width = 1;
 				/**
-				 * Выполняем снятие всех байтов знака
+				 * Снимаем все байты знака
 				 */
 				for(uint8_t i = 0; i < width; i++)
 					// Снимаем очередной байт знака
@@ -477,7 +478,7 @@ awh::alloc::prompt::result_t awh::alloc::prompt::read(vessel_t & vessel, const c
 				break;
 			}
 			// Если принятый байт продолжает знак
-			if(::trailing(symbol)){
+			if(::__awh_prompt_trailing__(symbol)){
 				// Если знак, какой он продолжает, помнится
 				if(symbols > 0)
 					// Расширяем последний принятый знак

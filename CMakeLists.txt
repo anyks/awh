@@ -1899,6 +1899,13 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с Ethernet-адресами
     option(CMAKE_BUILD_ETH_NET_APP_SAMPLE "Build ETH app sample" ON)
 
+    # Устанавливаем имя приложения работы с узлом AF_XDP обобщённого режима
+    SET(GENERIC_APP_NET_XDP_NAME net-xdp-generic)
+    # Устанавливаем имя приложения работы с узлом AF_XDP нулевого копирования
+    SET(ZEROCOPY_APP_NET_XDP_NAME net-xdp-zerocopy)
+    # Указываем что нужно собрать приложения работы с датапутем AF_XDP
+    option(CMAKE_BUILD_XDP_NET_APP_SAMPLE "Build AF_XDP app sample" ON)
+
     # Устанавливаем имя приложения работы с распределителем памяти
     SET(ALLOC_APP_NAME alloc)
     # Указываем что нужно собрать приложение работы с распределителем памяти
@@ -3157,6 +3164,20 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample Ethernet network: No\n")
     endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
+    # Если нужно собрать семплы для работы с датапутем AF_XDP
+    if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample AF_XDP network: Yes\n")
+        # Выполняем создание приложения работы с узлом AF_XDP обобщённого режима
+        add_sample(${GENERIC_APP_NET_XDP_NAME} sample/net/xdp/generic.cpp net/xdp)
+        # Выполняем создание приложения работы с узлом AF_XDP нулевого копирования
+        add_sample(${ZEROCOPY_APP_NET_XDP_NAME} sample/net/xdp/zerocopy.cpp net/xdp)
+    # Если не нужно собирать семплы для работы с датапутем AF_XDP
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample AF_XDP network: No\n")
+    endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+
     # Если нужно собрать семплы для работы с TCP (клиент и сервер)
     if (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -3717,6 +3738,22 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с датапутем AF_XDP
+        if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с узлом AF_XDP обобщённого режима
+            target_link_libraries(
+                ${GENERIC_APP_NET_XDP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с узлом AF_XDP нулевого копирования
+            target_link_libraries(
+                ${ZEROCOPY_APP_NET_XDP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с распределителем памяти
         if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
@@ -4992,6 +5029,24 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с датапутем AF_XDP
+        if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+            # Выполняем сборку приложения работы с узлом AF_XDP обобщённого режима
+            target_link_libraries(
+                ${GENERIC_APP_NET_XDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с узлом AF_XDP нулевого копирования
+            target_link_libraries(
+                ${ZEROCOPY_APP_NET_XDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с распределителем памяти
         if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
@@ -6313,6 +6368,22 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с датапутем AF_XDP
+            if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+                # Выполняем сборку приложения работы с узлом AF_XDP обобщённого режима
+                add_custom_command(TARGET "${GENERIC_APP_NET_XDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${GENERIC_APP_NET_XDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${GENERIC_APP_NET_XDP_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения работы с узлом AF_XDP нулевого копирования
+                add_custom_command(TARGET "${ZEROCOPY_APP_NET_XDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${ZEROCOPY_APP_NET_XDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${ZEROCOPY_APP_NET_XDP_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с распределителем памяти
             if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
                 # Выполняем сборку приложения распределителя памяти
@@ -6948,6 +7019,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${ETH_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ETH_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с датапутем AF_XDP
+            if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+                # Выполняем анализ приложения работы с узлом AF_XDP обобщённого режима
+                pvs_studio_add_target(TARGET ${GENERIC_APP_NET_XDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${GENERIC_APP_NET_XDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с узлом AF_XDP нулевого копирования
+                pvs_studio_add_target(TARGET ${ZEROCOPY_APP_NET_XDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ZEROCOPY_APP_NET_XDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с распределителем памяти
             if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
                 # Выполняем анализ приложения распределителя памяти
@@ -7506,6 +7585,14 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с Ethernet-адресами
         install(TARGETS ${ETH_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с датапутем AF_XDP
+    if (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
+        # Устанавливаем приложение работы с узлом AF_XDP обобщённого режима
+        install(TARGETS ${GENERIC_APP_NET_XDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с узлом AF_XDP нулевого копирования
+        install(TARGETS ${ZEROCOPY_APP_NET_XDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_XDP_NET_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с распределителем памяти
     if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})

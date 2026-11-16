@@ -61,7 +61,7 @@ namespace {
 	 * @return      следующий свободный блок
 	 *
 	 */
-	static __AWH_INLINE__ void * following(void * block) noexcept {
+	static __AWH_INLINE__ void * __awh_central_following__(void * block) noexcept {
 		// Выводим следующий свободный блок, разбирая перемешивание
 		return alloc::link_t::next(block);
 	}
@@ -72,9 +72,23 @@ namespace {
 	 * @param subsequent записываемый следующий свободный блок
 	 *
 	 */
-	static __AWH_INLINE__ void following(void * block, void * subsequent) noexcept {
+	static __AWH_INLINE__ void __awh_central_following__(void * block, void * subsequent) noexcept {
 		// Записываем указатель перемешанным
 		alloc::link_t::next(block, subsequent);
+	}
+	/**
+	 * @brief Функция получения мига в миллисекундах
+	 *
+	 * @details Часы модульные НАМЕРЕННО: слой внизу пирамиды не вправе звать
+	 *          вышележащий модуль fmk - без них микробенчмарк модуля не собирался
+	 *          (нет символа), да и связка модуля с верхним слоем нарушает порядок.
+	 *
+	 * @return миг монотонных часов в миллисекундах
+	 *
+	 */
+	static uint64_t __awh_central_millisecond__() noexcept {
+		// Выводим миг монотонных часов в миллисекундах
+		return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
 	}
 };
 
@@ -277,7 +291,7 @@ bool awh::alloc::Central::carve(const size_t index) noexcept {
 		// Определяем адрес очередного блока
 		uint8_t * block = (base + (i * size));
 		// Связываем блок со следующим, а последний - с прежней головой стопки
-		::following(block, ((i + 1) < carved) ? (base + ((i + 1) * size)) : span->stack);
+		::__awh_central_following__(block, ((i + 1) < carved) ? (base + ((i + 1) * size)) : span->stack);
 	}
 	// Головой стопки области становится первый блок нарезанной цепочки
 	span->stack = base;
@@ -407,7 +421,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 		// Снимаем блок с головы стопки области
 		void * block = span->stack;
 		// Головой стопки становится следующий блок
-		span->stack = ::following(block);
+		span->stack = ::__awh_central_following__(block);
 		// Уменьшаем число блоков в стопке области
 		span->held--;
 		// Взявший блок область покоя не знает
@@ -419,7 +433,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 			// Головой становится снятый блок
 			first = block;
 		// Связываем хвост цепочки со снятым блоком
-		else ::following(last, block);
+		else ::__awh_central_following__(last, block);
 		// Хвостом становится снятый блок
 		last = block;
 		// Увеличиваем число изъятых блоков
@@ -430,7 +444,7 @@ size_t awh::alloc::Central::fetch(const size_t index, void ** head, void ** tail
 		// Изымать нечего
 		return 0;
 	// Обрываем цепочку у хвоста
-	::following(last, nullptr);
+	::__awh_central_following__(last, nullptr);
 	// Увеличиваем число выданных кэшам блоков
 	this->_lists[index].live += result;
 	// Выводим голову изъятой цепочки
@@ -596,20 +610,6 @@ size_t awh::alloc::Central::shed(const size_t index, const uint64_t now, const b
 	return result;
 }
 /**
- * @brief Функция получения мига в миллисекундах
- *
- * @details Часы модульные НАМЕРЕННО: слой внизу пирамиды не вправе звать
- *          вышележащий модуль fmk - без них микробенчмарк модуля не собирался
- *          (нет символа), да и связка модуля с верхним слоем нарушает порядок
- *
- * @return миг монотонных часов в миллисекундах
- *
- */
-static uint64_t millisecond() noexcept {
-	// Выводим миг монотонных часов в миллисекундах
-	return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
-}
-/**
  * @brief Метод возврата пачки блоков разряда
  *
  * @param index номер разряда
@@ -636,7 +636,7 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 	 */
 	for(size_t i = 0; (i < count) && (block != nullptr); i++){
 		// Запоминаем следующий блок прежде перестройки связей
-		void * subsequent = ::following(block);
+		void * subsequent = ::__awh_central_following__(block);
 		// Ищем область, которой принадлежит блок
 		Pages::span_t * span = this->_pages->scope(block);
 		// Если область блока не нашлась - блок не наш, дальше без него
@@ -649,7 +649,7 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 		// Запоминаем пустоту стопки области прежде пополнения
 		const bool drained = (span->stack == nullptr);
 		// Ложим блок в стопку его области
-		::following(block, span->stack);
+		::__awh_central_following__(block, span->stack);
 		// Головой стопки становится возвращаемый блок
 		span->stack = block;
 		// Увеличиваем число блоков в стопке области
@@ -696,7 +696,7 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 		 */
 		if(span->held == span->total)
 			// Запоминаем миг полного освобождения области
-			span->idled = millisecond();
+			span->idled = ::__awh_central_millisecond__();
 		// Переходим к следующему блоку
 		block = subsequent;
 	}
@@ -714,32 +714,37 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
 	 */
 	if(((++this->_lists[index].returns) & 0xFFu) == 0)
 		// Отдаём покоящиеся области, перестоявшие окно
-		this->shed(index, millisecond(), false);
+		this->shed(index, ::__awh_central_millisecond__(), false);
 }
 /**
  * @brief Метод взятия у кучи области с ожиданием изымаемых
  *
- * @param pages требуемое число страниц кучи
- * @return      адрес выданной области либо nullptr
- *
  * @note Размер, не помещающийся в кусок кучи, здесь не обслуживается: такие запросы
  *       обращаются к источнику страниц напрямую слоем выше
+ *
+ * @param pages требуемое число страниц кучи
+ * @return      адрес выданной области либо nullptr
  *
  */
 void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 	/**
-	 * Пробуем взять область, пока есть изымаемые
+	 * @brief Число заходов, отводимых уступке времени
 	 *
-	 * Ждём СРОКОМ, а не числом уступок. Уступка стоит по-разному: у MS Windows она
-	 * почти ничего не стоит, когда есть кому работать, и шесть десятков уступок там
-	 * проходят за микросекунды - быстрее, чем длится обращение к системе. Замерено:
-	 * семьсот четыре уступки и одиннадцать сдач подряд, обернувшихся отказами выдачи на
-	 * ровном месте. Первые заходы уступают, дальнейшие спят понемногу: так ожидание не
-	 * зависит от того, чего стоит уступка у этой системы
+	 * @note Пробуем взять область, пока есть изымаемые
+	 *
+	 * @details Ожидание мерим СРОКОМ, а не числом уступок. Уступка стоит по-разному: у MS Windows она
+	 *          почти ничего не стоит, когда есть кому работать, и шесть десятков уступок там
+	 *          проходят за микросекунды - быстрее, чем длится обращение к системе. Замерено:
+	 *          семьсот четыре уступки и одиннадцать сдач подряд, обернувшихся отказами выдачи на
+	 *          ровном месте. Первые заходы уступают, дальнейшие спят понемногу: так ожидание не
+	 *          зависит от того, чего стоит уступка у этой системы.
+	 *
 	 */
-	// Число заходов, отводимых уступке времени
 	static constexpr size_t SPINS = 64;
-	// Наибольшее время ожидания изымаемых областей
+	/**
+	 * @brief Наибольшее время ожидания изымаемых областей
+	 *
+	 */
 	static constexpr uint64_t PATIENCE = 50;
 	/**
 	 * Часы спрашиваем ЛЕНИВО - лишь когда первый заход не удался
@@ -787,9 +792,9 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 			// Отмечаем отметку взятой
 			timing = true;
 			// Запоминаем начало ожидания
-			began = millisecond();
+			began = ::__awh_central_millisecond__();
 		// Если срок ожидания вышел
-		} else if((millisecond() - began) >= PATIENCE)
+		} else if((::__awh_central_millisecond__() - began) >= PATIENCE)
 			// Выходим: изымаемых областей мы не дождались
 			break;
 	}
@@ -849,12 +854,14 @@ bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 		// Придерживать больше нечем: область уйдёт куче обычным путём
 		return false;
 	/**
-	 * Запись кладётся в САМУ область
+	 * @brief Заводим запись придержки прямо в области
 	 *
-	 * Область свободна, и первые её байты наши. Просить память под запись у
-	 * распределителя изнутри его же освобождения нельзя вовсе
-	 */
-	// Заводим запись придержки прямо в области
+	 * @note Запись кладётся в САМУ область
+	 *
+	 * @details Область свободна, и первые её байты наши. Просить память под запись у
+	 *          распределителя изнутри его же освобождения нельзя вовсе.
+	 *
+	 */ 
 	kept_t * kept = reinterpret_cast <kept_t *> (addr);
 	// Связываем область с прежней головой списка
 	kept->next = this->_kept[pages];

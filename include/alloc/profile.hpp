@@ -139,16 +139,16 @@ namespace awh {
 		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Holding {
-			// Адрес удерживаемого блока
-			const void * block;
 			// Затребованный размер блока в байтах
 			size_t size;
-			// Отметка времени выдачи в миллисекундах
-			uint64_t stamp;
-			// Стек вызовов места выдачи
-			const void * const * frames;
 			// Глубина снятого стека вызовов
 			size_t depth;
+			// Отметка времени выдачи в миллисекундах
+			uint64_t stamp;
+			// Адрес удерживаемого блока
+			const void * block;
+			// Стек вызовов места выдачи
+			const void * const * frames;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -171,9 +171,25 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Profile {
 			public:
-				// Начальная длина таблицы учёта в местах
+				/**
+				 * \~russian
+				 * @brief Начальная длина таблицы учёта в местах
+				 *
+				 * \~english
+				 * @brief Initial length of the tracking table in terms of positions
+				 *
+				 * \~
+				 */
 				static constexpr size_t TABLE = 1024;
-				// Наибольшее число учитываемых блоков
+				/**
+				 * \~russian
+				 * @brief Наибольшее число учитываемых блоков
+				 *
+				 * \~english
+				 * @brief Maximum number of blocks taken into account
+				 *
+				 * \~
+				 */
 				static constexpr size_t LIMIT = (1024u * 1024u);
 			public:
 				/**
@@ -190,10 +206,10 @@ namespace awh {
 					size_t live;
 					// Объём учитываемых живых блоков в байтах
 					size_t bytes;
-					// Число блоков, взятых под учёт за время работы
-					size_t enrolled;
 					// Число блоков, не взятых под учёт из-за нехватки места
 					size_t dropped;
+					// Число блоков, взятых под учёт за время работы
+					size_t enrolled;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -207,17 +223,22 @@ namespace awh {
 				} state_t;
 				/**
 				 * \~russian
-				 * @brief Отклик перебора удерживаемых блоков
+				 * @brief Функция перебора удерживаемых блоков
 				 *
 				 * @note Возврат лжи прекращает перебор: он идёт с взятым замком, и дать
 				 *       ему уйти раньше времени важнее удобства
 				 *
-				 * \~english
-				 * @brief Callback for enumerating held blocks
+				 * @param holding удерживаемый блок
+				 * @param context контекст перебора
 				 *
+				 * \~english
+				 * @brief Function of enumerating held blocks
 				 *
 				 * @note Returning false stops the enumeration: it runs with the lock held,
 				 *       and letting it finish early matters more than convenience
+				 *
+				 * @param holding held block
+				 * @param context enumeration context
 				 *
 				 * \~
 				 */
@@ -233,54 +254,64 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Record {
-					// Адрес выданного блока
-					const void * block;
 					// Затребованный размер блока в байтах
 					size_t size;
-					// Отметка времени выдачи в миллисекундах
-					uint64_t stamp;
 					// Глубина снятого стека вызовов
 					size_t depth;
+					// Отметка времени выдачи в миллисекундах
+					uint64_t stamp;
 					// Следующая запись в списке повторно используемых
-					struct Record * spare;
+					Record * spare;
+					// Адрес выданного блока
+					const void * block;
 					// Стек вызовов места выдачи
-					const void * frames[Trace::DEPTH];
+					const void * frames[trace_t::DEPTH];
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Record() noexcept;
 				} record_t;
 			private:
-				// Источник страниц
-				source_t * _source;
-				// Съём стека вызовов
-				trace_t * _trace;
-				// Замок учёта
-				spin_t _lock;
-				// Таблица учёта выданных блоков
-				record_t ** _table;
-				// Длина таблицы учёта в местах
-				size_t _length;
-				// Размер взятой под таблицу учёта области в байтах
-				size_t _region;
-				// Число записей, внесённых в таблицу
-				size_t _enrolled;
-				// Число мест таблицы, помеченных снесёнными
-				size_t _buried;
 				// Признак идущего перебора: при нём таблица не перестраивается (курсор перебора неподвижен)
 				bool _walking;
-				// Текущий кусок памяти под учётные записи
-				uint8_t * _meta;
+				// Число мест таблицы, помеченных снесёнными
+				size_t _buried;
+				// Размер взятой под таблицу учёта области в байтах
+				size_t _region;
+				// Длина таблицы учёта в местах
+				size_t _length;
+				// Число записей, внесённых в таблицу
+				size_t _enrolled;
 				// Остаток текущего куска памяти под учётные записи
-				size_t _metaLeft;
-				// Общий список кусков памяти под учётные записи
-				void * _metaChunks;
-				// Список повторно используемых учётных записей
-				record_t * _spare;
-				// Доля выборки: одна выдача из скольких
-				std::atomic <size_t> _rate;
-				// Счётчик выдач для выборки
-				std::atomic <size_t> _counter;
-				// Число учитываемых живых блоков
-				std::atomic <size_t> _live;
+				size_t _metaleft;
+				// Замок учёта
+				spin_t _lock;
 				// Состояние учёта мест выдачи
 				state_t _state;
+				// Число учитываемых живых блоков
+				atomic_size_t _live;
+				// Доля выборки: одна выдача из скольких
+				atomic_size_t _rate;
+				// Счётчик выдач для выборки
+				atomic_size_t _counter;
+				// Текущий кусок памяти под учётные записи
+				uint8_t * _meta;
+				// Съём стека вызовов
+				trace_t * _trace;
+				// Список повторно используемых учётных записей
+				record_t * _spare;
+				// Источник страниц
+				source_t * _source;
+				// Таблица учёта выданных блоков
+				record_t ** _table;
+				// Общий список кусков памяти под учётные записи
+				void * _metaChunks;
 			private:
 				/**
 				 * \~russian

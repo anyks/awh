@@ -33,7 +33,7 @@
  * Заголовочные файлы дешёвых часов по системам
  *
  * Мера времени нужна на каждом освобождении сверх разрядов, и источник её у каждой
- * системы свой - смотри `now()`
+ * системы свой - смотри `__awh_alloc_now__()`
  */
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 	/**
@@ -235,7 +235,7 @@ using namespace std;
  *
  * Взято и то и другое: имена уводят к нам обращения своего образа коротким путём, а зона
  * остаётся ловить остальное. Указатель, выданный одним путём и освобождённый другим, к
- * нам и приходит: путь у обоих один и тот же - `reserve` и `discard`
+ * нам и приходит: путь у обоих один и тот же - `__awh_alloc_reserve__` и `__awh_alloc_discard__`
  *
  * Под санитайзером имён у macOS не подменяем
  *
@@ -339,22 +339,22 @@ using namespace std;
 #endif
 
 /**
- * Спецификация исключений функций выдачи - та же, что у объявления системы
+ * @brief Если библиотека времени исполнения определяет спецификацию исключений
  *
- * Стандарт требует, чтобы ВСЕ объявления функции несли совместимую спецификацию
- * исключений ([except.spec]). glibc объявляет семейство выдачи с `__THROW`, то есть в
- * C++ - `noexcept(true)`, а определения без неё с ним расходятся. GCC прощает это
- * молча, раз прежнее объявление лежит в системном заголовке; LCC у Эльбруса (передняя
- * часть EDG) отвечает предупреждением #541 на каждое имя.
+ * @note Спецификация исключений функций выдачи - та же, что у объявления системы
  *
- * Берём ИМЕННО `__THROW` самой библиотеки, а не пишем `noexcept`: он определён ровно
- * там, где им объявлены эти функции, - у glibc любого набора команд, - и совпадает с
- * объявлением буква в букву. Прочие библиотеки (macOS, BSD, musl, Solaris, Windows)
- * объявляют выдачу без спецификации и `__THROW` не знают - у них определения остаются
- * прежними. Выдача исключений не бросает вовсе, так что обещание верно по существу
- */
-/**
- * Если библиотека времени исполнения определяет спецификацию исключений
+ * @details Стандарт требует, чтобы ВСЕ объявления функции несли совместимую спецификацию
+ *          исключений ([except.spec]). glibc объявляет семейство выдачи с `__THROW`, то есть в
+ *          C++ - `noexcept(true)`, а определения без неё с ним расходятся. GCC прощает это
+ *          молча, раз прежнее объявление лежит в системном заголовке; LCC у Эльбруса (передняя
+ *          часть EDG) отвечает предупреждением #541 на каждое имя.
+ *
+ * @details Берём ИМЕННО `__THROW` самой библиотеки, а не пишем `noexcept`: он определён ровно
+ *          там, где им объявлены эти функции, - у glibc любого набора команд, - и совпадает с
+ *          объявлением буква в букву. Прочие библиотеки (macOS, BSD, musl, Solaris, Windows)
+ *          объявляют выдачу без спецификации и `__THROW` не знают - у них определения остаются
+ *          прежними. Выдача исключений не бросает вовсе, так что обещание верно по существу.
+ *
  */
 #if defined(__THROW)
 	/**
@@ -515,17 +515,17 @@ namespace {
 	 *       за вызов: между обращениями стоят вызовы да неделимые правки, и собиратель
 	 *       обязан перечитывать его заново. Адрес же массива известен связывающему, и
 	 *       чтения не стоит вовсе - профиль на FreeBSD показал эти загрузки в пиках
-	 *       `discard` и `reserve`
+	 *       `__awh_alloc_discard__` и `__awh_alloc_reserve__`
 	 *
 	 * @warning Звать только УБЕДИВШИСЬ в готовности распределителя: до заведения объекта
 	 *          на этом месте нет, и ответ указывал бы на пустую память. Горячие пути
-	 *          спрашивают готовность первым делом - `prepare` у выдачи и ступень у
+	 *          спрашивают готовность первым делом - `__awh_alloc_prepare__` у выдачи и ступень у
 	 *          возврата, - а холодным полагается прежний указатель, он же признак
 	 *
 	 * @return устройство распределителя
 	 *
 	 */
-	static __AWH_INLINE__ machinery_t * device() noexcept {
+	static __AWH_INLINE__ machinery_t * __awh_alloc_device__() noexcept {
 		/**
 		 * Читаем указатель ОДНАЖДЫ, а не собираем адрес массива
 		 *
@@ -682,7 +682,7 @@ namespace {
 	 * @brief Функция пересчёта признака голой выдачи
 	 *
 	 */
-	static __AWH_INLINE__ void refresh() noexcept {
+	static __AWH_INLINE__ void __awh_alloc_refresh__() noexcept {
 		// Пересчитываем признак голой выдачи
 		plain.store(
 		 (settings.guardRate == 0) && !guarded.load(std::memory_order_relaxed) &&
@@ -776,7 +776,7 @@ namespace {
 	 * @return отклик на достижение потолка кучи
 	 *
 	 */
-	static __AWH_INLINE__ function <void (const size_t)> & limitCallback() noexcept {
+	static __AWH_INLINE__ function <void (const size_t)> & __awh_limit_сallback__() noexcept {
 		// Отклик на достижение потолка кучи
 		static function <void (const size_t)> callback;
 		// Выводим отклик на достижение потолка кучи
@@ -801,7 +801,7 @@ namespace {
 	 * @return отклик на крупное выделение
 	 *
 	 */
-	static __AWH_INLINE__ function <void (const void *, const size_t)> & largeCallback() noexcept {
+	static __AWH_INLINE__ function <void (const void *, const size_t)> & __awh_large_сallback__() noexcept {
 		// Отклик на крупное выделение
 		static function <void (const void *, const size_t)> callback;
 		// Выводим отклик на крупное выделение
@@ -885,7 +885,7 @@ namespace {
 	 * @return способ захвата
 	 *
 	 */
-	static __AWH_INLINE__ seizure_t * seizing() noexcept {
+	static __AWH_INLINE__ seizure_t * __awh_alloc_seizing__() noexcept {
 		// Если способ захвата уже построен
 		if(seizure != nullptr)
 			// Выводим построенный способ захвата
@@ -931,7 +931,7 @@ namespace {
 		 * @return частота счётчика в тактах за секунду либо ноль при негодном счётчике
 		 *
 		 */
-		static __AWH_INLINE__ uint64_t frequency() noexcept {
+		static __AWH_INLINE__ uint64_t __awh_frequency__() noexcept {
 			// Частота счётчика системного таймера
 			uint64_t result = 0;
 			// Читаем частоту счётчика системного таймера
@@ -940,7 +940,7 @@ namespace {
 			return ((result >= 1000000ull) ? result : 0);
 		}
 		// Частота счётчика системного таймера, ноль означает негодность счётчика
-		static const uint64_t counter = frequency();
+		static const uint64_t counter = __awh_frequency__();
 	/**
 	 * Если операционной системой является FreeBSD, DragonFly или Linux
 	 */
@@ -964,7 +964,7 @@ namespace {
 		 * @return разряд источника монотонного времени
 		 *
 		 */
-		static __AWH_INLINE__ clockid_t monotonic() noexcept {
+		static __AWH_INLINE__ clockid_t __awh_monotonic__() noexcept {
 			// Наибольший допустимый шаг часов в наносекундах
 			static constexpr int64_t GRAIN = 10000000ll;
 			/**
@@ -982,9 +982,9 @@ namespace {
 				 */
 				#if defined(__FreeBSD__)
 					// Частота системного таймера
-					int32_t hz = 0;
+					int32_t hertz = 0;
 					// Размер получаемого значения
-					size_t length = sizeof(hz);
+					size_t length = sizeof(hertz);
 					/**
 					 * Порог частоты выражается ТЕМ ЖЕ числом, что и порог шага часов
 					 *
@@ -992,7 +992,7 @@ namespace {
 					 * сто герц это и есть десять миллисекунд. Напиши их порознь числами -
 					 * и правка одного молча разошлась бы с другим
 					 */
-					if((::sysctlbyname("kern.hz", &hz, &length, nullptr, 0) == 0) && (static_cast <int64_t> (hz) >= (1000000000ll / GRAIN)))
+					if((::sysctlbyname("kern.hz", &hertz, &length, nullptr, 0) == 0) && (static_cast <int64_t> (hertz) >= (1000000000ll / GRAIN)))
 						// Выбираем дешёвый источник монотонного времени
 						return CLOCK_MONOTONIC_FAST;
 				/**
@@ -1028,15 +1028,16 @@ namespace {
 			return CLOCK_MONOTONIC;
 		}
 		// Разряд источника монотонного времени
-		static const clockid_t clockSource = monotonic();
+		static const clockid_t clockSource = __awh_monotonic__();
 	#endif
+
 	/**
 	 * @brief Функция получения текущего времени в миллисекундах
 	 *
 	 * @return текущее время в миллисекундах
 	 *
 	 */
-	static __AWH_INLINE__ uint64_t now() noexcept {
+	static __AWH_INLINE__ uint64_t __awh_alloc_now__() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 */
@@ -1081,21 +1082,21 @@ namespace {
 				return (((ticks / ::counter) * 1000ull) + (((ticks % ::counter) * 1000ull) / ::counter));
 			}
 			// Отметка времени
-			struct timespec stamp{};
+			struct timespec __awh_alloc_stamp__{};
 			// Получаем текущее время монотонных часов
-			::clock_gettime(CLOCK_MONOTONIC, &stamp);
+			::clock_gettime(CLOCK_MONOTONIC, &__awh_alloc_stamp__);
 			// Выводим текущее время в миллисекундах
-			return ((static_cast <uint64_t> (stamp.tv_sec) * 1000ull) + (static_cast <uint64_t> (stamp.tv_nsec) / 1000000ull));
+			return ((static_cast <uint64_t> (__awh_alloc_stamp__.tv_sec) * 1000ull) + (static_cast <uint64_t> (__awh_alloc_stamp__.tv_nsec) / 1000000ull));
 		/**
 		 * Если операционной системой является FreeBSD либо Linux
 		 */
 		#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__linux__)
 			// Отметка времени
-			struct timespec stamp{};
+			struct timespec __awh_alloc_stamp__{};
 			// Получаем текущее время выбранных монотонных часов
-			::clock_gettime(::clockSource, &stamp);
+			::clock_gettime(::clockSource, &__awh_alloc_stamp__);
 			// Выводим текущее время в миллисекундах
-			return ((static_cast <uint64_t> (stamp.tv_sec) * 1000ull) + (static_cast <uint64_t> (stamp.tv_nsec) / 1000000ull));
+			return ((static_cast <uint64_t> (__awh_alloc_stamp__.tv_sec) * 1000ull) + (static_cast <uint64_t> (__awh_alloc_stamp__.tv_nsec) / 1000000ull));
 		/**
 		 * Если это иная операционная система
 		 */
@@ -1110,7 +1111,7 @@ namespace {
 	 * @return опубликованные грубые часы, либо точные при отсутствии опубликованных
 	 *
 	 */
-	static __AWH_INLINE__ uint64_t stamp() noexcept {
+	static __AWH_INLINE__ uint64_t __awh_alloc_stamp__() noexcept {
 		// Читаем опубликованные грубые часы
 		const uint64_t published = coarse.load(std::memory_order_relaxed);
 		/**
@@ -1120,7 +1121,7 @@ namespace {
 		 * первого шага потока обслуживания, у уклада «при освобождении» - до первого
 		 * шага порога отдачи
 		 */
-		return ((published != 0) ? published : now());
+		return ((published != 0) ? published : __awh_alloc_now__());
 	}
 	/**
 	 * @brief Функция выдачи памяти из области первоначальной выдачи
@@ -1129,7 +1130,7 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * initial(const size_t size) noexcept {
+	static void * __awh_alloc_initial__(const size_t size) noexcept {
 		/**
 		 * Размер сверяется на переполнение ПРЕЖДЕ округления
 		 *
@@ -1190,7 +1191,7 @@ namespace {
 	 * @return    размер блока в байтах
 	 *
 	 */
-	static __AWH_INLINE__ size_t measured(const void * ptr) noexcept {
+	static __AWH_INLINE__ size_t __awh_alloc_measured__(const void * ptr) noexcept {
 		// Размер блока
 		size_t result = 0;
 		// Читаем размер блока из заголовка
@@ -1205,7 +1206,7 @@ namespace {
 	 * @return    признак принадлежности области
 	 *
 	 */
-	static __AWH_INLINE__ bool preliminary(const void * ptr) noexcept {
+	static __AWH_INLINE__ bool __awh_alloc_preliminary__(const void * ptr) noexcept {
 		/**
 		 * @brief Выводим признак принадлежности адреса области первоначальной выдачи
 		 *
@@ -1224,7 +1225,7 @@ namespace {
 	 * @return номер текущего процесса
 	 *
 	 */
-	static __AWH_INLINE__ int64_t identity() noexcept {
+	static __AWH_INLINE__ int64_t __awh_alloc_identity__() noexcept {
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -1239,6 +1240,7 @@ namespace {
 			return static_cast <int64_t> (::getpid());
 		#endif
 	}
+
 	/**
 	 * Наследование состояния заведено лишь у систем POSIX
 	 *
@@ -1259,7 +1261,7 @@ namespace {
 		 *       заведения мог достаться захваченным
 		 *
 		 */
-		static __AWH_INLINE__ void inherit() noexcept {
+		static __AWH_INLINE__ void __awh_inherit__() noexcept {
 			// Приводим в порядок центральные списки
 			machinery->central.adopt();
 			// Приводим в порядок кэши прочих потоков родителя
@@ -1318,13 +1320,13 @@ namespace {
 	 *          объявленное у macOS неподдерживаемым
 	 *
 	 */
-	static __AWH_INLINE__ void jammed() noexcept {
+	static __AWH_INLINE__ void __awh_alloc_jammed__() noexcept {
 		// Если распределитель не заведён
 		if(stage.load(std::memory_order_acquire) != STAGE_READY)
 			// Разбирать нечего
 			return;
 		// Получаем номер текущего процесса
-		const int64_t current = identity();
+		const int64_t current = __awh_alloc_identity__();
 		// Читаем номер процесса, которому принадлежит распределитель
 		int64_t owner = holder.load(std::memory_order_acquire);
 		// Если процесс не сменился
@@ -1353,7 +1355,7 @@ namespace {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Приводим распределитель в порядок общим списком
-			inherit();
+			__awh_inherit__();
 		#endif
 	}
 
@@ -1370,7 +1372,7 @@ namespace {
 		 * @brief Функция захвата замков распределителя перед ветвлением процесса
 		 *
 		 */
-		static __AWH_INLINE__ void beforeFork() noexcept {
+		static __AWH_INLINE__ void __awh_before_fork__() noexcept {
 			// Если распределитель не заведён
 			if(stage.load(std::memory_order_acquire) != STAGE_READY)
 				// Захватывать нечего
@@ -1430,7 +1432,7 @@ namespace {
 		 * @brief Функция освобождения замков распределителя у родителя после ветвления
 		 *
 		 */
-		static __AWH_INLINE__ void afterFork() noexcept {
+		static __AWH_INLINE__ void __awh_after_fork__() noexcept {
 			// Если распределитель не заведён
 			if(stage.load(std::memory_order_acquire) != STAGE_READY)
 				// Освобождать нечего
@@ -1464,15 +1466,15 @@ namespace {
 		 * @brief Функция приведения порядка в потомке после ветвления
 		 *
 		 */
-		static __AWH_INLINE__ void childFork() noexcept {
+		static __AWH_INLINE__ void __awh_child_fork__() noexcept {
 			// Если распределитель не заведён
 			if(stage.load(std::memory_order_acquire) != STAGE_READY)
 				// Приводить нечего
 				return;
 			// Запоминаем номер процесса потомка
-			holder.store(identity(), std::memory_order_release);
+			holder.store(__awh_alloc_identity__(), std::memory_order_release);
 			// Приводим распределитель в порядок общим списком
-			inherit();
+			__awh_inherit__();
 			/**
 			 * Заводим поток обслуживания заново, если отдача идёт по сроку
 			 *
@@ -1515,7 +1517,7 @@ namespace {
 	 * @return признак готовности распределителя
 	 *
 	 */
-	static AWH_ALLOC_NOINLINE bool warm() noexcept {
+	static AWH_ALLOC_NOINLINE bool __awh_alloc_warm__() noexcept {
 		// Ожидаемая ступень готовности: незаведённый распределитель
 		int32_t expected = STAGE_COLD;
 		/**
@@ -1524,7 +1526,7 @@ namespace {
 		 * Ни замка, ни опознания потока. Опознавать поток нечем: `pthread_self` у
 		 * FreeBSD САМ зовёт `calloc` при первом обращении, и опознание уходило бы в
 		 * бесконечную возвратность через наше же выделение - проверено съёмом стека,
-		 * тот состоял из повторяющейся тройки calloc-prepare-pthread_self.
+		 * тот состоял из повторяющейся тройки calloc-__awh_alloc_prepare__-pthread_self.
 		 * Поток-локальное место негодно по той же причине: его ленивое заведение тоже
 		 * обращается за памятью (проверено на macOS - срыв стека внутри `_tlv_get_addr`).
 		 *
@@ -1623,7 +1625,7 @@ namespace {
 		 */
 		machinery->profile.rate(settings.profileRate);
 		// Пересчитываем признак голой выдачи по настройкам заведения
-		refresh();
+		__awh_alloc_refresh__();
 		// Если завести распределитель не вышло
 		if(!(ranked && heaped && listed && cached)){
 			/**
@@ -1703,16 +1705,16 @@ namespace {
 			 * замок, захваченный перед ветвлением, и встала бы навсегда. Проверено
 			 * опытом: потомок вставал, не дойдя до нашего отклика вовсе
 			 */
-			alloc::ZoneCapture::fork(&beforeFork, &afterFork, &childFork);
+			alloc::ZoneCapture::fork(&__awh_before_fork__, &__awh_after_fork__, &__awh_child_fork__);
 		/**
 		 * Для прочих систем
 		 */
 		#else
 			// Заводим отклики ветвления процесса
-			::pthread_atfork(&beforeFork, &afterFork, &childFork);
+			::pthread_atfork(&__awh_before_fork__, &__awh_after_fork__, &__awh_child_fork__);
 		#endif
 		// Запоминаем номер процесса, которому принадлежит распределитель
-		holder.store(identity(), std::memory_order_release);
+		holder.store(__awh_alloc_identity__(), std::memory_order_release);
 		/**
 		 * Вешаем разбор ветвления на заклинивший замок
 		 *
@@ -1720,7 +1722,7 @@ namespace {
 		 * приводят распределитель в порядок прежде первого же выделения, а этот -
 		 * лишь когда о ветвлении не сообщили вовсе
 		 */
-		alloc::Spin::onStuck(&jammed);
+		alloc::Spin::onStuck(&__awh_alloc_jammed__);
 		// Отмечаем распределитель готовым
 		stage.store(STAGE_READY, std::memory_order_release);
 		// Отвечаем готовностью
@@ -1730,18 +1732,18 @@ namespace {
 	 * @brief Функция проверки готовности распределителя
 	 *
 	 * @note Быстрый путь: одно чтение ступени готовности. Заведение самого
-	 *       распределителя - холодный хвост `warm`, и случается оно единожды за процесс
+	 *       распределителя - холодный хвост `__awh_alloc_warm__`, и случается оно единожды за процесс
 	 *
 	 * @return признак готовности распределителя
 	 *
 	 */
-	static __AWH_INLINE__ bool prepare() noexcept {
+	static __AWH_INLINE__ bool __awh_alloc_prepare__() noexcept {
 		// Если распределитель уже готов
 		if(stage.load(std::memory_order_acquire) == STAGE_READY)
 			// Заводить нечего
 			return true;
 		// Уходим холодным путём: распределитель ещё не заведён
-		return warm();
+		return __awh_alloc_warm__();
 	}
 	/**
 	 * @brief Функция учёта выданного прикладному коду
@@ -1750,7 +1752,7 @@ namespace {
 	 * @param size  изменение занятого в байтах: отрицательное при освобождении
 	 *
 	 */
-	static __AWH_INLINE__ void account(alloc::cache_t * cache, const int64_t size) noexcept {
+	static __AWH_INLINE__ void __awh_alloc_account__([[maybe_unused]] alloc::cache_t * cache, [[maybe_unused]] const int64_t size) noexcept {
 		/**
 		 * Признак AWH_ALLOC_NO_ACCOUNTING снимает учёт расхода памяти
 		 *
@@ -1763,10 +1765,6 @@ namespace {
 		 * включён; снимать его вправе тот, кто замерил выигрыш на СВОЕЙ машине
 		 */
 		#if defined(AWH_ALLOC_NO_ACCOUNTING)
-			// Обходим учёт: ни кэш, ни изменение к делу не идут
-			(void) cache;
-			// Обходим учёт занятого
-			(void) size;
 			// Учитывать нечего
 			return;
 		#endif
@@ -1805,7 +1803,7 @@ namespace {
 	 * @param size затребованный размер блока в байтах
 	 *
 	 */
-	static AWH_ALLOC_NOINLINE void announce(const void * ptr, const size_t size) noexcept {
+	static AWH_ALLOC_NOINLINE void __awh_alloc_announce__(const void * ptr, const size_t size) noexcept {
 		// Захватываем замок кольца докладов
 		alloc::hold_t hold(reportLock);
 		// Если кольцо заполнено целиком
@@ -1839,7 +1837,7 @@ namespace {
 	 * @return признак того, что отдачу пора затевать
 	 *
 	 */
-	static __AWH_INLINE__ bool overdue() noexcept {
+	static __AWH_INLINE__ bool __awh_alloc_overdue__() noexcept {
 		// Если распределитель не заведён
 		if(stage.load(std::memory_order_acquire) != STAGE_READY)
 			// Отдавать нечего
@@ -1867,7 +1865,7 @@ namespace {
 	 * @brief Функция работы потока доклада
 	 *
 	 */
-	static void deliver() noexcept {
+	static void __awh_alloc_deliver__() noexcept {
 		/**
 		 * Опрашиваем состояние, пока поток доклада работает
 		 */
@@ -1880,9 +1878,9 @@ namespace {
 				// Захватываем замок откликов доклада
 				alloc::hold_t hold(callbackLock);
 				// Забираем отклик на крупное выделение
-				large = largeCallback();
+				large = __awh_large_сallback__();
 				// Забираем отклик на достижение потолка кучи
-				limit = limitCallback();
+				limit = __awh_limit_сallback__();
 			}
 			/**
 			 * Разбираем кольцо докладов о крупных выдачах
@@ -1965,7 +1963,7 @@ namespace {
 				 * включить её на ходу, и опубликованное к тому времени должно быть
 				 * свежим, а не годичной давности
 				 */
-				const uint64_t point = now();
+				const uint64_t point = __awh_alloc_now__();
 				/**
 				 * Отдаём системе свободное, отлежавшее отсрочку
 				 *
@@ -1976,11 +1974,11 @@ namespace {
 				 */
 				coarse.store(point, std::memory_order_relaxed);
 				// Если отдача идёт по сроку и её пора затевать
-				if((settings.purgeMode == alloc::purge_t::TIMED) && overdue())
+				if((settings.purgeMode == alloc::purge_t::TIMED) && __awh_alloc_overdue__())
 					// Отдаём системе то, что отлежало отсрочку
 					machinery->central.purge(point, false);
 			}
-			// Ждём до следующего опроса
+			// Спим до следующего опроса
 			std::this_thread::sleep_for(chrono::milliseconds(TICK));
 		}
 	}
@@ -1991,7 +1989,7 @@ namespace {
 	 *       шло заведение, и состязаться им между собою нельзя
 	 *
 	 */
-	static __AWH_INLINE__ void slumber() noexcept {
+	static __AWH_INLINE__ void __awh_alloc_slumber__() noexcept {
 		// Захватываем замок заведения потока обслуживания
 		alloc::hold_t hold(awakenLock);
 		// Если поток доклада не заводился вовсе
@@ -2016,7 +2014,7 @@ namespace {
 	 * @note Звать ВНЕ выдачи памяти: заведение потока само за памятью и обращается
 	 *
 	 */
-	static __AWH_INLINE__ bool awaken() noexcept {
+	static __AWH_INLINE__ bool __awh_alloc_awaken__() noexcept {
 		// Захватываем замок заведения потока обслуживания
 		alloc::hold_t hold(awakenLock);
 		// Если поток доклада уже заведён
@@ -2046,8 +2044,10 @@ namespace {
 		 */
 		try {
 			// Заводим поток доклада
-			result = new std::thread(&deliver);
-		// Если система отказала в заведении потока
+			result = new std::thread(&__awh_alloc_deliver__);
+		/**
+		 * Если система отказала в заведении потока
+		 */
 		} catch(...) {
 			// Заводить не вышло
 			result = nullptr;
@@ -2085,7 +2085,7 @@ namespace {
 	 * @param size затребованный размер блока в байтах
 	 *
 	 */
-	static __AWH_INLINE__ void enrol(void * ptr, const size_t size) noexcept {
+	static __AWH_INLINE__ void __awh_alloc_enrol__(void * ptr, const size_t size) noexcept {
 		// Если выдавать было нечего либо ни одна возможность не включена
 		if((ptr == nullptr) || plain.load(std::memory_order_relaxed))
 			// Учитывать нечего
@@ -2106,18 +2106,18 @@ namespace {
 		// Если выдача перекрыла порог доклада о крупном выделении
 		if((settings.reportLarge > 0) && (size >= settings.reportLarge))
 			// Ставим доклад о крупной выдаче
-			announce(ptr, size);
+			__awh_alloc_announce__(ptr, size);
 		// Если выданный блок под выборку учёта не попал
 		if(!machinery->profile.wanted())
 			// Учитывать нечего
 			return;
 		// Берём выданный блок под учёт места выдачи
-		machinery->profile.enroll(ptr, size, now(), 0);
+		machinery->profile.enroll(ptr, size, __awh_alloc_now__(), 0);
 	}
 	/**
 	 * @brief Функция разбора размера блока, миновавшего первые две проверки
 	 *
-	 * @details Отличается от `measure` тем, что НЕ спрашивает ни область первоначальной
+	 * @details Отличается от `__awh_alloc_measure__` тем, что НЕ спрашивает ни область первоначальной
 	 *          выдачи, ни ступень готовности распределителя: звавший спросил их сам
 	 *
 	 * @note Заведён ради пути освобождения. Тот спрашивает оба условия первым делом - без
@@ -2139,7 +2139,7 @@ namespace {
 	 * @return      размер блока в байтах, либо нуль если блок не наш
 	 *
 	 */
-	static AWH_ALLOC_COLD size_t sizedSlow(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
+	static AWH_ALLOC_COLD size_t __awh_alloc_sized_slow__(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
 		// Если заслонённые блоки выдавались
 		if(guarded.load(std::memory_order_relaxed)){
 			// Размер заслонённого блока в байтах
@@ -2197,8 +2197,13 @@ namespace {
 	/**
 	 * @brief Функция быстрого определения размера блока
 	 *
+	 * @param ptr   разбираемый адрес
+	 * @param index номер разряда, которому принадлежит адрес
+	 * @param cache кэш текущего потока, либо nullptr
+	 * @return      размер блока в байтах, либо нуль если блок не наш
+	 *
 	 */
-	static __AWH_INLINE__ size_t sized(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
+	static __AWH_INLINE__ size_t __awh_alloc_sized__(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
 		/**
 		 * Пробуем опознать блок разряда меткой страницы
 		 *
@@ -2215,7 +2220,7 @@ namespace {
 			// Номер разряда, которому принадлежит адрес
 			size_t which = 0;
 			// Берём устройство распределителя ОДНИМ чтением на весь путь
-			machinery_t * const unit = device();
+			machinery_t * const unit = __awh_alloc_device__();
 			// Если блок опознан меткой страницы
 			if(unit->central.sorted(ptr, &which, ((cache != nullptr) ? cache->hint() : nullptr))){
 				// Если требуется номер разряда
@@ -2227,7 +2232,7 @@ namespace {
 			}
 		}
 		// Разбираем адрес по холодным путям
-		return sizedSlow(ptr, index, cache);
+		return __awh_alloc_sized_slow__(ptr, index, cache);
 	}
 	/**
 	 * @brief Функция определения размера выданного блока
@@ -2238,13 +2243,13 @@ namespace {
 	 * @return      размер блока в байтах, либо нуль если блок не наш
 	 *
 	 */
-	static __AWH_INLINE__ size_t measure(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
+	static __AWH_INLINE__ size_t __awh_alloc_measure__(const void * ptr, size_t * index, alloc::cache_t * cache) noexcept {
 		// Если разбирать нечего
 		if(ptr == nullptr)
 			// Разбирать нечего
 			return 0;
 		// Если адрес лежит в области первоначальной выдачи
-		if(preliminary(ptr)){
+		if(__awh_alloc_preliminary__(ptr)){
 			// Если требуется номер разряда
 			if(index != nullptr)
 				/**
@@ -2262,14 +2267,14 @@ namespace {
 			 * чужой зоне; перевыдача же уходила бы прежнему распределителю с нашим
 			 * указателем
 			 */
-			return measured(ptr);
+			return __awh_alloc_measured__(ptr);
 		}
 		// Если распределитель не готов
 		if(stage.load(std::memory_order_acquire) != STAGE_READY)
 			// Разбирать нечем
 			return 0;
 		// Разбираем адрес, о каком уже известно, что он не из области первоначальной выдачи
-		return sized(ptr, index, cache);
+		return __awh_alloc_sized__(ptr, index, cache);
 	}
 	/**
 	 * @brief Функция выдачи памяти по холодным путям
@@ -2290,7 +2295,7 @@ namespace {
 	 * @return      адрес выданной памяти либо nullptr
 	 *
 	 */
-	static AWH_ALLOC_COLD void * reserveSlow(const size_t size, const bool bare) noexcept {
+	static AWH_ALLOC_COLD void * __awh_alloc_reserve_slow__(const size_t size, const bool bare) noexcept {
 		/**
 		 * Заводим поток обслуживания заново у потомка ветвления
 		 *
@@ -2315,11 +2320,11 @@ namespace {
 			 *          следующей выдаче попробовать снова.
 			 *
 			 */ 
-			if(!awaken())
+			if(!__awh_alloc_awaken__())
 				// Возвращаем просьбу на место: следующая выдача попробует снова
 				revive.store(true, std::memory_order_release);
 			// Пересчитываем признак голой выдачи: ветвление разобрано
-			refresh();
+			__awh_alloc_refresh__();
 		}
 		/**
 		 * Выдаём блок под заслонами, если выборка взяла эту выдачу
@@ -2336,11 +2341,11 @@ namespace {
 				// Отмечаем заслонённые блоки выданными
 				guarded.store(true, std::memory_order_relaxed);
 				// Пересчитываем признак голой выдачи: заслонённые блоки появились
-				refresh();
+				__awh_alloc_refresh__();
 				// Учитываем выданное прикладному коду
-				account(machinery->caches.local(), static_cast <int64_t> (size));
+				__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> (size));
 				// Берём выданный блок под учёт места выдачи
-				enrol(result, size);
+				__awh_alloc_enrol__(result, size);
 				// Выводим выданный блок
 				return result;
 			}
@@ -2358,9 +2363,9 @@ namespace {
 				// Если блок выдан
 				if(result != nullptr){
 					// Учитываем выданное прикладному коду
-					account(cache, static_cast <int64_t> (machinery->classes.size(index)));
+					__awh_alloc_account__(cache, static_cast <int64_t> (machinery->classes.size(index)));
 					// Берём выданный блок под учёт места выдачи
-					enrol(result, size);
+					__awh_alloc_enrol__(result, size);
 					// Выводим выданный блок
 					return result;
 				}
@@ -2370,9 +2375,9 @@ namespace {
 				// Забираем один блок разряда из центральных списков
 				if(machinery->central.fetch(index, &head, &tail, 1) > 0){
 					// Учитываем выданное прикладному коду
-					account(nullptr, static_cast <int64_t> (machinery->classes.size(index)));
+					__awh_alloc_account__(nullptr, static_cast <int64_t> (machinery->classes.size(index)));
 					// Берём выданный блок под учёт места выдачи
-					enrol(head, size);
+					__awh_alloc_enrol__(head, size);
 					// Выводим выданный блок
 					return head;
 				}
@@ -2389,9 +2394,9 @@ namespace {
 				// Отмечаем крупные блоки выданными
 				enormous.store(true, std::memory_order_relaxed);
 				// Учитываем выданное прикладному коду
-				account(cache, static_cast <int64_t> (size));
+				__awh_alloc_account__(cache, static_cast <int64_t> (size));
 				// Берём выданный блок под учёт места выдачи
-				enrol(huge, size);
+				__awh_alloc_enrol__(huge, size);
 			}
 			// Выводим выданный крупный блок
 			return huge;
@@ -2413,9 +2418,9 @@ namespace {
 		// Если область выдана
 		if(result != nullptr){
 			// Учитываем выданное прикладному коду
-			account(cache, static_cast <int64_t> ((served > 0) ? served : (((size + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
+			__awh_alloc_account__(cache, static_cast <int64_t> ((served > 0) ? served : (((size + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
 			// Берём выданную область под учёт места выдачи
-			enrol(result, size);
+			__awh_alloc_enrol__(result, size);
 		}
 		// Выводим выданную область
 		return result;
@@ -2427,11 +2432,11 @@ namespace {
 	 *
 	 * @note Ею идёт подавляющее большинство выдач, и стоит она считанных команд. Всё
 	 *       остальное - заслоны, центральные списки, крупные выдачи, область сверх разрядов -
-	 *       вынесено в `reserveSlow`, помеченный холодным и невстраиваемым. Так тело выдачи
+	 *       вынесено в `__awh_alloc_reserve_slow__`, помеченный холодным и невстраиваемым. Так тело выдачи
 	 *       сокращается вдесятеро и становится сравнимо с телом соперников
 	 *
 	 * @note Учёт места выдачи здесь НЕ зовётся вовсе: голая выдача по своему определению
-	 *       означает, что доля выборки учёта нулевая. Прежде `enrol` звался и на быстрой
+	 *       означает, что доля выборки учёта нулевая. Прежде `__awh_alloc_enrol__` звался и на быстрой
 	 *       дороге, а первым же делом ПОВТОРНО читал признак голой выдачи - тот самый, что
 	 *       уже лежит у нас в руке
 	 *
@@ -2439,7 +2444,7 @@ namespace {
 	 * @return       адрес выданной памяти либо nullptr
 	 *
 	 */
-	static __AWH_INLINE__ void * reserve(const size_t wanted) noexcept {
+	static __AWH_INLINE__ void * __awh_alloc_reserve__(const size_t wanted) noexcept {
 		/**
 		 * Нулевой запрос обращаем в наименьший блок, а не в пустоту
 		 *
@@ -2452,9 +2457,9 @@ namespace {
 		 */
 		const size_t size = ((wanted == 0) ? 1u : wanted);
 		// Если распределитель не готов
-		if(AWH_ALLOC_UNLIKELY(!prepare()))
+		if(AWH_ALLOC_UNLIKELY(!__awh_alloc_prepare__()))
 			// Выдаём из области первоначальной выдачи
-			return initial(size);
+			return __awh_alloc_initial__(size);
 		/**
 		 * Спрашиваем возможности ОДНИМ чтением, а не полудюжиной
 		 *
@@ -2462,11 +2467,11 @@ namespace {
 		 */
 		const bool bare = plain.load(std::memory_order_relaxed);
 		// Берём устройство распределителя ОДНИМ чтением на весь путь
-		machinery_t * const unit = device();
+		machinery_t * const unit = __awh_alloc_device__();
 		// Если хоть одна возможность включена, идём холодным путём целиком
 		if(AWH_ALLOC_UNLIKELY(!bare))
 			// Выдаём память по холодным путям
-			return reserveSlow(size, bare);
+			return __awh_alloc_reserve_slow__(size, bare);
 		// Определяем разряд требуемого размера
 		const size_t index = unit->classes.index(size);
 		// Если размер обслуживается разрядами
@@ -2480,20 +2485,24 @@ namespace {
 				// Если блок выдан
 				if(AWH_ALLOC_LIKELY(result != nullptr)){
 					// Учитываем выданное прикладному коду
-					account(cache, static_cast <int64_t> (unit->classes.extent(index)));
+					__awh_alloc_account__(cache, static_cast <int64_t> (unit->classes.extent(index)));
 					// Выводим выданный блок
 					return result;
 				}
 			}
 		}
 		// Выдаём память по холодным путям
-		return reserveSlow(size, bare);
+		return __awh_alloc_reserve_slow__(size, bare);
 	}
 	/**
 	 * @brief Функция выдачи памяти с выравниванием
 	 *
+	 * @param alignment граница выравнивания
+	 * @param size      требуемый размер в байтах
+	 * @return          адрес выданной памяти либо nullptr
+	 *
 	 */
-	static void * align(const size_t alignment, const size_t size) noexcept {
+	static void * __awh_alloc_align__(const size_t alignment, const size_t size) noexcept {
 		/**
 		 * Если требуемое выравнивание не превышает выравнивания разрядов
 		 *
@@ -2502,9 +2511,9 @@ namespace {
 		 */
 		if(alignment <= alloc::Classes::ALIGN)
 			// Выдаём память обычным путём
-			return reserve(size);
+			return __awh_alloc_reserve__(size);
 		// Если распределитель не готов
-		if(!prepare()){
+		if(!__awh_alloc_prepare__()){
 			/**
 			 * Выдаём из области первоначальной выдачи с запасом на выравнивание
 			 *
@@ -2516,7 +2525,7 @@ namespace {
 				// Выдавать нечего: столько не бывает
 				return nullptr;
 			// Выделяем память с запасом под выравнивание
-			uint8_t * block = reinterpret_cast <uint8_t *> (initial(size + alignment));
+			uint8_t * block = reinterpret_cast <uint8_t *> (__awh_alloc_initial__(size + alignment));
 			// Если память не выдана
 			if(block == nullptr)
 				// Выдавать нечего
@@ -2582,9 +2591,9 @@ namespace {
 					// Отмечаем крупные блоки выданными
 					enormous.store(true, std::memory_order_relaxed);
 					// Учитываем выданное прикладному коду
-					account(machinery->caches.local(), static_cast <int64_t> (need));
+					__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> (need));
 					// Берём выданный блок под учёт места выдачи
-					enrol(huge, need);
+					__awh_alloc_enrol__(huge, need);
 				}
 				// Выводим выданный крупный блок
 				return huge;
@@ -2604,7 +2613,7 @@ namespace {
 			// Если область выдана
 			if(result != nullptr){
 				// Учитываем выданное прикладному коду
-				account(machinery->caches.local(), static_cast <int64_t> ((served > 0) ? served : (((need + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
+				__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> ((served > 0) ? served : (((need + (alloc::Pages::PAGE - 1)) / alloc::Pages::PAGE) * alloc::Pages::PAGE)));
 				/**
 				 * Берём выданную область под учёт места выдачи
 				 *
@@ -2614,7 +2623,7 @@ namespace {
 				 * молча: щуп с выборкой `profileRate = 1` не нашёл его вовсе, найдя при
 				 * том и крупный, и обычный
 				 */
-				enrol(result, size);
+				__awh_alloc_enrol__(result, size);
 			}
 			// Выводим выданную область
 			return result;
@@ -2638,9 +2647,9 @@ namespace {
 			// Отмечаем крупные блоки выданными
 			enormous.store(true, std::memory_order_relaxed);
 			// Учитываем выданное прикладному коду
-			account(machinery->caches.local(), static_cast <int64_t> (size));
+			__awh_alloc_account__(machinery->caches.local(), static_cast <int64_t> (size));
 			// Берём выданный блок под учёт места выдачи
-			enrol(result, size);
+			__awh_alloc_enrol__(result, size);
 		}
 		// Выводим выданный блок
 		return result;
@@ -2648,12 +2657,13 @@ namespace {
 	/**
 	 * @brief Функция возврата блока слоям распределителя
 	 *
-	 * @param ptr   адрес возвращаемого блока
-	 * @param index номер разряда, которому принадлежит блок
-	 * @param cache кэш текущего потока, либо nullptr
+	 * @param ptr     адрес возвращаемого блока
+	 * @param index   номер разряда, которому принадлежит блок
+	 * @param cache   кэш текущего потока, либо nullptr
+	 * @param keeping признак разрешённой придержки
 	 *
 	 */
-	static __AWH_INLINE__ void recycle(void * ptr, const size_t index, alloc::cache_t * cache, const bool keeping = true) noexcept {
+	static __AWH_INLINE__ void __awh_alloc_recycle__(void * ptr, const size_t index, alloc::cache_t * cache, const bool keeping = true) noexcept {
 		// Если блок выдан слоем крупных выдач
 		if(AWH_ALLOC_UNLIKELY(index == alloc::Huge::INDEX)){
 			// Отдаём крупную выдачу источнику
@@ -2687,7 +2697,7 @@ namespace {
 		 * Довод и замер - у самого признака: отдача по просьбе отсрочки не смотрит, а
 		 * запрет отдачи не смотрит ничего
 		 */
-		machinery->central.free(ptr, (stamped.load(std::memory_order_relaxed) ? stamp() : 0), keeping);
+		machinery->central.free(ptr, (stamped.load(std::memory_order_relaxed) ? __awh_alloc_stamp__() : 0), keeping);
 	}
 	/**
 	 * @brief Функция выбора прежних функций для чужого блока
@@ -2705,11 +2715,11 @@ namespace {
 	 * @return     прежние функции владельца либо заданный набор
 	 *
 	 */
-	static __AWH_INLINE__ const alloc::functions_t & routed(const void * ptr, const alloc::functions_t & from) noexcept {
+	static __AWH_INLINE__ const alloc::functions_t & __awh_alloc_routed__(const void * ptr, const alloc::functions_t & from) noexcept {
 		// Если захват состоялся и каптюр ведает несколькими владельцами
-		if(::seized.load(std::memory_order_acquire) && (::seizing() != nullptr)){
+		if(::seized.load(std::memory_order_acquire) && (::__awh_alloc_seizing__() != nullptr)){
 			// Спрашиваем владельца блока у каптюра
-			const alloc::functions_t * owner = ::seizing()->owner(ptr);
+			const alloc::functions_t * owner = ::__awh_alloc_seizing__()->owner(ptr);
 			// Если каптюр ответил набором владельца либо пустым набором сироты
 			if(owner != nullptr)
 				// Выводим набор каптюра
@@ -2719,14 +2729,14 @@ namespace {
 		return from;
 	}
 	/**
-	 * Холодные пути вынесены СЮДА по тому же доводу, что и у выдачи
-	 *
-	 * Прежде тело возврата несло разом заслоны, карантин, засев освобождаемого, учёт
-	 * мест выдачи и отдачу памяти системе по сроку: 293 команды и 52 ветвления против 29
-	 * команд и 3 ветвлений у `free` соперника. Быстрая дорога - вернуть блок разряда в
-	 * кэш своего потока - тонула во всём этом
-	 *
 	 * @brief Функция освобождения памяти холодным путём
+	 *
+	 * @note Холодные пути вынесены СЮДА по тому же доводу, что и у выдачи
+	 *
+	 * @details Прежде тело возврата несло разом заслоны, карантин, засев освобождаемого, учёт
+	 *          мест выдачи и отдачу памяти системе по сроку: 293 команды и 52 ветвления против 29
+	 *          команд и 3 ветвлений у `free` соперника. Быстрая дорога - вернуть блок разряда в
+	 *          кэш своего потока - тонула во всём этом.
 	 *
 	 * @param ptr     адрес возвращаемой памяти
 	 * @param bare    признак голого освобождения
@@ -2734,7 +2744,7 @@ namespace {
 	 * @param origin  прежние функции исходной библиотеки либо nullptr
 	 *
 	 */
-	static AWH_ALLOC_COLD void discardSlow(void * ptr, const bool bare, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
+	static AWH_ALLOC_COLD void __awh_alloc_discard_slow__(void * ptr, const bool bare, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
 		/**
 		 * Адрес области первоначальной выдачи не отдаём ни слоям, ни прежнему
 		 * распределителю
@@ -2742,7 +2752,7 @@ namespace {
 		 * Лежит он в статическом буфере и не выдан ни нами, ни системным malloc: утекает.
 		 * Сюда он приходит лишь холодными путями - с горячей дороги проверка вынесена
 		 */
-		if(AWH_ALLOC_UNLIKELY(preliminary(ptr)))
+		if(AWH_ALLOC_UNLIKELY(__awh_alloc_preliminary__(ptr)))
 			// Освобождать нечего
 			return;
 		// Если адрес проверяется заслонами
@@ -2771,7 +2781,7 @@ namespace {
 						// Снимаем блок с учёта места выдачи
 						machinery->profile.expel(ptr);
 					// Уменьшаем занятое прикладным кодом
-					account(machinery->caches.local(), -static_cast <int64_t> (served));
+					__awh_alloc_account__(machinery->caches.local(), -static_cast <int64_t> (served));
 				}
 				/**
 				 * Освобождать больше нечего
@@ -2790,11 +2800,11 @@ namespace {
 		/**
 		 * Определяем размер освобождаемого блока
 		 *
-		 * Зовём `sized`, а не `measure`: область первоначальной выдачи и ступень
+		 * Зовём `__awh_alloc_sized__`, а не `__awh_alloc_measure__`: область первоначальной выдачи и ступень
 		 * готовности спрошены здесь же, несколькими строками выше, и спрашивать их
 		 * вторично на каждом освобождении незачем
 		 */
-		const size_t size = sized(ptr, &index, cache);
+		const size_t size = __awh_alloc_sized__(ptr, &index, cache);
 		// Если блок нам не принадлежит
 		if(AWH_ALLOC_UNLIKELY(size == 0)){
 			/**
@@ -2804,7 +2814,7 @@ namespace {
 			 * заслонили: выравнивающей выдачей библиотеки времени исполнения, скажем.
 			 * Освобождать её обязан тот, кто выдавал
 			 */
-			const alloc::functions_t & from = ((origin != nullptr) ? *origin : ::routed(ptr, originals));
+			const alloc::functions_t & from = ((origin != nullptr) ? *origin : ::__awh_alloc_routed__(ptr, originals));
 			// Если прежнее освобождение памяти известно
 			if(from.free != nullptr)
 				// Отдаём память прежнему распределителю
@@ -2817,7 +2827,7 @@ namespace {
 			// Снимаем блок с учёта места выдачи
 			machinery->profile.expel(ptr);
 		// Уменьшаем занятое прикладным кодом
-		account(cache, -static_cast <int64_t> (size));
+		__awh_alloc_account__(cache, -static_cast <int64_t> (size));
 		/**
 		 * Голое освобождение идёт коротким путём
 		 *
@@ -2826,7 +2836,7 @@ namespace {
 		 */
 		if(AWH_ALLOC_LIKELY(bare)){
 			// Возвращаем блок слоям распределителя
-			recycle(ptr, index, cache, keeping);
+			__awh_alloc_recycle__(ptr, index, cache, keeping);
 			// Освобождать больше нечего
 			return;
 		}
@@ -2852,7 +2862,7 @@ namespace {
 			 */
 			while((exiled = machinery->quarantine.release(&served, &which)) != nullptr)
 				// Возвращаем слоям вытесненный блок
-				recycle(exiled, which, cache);
+				__awh_alloc_recycle__(exiled, which, cache);
 			// Освобождать больше нечего
 			return;
 		}
@@ -2861,7 +2871,7 @@ namespace {
 			// Засеваем освобождаемое заметным образом
 			::memset(ptr, 0xDE, size);
 		// Возвращаем блок слоям распределителя
-		recycle(ptr, index, cache, keeping);
+		__awh_alloc_recycle__(ptr, index, cache, keeping);
 		/**
 		 * Отдаём освободившееся системе немедля, если так заказано
 		 *
@@ -2887,11 +2897,11 @@ namespace {
 				 * отдачи затевается ровно здесь
 				 */
 				// Снимаем показания часов единожды на шаг
-				const uint64_t point = now();
+				const uint64_t point = __awh_alloc_now__();
 				// Публикуем грубые часы
 				coarse.store(point, std::memory_order_relaxed);
 				// Если отдачу пора затевать
-				if(overdue())
+				if(__awh_alloc_overdue__())
 					// Отдаём системе то, что отлежало отсрочку
 					machinery->central.purge(point, false);
 			}
@@ -2903,7 +2913,7 @@ namespace {
 	 * @details В теле остаётся ОДНА дорога: блок разряда в кэш своего потока.
 	 *
 	 * @note Всё прочее - заслоны, карантин, засев, учёт мест выдачи, отдача системе по сроку,
-	 *       крупные выдачи и области сверх разрядов - вынесено в `discardSlow`, помеченный
+	 *       крупные выдачи и области сверх разрядов - вынесено в `__awh_alloc_discard_slow__`, помеченный
 	 *       холодным и невстраиваемым
 	 *
 	 * @note Признак придержки нужен ПЕРЕВЫДАЧЕ, и только ей
@@ -2918,7 +2928,7 @@ namespace {
 	 * @param origin  прежние функции исходной библиотеки либо nullptr
 	 *
 	 */
-	static __AWH_INLINE__ void discard(void * ptr, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
+	static __AWH_INLINE__ void __awh_alloc_discard__(void * ptr, const bool keeping = true, const alloc::functions_t * origin = nullptr) noexcept {
 		// Если освобождать нечего
 		if(AWH_ALLOC_UNLIKELY(ptr == nullptr))
 			// Освобождать нечего
@@ -2926,7 +2936,7 @@ namespace {
 		// Если распределитель не готов
 		if(AWH_ALLOC_UNLIKELY(stage.load(std::memory_order_acquire) != STAGE_READY)){
 			// Выбираем прежние функции исходной библиотеки
-			const alloc::functions_t & from = ((origin != nullptr) ? *origin : ::routed(ptr, originals));
+			const alloc::functions_t & from = ((origin != nullptr) ? *origin : ::__awh_alloc_routed__(ptr, originals));
 			// Если прежнее освобождение памяти известно
 			if(from.free != nullptr)
 				// Отдаём память прежнему распределителю
@@ -2941,11 +2951,11 @@ namespace {
 		 */
 		const bool bare = plain.load(std::memory_order_relaxed);
 		// Берём устройство распределителя ОДНИМ чтением на весь путь
-		machinery_t * const unit = device();
+		machinery_t * const unit = __awh_alloc_device__();
 		// Если хоть одна возможность включена, идём холодным путём целиком
 		if(AWH_ALLOC_UNLIKELY(!bare)){
 			// Возвращаем память по холодным путям
-			discardSlow(ptr, bare, keeping, origin);
+			__awh_alloc_discard_slow__(ptr, bare, keeping, origin);
 			// Возвращать больше нечего
 			return;
 		}
@@ -2954,7 +2964,7 @@ namespace {
 		// Номер разряда, которому принадлежит адрес
 		size_t index = 0;
 		/**
-		 * Разряд берём картой страниц напрямую, без обёртки `sized`
+		 * Разряд берём картой страниц напрямую, без обёртки `__awh_alloc_sized__`
 		 *
 		 * Нуль в ответе означает «не классовый блок»: чужой адрес, область первоначальной
 		 * выдачи либо крупная выдача - все они уходят холодным путём
@@ -2963,7 +2973,7 @@ namespace {
 			// Если кэш заведён и разряд в таблице
 			if(AWH_ALLOC_LIKELY((index < unit->classes.count()) && (cache != nullptr))){
 				// Уменьшаем занятое прикладным кодом
-				account(cache, -static_cast <int64_t> (unit->classes.extent(index)));
+				__awh_alloc_account__(cache, -static_cast <int64_t> (unit->classes.extent(index)));
 				// Возвращаем блок в кэш текущего потока
 				cache->free(index, ptr);
 				// Возвращать больше нечего
@@ -2971,7 +2981,7 @@ namespace {
 			}
 		}
 		// Возвращаем память по холодным путям
-		discardSlow(ptr, bare, keeping, origin);
+		__awh_alloc_discard_slow__(ptr, bare, keeping, origin);
 	}
 };
 
@@ -3014,7 +3024,7 @@ namespace {
 	 * @return       та же выданная память
 	 *
 	 */
-	static __AWH_INLINE__ void * blanked(void * result, const size_t from, const size_t size) noexcept {
+	static __AWH_INLINE__ void * __awh_alloc_blanked__(void * result, const size_t from, const size_t size) noexcept {
 		/**
 		 * Спрашиваем признак голой выдачи ПЕРВЫМ
 		 *
@@ -3055,16 +3065,16 @@ namespace {
 		 */
 		if(ptr == nullptr)
 			// Выдаём память требуемого размера, обнуляя её по настройке
-			return ::blanked(::reserve(size), 0, size);
+			return ::__awh_alloc_blanked__(::__awh_alloc_reserve__(size), 0, size);
 		// Если требуемый размер не задан
 		if(size == 0){
 			// Освобождаем память
-			::discard(ptr, true, &from);
+			::__awh_alloc_discard__(ptr, true, &from);
 			// Выдавать нечего
 			return nullptr;
 		}
 		// Определяем размер прежнего блока
-		const size_t before = ::measure(ptr, nullptr, nullptr);
+		const size_t before = ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 		/**
 		 * Если прежний блок не наш, отдаём изменение прежнему распределителю
 		 *
@@ -3105,11 +3115,11 @@ namespace {
 		   (::stage.load(std::memory_order_acquire) == STAGE_READY) &&
 		   ::machinery->central.expand(ptr, size)){
 			// Определяем размер выросшей области
-			const size_t grown = ::measure(ptr, nullptr, nullptr);
+			const size_t grown = ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 			// Если область и вправду выросла
 			if(grown > before)
 				// Учитываем прибавку выданного прикладному коду
-				::account(::machinery->caches.local(), static_cast <int64_t> (grown - before));
+				::__awh_alloc_account__(::machinery->caches.local(), static_cast <int64_t> (grown - before));
 			/**
 			 * Докладываем о крупной выдаче, если рост перешагнул порог доклада
 			 *
@@ -3123,7 +3133,7 @@ namespace {
 			 */
 			if((::settings.reportLarge > 0) && (size >= ::settings.reportLarge) && (before < ::settings.reportLarge))
 				// Ставим доклад о крупной выдаче
-				::announce(ptr, size);
+				::__awh_alloc_announce__(ptr, size);
 			/**
 			 * Правим размер блока у учёта мест выдачи
 			 *
@@ -3144,10 +3154,10 @@ namespace {
 			 *          пригодного: договор обещает нули ровно тому, что запрошено.
 			 *
 			 */ 
-			return ::blanked(ptr, before, size);
+			return ::__awh_alloc_blanked__(ptr, before, size);
 		}
 		// Выдаём память требуемого размера
-		void * result = ::reserve(size);
+		void * result = ::__awh_alloc_reserve__(size);
 		// Если память не выдана
 		if(result == nullptr)
 			// Отвечаем отказом: прежний блок при этом остаётся годным
@@ -3155,7 +3165,7 @@ namespace {
 		// Переносим содержимое прежнего блока
 		::memcpy(result, ptr, before);
 		// Освобождаем прежний блок БЕЗ придержки: та заслонила бы рост следующей области
-		::discard(ptr, false, &from);
+		::__awh_alloc_discard__(ptr, false, &from);
 		/**
 		 * @brief Выводим выданную память, обнулив хвост сверх перенесённого
 		 *
@@ -3168,7 +3178,7 @@ namespace {
 		 *          этот - первейшее место, где непрописанное и берётся.
 		 *
 		 */
-		return ::blanked(result, before, size);
+		return ::__awh_alloc_blanked__(result, before, size);
 	}
 	/**
 	 * @brief Функция определения размера с учётом исходной библиотеки
@@ -3180,7 +3190,7 @@ namespace {
 	 */
 	static __AWH_INLINE__ size_t __awh_alloc_msize_from__(const void * ptr, const alloc::functions_t & from) {
 		// Определяем размер выданного блока
-		const size_t result = ::measure(ptr, nullptr, nullptr);
+		const size_t result = ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 		/**
 		 * Если блок не наш, спрашиваем размер у прежнего распределителя
 		 *
@@ -3239,7 +3249,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ size_t __awh_alloc_owned__(const void * ptr) {
 			// Выводим размер блока, выданного нашими слоями
-			return ::measure(ptr, nullptr, nullptr);
+			return ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 		}
 	#endif
 
@@ -3266,7 +3276,7 @@ namespace {
 			// Выравнивать нечем
 			return nullptr;
 		// Выдаём память с требуемым выравниванием
-		void * result = ::align(alignment, size);
+		void * result = ::__awh_alloc_align__(alignment, size);
 		// Если требуется обнулять выдаваемое
 		if((result != nullptr) && (::settings.fill == alloc::fill_t::ZERO))
 			// Обнуляем выданную память
@@ -3286,7 +3296,7 @@ namespace {
 	 * Каждый из них разбирает принадлежность блока сам и чужой уносит ПРЕЖНЕЙ выровненной
 	 * функции, а не общему `free`: у MSVCRT пути эти разные, и блок, выданный
 	 * `_aligned_malloc` до захвата, обычным освобождением не берётся. Признак чужого тот
-	 * же, каким пользуется измерение, - нулевой ответ `measure`
+	 * же, каким пользуется измерение, - нулевой ответ `__awh_alloc_measure__`
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
@@ -3317,14 +3327,14 @@ namespace {
 				// Освобождать нечего
 				return;
 			// Если блок не наш и прежняя функция известна
-			if((::measure(ptr, nullptr, nullptr) == 0) && (from.alignedFree != nullptr)){
+			if((::__awh_alloc_measure__(ptr, nullptr, nullptr) == 0) && (from.alignedFree != nullptr)){
 				// Уносим блок прежнему распределителю его же путём
 				(* from.alignedFree)(ptr);
 				// Освобождать больше нечего
 				return;
 			}
 			// Освобождаем наш блок
-			::discard(ptr);
+			::__awh_alloc_discard__(ptr);
 		}
 		/**
 		 * @brief Функция определения размера памяти, выданной с выравниванием, у MS Windows
@@ -3338,7 +3348,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ size_t __awh_alloc_aligned_msize_from__(void * ptr, size_t alignment, size_t offset, const alloc::functions_t & from) {
 			// Определяем размер выданного блока
-			const size_t result = ::measure(ptr, nullptr, nullptr);
+			const size_t result = ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 			// Если блок не наш и прежняя функция известна
 			if((result == 0) && (from.alignedMsize != nullptr))
 				// Отдаём вопрос прежнему распределителю
@@ -3366,7 +3376,7 @@ namespace {
 				// Выдаём память с требуемым выравниванием
 				return __awh_alloc_aligned_malloc__(size, alignment);
 			// Определяем размер изменяемого блока
-			const size_t held = ::measure(ptr, nullptr, nullptr);
+			const size_t held = ::__awh_alloc_measure__(ptr, nullptr, nullptr);
 			// Если блок не наш и прежняя функция известна
 			if((held == 0) && (from.alignedRealloc != nullptr))
 				// Отдаём блок прежнему распределителю его же путём
@@ -3405,7 +3415,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ void __awh_alloc_free_from__(void * ptr, const alloc::functions_t & from) {
 			// Передаём вызов с набором прежних функций
-			::discard(ptr, true, &from);
+			::__awh_alloc_discard__(ptr, true, &from);
 		}
 		/**
 		 * @brief Функция освобождения выровненной памяти
@@ -3415,7 +3425,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ void __awh_alloc_aligned_free__(void * ptr) {
 			// Передаём вызов с набором прежних функций
-			__awh_alloc_aligned_free_from__(ptr, ::routed(ptr, ::originals));
+			__awh_alloc_aligned_free_from__(ptr, ::__awh_alloc_routed__(ptr, ::originals));
 		}
 		/**
 		 * @brief Функция определения размера выровненной памяти
@@ -3428,7 +3438,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ size_t __awh_alloc_aligned_msize__(void * ptr, size_t alignment, size_t offset) {
 			// Передаём вызов с набором прежних функций
-			return __awh_alloc_aligned_msize_from__(ptr, alignment, offset, ::routed(ptr, ::originals));
+			return __awh_alloc_aligned_msize_from__(ptr, alignment, offset, ::__awh_alloc_routed__(ptr, ::originals));
 		}
 		/**
 		 * @brief Функция изменения размера выровненной памяти
@@ -3441,7 +3451,7 @@ namespace {
 		 */
 		static __AWH_INLINE__ void * __awh_alloc_aligned_realloc__(void * ptr, size_t size, size_t alignment) {
 			// Передаём вызов с набором прежних функций
-			return __awh_alloc_aligned_realloc_from__(ptr, size, alignment, ::routed(ptr, ::originals));
+			return __awh_alloc_aligned_realloc_from__(ptr, size, alignment, ::__awh_alloc_routed__(ptr, ::originals));
 		}
 	#endif
 
@@ -3480,6 +3490,9 @@ namespace {
 	#if (defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))) && !defined(AWH_ALLOC_DISABLED)
 		/**
 		 * @brief Функция получения размера блока нашими слоями
+		 *
+		 * @param ptr разбираемый адрес
+		 * @return    размер блока в байтах, либо нуль если блок не наш
 		 *
 		 */
 		static __AWH_INLINE__ size_t __awh_alloc_usable__(const void * ptr) {
@@ -3534,7 +3547,7 @@ namespace {
 			// Отмечаем запрет несостоявшимся
 			(* wired) = false;
 		// Заводим распределитель, если он ещё не заведён
-		if(!::prepare())
+		if(!::__awh_alloc_prepare__())
 			// Выдавать нечего
 			return nullptr;
 		// Признак состоявшегося укрытия
@@ -3548,9 +3561,9 @@ namespace {
 		// Отмечаем крупные блоки выданными
 		::enormous.store(true, std::memory_order_relaxed);
 		// Учитываем выданное прикладному коду
-		::account(::machinery->caches.local(), static_cast <int64_t> (size));
+		::__awh_alloc_account__(::machinery->caches.local(), static_cast <int64_t> (size));
 		// Берём выданный блок под учёт места выдачи
-		::enrol(result, size);
+		::__awh_alloc_enrol__(result, size);
 		// Если ответ об укрытии затребован
 		if(hidden != nullptr)
 			// Отдаём признак состоявшегося укрытия
@@ -3591,7 +3604,7 @@ namespace {
 					return ::malloc(size);
 			#endif
 			// Выдаём память распределителя, обнулив содержимое по настройке
-			return ::blanked(::reserve(size), 0, size);
+			return ::__awh_alloc_blanked__(::__awh_alloc_reserve__(size), 0, size);
 		}
 		/**
 		 * @brief Функция возврата памяти оператора языка C++
@@ -3613,7 +3626,7 @@ namespace {
 				}
 			#endif
 			// Освобождаем память распределителем
-			::discard(ptr);
+			::__awh_alloc_discard__(ptr);
 		}
 	#endif
 	/**
@@ -3646,7 +3659,7 @@ namespace {
  */
 AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(malloc)(size_t size) AWH_ALLOC_THROW {
 	// Выдаём память требуемого размера, обнуляя её по настройке
-	return ::blanked(::reserve(size), 0, size);
+	return ::__awh_alloc_blanked__(::__awh_alloc_reserve__(size), 0, size);
 }
 /**
  * @brief Функция освобождения памяти
@@ -3656,7 +3669,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(malloc)(size_t size) AWH_ALLOC_THROW {
  */
 AWH_ALLOC_LINKAGE void AWH_ALLOC_HOOK(free)(void * ptr) AWH_ALLOC_THROW {
 	// Освобождаем память
-	::discard(ptr);
+	::__awh_alloc_discard__(ptr);
 }
 /**
  * @brief Функция выделения обнулённой памяти
@@ -3670,7 +3683,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) AWH_A
 	// Если считать нечего
 	if((count == 0) || (size == 0))
 		// Выдаём наименьший блок
-		return ::reserve(1);
+		return ::__awh_alloc_reserve__(1);
 	/**
 	 * Сверяем произведение на переполнение
 	 *
@@ -3683,7 +3696,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) AWH_A
 	// Определяем требуемый объём
 	const size_t need = (count * size);
 	// Выдаём память требуемого объёма
-	void * result = ::reserve(need);
+	void * result = ::__awh_alloc_reserve__(need);
 	// Если память выдана
 	if(result != nullptr)
 		// Обнуляем выданное
@@ -3701,7 +3714,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) AWH_A
  */
 AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_ALLOC_THROW {
 	// Передаём прежние функции владельца блока
-	return ::__awh_alloc_realloc_from__(ptr, size, ::routed(ptr, ::originals));
+	return ::__awh_alloc_realloc_from__(ptr, size, ::__awh_alloc_routed__(ptr, ::originals));
 }
 /**
  * Семья операторов языка C++
@@ -3848,13 +3861,14 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_AL
 	/**
 	 * @brief Оператор выделения памяти массива без бросания языка C++
 	 *
-	 * @param size требуемый размер в байтах
-	 * @return     адрес выданной памяти либо nullptr
+	 * @param size    требуемый размер в байтах
+	 * @param nothrow метка выдачи без бросания
+	 * @return        адрес выданной памяти либо nullptr
 	 *
 	 */
-	void * operator new [] (size_t size, const std::nothrow_t & nt) noexcept {
+	void * operator new [] (size_t size, const std::nothrow_t & nothrow) noexcept {
 		// Выдаём память обычным оператором без бросания
-		return ::operator new(size, nt);
+		return ::operator new(size, nothrow);
 	}
 	/**
 	 * @brief Оператор освобождения памяти без бросания языка C++
@@ -3909,7 +3923,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_AL
 	 *          в `tools`. Пометка глушит предупреждение, не трогая доступности имени
 	 *
 	 */
-	return ::__awh_alloc_msize_from__(ptr, ::routed(ptr, ::originals));
+	return ::__awh_alloc_msize_from__(ptr, ::__awh_alloc_routed__(ptr, ::originals));
 }
 
 /**
@@ -4081,10 +4095,10 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_AL
  *
  */
 void * awh::alloc::allocator::secure(const size_t size, shelter_t * shelter, const bool wire) noexcept {
-	// Признак состоявшегося укрытия от снимков памяти
-	bool hidden = false;
 	// Признак состоявшегося запрета уходить в подкачку
 	bool wired = false;
+	// Признак состоявшегося укрытия от снимков памяти
+	bool hidden = false;
 	// Выдаём укрытую память, запросив запрет подкачки по флагу
 	void * result = ::__awh_alloc_conceal__(size, &hidden, wire, &wired);
 	/**
@@ -4116,7 +4130,7 @@ bool awh::alloc::allocator::shield(const void * addr, const bool opened) noexcep
 		// Менять доступность нечему
 		return false;
 	// Если распределитель не заведён
-	if(!::prepare())
+	if(!::__awh_alloc_prepare__())
 		// Менять доступность нечем
 		return false;
 	/**
@@ -4144,7 +4158,7 @@ void awh::alloc::allocator::release(void * addr) noexcept {
 	 * а у macOS и MS Windows без захвата он принадлежит системе и нашей области не
 	 * узнаёт вовсе
 	 */
-	::discard(addr);
+	::__awh_alloc_discard__(addr);
 }
 /**
  * @brief Функция захвата выделения памяти процесса
@@ -4176,7 +4190,7 @@ bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 	 */
 	::settings = options;
 	// Заводим распределитель, если он ещё не заведён
-	if(!::prepare())
+	if(!::__awh_alloc_prepare__())
 		// Отвечаем отказом
 		return false;
 	/**
@@ -4184,7 +4198,7 @@ bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 	 *
 	 * У систем ELF подмена именами работает с самого запуска процесса: первая же выдача
 	 * стандартной библиотеки при заведении переменных процесса приходит к нам, и
-	 * распределитель заводится ЗАДОЛГО до захвата - настройками по умолчанию. `prepare`
+	 * распределитель заводится ЗАДОЛГО до захвата - настройками по умолчанию. `__awh_alloc_prepare__`
 	 * при готовом распределителе отвечает «готов» и настроек не применяет вовсе, оттого
 	 * заданное приложением там пропадало целиком: ни выборки заслонов, ни карантина, ни
 	 * учёта мест выдачи, ни потолков, ни порядка отдачи. Проверено щупом на шести
@@ -4205,7 +4219,7 @@ bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 	 */
 	if(::settings.purgeMode == purge_t::TIMED)
 		// Заводим поток обслуживания
-		::awaken();
+		::__awh_alloc_awaken__();
 	/**
 	 * Просим у системы крупные страницы и тогда, когда куча уже заведена
 	 *
@@ -4296,7 +4310,7 @@ bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 		hooks.alignedMsizeFrom = &__awh_alloc_aligned_msize_from__;
 	#endif
 	// Захватываем выделение памяти процесса
-	if(!::seizing()->acquire(hooks, ::originals)){
+	if(!::__awh_alloc_seizing__()->acquire(hooks, ::originals)){
 		/**
 		 * Останавливаем поток обслуживания, заведённый выше
 		 *
@@ -4306,9 +4320,9 @@ bool awh::alloc::allocator::capture(const options_t & options) noexcept {
 		 * вызов его в ответ на отказ не делал ровно ничего. Поток же ходит по кучам и
 		 * отдаёт память системе - у распределителя, каким приложение не пользуется
 		 */
-		::slumber();
+		::__awh_alloc_slumber__();
 		// Записываем отказ захвата в журнал
-		log::print("Memory allocation capture failed: %s", log::flag_t::WARNING, ::seizing()->name());
+		log::print("Memory allocation capture failed: %s", log::flag_t::WARNING, ::__awh_alloc_seizing__()->name());
 		// Отвечаем отказом
 		return false;
 	}
@@ -4344,9 +4358,9 @@ void awh::alloc::allocator::surrender() noexcept {
 	 *       узнать о том ему неоткуда
 	 *
 	 */
-	::slumber();
+	::__awh_alloc_slumber__();
 	// Снимаем захват выделения памяти процесса
-	::seizing()->release();
+	::__awh_alloc_seizing__()->release();
 	// Отмечаем захват снятым
 	::seized.store(false, std::memory_order_release);
 }
@@ -4408,7 +4422,7 @@ void awh::alloc::allocator::options(const options_t & options) noexcept {
 	// Возвращаем границу разрядов
 	::settings.classLimit = ranks;
 	// Пересчитываем признак голой выдачи: настройки переменились
-	::refresh();
+	::__awh_alloc_refresh__();
 	// Если распределитель заведён
 	if(::stage.load(std::memory_order_acquire) == STAGE_READY){
 		// Задаём куче порядок отдачи памяти системе
@@ -4499,7 +4513,7 @@ void awh::alloc::allocator::options(const options_t & options) noexcept {
 			 */
 			while((exiled = ::machinery->quarantine.release(&served, &which)) != nullptr)
 				// Возвращаем слоям вытесненный блок
-				::recycle(exiled, which, cache);
+				::__awh_alloc_recycle__(exiled, which, cache);
 		}
 		// Задаём карантину засев удерживаемой памяти
 		::machinery->quarantine.junk(::settings.fill == fill_t::JUNK);
@@ -4534,7 +4548,7 @@ void awh::alloc::allocator::options(const options_t & options) noexcept {
 		 */
 		if(::settings.purgeMode == purge_t::TIMED)
 			// Заводим поток обслуживания
-			::awaken();
+			::__awh_alloc_awaken__();
 	}
 }
 /**
@@ -4712,7 +4726,7 @@ size_t awh::alloc::allocator::purge() noexcept {
 	 */
 	const size_t huge = ::machinery->huge.drain();
 	// Выводим объём отданной системе памяти
-	return (huge + ::machinery->central.purge(::now(), true));
+	return (huge + ::machinery->central.purge(::__awh_alloc_now__(), true));
 }
 /**
  * @brief Функция подмены источника страниц
@@ -4818,6 +4832,7 @@ awh::alloc::region_t awh::alloc::allocator::resolve(const void * addr) noexcept 
 			 * @details Заслон на то и ставится, чтобы край обращения был известен точно:
 			 *          смещение ниже нуля означает недобор, смещение за концом - переполнение,
 			 *          а закрытая область - обращение по освобождённому блоку.
+			 *
 			 */
 			if(offset < 0)
 				// Отмечаем адрес недобором
@@ -5039,7 +5054,7 @@ void awh::alloc::allocator::onLarge(function <void (const void *, const size_t)>
 		// Захватываем замок откликов доклада
 		hold_t hold(::callbackLock);
 		// Запоминаем отклик на крупное выделение
-		::largeCallback() = callback;
+		::__awh_large_сallback__() = callback;
 	}
 	/**
 	 * Заводим поток доклада
@@ -5047,7 +5062,7 @@ void awh::alloc::allocator::onLarge(function <void (const void *, const size_t)>
 	 * Заводим здесь, а не при захвате: поток нужен лишь тому, кто отклики поставил, а
 	 * заведение его само обращается за памятью - изнутри выдачи того делать нельзя
 	 */
-	::awaken();
+	::__awh_alloc_awaken__();
 }
 /**
  * @brief Функция установки отклика на достижение потолка кучи
@@ -5060,8 +5075,8 @@ void awh::alloc::allocator::onLimit(function <void (const size_t)> callback) noe
 		// Захватываем замок откликов доклада
 		hold_t hold(::callbackLock);
 		// Запоминаем отклик на достижение потолка кучи
-		::limitCallback() = callback;
+		::__awh_limit_сallback__() = callback;
 	}
 	// Заводим поток доклада
-	::awaken();
+	::__awh_alloc_awaken__();
 }

@@ -133,26 +133,106 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Pages {
 			public:
-				// Размер страницы кучи в байтах
-				static constexpr size_t PAGE = 8192;
-				// Размер куска, берущегося у источника, в байтах
-				static constexpr size_t CHUNK = (4u * 1024u * 1024u);
-				// Число страниц в куске
-				static constexpr size_t PAGES = (CHUNK / PAGE);
-				// Сдвиг номера страницы в разбиении памяти: 8 КБ = 2^13
+				/**
+				 * \~russian
+				 * @brief Сдвиг номера страницы в разбиении памяти: 8 КБ = 2^13
+				 *
+				 * \~english
+				 * @brief Page number offset in memory partitioning: 8 KB = 2^13
+				 *
+				 * \~
+				 */
 				static constexpr size_t SHIFT = 13;
-				// Разрядность младшей части номера страницы в листе радикс-карты
-				static constexpr size_t LEAF_BITS = 14;
-				// Число мест в листе, среднем ярусе и корне радикс-карты
-				static constexpr size_t LEAF = (1u << LEAF_BITS);
-				// Маска места страницы в листе
-				static constexpr size_t LEAF_MASK = (LEAF - 1u);
-				// Наибольшее число страниц, учитываемое отдельным списком
-				static constexpr size_t LISTS = 128;
-				// Начальная длина таблицы поиска куска по адресу
-				static constexpr size_t TABLE = 1024;
-				// Наибольшее число областей, отдаваемых системе за один заход
+				/**
+				 * \~russian
+				 * @brief Наибольшее число областей, отдаваемых системе за один заход
+				 *
+				 * \~english
+				 * @brief The maximum number of regions submitted to the system in a single pass
+				 *
+				 * \~
+				 */
 				static constexpr size_t BATCH = 32;
+				/**
+				 * \~russian
+				 * @brief Размер страницы кучи в байтах
+				 *
+				 * \~english
+				 * @brief Heap page size in bytes
+				 *
+				 * \~
+				 */
+				static constexpr size_t PAGE = 8192;
+				/**
+				 * \~russian
+				 * @brief Наибольшее число страниц, учитываемое отдельным списком
+				 *
+				 * \~english
+				 * @brief Maximum number of pages included in a single list
+				 *
+				 * \~
+				 */
+				static constexpr size_t LISTS = 128;
+				/**
+				 * \~russian
+				 * @brief Начальная длина таблицы поиска куска по адресу
+				 *
+				 * \~english
+				 * @brief Initial length of the lookup table for mapping an address to a chunk
+				 *
+				 * \~
+				 */
+				static constexpr size_t TABLE = 1024;
+				/**
+				 * \~russian
+				 * @brief Разрядность младшей части номера страницы в листе радикс-карты
+				 *
+				 * \~english
+				 * @brief Bit width of the lower portion of a page number within a radix-map leaf
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF_BITS = 14;
+				/**
+				 * \~russian
+				 * @brief Число мест в листе, среднем ярусе и корне радикс-карты
+				 *
+				 * \~english
+				 * @brief Number of nodes at the leaf level, the middle level, and the root of a radix tree
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF = (1u << LEAF_BITS);
+				/**
+				 * \~russian
+				 * @brief Маска места страницы в листе
+				 *
+				 * \~english
+				 * @brief Page placement mask within a sheet
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF_MASK = (LEAF - 1u);
+				/**
+				 * \~russian
+				 * @brief Размер куска, берущегося у источника, в байтах
+				 *
+				 * \~english
+				 * @brief Size of the chunk taken from the source, in bytes
+				 *
+				 * \~
+				 */
+				static constexpr size_t CHUNK = (4u * 1024u * 1024u);
+				/**
+				 * \~russian
+				 * @brief Число страниц в куске
+				 *
+				 * \~english
+				 * @brief Number of pages in a section
+				 *
+				 * \~
+				 */
+				static constexpr size_t PAGES = (CHUNK / PAGE);
 			public:
 				/**
 				 * \~russian
@@ -164,12 +244,12 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ State {
-					// Взято у источника всего
-					size_t total;
 					// Выдано наружу прямо сейчас
 					size_t used;
 					// Свободно и системе не отдано
 					size_t free;
+					// Взято у источника всего
+					size_t total;
 					// Свободно и системе отдано
 					size_t purged;
 					// Число взятых у источника кусков
@@ -185,16 +265,35 @@ namespace awh {
 					 */
 					explicit State() noexcept;
 				} state_t;
+			public:
 				/**
 				 * \~russian
-				 * @brief Предварительное объявление вложенных видов
+				 * @brief Предварительное объявление вложенного вида учётной записи области страниц
+				 *
+				 * @details Объявление вида прямо в поле («struct Span * span;») завело бы вид в
+				 *          объемлющем пространстве имён, а не в классе, и обращение к его полям
+				 *          оказалось бы обращением к незавершённому виду.
+				 *
+				 * \~english
+				 * @brief Pre-declaration of page area account nested view
+				 *
+				 * @details A declaration of a view right in a field (`struct Span * span;`) would start a view in
+				 *          an enclosing namespace, and not in a class, and an address to its fields
+				 *          would turn into an address to an unfinished view.
+				 *
+				 * \~
+				 */
+				struct Span;
+				/**
+				 * \~russian
+				 * @brief Предварительное объявление вложенного вида учётной записи куска, взятого у источника
 				 *
 				 * @details Объявление вида прямо в поле («struct Chunk * chunk;») завело бы вид в
 				 *          объемлющем пространстве имён, а не в классе, и обращение к его полям
 				 *          оказалось бы обращением к незавершённому виду.
 				 *
 				 * \~english
-				 * @brief A preliminary declaration of the nested views
+				 * @brief Pre-declaration of a nested account view of a piece taken from the source
 				 *
 				 * @details A declaration of a view right in a field (`struct Chunk * chunk;`) would start a view in
 				 *          an enclosing namespace, and not in a class, and an address to its fields
@@ -203,7 +302,6 @@ namespace awh {
 				 * \~
 				 */
 				struct Chunk;
-				struct Span;
 			public:
 				/**
 				 * \~russian
@@ -215,12 +313,6 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Span {
-					// Адрес начала области
-					uint8_t * base;
-					// Размер области в страницах кучи
-					size_t pages;
-					// Признак свободной области
-					bool released;
 					// Признак отданного системе содержимого
 					bool purged;
 					/**
@@ -232,10 +324,26 @@ namespace awh {
 					 * область нельзя изъять вторично
 					 */
 					bool pending;
-					// Отметка времени освобождения в миллисекундах
-					uint64_t stamp;
+					// Признак свободной области
+					bool released;
 					// Метка владельца области, проставляемая слоем выше
 					uint32_t tag;
+					// Число блоков в стопке области
+					size_t held;
+					// Всего блоков, нарезанных в области
+					size_t total;
+					// Размер области в страницах кучи
+					size_t pages;
+					// Миг полного освобождения области, либо нуль
+					uint64_t idled;
+					// Отметка времени освобождения в миллисекундах
+					uint64_t stamp;
+					// Следующая область в списке свободных
+					Span * next;
+					// Предыдущая область в списке свободных
+					Span * prev;
+					// Кусок, которому принадлежит область
+					Chunk * chunk;
 					/**
 					 * Стопка свободных блоков области и их число
 					 *
@@ -247,18 +355,18 @@ namespace awh {
 					 * наложить чужой блок на живой
 					 */
 					void * stack;
-					// Число блоков в стопке области
-					size_t held;
-					// Всего блоков, нарезанных в области
-					size_t total;
-					// Миг полного освобождения области, либо нуль
-					uint64_t idled;
-					// Кусок, которому принадлежит область
-					Chunk * chunk;
-					// Предыдущая область в списке свободных
-					Span * prev;
-					// Следующая область в списке свободных
-					Span * next;
+					// Адрес начала области
+					uint8_t * base;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Span() noexcept;
 				} span_t;
 				/**
 				 * \~russian
@@ -270,16 +378,16 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Chunk {
-					// Адрес начала куска
-					uint8_t * base;
+					// Число выданных наружу страниц куска
+					size_t used;
 					// Размер куска в байтах, каким он размечен
 					size_t size;
 					// Размер куска в байтах, взятый у источника: излишек его не размечен
 					size_t served;
-					// Число выданных наружу страниц куска
-					size_t used;
 					// Следующий кусок в общем списке
 					Chunk * next;
+					// Адрес начала куска
+					uint8_t * base;
 					/**
 					 * Указатели областей по номеру страницы куска
 					 *
@@ -288,8 +396,19 @@ namespace awh {
 					 * глазах средств проверки, даже когда живая область никем не
 					 * переписывается
 					 */
-					std::atomic <span_t *> index[PAGES];
+					atomic <span_t *> index[PAGES];
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Chunk() noexcept;
 				} chunk_t;
+			public:
 				/**
 				 * \~russian
 				 * @brief Лист радикс-карты: метки разрядов по страницам
@@ -311,7 +430,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef std::atomic <uint8_t> leaf_t;
+				using leaf_t = atomic_uint8_t;
 				/**
 				 * \~russian
 				 * @brief Средний ярус радикс-карты: места, держащие листы
@@ -321,7 +440,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef std::atomic <leaf_t *> mid_t;
+				using mid_t = atomic <leaf_t *>;
 				/**
 				 * \~russian
 				 * @brief Корень радикс-карты: места, держащие средние ярусы
@@ -331,7 +450,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				typedef std::atomic <mid_t *> root_t;
+				using root_t = atomic <mid_t *>;
+			public:
 				/**
 				 * \~russian
 				 * @brief Запись таблицы поиска куска по адресу
@@ -342,6 +462,40 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Registry {
+					/**
+					 * \~russian
+					 * @brief Размер взятой под таблицу области в байтах
+					 *
+					 * @details Хранится ВЫДАННЫЙ источником размер, а не запрошенный: источник
+					 *          округляет запрос по своему зерну, и таблица в 1024 места просит
+					 *          8192 байта, а у систем со страницей в 16384 получает вдвое больше.
+					 *          Отдай мы её запрошенным размером - счёт взятого у системы уползал
+					 *          бы вверх на каждом перестроении, и заказанный приложением потолок
+					 *          закрывал бы выдачу тем раньше, чем дольше работа.
+					 *
+					 * \~english
+					 * @brief A size of a region taken under a table in bytes
+					 *
+					 * @details A size ISSUED by a source is stored, and not a requested one: a source
+					 *          rounds a request by its own grain, and a table of 1024 places asks
+					 *          8192 bytes, and at the systems with a page of 16384 gets twice more.
+					 *          Had we given it a requested size - a count of what was taken from the system would creep
+					 *          up on every rebuilding, and a ceiling ordered by an application
+					 *          would close an issue the earlier, the longer a work.
+					 *
+					 * \~
+					 */
+					size_t region;
+					/**
+					 * \~russian
+					 * @brief Длина таблицы поиска в местах
+					 *
+					 * \~english
+					 * @brief Length of a search table in places
+					 *
+					 * \~
+					 */
+					size_t length;
 					/**
 					 * \~russian
 					 * @brief Места таблицы поиска
@@ -369,41 +523,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					std::atomic <chunk_t *> * table;
-					/**
-					 * \~russian
-					 * @brief Длина таблицы поиска в местах
-					 *
-					 * \~english
-					 * @brief Length of a search table in places
-					 *
-					 * \~
-					 */
-					size_t length;
-					/**
-					 * \~russian
-					 * @brief Размер взятой под таблицу области в байтах
-					 *
-					 * @details Хранится ВЫДАННЫЙ источником размер, а не запрошенный: источник
-					 *          округляет запрос по своему зерну, и таблица в 1024 места просит
-					 *          8192 байта, а у систем со страницей в 16384 получает вдвое больше.
-					 *          Отдай мы её запрошенным размером - счёт взятого у системы уползал
-					 *          бы вверх на каждом перестроении, и заказанный приложением потолок
-					 *          закрывал бы выдачу тем раньше, чем дольше работа.
-					 *
-					 * \~english
-					 * @brief A size of a region taken under a table in bytes
-					 *
-					 * @details A size ISSUED by a source is stored, and not a requested one: a source
-					 *          rounds a request by its own grain, and a table of 1024 places asks
-					 *          8192 bytes, and at the systems with a page of 16384 gets twice more.
-					 *          Had we given it a requested size - a count of what was taken from the system would creep
-					 *          up on every rebuilding, and a ceiling ordered by an application
-					 *          would close an issue the earlier, the longer a work.
-					 *
-					 * \~
-					 */
-					size_t region;
+					atomic <chunk_t *> * table;
 					/**
 					 * \~russian
 					 * @brief Предыдущая запись таблицы, оставленная перестроением
@@ -414,12 +534,72 @@ namespace awh {
 					 * \~
 					 */
 					struct Registry * previous;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Registry() noexcept;
 				} registry_t;
 			private:
-				// Источник страниц
-				source_t * _source;
+				// Признак отказа кучи в росте из-за потолка
+				bool _jammed;
+				// Запрет обращаться к источнику сверх уже взятого
+				bool _confined;
+			private:
+				// Наименьший отдаваемый системе кусок в байтах
+				size_t _block;
+				// Потолок взятого у источника в байтах
+				size_t _limit;
+				/**
+				 * Число областей, изъятых из списков на время отдачи системе
+				 *
+				 * Обход отдачи изымает область ПРЕЖДЕ обращения к источнику и отпускает
+				 * замок кучи на время этого обращения: оставленную в списке область успел
+				 * бы выдать другой поток, а мы вслед за тем отдали бы её содержимое
+				 * системе. Но под заданным потолком кучи изъятие это оборачивается отказом
+				 * выдачи на пустом месте: расти некуда, свободного нет, а память есть - она
+				 * лежит изъятой и вот-вот вернётся. Оттого число это и считается: по нему
+				 * слой выше отличает настоящую нехватку от мимолётной
+				 */
+				size_t _pending;
+				// Число областей, освобождённых без слияния с соседями
+				size_t _unmerged;
+				// Число кусков, внесённых в таблицу
+				size_t _enrolled;
+				// Остаток текущего куска памяти под учётные записи
+				size_t _metaleft;
+			private:
+				// Отсрочка отдачи памяти системе в миллисекундах
+				int64_t _delay;
+			private:
+				// Состояние кучи
+				state_t _state;
+			private:
+				// Список свободных областей, не помещающихся в списки по числу страниц
+				span_t * _large;
+				// Список повторно используемых учётных записей областей
+				span_t * _spare;
+				// Списки свободных областей по числу страниц
+				span_t * _lists[LISTS + 1];
+			private:
 				// Общий список взятых у источника кусков
 				chunk_t * _chunks;
+				// Источник страниц
+				source_t * _source;
+			private:
+				// Текущий кусок памяти под учётные записи
+				uint8_t * _meta;
+			private:
+				// Общий список кусков памяти под учётные записи
+				void * _metaChunks;
+			private:
+				// Корень радикс-карты разрядов по страницам
+				atomic <root_t *> _root;
 				/**
 				 * Таблица поиска куска по адресу
 				 *
@@ -435,60 +615,20 @@ namespace awh {
 				 * на этом менее половины действующей таблицы: длина удваивается, и все
 				 * прежние вместе короче нынешней
 				 */
-				std::atomic <registry_t *> _registry;
-				// Корень радикс-карты разрядов по страницам
-				std::atomic <root_t *> _root;
-				// Число кусков, внесённых в таблицу
-				size_t _enrolled;
-				// Списки свободных областей по числу страниц
-				span_t * _lists[LISTS + 1];
-				// Список свободных областей, не помещающихся в списки по числу страниц
-				span_t * _large;
-				// Список повторно используемых учётных записей областей
-				span_t * _spare;
-				// Число областей, освобождённых без слияния с соседями
-				size_t _unmerged;
-				// Текущий кусок памяти под учётные записи
-				uint8_t * _meta;
-				// Остаток текущего куска памяти под учётные записи
-				size_t _metaLeft;
-				// Общий список кусков памяти под учётные записи
-				void * _metaChunks;
-				// Запрет обращаться к источнику сверх уже взятого
-				bool _confined;
-				// Отсрочка отдачи памяти системе в миллисекундах
-				int64_t _delay;
-				// Наименьший отдаваемый системе кусок в байтах
-				size_t _block;
-				// Потолок взятого у источника в байтах
-				size_t _limit;
-				// Признак отказа кучи в росте из-за потолка
-				bool _jammed;
-				/**
-				 * Число областей, изъятых из списков на время отдачи системе
-				 *
-				 * Обход отдачи изымает область ПРЕЖДЕ обращения к источнику и отпускает
-				 * замок кучи на время этого обращения: оставленную в списке область успел
-				 * бы выдать другой поток, а мы вслед за тем отдали бы её содержимое
-				 * системе. Но под заданным потолком кучи изъятие это оборачивается отказом
-				 * выдачи на пустом месте: расти некуда, свободного нет, а память есть - она
-				 * лежит изъятой и вот-вот вернётся. Оттого число это и считается: по нему
-				 * слой выше отличает настоящую нехватку от мимолётной
-				 */
-				size_t _pending;
-				// Состояние кучи
-				state_t _state;
+				atomic <registry_t *> _registry;
 			private:
 				/**
 				 * \~russian
 				 * @brief Метод выдачи памяти под учётную запись
 				 *
-				 * @return адрес выданной памяти либо nullptr
+				 * @param size требуемый размер в байтах
+				 * @return     адрес выданной памяти либо nullptr
 				 *
 				 * \~english
 				 * @brief Method of allocating memory for an accounting record
 				 *
-				 * @return address of the allocated memory or nullptr
+				 * @param size required size in bytes
+				 * @return     address of the allocated memory or nullptr
 				 *
 				 * \~
 				 */
@@ -681,32 +821,6 @@ namespace awh {
 				 * \~
 				 */
 				chunk_t * discover(const void * addr) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод поиска куска, которому принадлежит адрес
-				 *
-				 * @note Подставляется намеренно: подсказка отвечает почти всегда, и вызов
-				 *       ради сличения двух границ стоил бы дороже самого сличения. Поиск
-				 *       же по таблице - холодный хвост, и он остался в файле кода
-				 *
-				 * @param addr разбираемый адрес
-				 * @param hint место хранения подсказки поиска
-				 * @return     найденный кусок либо nullptr
-				 *
-				 * \~english
-				 * @brief Method of looking up the chunk an address belongs to
-				 *
-				 * @note The hint is tried first: a thread frees blocks from the same few chunks it
-				 *       allocated from, and comparing the bounds of the last found chunk answers
-				 *       almost always. The table lookup is the cold tail and stays in the code file
-				 *
-				 * @param addr address being resolved
-				 * @param hint lookup hint storage location
-				 * @return     found chunk or nullptr
-				 *
-				 * \~
-				 */
-				__AWH_INLINE__ chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -898,28 +1012,6 @@ namespace awh {
 				 * \~
 				 */
 				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод проверки принадлежности адреса куче
-				 *
-				 * @note В отличие от locate работает за постоянное время и годится для
-				 *       вызова на каждом освобождении
-				 *
-				 * @param addr проверяемый адрес
-				 * @return     признак того, что адрес лежит внутри взятого у источника куска
-				 *
-				 * \~english
-				 * @brief Method of checking whether an address belongs to the heap
-				 *
-				 * @note Unlike locate it works in constant time and suits calling on
-				 *       every free
-				 *
-				 * @param addr address being resolved
-				 * @return     sign of the address belonging to the heap
-				 *
-				 * \~
-				 */
-				bool owns(const void * addr) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод получения метки разряда по адресу
