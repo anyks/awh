@@ -1089,7 +1089,7 @@ def check_file(path, lines, members, report, fixes=None):
         # snake_case в именах функций/методов (§4.2), кроме внутренней статики __awh_{name}__ (§4.10)
         fm = re.match(r"^\s*(?:static\s+|inline\s+|constexpr\s+|virtual\s+|explicit\s+)*"
                       r"(?:[A-Za-z_]\w*(?:__|_INLINE)\s+)*"
-                      r"[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+((?:\w+::)*~?\w+)\s*\(", code)
+                      r"(?:[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+)+((?:\w+::)*~?\w+)\s*\(", code)
         if fm and not directive_line and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
@@ -1112,12 +1112,16 @@ def check_file(path, lines, members, report, fixes=None):
             # типов (классов и структур); квалифицированный конструктор Class::Class исключён по quals
             elif fname[:1].isupper() and not (quals and quals[-1] == fname):
                 report(path, n, "ERROR", "§4.2", f"имя функции/метода '{fname}' с заглавной буквы — заглавная первая буква только у типов, функции в camelCase")
-            # §4.12: внутри анонимного namespace приватная форма __awh_/__ants_ обязательна
+            # §4.12: внутри анонимного namespace приватная форма __awh_/__nts_ обязательна
             # (смотрим определения с телом), вне анонимных эта форма запрещена; метод —
             # отступ глубже одного таба либо квалификатор Класс:: перед именем (§4.2)
-            elif n in anon_ns and ns_indent <= 1 and not quals and not re.fullmatch(r"__(?:awh|ants)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
-                report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__ants_{{name}}__ (§4.10)")
-            elif re.fullmatch(r"__(?:awh|ants)_\w+__", fname) and n not in anon_ns:
+            elif n in anon_ns and ns_indent <= 1 and not quals and not re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
+                report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__nts_{{name}}__ (§4.10)")
+            # §4.10: {name} внутри обрамления — строчные слова через подчёркивание;
+            # склеенный camelCase внутри бренда (__nts_gostAlgorithm__) запрещён
+            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and not re.fullmatch(r"__(?:awh|nts)_[a-z0-9_]+__", fname):
+                report(path, n, "ERROR", "§4.10", f"имя '{fname}' внутри обрамления — строчные слова через подчёркивание: __nts_gost_algorithm__, не __nts_gostAlgorithm__")
+            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and n not in anon_ns:
                 report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная, живёт только внутри анонимного namespace")
         # вид callable в @brief (§7.2): ближайший doc--block над определением обязан называть род
         if fm and not directive_line:
@@ -1126,7 +1130,7 @@ def check_file(path, lines, members, report, fixes=None):
                 bm = re.match(r"\s*\*\s*@brief\s+(.*)$", lines[j])
                 if bm:
                     brief = bm.group(1).strip()
-                    if not re.match(r"^(?:Функция|Метод|Конструктор|Деструктор|Function|Method|Constructor|Destructor)\b", brief):
+                    if not re.match(r"^(?:Функция|Метод|Конструктор|Деструктор|Оператор|Function|Method|Constructor|Destructor|Operator)\b", brief):
                         report(path, j + 1, "ERROR", "§7.2", f"@brief без рода callable: '{brief[:50]}' — начинается с Функция/Метод/Конструктор/Деструктор")
                     break
                 if lines[j].strip().startswith("/**"):
@@ -1159,8 +1163,13 @@ def check_file(path, lines, members, report, fixes=None):
             report(path, n, "ERROR", "§4.4", "префиксы m_/s_ запрещены — члены с нижним подчёркиванием на конце")
         # короткие имена 1-2 знака вне счётчиков цикла (§4.3): имя говорит о содержимом
         if not re.match(r"\s*for\s*\(", code) and n not in c_abi:
-            for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]{1,2}[0-9]?)\s*(?==[^=]|;|,|\)|\()", code):
-                short = vm.group(1)
+            for vm in re.finditer(r"(?:const\s+)?([A-Za-z_][\w:<>]*)(?:\s*[*&]\s*)?\s+([a-z]{1,2}[0-9]?)\s*(?==[^=]|;|,|\)|\()", code):
+                short = vm.group(2)
+                # SLICE * i внутри выражения (перед совпадением стоит =) - произведение
+                # константы, а не объявление: объявления параметров и переменных
+                # объявляются в начале инструкции, без знака равенства до имени типа
+                if "=" in code[:vm.start()]:
+                    continue
                 if short in ("ok", "id", "to", "in", "on", "no", "do", "if"):
                     continue
                 before = code[:vm.start()]

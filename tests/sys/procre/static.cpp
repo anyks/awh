@@ -98,9 +98,10 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	 */
 	#else
 		// Если мы работаем от имени суперпользователя
-		if(::geteuid() == 0)
+		if(::geteuid() == 0){
 			// Проверяем что имя не пустое
 			ASSERT_FALSE(name.empty());
+		}
 	#endif
 	// Счётчик вызовов функции обратного вызова
 	size_t calls = 0;

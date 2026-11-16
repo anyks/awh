@@ -44,6 +44,11 @@
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * Имена подменяемых функций в порядке полей набора functions_t
 	 */
 	static constexpr const char * const NAMES[] = {
@@ -51,14 +56,22 @@ namespace {
 		"_aligned_malloc", "_aligned_free", "_aligned_realloc", "_aligned_msize"
 	};
 
-	// Прежние функции каждой библиотеки, заведённые постоянным выражением
-	static awh::alloc::functions_t __awh_pe_originals__[2];
-	// Отклики распределителя, общие для обеих библиотек
-	static awh::alloc::functions_t __awh_pe_hooks__;
-	// Владелец установленных подмен
-	static const awh::alloc::PECapture * __awh_pe_owner__ = nullptr;
-	// Пустой набор: владелец блока неизвестен и отдавать его некому
-	static const awh::alloc::functions_t __awh_pe_nobody__;
+	/**
+	 * Отклики распределителя, общие для обеих библиотек
+	 */
+	static alloc::functions_t __awh_pe_hooks__;
+	/**
+	 * Прежние функции каждой библиотеки, заведённые постоянным выражением
+	 */
+	static alloc::functions_t __awh_pe_originals__[2];
+	/**
+	 * Пустой набор: владелец блока неизвестен и отдавать его некому
+	 */
+	static const alloc::functions_t __awh_pe_nobody__;
+	/**
+	 * Владелец установленных подмен
+	 */
+	static const alloc::PECapture * __awh_pe_owner__ = nullptr;
 
 	/**
 	 * @brief Шабон функции передачи вызова с сохранением исходной CRT
@@ -127,7 +140,7 @@ namespace {
 	 * @param ptr адрес освобождаемого блока
 	 *
 	 */
-	static __AWH_INLINE__ void __awh_pe_alignedFree__(void * ptr) {
+	static __AWH_INLINE__ void __awh_pe_aligned_free__(void * ptr) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		(* __awh_pe_hooks__.alignedFreeFrom)(ptr, __awh_pe_originals__[Index]);
 	}
@@ -147,7 +160,7 @@ namespace {
 	 * @return          адрес выданной памяти либо nullptr
 	 *
 	 */
-	static __AWH_INLINE__ void * __awh_pe_alignedRealloc__(void * ptr, size_t size, size_t alignment) {
+	static __AWH_INLINE__ void * __awh_pe_aligned_realloc__(void * ptr, size_t size, size_t alignment) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.alignedReallocFrom)(ptr, size, alignment, __awh_pe_originals__[Index]);
 	}
@@ -167,7 +180,7 @@ namespace {
 	 * @return          размер блока в байтах
 	 *
 	 */
-	static __AWH_INLINE__ size_t __awh_pe_alignedMsize__(void * ptr, size_t alignment, size_t offset) {
+	static __AWH_INLINE__ size_t __awh_pe_aligned_msize__(void * ptr, size_t alignment, size_t offset) {
 		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
 		return (* __awh_pe_hooks__.alignedMsizeFrom)(ptr, alignment, offset, __awh_pe_originals__[Index]);
 	}
@@ -185,9 +198,9 @@ namespace {
 	 * @return      отклики с сохранением исходной библиотеки
 	 *
 	 */
-	static __AWH_INLINE__ awh::alloc::functions_t __awh_pe_targets__(const awh::alloc::functions_t & hooks) noexcept {
+	static __AWH_INLINE__ alloc::functions_t __awh_pe_targets__(const alloc::functions_t & hooks) noexcept {
 		// Сохраняем общие функции выдачи
-		awh::alloc::functions_t result = hooks;
+		alloc::functions_t result = hooks;
 		// Назначаем отклик с номером исходной библиотеки
 		result.free = &__awh_pe_free__ <Index>;
 		// Назначаем отклик с номером исходной библиотеки
@@ -195,11 +208,11 @@ namespace {
 		// Назначаем отклик с номером исходной библиотеки
 		result.msize = &__awh_pe_msize__ <Index>;
 		// Назначаем отклик с номером исходной библиотеки
-		result.alignedFree = &__awh_pe_alignedFree__ <Index>;
+		result.alignedFree = &__awh_pe_aligned_free__ <Index>;
 		// Назначаем отклик с номером исходной библиотеки
-		result.alignedRealloc = &__awh_pe_alignedRealloc__ <Index>;
+		result.alignedMsize = &__awh_pe_aligned_msize__ <Index>;
 		// Назначаем отклик с номером исходной библиотеки
-		result.alignedMsize = &__awh_pe_alignedMsize__ <Index>;
+		result.alignedRealloc = &__awh_pe_aligned_realloc__ <Index>;
 		// Выводим подготовленный набор
 		return result;
 	}
@@ -211,7 +224,7 @@ namespace {
 	 * @return          адрес функции из требуемого поля
 	 *
 	 */
-	static __AWH_INLINE__ const void * pick(const awh::alloc::functions_t & functions, const size_t index) noexcept {
+	static __AWH_INLINE__ const void * pick(const alloc::functions_t & functions, const size_t index) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -246,7 +259,7 @@ namespace {
 	 * @param addr      записываемый адрес
 	 *
 	 */
-	static __AWH_INLINE__ void put(awh::alloc::functions_t & functions, const size_t index, void * addr) noexcept {
+	static __AWH_INLINE__ void put(alloc::functions_t & functions, const size_t index, void * addr) noexcept {
 		/**
 		 * Определяем требуемое поле
 		 */
@@ -288,12 +301,12 @@ namespace {
 		 *
 		 */
 		static __AWH_INLINE__ size_t __awh_pe_operand__(const uint8_t * field) noexcept {
-			// Извлекаем поле вида адресации
-			const uint8_t mod = static_cast <uint8_t> ((field[0] >> 6) & 0x03u);
-			// Извлекаем поле регистра-основания
-			const uint8_t rm = static_cast <uint8_t> (field[0] & 0x07u);
 			// Длина поля начинается с самого байта ModRM
 			size_t length = 1;
+			// Извлекаем поле регистра-основания
+			const uint8_t rm = static_cast <uint8_t> (field[0] & 0x07u);
+			// Извлекаем поле вида адресации
+			const uint8_t mod = static_cast <uint8_t> ((field[0] >> 6) & 0x03u);
 			// Регистровая адресация: ни байта масштаба, ни смещения
 			if(mod == 0x03u)
 				// Поле измерено

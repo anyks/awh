@@ -579,7 +579,7 @@ void awh::Process_Resolver::scanning() noexcept {
 									// Выполняем заполнение буфера для получения пути к файловому дескриптору процесса
 									::snprintf(path, sizeof(path), "/proc/%d/fd/%s", pid, entry->d_name);
 									// Объект для хранения информации о сокете
-									struct stat st{0};
+									struct stat st{};
 									// Если путь к сокету существует и является сокетом
 									if((::stat(path, &st) == 0) && S_ISSOCK(st.st_mode)){
 										// Свой процесс отдаёт дескриптор живым: /proc-псевдоним сокета на illumos не открывается даже под root
@@ -589,7 +589,7 @@ void awh::Process_Resolver::scanning() noexcept {
 										// Если дескриптор сокета получен
 										if(fd >= 0){
 											// Объект подключения для получения информации о сокете
-											struct sockaddr_storage source{0}, target{0};
+											struct sockaddr_storage source{}, target{};
 											// Получаем разммер объекта подключения адреса источника
 											socklen_t sourceLength = sizeof(source);
 											// Получаем разммер объекта подключения адреса назначения

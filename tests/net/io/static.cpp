@@ -320,7 +320,7 @@ static uint16_t port() noexcept {
 }
 
 /**
- * @brief Проба отражения широковещания на уровне операционной системы
+ * @brief Функция пробы отражения широковещания на уровне операционной системы
  *
  * @details Шлёт широковещательную дейтаграмму обычным сокетом системы - без движка -
  *          и короткое время ждёт возвращения её копии тому же сокету. На обычной сети
@@ -389,13 +389,13 @@ static bool broadcastLoopsBack(const std::string & bcast) noexcept {
 	(void) ::sendto(probe, message, sizeof(message), 0, reinterpret_cast <const struct sockaddr *> (&target), sizeof(target));
 	// Набор сокетов, готовых к чтению
 	fd_set readable;
-	// Выполняем очистку набора готовых к чтению
+	// Очищаем набор сокетов, готовых к чтению
 	FD_ZERO(&readable);
 	// Добавляем сокет пробы в набор готовых к чтению
 	FD_SET(probe, &readable);
 	// Срок ожидания возвращения копии широковещания
 	struct timeval timeout{2, 0};
-	// Ждём возвращения копии широковещания отправителю
+	// Проверяем, вернулась ли копия широковещания отправителю
 	const int32_t ready = ::select(probe + 1, &readable, nullptr, nullptr, &timeout);
 	// Закрываем сокет пробы
 	::closesocket(probe);

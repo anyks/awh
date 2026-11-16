@@ -100,6 +100,16 @@ namespace awh {
 			} dns_t;
 			/**
 			 * \~russian
+			 * @brief Упаковка структуры воркера
+			 *
+			 * \~english
+			 * @brief Packaging the worker structure
+			 *
+			 * \~
+			 */
+			__AWH_PACK_BEGIN__
+			/**
+			 * \~russian
 			 * @brief Структура идентификаторов клиента
 			 *
 			 * @details Хранит идентификатор сервера и идентификатор безопасности TLS.
@@ -131,7 +141,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_PACK_BEGIN__
 			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
@@ -149,70 +158,6 @@ namespace awh {
 				explicit Identifier() noexcept;
 			} __AWH_PACKED__ id_t;
 			__AWH_PACK_END__
-			/**
-			 * \~russian
-			 * @brief Структура для хранения параметров транспортного уровня безопасности
-			 *
-			 * @details Хранит объект транспортного уровня безопасности и список для сопоставления идентификаторов клиентов с идентификаторами TLS.
-			 *
-			 * \~english
-			 * @brief Structure for storing the transport layer security parameters
-			 *
-			 * @details Stores the transport layer security object and the list for matching client identifiers with TLS identifiers.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ TLS {
-				/**
-				 * \~russian
-				 * @brief Структура ожидающего отправки шифротекста TLS клиента
-				 *
-				 * @details Шифротекст выдаётся сетевому движку вытягивающей моделью: движок
-				 *          забирает его ровно тогда, когда готов отправить, поэтому при
-				 *          переполнении очереди отправки записи TLS не теряются. Потеря даже
-				 *          одной записи рвёт поток шифрования и обрывает соединение.
-				 *
-				 * \~english
-				 * @brief Structure of the TLS ciphertext of a client awaiting the sending
-				 *
-				 * @details The ciphertext is given out to the network engine by the pull model: the engine
-				 *          takes it exactly when it is ready to send it, so at an overflow of the queue
-				 *          of the sending the TLS records are not lost. A loss of even a single record
-				 *          breaks the stream of the encryption and terminates the connection.
-				 *
-				 * \~
-				 */
-				typedef struct __AWH_SHARED_EXPORT__ Ciphertext {
-					// Буфер шифротекста, ожидающего отправки
-					string buffer;
-					// Позиция чтения выданного сетевому движку шифротекста
-					size_t offset;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					explicit Ciphertext() noexcept : buffer{""}, offset(0) {}
-				} ciphertext_t;
-				// Список ожидающего отправки шифротекста клиентов
-				unordered_map <event::id_t, ciphertext_t> residue;
-				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
-				unordered_map <event::id_t, tls::coder::id_t> safety;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit TLS() noexcept;
-			} tls_t;
 			/**
 			 * \~russian
 			 * @brief Структура параметров cервера
@@ -258,17 +203,63 @@ namespace awh {
 				unit::server_t server;
 				// Объект юнита сервера QUIC (выбирается при инициализации транспортом protocol_t::QUIC)
 				unit::quic_server_t quic;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Unit() noexcept;
 			} unit_t;
+			/**
+			 * \~russian
+			 * @brief Класс для хранения параметров транспортного уровня безопасности
+			 *
+			 * @details Хранит объект транспортного уровня безопасности и список для сопоставления идентификаторов клиентов с идентификаторами TLS.
+			 *
+			 * \~english
+			 * @brief Class for storing the transport layer security parameters
+			 *
+			 * @details Stores the transport layer security object and the list for matching client identifiers with TLS identifiers.
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ TLS {
+				public:
+					/**
+					 * \~russian
+					 * @brief Структура ожидающего отправки шифротекста TLS клиента
+					 *
+					 * @details Шифротекст выдаётся сетевому движку вытягивающей моделью: движок
+					 *          забирает его ровно тогда, когда готов отправить, поэтому при
+					 *          переполнении очереди отправки записи TLS не теряются. Потеря даже
+					 *          одной записи рвёт поток шифрования и обрывает соединение.
+					 *
+					 * \~english
+					 * @brief Structure of the TLS ciphertext of a client awaiting the sending
+					 *
+					 * @details The ciphertext is given out to the network engine by the pull model: the engine
+					 *          takes it exactly when it is ready to send it, so at an overflow of the queue
+					 *          of the sending the TLS records are not lost. A loss of even a single record
+					 *          breaks the stream of the encryption and terminates the connection.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Ciphertext {
+						// Буфер шифротекста, ожидающего отправки
+						string buffer;
+						// Позиция чтения выданного сетевому движку шифротекста
+						size_t offset;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Ciphertext() noexcept : buffer{""}, offset(0) {}
+					} ciphertext_t;
+				public:
+					// Список ожидающего отправки шифротекста клиентов
+					unordered_map <event::id_t, ciphertext_t> residue;
+					// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
+					unordered_map <event::id_t, tls::coder::id_t> safety;
+			} tls_t;
 		protected:
 			// Идентификатор сервера
 			id_t _id;
@@ -293,6 +284,21 @@ namespace awh {
 		protected:
 			/**
 			 * \~russian
+			 * @brief Метод фиксации настроек события сервера на активном юните транспорта
+			 *
+			 * @return результат выполнения фиксации
+			 *
+			 * \~english
+			 * @brief Method for pinning server-side event settings to an active transport unit
+			 *
+			 * @return result of the fixation process
+			 *
+			 * \~
+			 */
+			bool commit() noexcept;
+		protected:
+			/**
+			 * \~russian
 			 * @brief Метод проверки рабочего состояния сервера
 			 *
 			 * @note Проверяет рабочее состояние активного юнита транспорта, выбираемого
@@ -312,34 +318,6 @@ namespace awh {
 			 * \~
 			 */
 			bool active() const noexcept;
-		protected:
-			/**
-			 * \~russian
-			 * @brief Методы диспетчеризации к активному юниту транспорта
-			 *
-			 * @note Транспорт выбирается по протоколу сервера: для protocol_t::QUIC
-			 *       работает выделенный юнит сервера QUIC, для остальных транспортов -
-			 *       общий юнит сервера. Событием прослушивания выступает _id.eid
-			 *
-			 * \~english
-			 * @brief Methods of dispatching to the active transport unit
-			 *
-			 * @note The transport is selected by the server protocol: for protocol_t::QUIC the dedicated
-			 *       QUIC server unit works, for the remaining transports - the common server unit. The
-			 *       listening event is _id.eid
-			 *
-			 * \~
-			 */
-			bool commitUnit() noexcept;
-			bool launchUnit() noexcept;
-			bool listenUnit(const uint32_t max) noexcept;
-			void startUnit() noexcept;
-			void stopUnit() noexcept;
-			event::family_t familyUnit() const noexcept;
-			event::status_t statusUnit() const noexcept;
-			string getAddressUnit(const event::address_t address) const noexcept;
-			uint16_t getPortUnit() const noexcept;
-			bool setAddressUnit(const event::address_t address, string_view value) noexcept;
 		protected:
 			/**
 			 * \~russian
@@ -1250,25 +1228,6 @@ namespace awh {
 			 * \~
 			 */
 			virtual size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод открытия потока приложения соединения QUIC
-			 *
-			 * @param cid  идентификатор сессии соединения
-			 * @param mode режим однонаправленного потока
-			 * @return     идентификатор открытого потока
-			 *
-			 * \~english
-			 * @brief Method opening an application stream of a QUIC connection
-			 *
-			 * @param cid  connection session identifier
-			 * @param mode unidirectional stream mode
-			 * @return     identifier of the opened stream
-			 *
-			 * \~
-			 */
-			virtual uint64_t open(const event::id_t cid, const bool mode = false) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод отправки данных в поток приложения соединения QUIC
@@ -1293,6 +1252,137 @@ namespace awh {
 			 * \~
 			 */
 			virtual size_t send(const event::id_t cid, const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param mode режим уведомления о перегрузке пути
+			 *
+			 * \~english
+			 * @brief Method setting the QUIC path congestion notification (RFC 9000 §13.4)
+			 *
+			 * @note Applies only to the QUIC transport. Is set before the server is started
+			 *
+			 * @param mode path congestion notification mode
+			 *
+			 * \~
+			 */
+			virtual void ecn(const bool mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки проверки адреса клиента через пакет Retry QUIC (RFC 9000 §8.1.2)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param mode режим проверки адреса клиента
+			 *
+			 * \~english
+			 * @brief Method setting the validation of the client address through a QUIC Retry packet (RFC 9000 §8.1.2)
+			 *
+			 * @note Applies only to the QUIC transport. Is set before the server is started
+			 *
+			 * @param mode client address validation mode
+			 *
+			 * \~
+			 */
+			virtual void retry(const bool mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки локальных транспортных параметров соединений QUIC (RFC 9000 §7.4)
+			 *
+			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
+			 *
+			 * @param params локальные транспортные параметры
+			 *
+			 * \~english
+			 * @brief Method setting the local transport parameters of QUIC connections (RFC 9000 §7.4)
+			 *
+			 * @note Applies only to the QUIC transport. Is set before the server is started
+			 *
+			 * @param params local transport parameters
+			 *
+			 * \~
+			 */
+			virtual void params(const quic::params::params_t & params) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод открытия потока приложения соединения QUIC
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param mode режим однонаправленного потока
+			 * @return     идентификатор открытого потока
+			 *
+			 * \~english
+			 * @brief Method opening an application stream of a QUIC connection
+			 *
+			 * @param cid  connection session identifier
+			 * @param mode unidirectional stream mode
+			 * @return     identifier of the opened stream
+			 *
+			 * \~
+			 */
+			virtual uint64_t open(const event::id_t cid, const bool mode = false) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
+			 *
+			 * @param cid идентификатор сессии соединения
+			 * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+			 *
+			 * \~english
+			 * @brief Method obtaining the limiting size of a QUIC datagram being sent (RFC 9221 §3)
+			 *
+			 * @param cid connection session identifier
+			 * @return    limiting size of the datagram data in octets (0 - datagrams are not supported)
+			 *
+			 * \~
+			 */
+			virtual size_t datagrams(const event::id_t cid) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param buffer буфер данных датаграммы для отправки
+			 * @param size   размер данных датаграммы для отправки
+			 * @return       результат отправки
+			 *
+			 * \~english
+			 * @brief Method sending an application datagram to a QUIC connection (RFC 9221)
+			 *
+			 * @param cid    connection session identifier
+			 * @param buffer buffer of the datagram data to send
+			 * @param size   size of the datagram data to send
+			 * @return       sending result
+			 *
+			 * \~
+			 */
+			virtual bool datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param code   код ошибки приложения
+			 * @param reason человекочитаемая причина завершения
+			 *
+			 * \~english
+			 * @brief Method terminating a QUIC connection by the application (RFC 9000 §10.2)
+			 *
+			 * @param cid    connection session identifier
+			 * @param code   application error code
+			 * @param reason human-readable reason of the termination
+			 *
+			 * \~
+			 */
+			virtual void close(const event::id_t cid, const uint64_t code = 0, string_view reason = "") noexcept;
+		public:
 			/**
 			 * \~russian
 			 * @brief Метод установки водяных меток буфера отправки потоков сессии соединения QUIC (backpressure)
@@ -1317,6 +1407,7 @@ namespace awh {
 			 * \~
 			 */
 			virtual void sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept;
+		public:
 			/**
 			 * \~russian
 			 * @brief Метод назначения pull-источника данных потока сессии соединения QUIC (RFC 9000 §2.2)
@@ -1341,115 +1432,6 @@ namespace awh {
 			 * \~
 			 */
 			virtual void dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
-			 *
-			 * @param cid    идентификатор сессии соединения
-			 * @param buffer буфер данных датаграммы для отправки
-			 * @param size   размер данных датаграммы для отправки
-			 * @return       результат отправки
-			 *
-			 * \~english
-			 * @brief Method sending an application datagram to a QUIC connection (RFC 9221)
-			 *
-			 * @param cid    connection session identifier
-			 * @param buffer buffer of the datagram data to send
-			 * @param size   size of the datagram data to send
-			 * @return       sending result
-			 *
-			 * \~
-			 */
-			virtual bool datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
-			 *
-			 * @param cid идентификатор сессии соединения
-			 * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
-			 *
-			 * \~english
-			 * @brief Method obtaining the limiting size of a QUIC datagram being sent (RFC 9221 §3)
-			 *
-			 * @param cid connection session identifier
-			 * @return    limiting size of the datagram data in octets (0 - datagrams are not supported)
-			 *
-			 * \~
-			 */
-			virtual size_t datagrams(const event::id_t cid) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
-			 *
-			 * @param cid    идентификатор сессии соединения
-			 * @param code   код ошибки приложения
-			 * @param reason человекочитаемая причина завершения
-			 *
-			 * \~english
-			 * @brief Method terminating a QUIC connection by the application (RFC 9000 §10.2)
-			 *
-			 * @param cid    connection session identifier
-			 * @param code   application error code
-			 * @param reason human-readable reason of the termination
-			 *
-			 * \~
-			 */
-			virtual void close(const event::id_t cid, const uint64_t code = 0, string_view reason = "") noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки локальных транспортных параметров соединений QUIC (RFC 9000 §7.4)
-			 *
-			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
-			 *
-			 * @param params локальные транспортные параметры
-			 *
-			 * \~english
-			 * @brief Method setting the local transport parameters of QUIC connections (RFC 9000 §7.4)
-			 *
-			 * @note Applies only to the QUIC transport. Is set before the server is started
-			 *
-			 * @param params local transport parameters
-			 *
-			 * \~
-			 */
-			virtual void params(const quic::params::params_t & params) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки проверки адреса клиента через пакет Retry QUIC (RFC 9000 §8.1.2)
-			 *
-			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
-			 *
-			 * @param mode режим проверки адреса клиента
-			 *
-			 * \~english
-			 * @brief Method setting the validation of the client address through a QUIC Retry packet (RFC 9000 §8.1.2)
-			 *
-			 * @note Applies only to the QUIC transport. Is set before the server is started
-			 *
-			 * @param mode client address validation mode
-			 *
-			 * \~
-			 */
-			virtual void retry(const bool mode) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
-			 *
-			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
-			 *
-			 * @param mode режим уведомления о перегрузке пути
-			 *
-			 * \~english
-			 * @brief Method setting the QUIC path congestion notification (RFC 9000 §13.4)
-			 *
-			 * @note Applies only to the QUIC transport. Is set before the server is started
-			 *
-			 * @param mode path congestion notification mode
-			 *
-			 * \~
-			 */
-			virtual void ecn(const bool mode) noexcept;
 		public:
 			/**
 			 * \~russian

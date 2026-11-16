@@ -66724,7 +66724,7 @@ bool awh::engine::io::connect(const vector <event::id_t> & ids) noexcept {
 																// Если адрес принадлежит к семейству IPv6
 																case AF_INET6: length = sizeof(struct sockaddr_in6); break;
 															}
-															// Выполняем подключение к удалённому серверу выбранным адресом
+															// Подключаем сокет к удалённому серверу выбранным адресом
 															established = (::connect(client->transfer.fd, target, length) == 0);
 														/**
 														 * Если операционная система функцию многодомного подключения несёт

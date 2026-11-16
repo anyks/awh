@@ -41,9 +41,9 @@ namespace {
 	// Подмена первого отображения безопасным условным адресом
 	std::atomic <bool> __awh_fake__(false);
 	// Отказ следующего отображения
-	std::atomic <bool> __awh_failMap__(false);
+	std::atomic <bool> __awh_fail_map__(false);
 	// Отказ следующего освобождения
-	std::atomic <bool> __awh_failUnmap__(false);
+	std::atomic <bool> __awh_fail_unmap__(false);
 	// Остановка следующего отображения
 	std::atomic <bool> __awh_pause__(false);
 	// Признак входа в остановленное отображение
@@ -72,7 +72,7 @@ namespace {
 			// Возвращаем условный адрес для воспроизведения старого дефекта
 			return reinterpret_cast <void *> (0x100000);
 		// Воспроизводим отказ ядра
-		if(::__awh_failMap__.exchange(false))
+		if(::__awh_fail_map__.exchange(false))
 			// Возвращаем признак отказа отображения
 			return MAP_FAILED;
 		// Останавливаем только первый запрос
@@ -103,7 +103,7 @@ namespace {
 			// Имитируем завершение освобождения
 			return 0;
 		// Воспроизводим отказ освобождения
-		if(::__awh_failUnmap__.exchange(false))
+		if(::__awh_fail_unmap__.exchange(false))
 			// Оставляем область отображённой
 			return -1;
 		// Выполняем настоящее освобождение
@@ -259,7 +259,7 @@ TEST(SourceLimit, MappingFailureRefundsBudget){
 	// Действительный размер выдачи
 	size_t actual = 99;
 	// Задаём отказ ближайшего отображения
-	::__awh_failMap__.store(true);
+	::__awh_fail_map__.store(true);
 	// Проверяем отказ выдачи
 	EXPECT_EQ(source.alloc(1, 0, actual), nullptr);
 	// Неудачная выдача не должна сообщать объём
@@ -293,7 +293,7 @@ TEST(SourceLimit, ReleaseFailureKeepsBudget){
 	// Выдача обязана состояться
 	ASSERT_NE(block, nullptr);
 	// Задаём отказ освобождения
-	::__awh_failUnmap__.store(true);
+	::__awh_fail_unmap__.store(true);
 	// Проверяем сохранение отображения
 	EXPECT_FALSE(source.release(block, actual));
 	// Пока отображение живо, бюджет занят
@@ -383,7 +383,7 @@ TEST(SourceLimit, AlignedFailureRefundsBudget){
 	// Размер выдачи
 	size_t actual = 0;
 	// Задаём отказ отображения с запасом выравнивания
-	::__awh_failMap__.store(true);
+	::__awh_fail_map__.store(true);
 	// Выдача должна завершиться отказом
 	EXPECT_EQ(source.alloc(1, (grain * 4), actual), nullptr);
 	// Резерв не должен остаться занятым
