@@ -26,11 +26,6 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include <sys/fmk.hpp>
-
-/**
  * Подключаем внутренние заголовочные файлы встраиваемых методов модуля
  */
 #include "internal/link.hpp"
@@ -41,6 +36,7 @@
  */
 #include "internal/link.inc"
 #include "internal/spin.inc"
+#include "internal/clock.inc"
 #include "internal/pages.inc"
 #include "internal/classes.inc"
 
@@ -82,13 +78,16 @@ namespace {
 	 * @details Часы модульные НАМЕРЕННО: слой внизу пирамиды не вправе звать
 	 *          вышележащий модуль fmk - без них микробенчмарк модуля не собирался
 	 *          (нет символа), да и связка модуля с верхним слоем нарушает порядок.
+	 *          Источник взят из clock.inc - дешёвые часы распределителя (огрублённые
+	 *          часы ядра либо счётчик тактов, читаемый командой), а не точный
+	 *          steady_clock с переходом в ядро на каждом шаге
 	 *
 	 * @return миг монотонных часов в миллисекундах
 	 *
 	 */
 	static uint64_t __awh_central_millisecond__() noexcept {
 		// Выводим миг монотонных часов в миллисекундах
-		return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
+		return alloc::clock::milliseconds();
 	}
 };
 

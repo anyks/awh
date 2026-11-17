@@ -30,13 +30,9 @@
 #pragma once
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
-#include <sys/fmk.hpp>
-
-/**
- * Подключаем заголовочный файл модуля
- */
+#include "clock.inc"
 #include "cache.hpp"
 
 /**
@@ -175,7 +171,7 @@ namespace awh {
 					// Если наблюдение за этим списком открыто
 					if(this->_watch == (index + 1)){
 						// Текущий миг наблюдения
-						const uint64_t moment = fmk::milliseconds();
+						const uint64_t moment = clock::milliseconds();
 						// Если прошло окно наблюдения
 						if((moment - this->_watched) >= IDLE_WINDOW){
 							// Если список существенно вырос за окно
@@ -197,7 +193,7 @@ namespace awh {
 						// Берём разряд под наблюдение
 						this->_watch = (index + 1);
 						// Запоминаем миг начала наблюдения
-						this->_watched = fmk::milliseconds();
+						this->_watched = clock::milliseconds();
 						// Запоминаем занятое наблюдаемого списка
 						this->_stocked = stocked;
 					}
