@@ -64,7 +64,7 @@
 |-------------------|-------------|----------------|
 | **iOS**           | kqueue      | ARM64          |
 | **macOS**         | kqueue      | x86_64 / ARM64 |
-| **FreeBSD**       | kqueue      | AMD64 / ARM64  |
+| **FreeBSD 12.0+** | kqueue      | AMD64 / ARM64  |
 | **OpenBSD**       | kqueue      | AMD64 / ARM64  |
 | **NetBSD**        | kqueue      | AMD64 / ARM64  |
 | **DragonFly BSD** | kqueue      | x86_64         |
@@ -74,6 +74,11 @@
 | **Solaris 11.4**  | event ports | x86_64         |
 | **OpenIndiana**   | event ports | x86_64         |
 | **Windows**       | IOCP        | AMD64 / ARM64  |
+
+> **FreeBSD 12.0 is the minimum.** On FreeBSD the kqueue engine always compiles its SCTP
+> support, which relies on the association-change flag `SCTP_ASSOC_SUPPORTS_INTERLEAVING`
+> and the modern notification API; those definitions appear in FreeBSD 12.0. Older
+> releases are not targeted.
 
 ### Supported tunnel devices
 

@@ -507,6 +507,18 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: Solaris v${OS_VERSION}")
+    ##
+     # Минимальная поддерживаемая версия - Solaris 11.4 (см. README.md)
+     #
+     # Версия Solaris числовая (например 11.4.90.212.0), а illumos отдаёт
+     # нечисловую строку illumos-<hash> и под тем же именем системы SunOS.
+     # Ограда берёт числовое начало версии и касается только Solaris: illumos
+     # поддерживается отдельно, нечисловую строку разбор не берёт и отказ не выдаёт
+     ##
+    string(REGEX MATCH "^[0-9]+([.][0-9]+)?" SOLARIS_RELEASE "${OS_VERSION}")
+    if (SOLARIS_RELEASE AND SOLARIS_RELEASE VERSION_LESS "11.4")
+        message(FATAL_ERROR "Solaris ${OS_VERSION} is below the minimum supported version 11.4. AWH requires Solaris 11.4 or newer.")
+    endif()
     # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
      # Используем Clang
@@ -577,6 +589,19 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     endif()
     # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
+    ##
+     # Минимальная поддерживаемая версия - FreeBSD 12.0 (см. README.md)
+     #
+     # SCTP-код движка kqueue собирается на любом FreeBSD и без оград использует
+     # признак SCTP_ASSOC_SUPPORTS_INTERLEAVING и современный API уведомлений,
+     # появившиеся в 12.0. На более старых выпусках отказываем сразу при настройке,
+     # а не ломаемся позже на этапе компиляции. Версия числовая (например
+     # 15.1-RELEASE): берём числовое начало, суффикс выпуска не мешает сравнению
+     ##
+    string(REGEX MATCH "^[0-9]+([.][0-9]+)?" FREEBSD_RELEASE "${OS_VERSION}")
+    if (FREEBSD_RELEASE AND FREEBSD_RELEASE VERSION_LESS "12.0")
+        message(FATAL_ERROR "FreeBSD ${OS_VERSION} is below the minimum supported version 12.0. AWH requires FreeBSD 12.0 or newer: the kqueue engine's SCTP support uses APIs introduced in 12.0.")
+    endif()
     # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 ##
