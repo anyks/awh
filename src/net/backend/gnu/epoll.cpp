@@ -35823,10 +35823,24 @@ namespace sctp {
 		if(info.sinfo_flags & SCTP_ABORT)
 			// Устанавливаем флаг ABORT в результат работы функции
 			result.flags.emplace(net::sctp::info_t::STATUS_ABORT);
-		// Если установлен флаг SENDALL в сообщении SCTP
-		if(info.sinfo_flags & SCTP_SENDALL)
-			// Устанавливаем флаг SENDALL в результат работы функции
-			result.flags.emplace(net::sctp::info_t::SEND_ALL);
+		/**
+		 * Если установлен флаг SENDALL в сообщении SCTP
+		 *
+		 * @details Признак заведён сборкой (проба CMake AWH_HAVE_SCTP_SENDALL), а не
+		 *          именем: у Linux `SCTP_SENDALL` объявлен ПЕРЕЧИСЛЕНИЕМ в ядерном
+		 *          `<linux/sctp.h>`, и препроцессор перечислений не видит. Ограда по
+		 *          имени вышла бы ложной и там, где флаг есть, и молча выключила бы
+		 *          работающую рассылку. Проверено переписью и щупом на пяти стендах
+		 *          17.11.2026: Эльбрус e2k флага не несёт, Debian 12, openSUSE, Astra
+		 *          и Alpine несут
+		 *
+		 */
+		#if defined(AWH_HAVE_SCTP_SENDALL)
+			// Если в событии есть признак отправки всем ассоциациям
+			if(info.sinfo_flags & SCTP_SENDALL)
+				// Устанавливаем флаг SENDALL в результат работы функции
+				result.flags.emplace(net::sctp::info_t::SEND_ALL);
+		#endif
 		// Если установлен флаг UNORDERED в сообщении SCTP
 		if(info.sinfo_flags & SCTP_UNORDERED)
 			// Устанавливаем флаг UNORDERED в результат работы функции
@@ -35839,18 +35853,33 @@ namespace sctp {
 		if(info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 			// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 			result.flags.emplace(net::sctp::info_t::SACK_IMMEDIATELY);
-		// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-		if(info.sinfo_flags & SCTP_PR_SCTP_TTL)
-			// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-			result.flags.emplace(net::sctp::info_t::PR_TTL);
-		// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-		if(info.sinfo_flags & SCTP_PR_SCTP_RTX)
-			// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-			result.flags.emplace(net::sctp::info_t::PR_RTX);
-		// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-		if(info.sinfo_flags & SCTP_PR_SCTP_PRIO)
-			// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-			result.flags.emplace(net::sctp::info_t::PR_PRIO);
+		/**
+		 * Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+		 */
+		#if defined(SCTP_PR_SCTP_TTL)
+			// Если в событии есть признак политики по времени жизни
+			if(info.sinfo_flags & SCTP_PR_SCTP_TTL)
+				// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_TTL);
+		#endif
+		/**
+		 * Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+		 */
+		#if defined(SCTP_PR_SCTP_RTX)
+			// Если в событии есть признак политики по числу перепосылок
+			if(info.sinfo_flags & SCTP_PR_SCTP_RTX)
+				// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_RTX);
+		#endif
+		/**
+		 * Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+		 */
+		#if defined(SCTP_PR_SCTP_PRIO)
+			// Если в событии есть признак политики по старшинству
+			if(info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+				// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+				result.flags.emplace(net::sctp::info_t::PR_PRIO);
+		#endif
 	}
 	/**
 	 * @brief Функция обработки событий SCTP
@@ -36431,10 +36460,27 @@ namespace sctp {
 					association->id = pdapi->pdapi_assoc_id;
 					// Устанавливаем тип события SCTP
 					association->type = net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT;
-					// Устанавливаем номер потока SCTP
-					association->stream = pdapi->pdapi_stream;
-					// Устанавливаем последовательный номер сообщения SCTP
-					association->sequence = pdapi->pdapi_seq;
+					/**
+					 * Если система несёт номер потока в уведомлении частичной доставки
+					 *
+					 * @details Признак этот lksctp-tools заводит проверкой сборки члена
+					 *          `pdapi_stream`, и он единственный, что судит о члене верно:
+					 *          имя члена препроцессору не видно вовсе. У старого
+					 *          lksctp-tools структура `sctp_pdapi_event` номера потока не
+					 *          несёт - проверено на Эльбрусе e2k (lcc 1.27.15)
+					 *
+					 */
+					#if defined(HAVE_SCTP_PDAPI_EVENT_PDAPI_STREAM)
+						// Устанавливаем номер потока SCTP
+						association->stream = pdapi->pdapi_stream;
+					#endif
+					/**
+					 * Если система несёт последовательный номер сообщения в уведомлении
+					 */
+					#if defined(HAVE_SCTP_PDAPI_EVENT_PDAPI_SEQ)
+						// Устанавливаем последовательный номер сообщения SCTP
+						association->sequence = pdapi->pdapi_seq;
+					#endif
 					// Если индикатор сброса частичной доставки установлен
 					if(pdapi->pdapi_indication & SCTP_PARTIAL_DELIVERY_ABORTED)
 						// Устанавливаем индикатор частичной доставки SCTP

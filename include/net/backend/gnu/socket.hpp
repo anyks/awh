@@ -126,6 +126,13 @@
  *          потерять возможности, которые ядро даёт. Подробности - в
  *          src/net/backend/gnu/IO_URING.md.
  *
+ * @note `linux/time_types.h` подключается явно, а не через `linux/io_uring.h`:
+ *       в нём объявлен `__kernel_timespec`, нужный срокам операций. Новые
+ *       заголовки дистрибутива подтягивают его сами, старые - нет, и тип
+ *       остаётся незавершённым. Найден 17.11.2026 на стенде Эльбрус (lcc
+ *       1.27.15, ядро 6.1.0-0.8-e8c2): без явного подключения движок не
+ *       собирается, тогда как на Debian с ядром 6.1 сборка идёт и без него.
+ *
  * \~english
  * If the io_uring engine is being built
  *
@@ -135,10 +142,18 @@
  *          losing the possibilities the kernel gives. The details are in
  *          src/net/backend/gnu/IO_URING.md.
  *
+ * @note `linux/time_types.h` is included explicitly rather than through `linux/io_uring.h`:
+ *       it declares `__kernel_timespec`, which the operation deadlines need. Recent
+ *       distribution headers pull it in themselves, older ones do not, and the type
+ *       stays incomplete. Found on 17.11.2026 on the Elbrus stand (lcc
+ *       1.27.15, kernel 6.1.0-0.8-e8c2): without the explicit include the engine
+ *       fails to build, while on Debian with kernel 6.1 the build succeeds without it.
+ *
  * \~
  */
 #if defined(AWH_ENGINE_IO_URING)
 	#include <sys/syscall.h>
+	#include <linux/time_types.h>
 	#include <linux/io_uring.h>
 #endif
 

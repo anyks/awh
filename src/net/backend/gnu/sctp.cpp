@@ -377,32 +377,76 @@ bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::
 		 * так как они отсутствуют в устаревшей структуре sctp_event_subscribe
 		 */
 		if((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) || (event == net::sctp::event_type_t::STREAM_CHANGE_EVENT)){
-			// Создаём объект подписки на событие (современный API SCTP_EVENT)
-			struct sctp_event item{};
-			// Активируем получение события
-			item.se_on = 1;
-			// Применяем подписку ко всем будущим ассоциациям
-			item.se_assoc_id = SCTP_FUTURE_ASSOC;
-			// Устанавливаем тип события SCTP
-			item.se_type = ((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) ? SCTP_ASSOC_RESET_EVENT : SCTP_STREAM_CHANGE_EVENT);
-			// Выполняем подписку на событие SCTP
-			if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &item, sizeof(item)))){
-				// Запоминаем ошибку подписки через современный API
+			/**
+			 * Если система несёт современный API подписки SCTP_EVENT
+			 *
+			 * @details Условие собрано из всех имён, какие употребляет тело ниже:
+			 *          `SCTP_EVENT`, `SCTP_FUTURE_ASSOC`, `SCTP_ASSOC_RESET_EVENT` и
+			 *          `SCTP_STREAM_CHANGE_EVENT`. Все четыре на современном Linux
+			 *          приходят макросами из ядерного `<linux/sctp.h>`, а у старого
+			 *          lksctp-tools их нет вовсе. Проверено переписью препроцессора и
+			 *          компиляционным щупом на пяти стендах: Эльбрус e2k (lcc 1.27.15)
+			 *          даёт 33 ошибки на полном наборе, Debian 12, openSUSE, Astra и
+			 *          Alpine собирают его без единой ошибки.
+			 *
+			 * @warning Судить о доступности разбора по одному имени нельзя: номер
+			 *          вызова и структура `sctp_event` приходят порознь с номерами
+			 *          событий, и тело, оставленное под неполным условием, валится
+			 *          сборкой там, где недостаёт любого из них
+			 *
+			 */
+			#if defined(SCTP_EVENT) && defined(SCTP_FUTURE_ASSOC) && defined(SCTP_ASSOC_RESET_EVENT) && defined(SCTP_STREAM_CHANGE_EVENT)
+				// Создаём объект подписки на событие (современный API SCTP_EVENT)
+				struct sctp_event item{};
+				// Активируем получение события
+				item.se_on = 1;
+				// Применяем подписку ко всем будущим ассоциациям
+				item.se_assoc_id = SCTP_FUTURE_ASSOC;
+				// Устанавливаем тип события SCTP
+				item.se_type = ((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) ? SCTP_ASSOC_RESET_EVENT : SCTP_STREAM_CHANGE_EVENT);
+				// Выполняем подписку на событие SCTP
+				if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &item, sizeof(item)))){
+					// Запоминаем ошибку подписки через современный API
+					resultModern = false;
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			/**
+			 * Если современного API подписки системе не дано
+			 *
+			 * @details Отказываем вслух, а не проходим мимо: разбор ниже этих двух
+			 *          событий не знает вовсе, и молчаливый проход уверил бы
+			 *          вызывающую сторону, что подписка на них состоялась
+			 *
+			 */
+			#else
+				// Запоминаем отказ подписки на событие, какого система не несёт
 				resultModern = false;
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::CRITICAL, ::strerror(errno));
+					// Записываем отказ в лог
+					log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::WARNING, "SCTP_EVENT subscription API is not supported by this system");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Записываем ошибку в лог
-					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+					// Записываем отказ в лог
+					log::print("%s", log::flag_t::WARNING, "SCTP_EVENT subscription API is not supported by this system");
 				#endif
-			}
+			#endif
 			// Переходим к следующему событию
 			continue;
 		}
@@ -449,8 +493,43 @@ bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::
 			break;
 			// Если событие сброса потока
 			case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-				// Устанавливаем события сброса потока SCTP_STREAM_RESET_EVENT
-				subscribe.sctp_stream_reset_event = 1;
+				/**
+				 * Если устаревшая подписка несёт член уведомления о сбросе потока
+				 *
+				 * @details Имя `SCTP_STREAM_RESET_EVENT` на современном Linux приходит
+				 *          макросом, и член `sctp_stream_reset_event` структуры
+				 *          `sctp_event_subscribe` приходит вместе с ним. У старого
+				 *          lksctp-tools нет ни того, ни другого - проверено на Эльбрусе
+				 *          e2k: ошибка «класс не имеет члена»
+				 *
+				 */
+				#if defined(SCTP_STREAM_RESET_EVENT)
+					// Устанавливаем события сброса потока SCTP_STREAM_RESET_EVENT
+					subscribe.sctp_stream_reset_event = 1;
+				/**
+				 * Если уведомления о сбросе потока системе не дано
+				 *
+				 * @details Отказываем вслух: проглотив запрос молча, мы уверили бы
+				 *          вызывающую сторону, что событие затребовано у ядра
+				 *
+				 */
+				#else
+					// Запоминаем отказ подписки на событие, какого система не несёт
+					resultLegacy = false;
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в лог
+						log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::WARNING, "SCTP_STREAM_RESET_EVENT subscription is not supported by this system");
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в лог
+						log::print("%s", log::flag_t::WARNING, "SCTP_STREAM_RESET_EVENT subscription is not supported by this system");
+					#endif
+				#endif
 			break;
 			// Если событие аутентификации
 			case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):

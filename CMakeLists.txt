@@ -458,6 +458,29 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     endif()
     ##
+     # Выполняем проверку наличия флага рассылки по всем ассоциациям SCTP
+     #
+     # Флаг этот у Linux заведён ПЕРЕЧИСЛЕНИЕМ в ядерном <linux/sctp.h>, а
+     # препроцессор перечислений не видит. Ограда по имени вида
+     # defined(SCTP_SENDALL) вышла бы ложной и там, где флаг есть, и молча
+     # выключила бы работающую рассылку: имя компилируется, но признаком не
+     # служит. Оттого наличие его выясняется сборкой, а не признаком имени -
+     # тем же доводом, что и вызов заведения связи SCTP у систем Sun
+     #
+     # Проверено на пяти стендах (17.11.2026): Эльбрус e2k (lcc 1.27.15) флага
+     # не несёт вовсе и пробу валит, Debian 12, openSUSE, Astra и Alpine несут
+     # и собирают её; перепись препроцессора на всех четырёх современных
+     # дистрибутивах совпала побайтно
+     ##
+    INCLUDE(CheckCXXSourceCompiles)
+    # Проверяем что флаг рассылки по всем ассоциациям поддерживается в SCTP
+    CHECK_CXX_SOURCE_COMPILES("#include <netinet/sctp.h>\nint main(){\n\tstruct sctp_sndrcvinfo info{};\n\tinfo.sinfo_flags = SCTP_SENDALL;\n\treturn info.sinfo_flags;\n}" AWH_HAVE_SCTP_SENDALL)
+    # Если флаг рассылки по всем ассоциациям системой поддерживается
+    if (AWH_HAVE_SCTP_SENDALL)
+        # Выполняем объявление признака наличия флага рассылки SCTP
+        ADD_DEFINITIONS(-DAWH_HAVE_SCTP_SENDALL)
+    endif()
+    ##
      # Спутник AF_XDP (engine::xdp) — необязательный, только Linux
      #
      # Выключен умолчанием: датапуть AF_XDP не условие боя и требует libbpf/libxdp,
