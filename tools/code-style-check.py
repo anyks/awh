@@ -1093,7 +1093,7 @@ def check_file(path, lines, members, report, fixes=None):
         if fm and not directive_line and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
-            call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
+            call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast|else|if|for|while|switch|case|do|goto|try)\b[^;]*$", head))
             # ключевое слово в позиции типа = конструктор или спец-член: имя класса с заглавной буквы законно
             ctor_head = bool(re.search(r"\b(?:static|inline|constexpr|consteval|virtual|explicit|friend)\s+$", head))
             # макрос-атрибут (__AWH_INLINE__, __ANTS_INLINE__) непосредственно перед именем = тип

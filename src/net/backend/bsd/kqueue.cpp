@@ -4271,7 +4271,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static __AWH_INLINE__ event::id_t identifier() noexcept {
+	static event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
@@ -35994,10 +35994,22 @@ namespace sctp {
 			if(info.sinfo_flags & SCTP_ABORT)
 				// Устанавливаем флаг ABORT в результат работы функции
 				result.flags.emplace(net::sctp::info_t::STATUS_ABORT);
-			// Если установлен флаг SENDALL в сообщении SCTP
-			if(info.sinfo_flags & SCTP_SENDALL)
-				// Устанавливаем флаг SENDALL в результат работы функции
-				result.flags.emplace(net::sctp::info_t::SEND_ALL);
+			/**
+			 * Если установлен флаг SENDALL в сообщении SCTP
+			 *
+			 * @details На FreeBSD флаг SCTP_SENDALL заведён макросом в <netinet/sctp_uio.h>
+			 *          (в отличие от Linux, где он объявлен перечислением), и препроцессор
+			 *          его видит - ограда ставится по имени без пробы сборки. Макрос есть и
+			 *          в старых заголовках FreeBSD, ограда держится для единообразия с
+			 *          прочими наречиями
+			 *
+			 */
+			#if defined(SCTP_SENDALL)
+				// Если в событии есть признак отправки всем ассоциациям
+				if(info.sinfo_flags & SCTP_SENDALL)
+					// Устанавливаем флаг SENDALL в результат работы функции
+					result.flags.emplace(net::sctp::info_t::SEND_ALL);
+			#endif
 			// Если установлен флаг UNORDERED в сообщении SCTP
 			if(info.sinfo_flags & SCTP_UNORDERED)
 				// Устанавливаем флаг UNORDERED в результат работы функции
@@ -36010,18 +36022,33 @@ namespace sctp {
 			if(info.sinfo_flags & SCTP_SACK_IMMEDIATELY)
 				// Устанавливаем флаг SACK_IMMEDIATELY в результат работы функции
 				result.flags.emplace(net::sctp::info_t::SACK_IMMEDIATELY);
-			// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
-			if(info.sinfo_flags & SCTP_PR_SCTP_TTL)
-				// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-				result.flags.emplace(net::sctp::info_t::PR_TTL);
-			// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
-			if(info.sinfo_flags & SCTP_PR_SCTP_RTX)
-				// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-				result.flags.emplace(net::sctp::info_t::PR_RTX);
-			// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
-			if(info.sinfo_flags & SCTP_PR_SCTP_PRIO)
-				// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-				result.flags.emplace(net::sctp::info_t::PR_PRIO);
+			/**
+			 * Если установлен флаг PR_SCTP_TTL в сообщении SCTP
+			 */
+			#if defined(SCTP_PR_SCTP_TTL)
+				// Если в событии есть признак политики по времени жизни
+				if(info.sinfo_flags & SCTP_PR_SCTP_TTL)
+					// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+					result.flags.emplace(net::sctp::info_t::PR_TTL);
+			#endif
+			/**
+			 * Если установлен флаг PR_SCTP_RTX в сообщении SCTP
+			 */
+			#if defined(SCTP_PR_SCTP_RTX)
+				// Если в событии есть признак политики по числу перепосылок
+				if(info.sinfo_flags & SCTP_PR_SCTP_RTX)
+					// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+					result.flags.emplace(net::sctp::info_t::PR_RTX);
+			#endif
+			/**
+			 * Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
+			 */
+			#if defined(SCTP_PR_SCTP_PRIO)
+				// Если в событии есть признак политики по старшинству
+				if(info.sinfo_flags & SCTP_PR_SCTP_PRIO)
+					// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+					result.flags.emplace(net::sctp::info_t::PR_PRIO);
+			#endif
 		}
 		/**
 		 * @brief Функция обработки событий SCTP
@@ -36688,126 +36715,59 @@ namespace sctp {
 						// Формируем результат работы функции
 						result = static_cast <size_t> (pdapi->pdapi_length);
 					} break;
-					// Если событие является аутентификационной индикацией SCTP
-					case SCTP_AUTHENTICATION_EVENT: {
-						// Получаем структуру аутентификационной индикации SCTP
-						const struct sctp_authkey_event * auth = reinterpret_cast <const struct sctp_authkey_event *> (buffer);
-						// Создаём объект события аутентификационной индикации SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_auth_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_auth_t * association = awh_cast <net::sctp::event_auth_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = auth->auth_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::AUTHENTICATION_EVENT;
-						// Устанавливаем номер ключа аутентификации SCTP
-						association->key = auth->auth_keynumber;
-						/**
-						 * Обрабатываем индикатор аутентификации SCTP
-						 */
-						switch(auth->auth_indication){
-							// Если ключ был добавлен
-							case SCTP_AUTH_NEW_KEY:
-								// Устанавливаем индикатор аутентификации SCTP
-								association->indication = net::sctp::auth_indics_t::NEW_KEY;
-							break;
-							// Если ключ не требует аутентификации
-							case SCTP_AUTH_NO_AUTH:
-								// Устанавливаем индикатор аутентификации SCTP
-								association->indication = net::sctp::auth_indics_t::NO_AUTH;
-							break;
-							// Если ключ был удалён
-							case SCTP_AUTH_FREE_KEY:
-								// Устанавливаем индикатор аутентификации SCTP
-								association->indication = net::sctp::auth_indics_t::FREE_KEY;
-							break;
-						}
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
-							} break;
-						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем в лог информацию о событии аутентификационной индикации SCTP
-							log::print(
-								"SCTP_AUTHENTICATION_EVENT: ID=%u, KEY=%u",
-								log::flag_t::INFO,
-								auth->auth_assoc_id,
-								auth->auth_keynumber
-							);
-						#endif
-						// Формируем результат работы функции
-						result = static_cast <size_t> (auth->auth_length);
-					} break;
-					// Если событие является сбросом потоков SCTP
-					case SCTP_STREAM_RESET_EVENT: {
-						// Получаем структуру сброса потоков SCTP
-						const struct sctp_stream_reset_event * strres = reinterpret_cast <const struct sctp_stream_reset_event *> (buffer);
-						// Создаём объект события сброса потоков SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_stream_reset_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_stream_reset_t * association = awh_cast <net::sctp::event_stream_reset_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = strres->strreset_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::STREAM_RESET_EVENT;
-						// Если установлен флаг сброса обоих направлений потоков
-						if(strres->strreset_flags & SCTP_STREAM_RESET_DENIED)
-							// Добавляем флаг сброса обоих направлений потоков
-							association->flags.emplace(net::sctp::stream_reset_t::DENIED);
-						// Если установлен флаг сброса неудачного сброса потоков
-						if(strres->strreset_flags & SCTP_STREAM_RESET_FAILED)
-							// Добавляем флаг неудачного сброса потоков
-							association->flags.emplace(net::sctp::stream_reset_t::FAILED);
-						// Если установлен флаг сброса исходящих потоков
-						if(strres->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN)
-							// Добавляем флаг сброса входящих потоков
-							association->flags.emplace(net::sctp::stream_reset_t::INCOMING_SSN);
-						// Если установлен флаг сброса входящих потоков
-						if(strres->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN)
-							// Добавляем флаг сброса исходящих потоков
-							association->flags.emplace(net::sctp::stream_reset_t::OUTGOING_SSN);
-						// Проверка минимального размера
-						const size_t min = offsetof(struct sctp_stream_reset_event, strreset_stream_list);
-						// Если длина структуры достаточна для обработки
-						if(strres->strreset_length >= min){
-							// Вычисляем количество потоков для сброса
-							const size_t count = ((strres->strreset_length - min) / sizeof(uint16_t));
-							// Получаем список активных потоков
-							const uint16_t * streams = reinterpret_cast <const uint16_t *> (strres + 1);
-							// Выделяем память под список сброшенных потоков
-							association->streams.resize(count);
+					/**
+					 * Разбор уведомления собирается лишь там, где система его описывает
+					 *
+					 * @details На FreeBSD номер уведомления SCTP_AUTHENTICATION_EVENT и псевдоним
+					 *          SCTP_AUTH_NEWKEY заведены макросами уже в старых заголовках
+					 *          (FreeBSD 7.0), но там они несут прежнюю раскладку: единственная
+					 *          индикация SCTP_AUTH_NEWKEY, без разрядов SCTP_AUTH_NEW_KEY,
+					 *          SCTP_AUTH_NO_AUTH и SCTP_AUTH_FREE_KEY. Современный набор разрядов
+					 *          приходит одним набором, и признак SCTP_AUTH_NO_AUTH заводится только
+					 *          с ним - проверено переписью заголовков FreeBSD 7.0, 10.0 и 15.1:
+					 *          в 7.0 его нет, в 10.0 и 15.1 есть
+					 *
+					 * @warning Судить о доступности разбора по номеру уведомления
+					 *          SCTP_AUTHENTICATION_EVENT или по псевдониму SCTP_AUTH_NEWKEY нельзя:
+					 *          они на FreeBSD есть и в старой раскладке, и ограда по ним пропустила
+					 *          бы разбор туда, где современных разрядов нет
+					 *
+					 */
+					#if defined(SCTP_AUTH_NO_AUTH)
+						// Если событие является аутентификационной индикацией SCTP
+						case SCTP_AUTHENTICATION_EVENT: {
+							// Получаем структуру аутентификационной индикации SCTP
+							const struct sctp_authkey_event * auth = reinterpret_cast <const struct sctp_authkey_event *> (buffer);
+							// Создаём объект события аутентификационной индикации SCTP
+							net::sctp_event_t event = make_unique <net::sctp::event_auth_t> ();
+							// Извлекаем объект данных события
+							net::sctp::event_auth_t * association = awh_cast <net::sctp::event_auth_t *> (event.get());
+							// Устанавливаем идентификатор ассоциации SCTP
+							association->id = auth->auth_assoc_id;
+							// Устанавливаем тип события SCTP
+							association->type = net::sctp::event_type_t::AUTHENTICATION_EVENT;
+							// Устанавливаем номер ключа аутентификации SCTP
+							association->key = auth->auth_keynumber;
 							/**
-							 * Печатаем список сброшенных потоков
+							 * Обрабатываем индикатор аутентификации SCTP
 							 */
-							for(size_t i = 0; i < count; i++)
-								// Добавляем номер сброшенного потока
-								association->streams[i] = streams[i];
+							switch(auth->auth_indication){
+								// Если ключ был добавлен
+								case SCTP_AUTH_NEW_KEY:
+									// Устанавливаем индикатор аутентификации SCTP
+									association->indication = net::sctp::auth_indics_t::NEW_KEY;
+								break;
+								// Если ключ не требует аутентификации
+								case SCTP_AUTH_NO_AUTH:
+									// Устанавливаем индикатор аутентификации SCTP
+									association->indication = net::sctp::auth_indics_t::NO_AUTH;
+								break;
+								// Если ключ был удалён
+								case SCTP_AUTH_FREE_KEY:
+									// Устанавливаем индикатор аутентификации SCTP
+									association->indication = net::sctp::auth_indics_t::FREE_KEY;
+								break;
+							}
 							/**
 							 * Определяем чем является текущий узел
 							 */
@@ -36839,60 +36799,173 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
-								// Записываем в лог информацию о событии сброса потоков SCTP
+								// Записываем в лог информацию о событии аутентификационной индикации SCTP
 								log::print(
-									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
-									log::flag_t::WARNING,
-									strres->strreset_assoc_id,
-									strres->strreset_flags,
-									count
+									"SCTP_AUTHENTICATION_EVENT: ID=%u, KEY=%u",
+									log::flag_t::INFO,
+									auth->auth_assoc_id,
+									auth->auth_keynumber
 								);
 							#endif
-						// Если длина структуры недостаточна для обработки
-						} else {
-							/**
-							 * Определяем чем является текущий узел
-							 */
-							switch(static_cast <uint8_t> (node->state.node)){
-								// Если узел является одноранговым узлом
-								case static_cast <uint8_t> (event::node_t::PEER): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта однорангового узла
-									::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
-								} break;
-								// Если узел является клиентом
-								case static_cast <uint8_t> (event::node_t::CLIENT): {
-									// Создаём охранника узла события
-									::local::guard_t guard(node);
-									// Получаем текущее значение объекта клиента
-									::io::client_t * client = awh_cast <::io::client_t *> (node);
-									// Если функция обратного вызова для получения событий установлена
-									if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
-										// Вызываем функцию обратного вызова для получения событий
-										client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
-								} break;
+							// Формируем результат работы функции
+							result = static_cast <size_t> (auth->auth_length);
+						} break;
+					#endif
+					/**
+					 * Разбор уведомления собирается лишь там, где система его описывает
+					 *
+					 * @details На FreeBSD номер уведомления SCTP_STREAM_RESET_EVENT заведён макросом
+					 *          уже в старых заголовках (FreeBSD 7.0), но там он несёт прежнюю
+					 *          раскладку: структура с полем strreset_list и разряды SCTP_STRRESET_*,
+					 *          без современных SCTP_STREAM_RESET_DENIED, SCTP_STREAM_RESET_FAILED,
+					 *          SCTP_STREAM_RESET_INCOMING_SSN и SCTP_STREAM_RESET_OUTGOING_SSN.
+					 *          Современная структура sctp_stream_reset_event с полем
+					 *          strreset_stream_list и набор разрядов приходят одним набором, и
+					 *          признак SCTP_STREAM_RESET_DENIED заводится только с ним - проверено
+					 *          переписью заголовков FreeBSD 7.0, 10.0 и 15.1: в 7.0 его нет,
+					 *          в 10.0 и 15.1 есть
+					 *
+					 * @warning Судить о доступности разбора по номеру уведомления
+					 *          SCTP_STREAM_RESET_EVENT нельзя: он на FreeBSD есть и в старой
+					 *          раскладке, и ограда по нему пропустила бы разбор туда, где нет
+					 *          современного поля strreset_stream_list и разрядов исхода
+					 *
+					 * @note Отдельные ограды на разряды исхода здесь не ставятся: на FreeBSD они
+					 *       порознь с современным набором не встречаются, и общая ограда по признаку
+					 *       SCTP_STREAM_RESET_DENIED описывает набор целиком
+					 *
+					 */
+					#if defined(SCTP_STREAM_RESET_DENIED)
+						// Если событие является сбросом потоков SCTP
+						case SCTP_STREAM_RESET_EVENT: {
+							// Получаем структуру сброса потоков SCTP
+							const struct sctp_stream_reset_event * strres = reinterpret_cast <const struct sctp_stream_reset_event *> (buffer);
+							// Создаём объект события сброса потоков SCTP
+							net::sctp_event_t event = make_unique <net::sctp::event_stream_reset_t> ();
+							// Извлекаем объект данных события
+							net::sctp::event_stream_reset_t * association = awh_cast <net::sctp::event_stream_reset_t *> (event.get());
+							// Устанавливаем идентификатор ассоциации SCTP
+							association->id = strres->strreset_assoc_id;
+							// Устанавливаем тип события SCTP
+							association->type = net::sctp::event_type_t::STREAM_RESET_EVENT;
+							// Если установлен флаг сброса обоих направлений потоков
+							if(strres->strreset_flags & SCTP_STREAM_RESET_DENIED)
+								// Добавляем флаг сброса обоих направлений потоков
+								association->flags.emplace(net::sctp::stream_reset_t::DENIED);
+							// Если установлен флаг сброса неудачного сброса потоков
+							if(strres->strreset_flags & SCTP_STREAM_RESET_FAILED)
+								// Добавляем флаг неудачного сброса потоков
+								association->flags.emplace(net::sctp::stream_reset_t::FAILED);
+							// Если установлен флаг сброса исходящих потоков
+							if(strres->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN)
+								// Добавляем флаг сброса входящих потоков
+								association->flags.emplace(net::sctp::stream_reset_t::INCOMING_SSN);
+							// Если установлен флаг сброса входящих потоков
+							if(strres->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN)
+								// Добавляем флаг сброса исходящих потоков
+								association->flags.emplace(net::sctp::stream_reset_t::OUTGOING_SSN);
+							// Проверка минимального размера
+							const size_t min = offsetof(struct sctp_stream_reset_event, strreset_stream_list);
+							// Если длина структуры достаточна для обработки
+							if(strres->strreset_length >= min){
+								// Вычисляем количество потоков для сброса
+								const size_t count = ((strres->strreset_length - min) / sizeof(uint16_t));
+								// Получаем список активных потоков
+								const uint16_t * streams = reinterpret_cast <const uint16_t *> (strres + 1);
+								// Выделяем память под список сброшенных потоков
+								association->streams.resize(count);
+								/**
+								 * Печатаем список сброшенных потоков
+								 */
+								for(size_t i = 0; i < count; i++)
+									// Добавляем номер сброшенного потока
+									association->streams[i] = streams[i];
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
+									} break;
+								}
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем в лог информацию о событии сброса потоков SCTP
+									log::print(
+										"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
+										log::flag_t::WARNING,
+										strres->strreset_assoc_id,
+										strres->strreset_flags,
+										count
+									);
+								#endif
+							// Если длина структуры недостаточна для обработки
+							} else {
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
+									} break;
+								}
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем в лог информацию о событии сброса потоков SCTP
+									log::print(
+										"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x",
+										log::flag_t::WARNING,
+										strres->strreset_assoc_id,
+										strres->strreset_flags
+									);
+								#endif
 							}
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем в лог информацию о событии сброса потоков SCTP
-								log::print(
-									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x",
-									log::flag_t::WARNING,
-									strres->strreset_assoc_id,
-									strres->strreset_flags
-								);
-							#endif
-						}
-						// Формируем результат работы функции
-						result = static_cast <size_t> (strres->strreset_length);
-					} break;
+							// Формируем результат работы функции
+							result = static_cast <size_t> (strres->strreset_length);
+						} break;
+					#endif
 					// Если событие является исчерпанием отправителя SCTP
 					case SCTP_SENDER_DRY_EVENT: {
 						// Получаем структуру исчерпания отправителя SCTP
@@ -36959,181 +37032,47 @@ namespace sctp {
 						// Формируем результат работы функции
 						result = static_cast <size_t> (* reinterpret_cast <const uint32_t *> (buffer + 4));
 					} break;
-					// Если событие является сбросом ассоциации SCTP
-					case SCTP_ASSOC_RESET_EVENT: {
-						// Получаем структуру сброса ассоциации SCTP
-						const struct sctp_assoc_reset_event * sare = reinterpret_cast <const struct sctp_assoc_reset_event *> (buffer);
-						// Создаём объект события сброса ассоциации SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_assoc_reset_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_assoc_reset_t * association = awh_cast <net::sctp::event_assoc_reset_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = sare->assocreset_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::ASSOC_RESET_EVENT;
-						// Устанавливаем локальный TSN ассоциации SCTP
-						association->localTSN = sare->assocreset_local_tsn;
-						// Устанавливаем удалённый TSN ассоциации SCTP
-						association->remoteTSN = sare->assocreset_remote_tsn;
-						// Если установлен флаг неудачного сброса ассоциации SCTP
-						if(sare->assocreset_flags & SCTP_ASSOC_RESET_FAILED)
-							// Добавляем флаг неудачного сброса ассоциации
-							association->flags.emplace(net::sctp::assoc_reset_t::FAILED);
-						// Если установлен флаг сброса ассоциации SCTP
-						if(sare->assocreset_flags & SCTP_ASSOC_RESET_DENIED)
-							// Добавляем флаг сброса ассоциации SCTP
-							association->flags.emplace(net::sctp::assoc_reset_t::DENIED);
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
-							} break;
-						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем в лог информацию о событии исчерпания отправителя SCTP
-							log::print(
-								"SCTP_ASSOC_RESET_EVENT: ID=%u, LOCAL TSN=%u, REMOTE TSN=%u, FLAGS=0x%08x",
-								log::flag_t::WARNING,
-								sare->assocreset_assoc_id,
-								sare->assocreset_local_tsn,
-								sare->assocreset_remote_tsn,
-								sare->assocreset_flags
-							);
-						#endif
-						// Формируем результат работы функции
-						result = static_cast <size_t> (sare->assocreset_length);
-					} break;
-					// Если событие является изменением потоков SCTP
-					case SCTP_STREAM_CHANGE_EVENT: {
-						// Получаем структуру изменения потоков SCTP
-						const struct sctp_stream_change_event * ssce = reinterpret_cast <const struct sctp_stream_change_event *> (buffer);
-						// Создаём объект события изменения потоков SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_stream_change_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_stream_change_t * association = awh_cast <net::sctp::event_stream_change_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = ssce->strchange_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::STREAM_CHANGE_EVENT;
-						// Устанавливаем количество входящих потоков SCTP
-						association->istreams = ssce->strchange_instrms;
-						// Устанавливаем количество исходящих потоков SCTP
-						association->ostreams = ssce->strchange_outstrms;
-						// Если установлен флаг неудачного изменения потоков SCTP
-						if(ssce->strchange_flags & SCTP_STREAM_CHANGE_FAILED)
-							// Добавляем флаг неудачного изменения потоков
-							association->flags.emplace(net::sctp::stream_change_t::FAILED);
-						// Если установлен флаг отклонения изменения потоков SCTP
-						if(ssce->strchange_flags & SCTP_STREAM_CHANGE_DENIED)
-							// Добавляем флаг отклонения изменения потоков SCTP
-							association->flags.emplace(net::sctp::stream_change_t::DENIED);
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Создаём охранника узла события
-								::local::guard_t guard(node);
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Если функция обратного вызова для получения событий установлена
-								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
-									// Вызываем функцию обратного вызова для получения событий
-									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
-							} break;
-						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем в лог информацию о событии исчерпания отправителя SCTP
-							log::print(
-								"SCTP_STREAM_CHANGE_EVENT: ID=%u, OUT=%u, INPUT=%u, FLAGS=0x%08x",
-								log::flag_t::INFO,
-								ssce->strchange_assoc_id,
-								ssce->strchange_instrms,
-								ssce->strchange_outstrms,
-								ssce->strchange_flags
-							);
-						#endif
-						// Формируем результат работы функции
-						result = static_cast <size_t> (ssce->strchange_length);
-					} break;
-					// Если событие является ошибкой отправки SCTP
-					case SCTP_SEND_FAILED_EVENT: {
-						// Получаем структуру ошибки отправки SCTP
-						const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
-						// Создаём объект события ошибки отправки SCTP
-						net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
-						// Извлекаем объект данных события
-						net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
-						// Устанавливаем идентификатор ассоциации SCTP
-						association->id = ssf->ssfe_assoc_id;
-						// Устанавливаем тип события SCTP
-						association->type = net::sctp::event_type_t::SEND_FAILED_EVENT;
-						// Устанавливаем код ошибки ассоциации SCTP
-						association->error.code = ssf->ssfe_error;
-						// Устанавливаем текст ошибки ассоциации SCTP
-						association->error.message = ::strerror(static_cast <int32_t> (ssf->ssfe_error));
-						/**
-						 * Обрабатываем флаги ошибки отправки SCTP
-						 */
-						switch(ssf->ssfe_flags){
-							// Если сообщение было отправлено, но не подтверждено
-							case SCTP_DATA_SENT:
-								// Устанавливаем статус отправки сообщения SCTP
-								association->status = net::sctp::send_failed_t::SENT;
-							break;
-							// Если сообщение никогда не было отправлено
-							case SCTP_DATA_UNSENT:
-								// Устанавливаем статус отправки сообщения SCTP
-								association->status = net::sctp::send_failed_t::UNSENT;
-							break;
-						}
-						// Вычисляем смещение данных ошибки
-						const size_t offset = offsetof(struct sctp_send_failed_event, ssfe_data);
-						// Проверяем целостность уведомления
-						if(ssf->ssfe_length > offset){
-							// Вычисляем длину дополнительных данных ошибки
-							const size_t length = (ssf->ssfe_length - offset);
-							// Копируем дополнительные данные события
-							association->data.assign(ssf->ssfe_data, ssf->ssfe_data + length);
+					/**
+					 * Разбор уведомления собирается лишь там, где система его описывает
+					 *
+					 * @details Номер уведомления SCTP_ASSOC_RESET_EVENT, разряды исхода
+					 *          SCTP_ASSOC_RESET_FAILED и SCTP_ASSOC_RESET_DENIED и структура
+					 *          sctp_assoc_reset_event на FreeBSD приходят вместе, одним набором
+					 *          RFC 6525, и все имена набора - макросы <netinet/sctp_uio.h>.
+					 *          В старых заголовках (FreeBSD 7.0) нет ни одного из них - проверено
+					 *          переписью заголовков FreeBSD 7.0, 10.0 и 15.1: в 7.0 их нет,
+					 *          в 10.0 и 15.1 есть
+					 *
+					 * @note Отдельные ограды на разряды исхода здесь не ставятся: на FreeBSD они
+					 *       порознь с номером уведомления не встречаются, и общая ограда по номеру
+					 *       описывает набор целиком
+					 *
+					 */
+					#if defined(SCTP_ASSOC_RESET_EVENT)
+						// Если событие является сбросом ассоциации SCTP
+						case SCTP_ASSOC_RESET_EVENT: {
+							// Получаем структуру сброса ассоциации SCTP
+							const struct sctp_assoc_reset_event * sare = reinterpret_cast <const struct sctp_assoc_reset_event *> (buffer);
+							// Создаём объект события сброса ассоциации SCTP
+							net::sctp_event_t event = make_unique <net::sctp::event_assoc_reset_t> ();
+							// Извлекаем объект данных события
+							net::sctp::event_assoc_reset_t * association = awh_cast <net::sctp::event_assoc_reset_t *> (event.get());
+							// Устанавливаем идентификатор ассоциации SCTP
+							association->id = sare->assocreset_assoc_id;
+							// Устанавливаем тип события SCTP
+							association->type = net::sctp::event_type_t::ASSOC_RESET_EVENT;
+							// Устанавливаем локальный TSN ассоциации SCTP
+							association->localTSN = sare->assocreset_local_tsn;
+							// Устанавливаем удалённый TSN ассоциации SCTP
+							association->remoteTSN = sare->assocreset_remote_tsn;
+							// Если установлен флаг неудачного сброса ассоциации SCTP
+							if(sare->assocreset_flags & SCTP_ASSOC_RESET_FAILED)
+								// Добавляем флаг неудачного сброса ассоциации
+								association->flags.emplace(net::sctp::assoc_reset_t::FAILED);
+							// Если установлен флаг сброса ассоциации SCTP
+							if(sare->assocreset_flags & SCTP_ASSOC_RESET_DENIED)
+								// Добавляем флаг сброса ассоциации SCTP
+								association->flags.emplace(net::sctp::assoc_reset_t::DENIED);
 							/**
 							 * Определяем чем является текущий узел
 							 */
@@ -37165,17 +37104,61 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
-								// Записываем в лог информацию о событии ошибки отправки SCTP
+								// Записываем в лог информацию о событии исчерпания отправителя SCTP
 								log::print(
-									"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
-									log::flag_t::CRITICAL,
-									ssf->ssfe_assoc_id,
-									length,
-									ssf->ssfe_error
+									"SCTP_ASSOC_RESET_EVENT: ID=%u, LOCAL TSN=%u, REMOTE TSN=%u, FLAGS=0x%08x",
+									log::flag_t::WARNING,
+									sare->assocreset_assoc_id,
+									sare->assocreset_local_tsn,
+									sare->assocreset_remote_tsn,
+									sare->assocreset_flags
 								);
 							#endif
-						// Если дополнительных данных в событии ошибки отправки SCTP нет
-						} else {
+							// Формируем результат работы функции
+							result = static_cast <size_t> (sare->assocreset_length);
+						} break;
+					#endif
+					/**
+					 * Разбор уведомления собирается лишь там, где система его описывает
+					 *
+					 * @details Номер уведомления SCTP_STREAM_CHANGE_EVENT, разряды исхода
+					 *          SCTP_STREAM_CHANGE_FAILED и SCTP_STREAM_CHANGE_DENIED и структура
+					 *          sctp_stream_change_event на FreeBSD приходят вместе, одним набором
+					 *          RFC 6525, и все имена набора - макросы <netinet/sctp_uio.h>.
+					 *          В старых заголовках (FreeBSD 7.0) нет ни одного из них - проверено
+					 *          переписью заголовков FreeBSD 7.0, 10.0 и 15.1: в 7.0 их нет,
+					 *          в 10.0 и 15.1 есть
+					 *
+					 * @note Отдельные ограды на разряды исхода здесь не ставятся: на FreeBSD они
+					 *       порознь с номером уведомления не встречаются, и общая ограда по номеру
+					 *       описывает набор целиком
+					 *
+					 */
+					#if defined(SCTP_STREAM_CHANGE_EVENT)
+						// Если событие является изменением потоков SCTP
+						case SCTP_STREAM_CHANGE_EVENT: {
+							// Получаем структуру изменения потоков SCTP
+							const struct sctp_stream_change_event * ssce = reinterpret_cast <const struct sctp_stream_change_event *> (buffer);
+							// Создаём объект события изменения потоков SCTP
+							net::sctp_event_t event = make_unique <net::sctp::event_stream_change_t> ();
+							// Извлекаем объект данных события
+							net::sctp::event_stream_change_t * association = awh_cast <net::sctp::event_stream_change_t *> (event.get());
+							// Устанавливаем идентификатор ассоциации SCTP
+							association->id = ssce->strchange_assoc_id;
+							// Устанавливаем тип события SCTP
+							association->type = net::sctp::event_type_t::STREAM_CHANGE_EVENT;
+							// Устанавливаем количество входящих потоков SCTP
+							association->istreams = ssce->strchange_instrms;
+							// Устанавливаем количество исходящих потоков SCTP
+							association->ostreams = ssce->strchange_outstrms;
+							// Если установлен флаг неудачного изменения потоков SCTP
+							if(ssce->strchange_flags & SCTP_STREAM_CHANGE_FAILED)
+								// Добавляем флаг неудачного изменения потоков
+								association->flags.emplace(net::sctp::stream_change_t::FAILED);
+							// Если установлен флаг отклонения изменения потоков SCTP
+							if(ssce->strchange_flags & SCTP_STREAM_CHANGE_DENIED)
+								// Добавляем флаг отклонения изменения потоков SCTP
+								association->flags.emplace(net::sctp::stream_change_t::DENIED);
 							/**
 							 * Определяем чем является текущий узел
 							 */
@@ -37207,18 +37190,161 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
-								// Записываем в лог информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
+								// Записываем в лог информацию о событии исчерпания отправителя SCTP
 								log::print(
-									"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
-									log::flag_t::CRITICAL,
-									ssf->ssfe_assoc_id,
-									ssf->ssfe_error
+									"SCTP_STREAM_CHANGE_EVENT: ID=%u, OUT=%u, INPUT=%u, FLAGS=0x%08x",
+									log::flag_t::INFO,
+									ssce->strchange_assoc_id,
+									ssce->strchange_instrms,
+									ssce->strchange_outstrms,
+									ssce->strchange_flags
 								);
 							#endif
-						}
-						// Формируем результат работы функции
-						result = static_cast <size_t> (ssf->ssfe_length);
-					} break;
+							// Формируем результат работы функции
+							result = static_cast <size_t> (ssce->strchange_length);
+						} break;
+					#endif
+					/**
+					 * Разбор уведомления собирается лишь там, где система его описывает
+					 *
+					 * @details Номер уведомления SCTP_SEND_FAILED_EVENT и структура
+					 *          sctp_send_failed_event с полями ssfe_* на FreeBSD приходят вместе,
+					 *          одним набором RFC 6458, и имена набора - макросы <netinet/sctp_uio.h>.
+					 *          В старых заголовках (FreeBSD 7.0) нет ни номера SCTP_SEND_FAILED_EVENT,
+					 *          ни структуры sctp_send_failed_event - проверено переписью заголовков
+					 *          FreeBSD 7.0, 10.0 и 15.1: в 7.0 набора нет, в 10.0 и 15.1 есть
+					 *
+					 * @note Отдельные ограды на разряды SCTP_DATA_SENT и SCTP_DATA_UNSENT здесь не
+					 *       ставятся: они приходят вместе с современным набором, и общая ограда по
+					 *       номеру уведомления описывает случай целиком
+					 *
+					 */
+					#if defined(SCTP_SEND_FAILED_EVENT)
+						// Если событие является ошибкой отправки SCTP
+						case SCTP_SEND_FAILED_EVENT: {
+							// Получаем структуру ошибки отправки SCTP
+							const struct sctp_send_failed_event * ssf = reinterpret_cast <const struct sctp_send_failed_event *> (buffer);
+							// Создаём объект события ошибки отправки SCTP
+							net::sctp_event_t event = make_unique <net::sctp::event_send_failed_t> ();
+							// Извлекаем объект данных события
+							net::sctp::event_send_failed_t * association = awh_cast <net::sctp::event_send_failed_t *> (event.get());
+							// Устанавливаем идентификатор ассоциации SCTP
+							association->id = ssf->ssfe_assoc_id;
+							// Устанавливаем тип события SCTP
+							association->type = net::sctp::event_type_t::SEND_FAILED_EVENT;
+							// Устанавливаем код ошибки ассоциации SCTP
+							association->error.code = ssf->ssfe_error;
+							// Устанавливаем текст ошибки ассоциации SCTP
+							association->error.message = ::strerror(static_cast <int32_t> (ssf->ssfe_error));
+							/**
+							 * Обрабатываем флаги ошибки отправки SCTP
+							 */
+							switch(ssf->ssfe_flags){
+								// Если сообщение было отправлено, но не подтверждено
+								case SCTP_DATA_SENT:
+									// Устанавливаем статус отправки сообщения SCTP
+									association->status = net::sctp::send_failed_t::SENT;
+								break;
+								// Если сообщение никогда не было отправлено
+								case SCTP_DATA_UNSENT:
+									// Устанавливаем статус отправки сообщения SCTP
+									association->status = net::sctp::send_failed_t::UNSENT;
+								break;
+							}
+							// Вычисляем смещение данных ошибки
+							const size_t offset = offsetof(struct sctp_send_failed_event, ssfe_data);
+							// Проверяем целостность уведомления
+							if(ssf->ssfe_length > offset){
+								// Вычисляем длину дополнительных данных ошибки
+								const size_t length = (ssf->ssfe_length - offset);
+								// Копируем дополнительные данные события
+								association->data.assign(ssf->ssfe_data, ssf->ssfe_data + length);
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
+									} break;
+								}
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем в лог информацию о событии ошибки отправки SCTP
+									log::print(
+										"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
+										log::flag_t::CRITICAL,
+										ssf->ssfe_assoc_id,
+										length,
+										ssf->ssfe_error
+									);
+								#endif
+							// Если дополнительных данных в событии ошибки отправки SCTP нет
+							} else {
+								/**
+								 * Определяем чем является текущий узел
+								 */
+								switch(static_cast <uint8_t> (node->state.node)){
+									// Если узел является одноранговым узлом
+									case static_cast <uint8_t> (event::node_t::PEER): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта однорангового узла
+										::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
+									} break;
+									// Если узел является клиентом
+									case static_cast <uint8_t> (event::node_t::CLIENT): {
+										// Создаём охранника узла события
+										::local::guard_t guard(node);
+										// Получаем текущее значение объекта клиента
+										::io::client_t * client = awh_cast <::io::client_t *> (node);
+										// Если функция обратного вызова для получения событий установлена
+										if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
+											// Вызываем функцию обратного вызова для получения событий
+											client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
+									} break;
+								}
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем в лог информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
+									log::print(
+										"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
+										log::flag_t::CRITICAL,
+										ssf->ssfe_assoc_id,
+										ssf->ssfe_error
+									);
+								#endif
+							}
+							// Формируем результат работы функции
+							result = static_cast <size_t> (ssf->ssfe_length);
+						} break;
+					#endif
 					// Для остальных типов событий SCTP
 					default: {
 						/**
@@ -37636,8 +37762,42 @@ namespace sctp {
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
-											// Устанавливаем флаг SENDALL в результат работы функции
-											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
+											/**
+											 * Если система несёт флаг рассылки по всем ассоциациям
+											 *
+											 * @details На FreeBSD флаг SCTP_SENDALL заведён макросом в <netinet/sctp_uio.h>
+											 *          (в отличие от Linux, где он объявлен перечислением), и препроцессор
+											 *          его видит - ограда ставится по имени без пробы сборки. Макрос есть и
+											 *          в старых заголовках FreeBSD, ограда держится для единообразия с
+											 *          прочими наречиями
+											 *
+											 */
+											#if defined(SCTP_SENDALL)
+												// Устанавливаем флаг SENDALL в результат работы функции
+												peer->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
+											/**
+											 * Если флага рассылки у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag SENDALL is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag SENDALL is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
@@ -37656,18 +37816,99 @@ namespace sctp {
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
-											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											/**
+											 * Если системе известен признак политики по времени жизни
+											 */
+											#if defined(SCTP_PR_SCTP_TTL)
+												// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+												peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_TTL is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_TTL is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
-											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											/**
+											 * Если системе известен признак политики по числу перепосылок
+											 */
+											#if defined(SCTP_PR_SCTP_RTX)
+												// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+												peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_RTX is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_RTX is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
-											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											/**
+											 * Если системе известен признак политики по старшинству
+											 */
+											#if defined(SCTP_PR_SCTP_PRIO)
+												// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+												peer->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_PRIO is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_PRIO is not supported by this system");
+												#endif
+											#endif
 										break;
 									}
 								}
@@ -37742,8 +37983,42 @@ namespace sctp {
 										break;
 										// Если установлен флаг SENDALL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::SEND_ALL):
-											// Устанавливаем флаг SENDALL в результат работы функции
-											client->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
+											/**
+											 * Если система несёт флаг рассылки по всем ассоциациям
+											 *
+											 * @details На FreeBSD флаг SCTP_SENDALL заведён макросом в <netinet/sctp_uio.h>
+											 *          (в отличие от Linux, где он объявлен перечислением), и препроцессор
+											 *          его видит - ограда ставится по имени без пробы сборки. Макрос есть и
+											 *          в старых заголовках FreeBSD, ограда держится для единообразия с
+											 *          прочими наречиями
+											 *
+											 */
+											#if defined(SCTP_SENDALL)
+												// Устанавливаем флаг SENDALL в результат работы функции
+												client->transfer.sctp.use().info.sinfo_flags |= SCTP_SENDALL;
+											/**
+											 * Если флага рассылки у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag SENDALL is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag SENDALL is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг UNORDERED в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::DELIVERY_UNORDERED):
@@ -37762,18 +38037,99 @@ namespace sctp {
 										break;
 										// Если установлен флаг PR_SCTP_TTL в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_TTL):
-											// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
-											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											/**
+											 * Если системе известен признак политики по времени жизни
+											 */
+											#if defined(SCTP_PR_SCTP_TTL)
+												// Устанавливаем флаг PR_SCTP_TTL в результат работы функции
+												client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_TTL;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_TTL is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_TTL is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг PR_SCTP_RTX в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_RTX):
-											// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
-											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											/**
+											 * Если системе известен признак политики по числу перепосылок
+											 */
+											#if defined(SCTP_PR_SCTP_RTX)
+												// Устанавливаем флаг PR_SCTP_RTX в результат работы функции
+												client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_RTX;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_RTX is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_RTX is not supported by this system");
+												#endif
+											#endif
 										break;
 										// Если установлен флаг PR_SCTP_PRIO в сообщении SCTP
 										case static_cast <uint8_t> (net::sctp::info_t::PR_PRIO):
-											// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
-											client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											/**
+											 * Если системе известен признак политики по старшинству
+											 */
+											#if defined(SCTP_PR_SCTP_PRIO)
+												// Устанавливаем флаг PR_SCTP_PRIO в результат работы функции
+												client->transfer.sctp.use().info.sinfo_flags |= SCTP_PR_SCTP_PRIO;
+											/**
+											 * Если признака у системы нет вовсе
+											 *
+											 * @note Отказ выдаётся вслух намеренно: проглотив запрос молча, мы уверили бы
+											 *       вызывающую сторону, что сообщение ушло с ним, тогда как ушло оно без
+											 *       него
+											 *
+											 */
+											#else
+												/**
+												 * Если включён режим отладки
+												 */
+												#if defined(DEBUG_MODE)
+													// Записываем предупреждение в лог
+													log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, "SCTP message flag PR_SCTP_PRIO is not supported by this system");
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем предупреждение в лог
+													log::print("%s", log::flag_t::WARNING, "SCTP message flag PR_SCTP_PRIO is not supported by this system");
+												#endif
+											#endif
 										break;
 									}
 								}

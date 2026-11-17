@@ -5785,7 +5785,7 @@ namespace local {
 	 * @return уникальный идентификатор
 	 *
 	 */
-	static __AWH_INLINE__ event::id_t identifier() noexcept {
+	static event::id_t identifier() noexcept {
 		// Результат работы функции
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
