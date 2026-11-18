@@ -22,9 +22,6 @@
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
 - [PCRE2](https://www.pcre.org)
 - [A-NTS](https://anyks.com/nts)
-- [CityHash](https://github.com/google/cityhash)
-- [LibIconv](https://www.gnu.org/software/libiconv)
-- [LibIdn2](https://www.gnu.org/software/libidn)
 - [NgHttp2](https://nghttp2.org/documentation)
 - [GPerfTools](https://github.com/gperftools/gperftools)
 
@@ -84,7 +81,7 @@ $ ./certs.sh example.com
 ### Сборка зависимостей для MacOS X, Linux, FreeBSD или Solaris
 
 ```bash
-$ ./build_third_party.sh --idn
+$ ./build_third_party.sh
 ```
 
 ### Сборка на MacOS X, Linux, FreeBSD или Solaris
@@ -94,7 +91,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_BUILD_LIB=YES \
  ..
@@ -144,7 +140,6 @@ $ cd ./build
 
 $ cmake \
  -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_BUILD_LIB=YES \
@@ -273,9 +268,6 @@ Brotli, PCRE2, nghttp2 и аллокатор gperftools. Всё ложится �
 
 Это те же два шага, что сценарии оболочки выполняют под MinGW; здесь они зовутся своими
 `.bat`-двойниками.
-
-Один ключ на этом пути не делает ничего: `-DCMAKE_BUILD_IDN`. `cmake\FindDependence.cmake`
-ищет `libidn2` и `iconv` только на прочих системах.
 
 #### Шаг 4. Установить и подключить к своему проекту
 
@@ -479,7 +471,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_LIB_AWH=YES \
  ..

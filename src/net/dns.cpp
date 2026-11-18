@@ -16,6 +16,7 @@
  * Подключаем заголовочный файл
  */
 #include <net/dns.hpp>
+#include <encoding/idna/idna.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -1291,42 +1292,15 @@ string awh::DNS::encode(const string & domain) const noexcept {
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if AWH_IDN
 		// Если доменное имя передано
-		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-				// Результирующий буфер данных
-				wchar_t buffer[_MAX_PATH];
-				// Выполняем кодирования доменного имени
-				if(::IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
-					// Выводим в лог сообщение
-					this->_log->print("IDN encode failed (%d): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, GetLastError(), domain.c_str());
-				// Получаем результат кодирования
-				else result = this->_fmk->convert(wstring{buffer});
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#else
-				// Результирующий буфер данных
-				char * buffer = nullptr;
-				// Выполняем кодирования доменного имени
-				const int32_t rc = ::idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
-				// Если кодирование не выполнено
-				if(rc != IDNA_SUCCESS)
-					// Выводим в лог сообщение
-					this->_log->print("IDN encode failed (%d): %s, DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc), domain.c_str());
-				// Получаем результат кодирования
-				else result = buffer;
-				// Если память была выделенна
-				if(buffer != nullptr)
-					// Очищаем буфер данных
-					::free(buffer);
-			#endif
-		}
-	#endif
+	if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
+		// Ошибка кодирования доменного имени
+		idna::error_t error = idna::error_t::NONE;
+		// Выполняем кодирование доменного имени порядком Punycode
+		if(!idna::toAscii(domain, result, error))
+			// Выводим в лог сообщение
+			this->_log->print("IDN encode failed (%u): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, static_cast <uint32_t> (error), domain.c_str());
+	}
 	// Выводим результат
 	return result;
 }
@@ -1342,42 +1316,15 @@ string awh::DNS::decode(const string & domain) const noexcept {
 	/**
 	 * Если используется модуль IDN
 	 */
-	#if AWH_IDN
 		// Если доменное имя передано
-		if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-				// Результирующий буфер данных
-				wchar_t buffer[_MAX_PATH];
-				// Выполняем кодирования доменного имени
-				if(::IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
-					// Выводим в лог сообщение
-					this->_log->print("IDN decode failed (%d): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, GetLastError(), domain.c_str());
-				// Получаем результат кодирования
-				else result = this->_fmk->convert(wstring{buffer});
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#else
-				// Результирующий буфер данных
-				char * buffer = nullptr;
-				// Выполняем декодирования доменного имени
-				const int32_t rc = ::idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
-				// Если кодирование не выполнено
-				if(rc != IDNA_SUCCESS)
-					// Выводим в лог сообщение
-					this->_log->print("IDN decode failed (%d): %s, DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc), domain.c_str());
-				// Получаем результат декодирования
-				else result = buffer;
-				// Если память была выделенна
-				if(buffer != nullptr)
-					// Очищаем буфер данных
-					::free(buffer);
-			#endif
-		}
-	#endif
+	if(!domain.empty() && (domain.front() != '-') && (domain.back() != '-')){
+		// Ошибка декодирования доменного имени
+		idna::error_t error = idna::error_t::NONE;
+		// Выполняем декодирование доменного имени из Punycode
+		if(!idna::toUnicode(domain, result, error))
+			// Выводим в лог сообщение
+			this->_log->print("IDN decode failed (%u): DOMAIN=\"%s\"", log_t::flag_t::CRITICAL, static_cast <uint32_t> (error), domain.c_str());
+	}
 	// Выводим результат
 	return result;
 }
@@ -3092,19 +3039,8 @@ string awh::DNS::resolve(const int32_t family, const string & host) noexcept {
 	if(hold.access({}, status_t::RESOLVE)){
 		// Если домен передан
 		if(!host.empty()){
-			/**
-			 * Если используется модуль IDN
-			 */
-			#if AWH_IDN
-				// Получаем доменное имя в интернациональном виде
-				const string & domain = this->encode(host);
-			/**
-			 * Если модуль IDN не используется
-			 */
-			#else
-				// Получаем доменное имя как оно есть
-				const string & domain = host;
-			#endif
+			// Получаем доменное имя в интернациональном виде
+			const string & domain = this->encode(host);
 			/**
 			 * Определяем тип передаваемого сервера
 			 */

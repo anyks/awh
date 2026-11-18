@@ -58,13 +58,6 @@
 #endif
 
 /**
- * Если используется модуль IDN и операционная система не MS Windows
- */
-#if AWH_IDN && !_WIN32 && !_WIN64
-	#include <idn2.h>
-#endif
-
-/**
  * Наши модули
  */
 #include "net.hpp"

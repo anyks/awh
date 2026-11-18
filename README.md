@@ -22,9 +22,6 @@
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
 - [PCRE2](https://www.pcre.org)
 - [A-NTS](https://anyks.com/nts)
-- [CityHash](https://github.com/google/cityhash)
-- [LibIconv](https://www.gnu.org/software/libiconv)
-- [LibIdn2](https://www.gnu.org/software/libidn)
 - [NgHttp2](https://nghttp2.org/documentation)
 - [GPerfTools](https://github.com/gperftools/gperftools)
 
@@ -84,7 +81,7 @@ $ ./certs.sh example.com
 ### Build third party for MacOS X, Linux, FreeBSD or Solaris
 
 ```bash
-$ ./build_third_party.sh --idn
+$ ./build_third_party.sh
 ```
 
 ### Build on MacOS X, Linux, FreeBSD or Solaris
@@ -94,7 +91,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_BUILD_LIB=YES \
  ..
@@ -144,7 +140,6 @@ $ cd ./build
 
 $ cmake \
  -G "MSYS Makefiles" \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  -DCMAKE_SHARED_BUILD_LIB=YES \
@@ -273,9 +268,6 @@ by themselves at the end of the build:
 
 These are the same two steps the shell scripts perform under MinGW; here they are called as
 their `.bat` counterparts.
-
-One key does nothing on this path: `-DCMAKE_BUILD_IDN`. `cmake\FindDependence.cmake` looks
-for `libidn2` and `iconv` on the other systems only.
 
 #### Step 4. Install and connect to your project
 
@@ -479,7 +471,6 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_LIB_AWH=YES \
  ..

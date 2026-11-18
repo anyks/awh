@@ -6,9 +6,6 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
 
-# Флаг активации модуля IDN
-IDN="no"
-
 # Флаг активации режима отладки
 DEBUG="no"
 
@@ -47,14 +44,6 @@ if [ -n "$1" ]; then
 		clean_submodule "nghttp2"
 		clean_submodule "gperftools"
 
-		# Если операционная система не является Windows
-		if [[ ! $OS = "Windows" ]]; then
-			# Удаляем сборочную дирректорию LibIconv
-			rm -rf "$ROOT/submodules/libiconv"
-			# Удаляем сборочную дирректорию LibIDN2
-			rm -rf "$ROOT/submodules/libidn2"
-		fi
-
 		# Удаляем сборочную директорию (префикс у каждой оснастки свой)
 		rm -rf "${AWH_THIRD_PARTY:-$ROOT/third_party}"
 
@@ -69,23 +58,6 @@ if [ -n "$1" ]; then
 
 		DEBUG="yes"
 
-		if [[ -n "$2" ]] && [[ $2 = "--idn" ]]; then
-			IDN="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--idn" ]]; then
-			IDN="yes"
-		fi
-
-	elif [ $1 = "--idn" ]; then
-
-		IDN="yes"
-
-		if [[ -n "$2" ]] && [[ $2 = "--debug" ]]; then
-			DEBUG="yes"
-		fi
-		if [[ -n "$3" ]] && [[ $3 = "--debug" ]]; then
-			DEBUG="yes"
-		fi
 
 	else
 		printf "Usage: config [options]\n"
@@ -945,148 +917,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
-fi
-
-# Если нужно собрать модуль IDN и операционная система не является Windows
-if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
-	# Сборка ICONV
-	src="$ROOT/submodules/libiconv"
-	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** ICONV ******\n"
-		cd "$ROOT/submodules" || exit 1
-
-		# Выполняем копирование архива исходников LibIconv
-		cp "$ROOT/tar/libiconv-1.18.tar.gz" "$ROOT/submodules/libiconv.tar.gz"
-
-		# Если архив с исходниками получен
-		if [ -f "$ROOT/submodules/libiconv.tar.gz" ]; then
-			# Выполняем распаковку архива с исходниками
-			tar -xzvf "$ROOT/submodules/libiconv.tar.gz"
-			# Выполняем переименование каталога
-			mv "$ROOT/submodules/libiconv-1.18" "$src"
-			# Удаляем уже ненужный архив
-			rm "$ROOT/submodules/libiconv.tar.gz"
-			# Переходим в каталог сборки
-			cd "$src" || exit 1
-
-			# Если операционной системой является Windows
-			if [ $OS = "Windows" ]; then # Windows
-				# Выполняем конфигурацию модуля
-				./configure \
-				 --enable-static="ON" \
-				 --enable-shared="OFF" \
-				 --host=x86_64-w64-mingw32 \
-				 --prefix=$PREFIX \
-				 --includedir="$PREFIX/include/iconv" \
-				 CC=x86_64-w64-mingw32-gcc \
-				 CPPFLAGS="-I/usr/local/mingw64/include -Wall" \
-				 LDFLAGS="-L/usr/local/mingw64/lib"
-			# Для всех остальных версий операционных систем
-			else
-				# Выполняем конфигурацию модуля
-				./configure \
-				 --enable-static="ON" \
-				 --enable-shared="OFF" \
-				 --prefix=$PREFIX \
-				 --includedir="$PREFIX/include/iconv"
-			fi
-
-			# Выполняем сборку проекта
-			$MAKE -j"$numproc" || exit 1
-			# Выполняем установку проекта
-			$MAKE install || exit 1
-
-			# Выполняем компенсацию каталогов
-			restorelibs $PREFIX
-
-			# Помечаем флагом, что сборка и установка произведена
-			touch "$src/.stamp_done"
-			cd "$ROOT" || exit 1
-		# Если архив с исходниками не скачен
-		else
-			# Выводим сообщение предупреждения
-			echo "DOWNLOAD libiconv sources failed"
-		fi
-	fi
-	# Сборка IDN2
-	src="$ROOT/submodules/libidn2"
-	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** IDN2 ******\n"
-		cd "$ROOT/submodules" || exit 1
-
-		# Выполняем копирование архива исходников LibIDN
-		cp "$ROOT/tar/libidn2-2.3.3.tar.gz" "$ROOT/submodules/libidn2.tar.gz"
-
-		# Если архив с исходниками получен
-		if [ -f "$ROOT/submodules/libidn2.tar.gz" ]; then
-			# Выполняем распаковку архива с исходниками
-			tar -xzvf "$ROOT/submodules/libidn2.tar.gz"
-			# Выполняем переименование каталога
-			mv "$ROOT/submodules/libidn2-2.3.3" "$src"
-			# Удаляем уже ненужный архив
-			rm "$ROOT/submodules/libidn2.tar.gz"
-			# Переходим в каталог сборки
-			cd "$src" || exit 1
-
-			# Если операционной системой является Solaris
-			if [[ $OS = "SunOS" ]]; then
-				# Выполняем патчинг библиотеки для дальнейшей сборки
-				gsed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
-				gsed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
-			# Если операционной системой является Linux или Windows
-			elif [[ $OS = "Linux" ]] || [[ $OS = "Windows" ]]; then
-				# Выполняем патчинг библиотеки для дальнейшей сборки
-				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
-				sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
-			# Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
-			elif [[ $OS = "Darwin" ]] || [[ $OS = "FreeBSD" ]] || [[ $OS = "NetBSD" ]] || [[ $OS = "OpenBSD" ]]; then
-				# Выполняем патчинг библиотеки для дальнейшей сборки
-				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_encode.c"
-				sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_decode.c"
-
-				# Удаляем временные паразитные файлы
-				if [ -f "$src/lib/puny_encode.c-e" ]; then
-					rm "$src/lib/puny_encode.c-e"
-				fi
-				if [ -f "$src/lib/puny_decode.c-e" ]; then
-					rm "$src/lib/puny_decode.c-e"
-				fi
-			fi
-
-			# Выполняем конфигурацию модуля
-			./configure \
-			 --prefix=$PREFIX \
-			 --enable-shared="OFF" \
-			 --enable-gtk-doc="OFF" \
-			 --enable-gtk-doc-html="OFF" \
-			 --enable-gtk-doc-pdf="OFF" \
-			 --disable-doc \
-			 --includedir="$PREFIX/include/idn2" \
-			 --oldincludedir="$PREFIX/include/iconv" \
-			 --libdir="$PREFIX/lib"
-
-			# Удаляем неправильную конфигурацию
-			sed -e '2088d' "$src/Makefile" > "$src/Makefile.tmp"
-			# Восстанавливаем правила сборки
-			mv "$src/Makefile.tmp" "$src/Makefile"
-
-			# Выполняем сборку проекта
-			$MAKE -j"$numproc" || exit 1
-			# Выполняем установку проекта
-			$MAKE install || exit 1
-
-			# Выполняем компенсацию каталогов
-			restorelibs $PREFIX
-
-			# Помечаем флагом, что сборка и установка произведена
-			touch "$src/.stamp_done"
-			cd "$ROOT" || exit 1
-		# Если архив с исходниками не скачен
-		else
-			# Выводим сообщение предупреждения
-			echo "DOWNLOAD libidn2 sources failed"
-		fi
-	fi
 fi
 
 # Сборка PCRE2

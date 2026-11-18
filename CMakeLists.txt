@@ -19,15 +19,6 @@ endif (NOT CMAKE_BUILD_TYPE)
 # Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
-# Сборка модуля AWH_IDN
-if (CMAKE_BUILD_IDN)
-    add_compile_definitions(AWH_IDN)
-    message(STATUS "Build AWH IDN: YES\n")
-# Сборка модуля AWH_IDN не требуется
-else (CMAKE_BUILD_IDN)
-    message(STATUS "Build AWH IDN: NO\n")
-endif (CMAKE_BUILD_IDN)
-
 # Сборка установкой количества доступных файловых дескрипторов
 if (CMAKE_MAX_COUNT_FDS)
     add_compile_definitions(AWH_MAX_COUNT_FDS=${CMAKE_MAX_COUNT_FDS})
@@ -445,15 +436,6 @@ if (Dependence_FOUND)
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "A-NTS include dir found: " ${NTS_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
-
-    # Если операцинная система не относится к MS Windows
-    if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        # Сборка модуля AWH_IDN
-        if (CMAKE_BUILD_IDN)
-            message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
-            message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
-        endif()
-    endif()
 else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
@@ -506,6 +488,16 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/cryptography/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/num/bignum.cpp"
     "${CMAKE_SOURCE_DIR}/src/num/lexical/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/charset/charset.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/charset/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/context.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/idna.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/punycode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/idna/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/normalize.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/table.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/unicode.cpp"
+    "${CMAKE_SOURCE_DIR}/src/encoding/unicode/utf8.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"

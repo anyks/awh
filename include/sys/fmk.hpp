@@ -49,21 +49,6 @@
 #include "../net/nwt.hpp"
 
 /**
- * Для операционной системы не являющейся MS Windows
- */
-#if !_WIN32 && !_WIN64
-	/**
-	 * Если используется модуль IDN
-	 */
-	#if AWH_IDN
-		/**
-		 * Модуль iconv
-		 */
-		#include <iconv/iconv.h>
-	#endif
-#endif
-
-/**
  * @brief пространство имён
  *
  */
