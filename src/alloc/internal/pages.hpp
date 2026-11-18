@@ -1,0 +1,1344 @@
+/**
+ * @file pages.hpp
+ * @date 2026-08-20
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл страничной кучи — выдача и возврат областей, кратных
+ *        странице, слияние соседних свободных областей и отложенная отдача памяти
+ *        системе
+ *
+ * @section pages_decisions Намеренные решения
+ *
+ * @details <b>Своя память под учётные записи, а не контейнеры стандартной библиотеки.</b>
+ *          Куча эта заслоняет собою malloc всего процесса, и всякий контейнер внутри
+ *          неё ушёл бы за памятью в неё же - то есть в бесконечную возвратность на
+ *          первом же выделении. Оттого учётные записи областей берутся у своего
+ *          нарезающего распределителя, а тот - прямо у источника страниц. По той же
+ *          причине здесь нет ни new, ни исключений.
+ *
+ *          <b>Куски у источника берутся крупные и выровненные.</b> Область в четыре
+ *          мегабайта, выровненная по своему размеру, позволяет по любому адресу внутри
+ *          неё найти её начало одной маской, без поиска. Из этого же следует, что
+ *          страницы кучи - величина своя (8 КБ), а не то, что зовёт страницей система:
+ *          у MS Windows зернистость выдачи 64 КБ, и вести учёт ею значило бы дробить
+ *          память вчетверо грубее нужного.
+ *
+ *          <b>Кусок отдаётся системе целиком либо не отдаётся вовсе.</b> MS Windows
+ *          не даёт освободить часть отведённой области: MEM_RELEASE принимает лишь
+ *          адрес, полученный от VirtualAlloc. Оттого частями отдаётся только
+ *          содержимое (purge), а адреса освобождаются лишь вместе со всем куском.
+ *
+ *          <b>Слияние идёт только внутри куска.</b> Два соседних по адресу куска могут
+ *          оказаться отданы системе порознь, и область, слитая через их границу, при
+ *          отдаче распалась бы надвое. Оттого граница куска для слияния непроницаема.
+ *
+ * \~english
+ * @brief Header file of the page heap — allocating and returning page-multiple regions,
+ *        coalescing adjacent free regions and deferred return of memory to the system
+ *
+ * @section pages_decisions Deliberate decisions
+ *
+ * @details <b>Own memory for accounting records, not standard library containers.</b>
+ *          This heap shadows the process-wide malloc, and any container inside it
+ *          would go for memory to it — that is, into infinite recursion on the very
+ *          first allocation. Hence span accounting records are taken from its own
+ *          carving allocator, which in turn takes them straight from the page source.
+ *          For the same reason there is neither new nor exceptions here.
+ *
+ *          <b>Chunks from the source are large and aligned.</b> A four-megabyte
+ *          region, aligned to its own size, allows finding its start from any address
+ *          inside it with a single mask, without search. It follows that heap pages
+ *          are a quantity of their own (8 KB), not what the system calls a page: on
+ *          MS Windows the allocation granularity is 64 KB, and accounting by it would
+ *          mean splitting memory four times coarser than needed.
+ *
+ *          <b>A chunk is returned to the system entirely or not at all.</b> MS Windows
+ *          does not allow freeing part of a reserved region: MEM_RELEASE accepts only
+ *          the address obtained from VirtualAlloc. Hence only content is returned in
+ *          parts (purge), while addresses are freed only together with the whole
+ *          chunk.
+ *
+ *          <b>Coalescing goes only within a chunk.</b> Two address-adjacent chunks
+ *          may be returned to the system separately, and a span coalesced across their
+ *          boundary would split in two on return. Hence the chunk boundary is
+ *          impenetrable for coalescing.
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ * \~
+ */
+
+#pragma once
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../../include/alloc/source.hpp"
+#include "../../../include/sys/macro/global.hpp"
+
+/**
+ * \~russian
+ * @brief Пространство имён фреймворка
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * \~russian
+	 * @brief Пространство имён распределителя памяти
+	 *
+	 * \~english
+	 * @brief Namespace of the memory allocator
+	 *
+	 * \~
+	 */
+	namespace alloc {
+		/**
+		 * \~russian
+		 * @brief Класс страничной кучи
+		 *
+		 * @note Замков внутри нет: их берёт вызывающая сторона. Куча эта - основание
+		 *       распределителя, и место замка выбирается им, а не ею
+		 *
+		 * \~english
+		 * @brief Page heap class
+		 *
+		 * @note There are no locks inside: the caller takes them. This heap is the
+		 *       foundation of the allocator, and the lock placement is chosen by it,
+		 *       not by the heap
+		 *
+		 * \~
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Pages {
+			public:
+				/**
+				 * \~russian
+				 * @brief Сдвиг номера страницы в разбиении памяти: 8 КБ = 2^13
+				 *
+				 * \~english
+				 * @brief Page number offset in memory partitioning: 8 KB = 2^13
+				 *
+				 * \~
+				 */
+				static constexpr size_t SHIFT = 13;
+				/**
+				 * \~russian
+				 * @brief Наибольшее число областей, отдаваемых системе за один заход
+				 *
+				 * \~english
+				 * @brief The maximum number of regions submitted to the system in a single pass
+				 *
+				 * \~
+				 */
+				static constexpr size_t BATCH = 32;
+				/**
+				 * \~russian
+				 * @brief Размер страницы кучи в байтах
+				 *
+				 * \~english
+				 * @brief Heap page size in bytes
+				 *
+				 * \~
+				 */
+				static constexpr size_t PAGE = 8192;
+				/**
+				 * \~russian
+				 * @brief Наибольшее число страниц, учитываемое отдельным списком
+				 *
+				 * \~english
+				 * @brief Maximum number of pages included in a single list
+				 *
+				 * \~
+				 */
+				static constexpr size_t LISTS = 128;
+				/**
+				 * \~russian
+				 * @brief Начальная длина таблицы поиска куска по адресу
+				 *
+				 * \~english
+				 * @brief Initial length of the lookup table for mapping an address to a chunk
+				 *
+				 * \~
+				 */
+				static constexpr size_t TABLE = 1024;
+				/**
+				 * \~russian
+				 * @brief Разрядность младшей части номера страницы в листе радикс-карты
+				 *
+				 * \~english
+				 * @brief Bit width of the lower portion of a page number within a radix-map leaf
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF_BITS = 14;
+				/**
+				 * \~russian
+				 * @brief Число мест в листе, среднем ярусе и корне радикс-карты
+				 *
+				 * \~english
+				 * @brief Number of nodes at the leaf level, the middle level, and the root of a radix tree
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF = (1u << LEAF_BITS);
+				/**
+				 * \~russian
+				 * @brief Маска места страницы в листе
+				 *
+				 * \~english
+				 * @brief Page placement mask within a sheet
+				 *
+				 * \~
+				 */
+				static constexpr size_t LEAF_MASK = (LEAF - 1u);
+				/**
+				 * \~russian
+				 * @brief Размер куска, берущегося у источника, в байтах
+				 *
+				 * \~english
+				 * @brief Size of the chunk taken from the source, in bytes
+				 *
+				 * \~
+				 */
+				static constexpr size_t CHUNK = (4u * 1024u * 1024u);
+				/**
+				 * \~russian
+				 * @brief Число страниц в куске
+				 *
+				 * \~english
+				 * @brief Number of pages in a section
+				 *
+				 * \~
+				 */
+				static constexpr size_t PAGES = (CHUNK / PAGE);
+			public:
+				/**
+				 * \~russian
+				 * @brief Состояние страничной кучи
+				 *
+				 * \~english
+				 * @brief Page heap state
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ State {
+					// Выдано наружу прямо сейчас
+					size_t used;
+					// Свободно и системе не отдано
+					size_t free;
+					// Взято у источника всего
+					size_t total;
+					// Свободно и системе отдано
+					size_t purged;
+					// Число взятых у источника кусков
+					size_t chunks;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit State() noexcept;
+				} state_t;
+			public:
+				/**
+				 * \~russian
+				 * @brief Предварительное объявление вложенного вида учётной записи области страниц
+				 *
+				 * @details Объявление вида прямо в поле («struct Span * span;») завело бы вид в
+				 *          объемлющем пространстве имён, а не в классе, и обращение к его полям
+				 *          оказалось бы обращением к незавершённому виду.
+				 *
+				 * \~english
+				 * @brief Pre-declaration of page area account nested view
+				 *
+				 * @details A declaration of a view right in a field (`struct Span * span;`) would start a view in
+				 *          an enclosing namespace, and not in a class, and an address to its fields
+				 *          would turn into an address to an unfinished view.
+				 *
+				 * \~
+				 */
+				struct Span;
+				/**
+				 * \~russian
+				 * @brief Предварительное объявление вложенного вида учётной записи куска, взятого у источника
+				 *
+				 * @details Объявление вида прямо в поле («struct Chunk * chunk;») завело бы вид в
+				 *          объемлющем пространстве имён, а не в классе, и обращение к его полям
+				 *          оказалось бы обращением к незавершённому виду.
+				 *
+				 * \~english
+				 * @brief Pre-declaration of a nested account view of a piece taken from the source
+				 *
+				 * @details A declaration of a view right in a field (`struct Chunk * chunk;`) would start a view in
+				 *          an enclosing namespace, and not in a class, and an address to its fields
+				 *          would turn into an address to an unfinished view.
+				 *
+				 * \~
+				 */
+				struct Chunk;
+			public:
+				/**
+				 * \~russian
+				 * @brief Учётная запись области страниц
+				 *
+				 * \~english
+				 * @brief Accounting record of a page span
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Span {
+					// Признак отданного системе содержимого
+					bool purged;
+					/**
+					 * Признак области, изъятой на время отдачи системе
+					 *
+					 * Область эта не лежит ни в одном списке свободных и выдана быть не
+					 * может, но освобождённой числится по-прежнему - оттого разбор адреса
+					 * сбоя отвечает о ней верно. Слияние же обязано её обходить: изъятую
+					 * область нельзя изъять вторично
+					 */
+					bool pending;
+					// Признак свободной области
+					bool released;
+					// Метка владельца области, проставляемая слоем выше
+					uint32_t tag;
+					// Число блоков в стопке области
+					size_t held;
+					// Всего блоков, нарезанных в области
+					size_t total;
+					// Размер области в страницах кучи
+					size_t pages;
+					// Миг полного освобождения области, либо нуль
+					uint64_t idled;
+					// Отметка времени освобождения в миллисекундах
+					uint64_t stamp;
+					// Следующая область в списке свободных
+					Span * next;
+					// Предыдущая область в списке свободных
+					Span * prev;
+					// Кусок, которому принадлежит область
+					Chunk * chunk;
+					/**
+					 * Стопка свободных блоков области и их число
+					 *
+					 * Стопка ведётся слоем выше (центральными списками разрядов): блок,
+					 * возвращённый в область, ложится в её стопку, и область, чья стопка
+					 * держит все её блоки, возвращается куче целиком. Пока хоть один блок
+					 * удержан наружу - в кэше потока либо у прикладного кода - область
+					 * числится занятой и не возвращается: оттого повторная выдача не может
+					 * наложить чужой блок на живой
+					 */
+					void * stack;
+					// Адрес начала области
+					uint8_t * base;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Span() noexcept;
+				} span_t;
+				/**
+				 * \~russian
+				 * @brief Учётная запись куска, взятого у источника
+				 *
+				 * \~english
+				 * @brief Accounting record of a chunk taken from the source
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Chunk {
+					// Число выданных наружу страниц куска
+					size_t used;
+					// Размер куска в байтах, каким он размечен
+					size_t size;
+					// Размер куска в байтах, взятый у источника: излишек его не размечен
+					size_t served;
+					// Следующий кусок в общем списке
+					Chunk * next;
+					// Адрес начала куска
+					uint8_t * base;
+					/**
+					 * Указатели областей по номеру страницы куска
+					 *
+					 * Читаются БЕЗ замка кучи - разбором адреса на пути освобождения, -
+					 * оттого вид их неделимый: обычный указатель дал бы состязание в
+					 * глазах средств проверки, даже когда живая область никем не
+					 * переписывается
+					 */
+					atomic <span_t *> index[PAGES];
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Chunk() noexcept;
+				} chunk_t;
+			public:
+				/**
+				 * \~russian
+				 * @brief Лист радикс-карты: метки разрядов по страницам
+				 *
+				 * @note Метка лежит байтом на страницу адресного пространства и читается
+				 *       без поиска куска - номером страницы. Нуль означает «страница
+				 *       разряду не отдана»: тогда разбор идёт полным путём через
+				 *       `describe`. Неделимые они потому, что читатель разбирает адрес
+				 *       БЕЗ замка кучи
+				 *
+				 *
+				 * \~english
+				 * @brief Radix map leaf: class tags by pages
+				 *
+				 * @note The tag lies as one byte per page of address space and is read without
+				 *       finding the chunk - by page number. Zero means the page is not given to a
+				 *       class: then resolution goes the full way through `describe`. They are atomic
+				 *       because the reader resolves the address WITHOUT the heap lock
+				 *
+				 * \~
+				 */
+				using leaf_t = atomic_uint8_t;
+				/**
+				 * \~russian
+				 * @brief Средний ярус радикс-карты: места, держащие листы
+				 *
+				 * \~english
+				 * @brief Radix map middle tier: slots holding leaves
+				 *
+				 * \~
+				 */
+				using mid_t = atomic <leaf_t *>;
+				/**
+				 * \~russian
+				 * @brief Корень радикс-карты: места, держащие средние ярусы
+				 *
+				 * \~english
+				 * @brief Radix map root: slots holding middle tiers
+				 *
+				 * \~
+				 */
+				using root_t = atomic <mid_t *>;
+			public:
+				/**
+				 * \~russian
+				 * @brief Запись таблицы поиска куска по адресу
+				 *
+				 * \~english
+				 * @brief Chunk lookup table record by address
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Registry {
+					/**
+					 * \~russian
+					 * @brief Размер взятой под таблицу области в байтах
+					 *
+					 * @details Хранится ВЫДАННЫЙ источником размер, а не запрошенный: источник
+					 *          округляет запрос по своему зерну, и таблица в 1024 места просит
+					 *          8192 байта, а у систем со страницей в 16384 получает вдвое больше.
+					 *          Отдай мы её запрошенным размером - счёт взятого у системы уползал
+					 *          бы вверх на каждом перестроении, и заказанный приложением потолок
+					 *          закрывал бы выдачу тем раньше, чем дольше работа.
+					 *
+					 * \~english
+					 * @brief A size of a region taken under a table in bytes
+					 *
+					 * @details A size ISSUED by a source is stored, and not a requested one: a source
+					 *          rounds a request by its own grain, and a table of 1024 places asks
+					 *          8192 bytes, and at the systems with a page of 16384 gets twice more.
+					 *          Had we given it a requested size - a count of what was taken from the system would creep
+					 *          up on every rebuilding, and a ceiling ordered by an application
+					 *          would close an issue the earlier, the longer a work.
+					 *
+					 * \~
+					 */
+					size_t region;
+					/**
+					 * \~russian
+					 * @brief Длина таблицы поиска в местах
+					 *
+					 * \~english
+					 * @brief Length of a search table in places
+					 *
+					 * \~
+					 */
+					size_t length;
+					/**
+					 * \~russian
+					 * @brief Места таблицы поиска
+					 *
+					 * @details Читаются БЕЗ замка кучи - разбором адреса на пути освобождения
+					 *          (`discover`), пока `enroll` под замком вносит новый кусок ПРЯМО в
+					 *          действующую таблицу. Оттого места неделимы, как `index`/`tags`
+					 *          куска: обычный указатель дал бы состязание в глазах средств
+					 *          проверки, а на слабоупорядоченной ARM64 читатель застал бы
+					 *          опубликованный слот с ещё невидимыми полями куска. Запись живого
+					 *          слота идёт релизом, чтение - захватом; перенос при перестроении
+					 *          идёт в НЕ опубликованную таблицу и виден через релиз самой записи.
+					 *
+					 * \~english
+					 * @brief Places of a search table
+					 *
+					 * @details They are read WITHOUT a lock of a heap - by a parsing of an address on a release path
+					 *          (`discover`), while `enroll` under a lock enters a new chunk RIGHT into
+					 *          an acting table. Therefore the places are indivisible, as `index`/`tags`
+					 *          of a chunk: an ordinary pointer would give a race in the eyes of the check
+					 *          means, and on a weakly ordered ARM64 a reader would catch
+					 *          a published slot with the fields of a chunk still invisible. A writing of a live
+					 *          slot goes by a release, a reading - by an acquire; a transfer at a rebuilding
+					 *          goes into a NOT published table and is seen through a release of the record itself.
+					 *
+					 * \~
+					 */
+					atomic <chunk_t *> * table;
+					/**
+					 * \~russian
+					 * @brief Предыдущая запись таблицы, оставленная перестроением
+					 *
+					 * \~english
+					 * @brief The previous record of the table, left by rebuilding
+					 *
+					 * \~
+					 */
+					struct Registry * previous;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Registry() noexcept;
+				} registry_t;
+			private:
+				// Признак отказа кучи в росте из-за потолка
+				bool _jammed;
+				// Запрет обращаться к источнику сверх уже взятого
+				bool _confined;
+			private:
+				// Наименьший отдаваемый системе кусок в байтах
+				size_t _block;
+				// Потолок взятого у источника в байтах
+				size_t _limit;
+				/**
+				 * Число областей, изъятых из списков на время отдачи системе
+				 *
+				 * Обход отдачи изымает область ПРЕЖДЕ обращения к источнику и отпускает
+				 * замок кучи на время этого обращения: оставленную в списке область успел
+				 * бы выдать другой поток, а мы вслед за тем отдали бы её содержимое
+				 * системе. Но под заданным потолком кучи изъятие это оборачивается отказом
+				 * выдачи на пустом месте: расти некуда, свободного нет, а память есть - она
+				 * лежит изъятой и вот-вот вернётся. Оттого число это и считается: по нему
+				 * слой выше отличает настоящую нехватку от мимолётной
+				 */
+				size_t _pending;
+				// Число областей, освобождённых без слияния с соседями
+				size_t _unmerged;
+				// Число кусков, внесённых в таблицу
+				size_t _enrolled;
+				// Остаток текущего куска памяти под учётные записи
+				size_t _metaleft;
+			private:
+				// Отсрочка отдачи памяти системе в миллисекундах
+				int64_t _delay;
+			private:
+				// Состояние кучи
+				state_t _state;
+			private:
+				// Список свободных областей, не помещающихся в списки по числу страниц
+				span_t * _large;
+				// Список повторно используемых учётных записей областей
+				span_t * _spare;
+				// Списки свободных областей по числу страниц
+				span_t * _lists[LISTS + 1];
+			private:
+				// Общий список взятых у источника кусков
+				chunk_t * _chunks;
+				// Источник страниц
+				source_t * _source;
+			private:
+				// Текущий кусок памяти под учётные записи
+				uint8_t * _meta;
+			private:
+				// Общий список кусков памяти под учётные записи
+				void * _metaChunks;
+			private:
+				// Корень радикс-карты разрядов по страницам
+				atomic <root_t *> _root;
+				/**
+				 * Таблица поиска куска по адресу
+				 *
+				 * Куски выровнены по своему размеру, оттого начало куска берётся у любого
+				 * адреса одной маской, а таблица отвечает лишь на вопрос, наш ли это кусок.
+				 * Перебор списка кусков для того негоден: он зовётся на каждом
+				 * освобождении, а не однажды при разборе сбоя
+				 *
+				 * Таблица и длина её лежат ОДНОЙ записью, сменяемой неделимо. Порознь их
+				 * читатель без замка застал бы вразнобой - новую длину при прежней
+				 * таблице, - и ушёл бы за её конец. Прежние записи при перестроении НЕ
+				 * отдаются источнику: читатель волен быть внутри одной из них. Теряется
+				 * на этом менее половины действующей таблицы: длина удваивается, и все
+				 * прежние вместе короче нынешней
+				 */
+				atomic <registry_t *> _registry;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод выдачи памяти под учётную запись
+				 *
+				 * @param size требуемый размер в байтах
+				 * @return     адрес выданной памяти либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating memory for an accounting record
+				 *
+				 * @param size required size in bytes
+				 * @return     address of the allocated memory or nullptr
+				 *
+				 * \~
+				 */
+				void * meta(const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод взятия у источника нового куска
+				 *
+				 * @return взятый кусок либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of taking a new chunk from the source
+				 *
+				 * @return the taken chunk or nullptr
+				 *
+				 * \~
+				 */
+				chunk_t * grow() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод внесения области в список свободных
+				 *
+				 * @param span вносимая область
+				 *
+				 * \~english
+				 * @brief Method of inserting a span into the free list
+				 *
+				 * @param span the span being inserted
+				 *
+				 * \~
+				 */
+				void push(span_t * span) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод изъятия области из списка свободных
+				 *
+				 * @param span изымаемая область
+				 *
+				 * \~english
+				 * @brief Method of removing a span from the free list
+				 *
+				 * @param span the span being removed
+				 *
+				 * \~
+				 */
+				void pull(span_t * span) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска свободной области требуемого размера
+				 *
+				 * @param pages требуемое число страниц
+				 * @return      найденная область либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of finding a free span of the required size
+				 *
+				 * @param pages required number of pages
+				 * @return      found span or nullptr
+				 *
+				 * \~
+				 */
+				span_t * search(const size_t pages) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод слияния области с соседями по куску
+				 *
+				 * @param span сливаемая область
+				 * @return     область после слияния
+				 *
+				 * \~english
+				 * @brief Method of merging a span with its neighbours in a chunk
+				 *
+				 * @param span the span being merged
+				 * @return     span after merging
+				 *
+				 * \~
+				 */
+				span_t * merge(span_t * span) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод слияния отложенных областей
+				 *
+				 * @note Зовётся, лишь когда поиск области не удался, и при отдаче памяти
+				 *       системе. Слияние при каждом освобождении обходилось дорого:
+				 *       область, слитая с соседями, вырастает до целого куска, и запись
+				 *       её в указатели куска идёт по всем 512 страницам - а следующая же
+				 *       выдача делит её обратно и пишет снова. Замер показал, что на этом
+				 *       уходило около семи десятых времени пути выдачи сверх разрядов
+				 *
+				 * \~english
+				 * @brief Method of merging the deferred spans
+				 *
+				 * @note Called only when the span search failed, and when returning memory
+				 *       to the system. Merging on every free was expensive: a span merged
+				 *       with neighbours grows to a whole chunk, and writing it into the
+				 *       chunk pointers goes over all 512 pages - while the very next
+				 *       allocation splits it back and writes again. The measurement showed
+				 *       about seven tenths of the beyond-class allocation path time went
+				 *       into this
+				 *
+				 * \~
+				 */
+				void compact() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод записи области в указатели куска
+				 *
+				 * @param span записываемая область
+				 *
+				 * \~english
+				 * @brief Method of writing a span into the chunk pointers
+				 *
+				 * @param span the span being written
+				 *
+				 * \~
+				 */
+				void mark(span_t * span) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проставления меток разрядов по страницам радикс-карты
+				 *
+				 * @note Заводит корень, средние ярусы и листы по мере надобности, а метки
+				 *       пишет за барьером отпускания, поставленным звавшим: читатель
+				 *       берёт их захватом в `classify`
+				 *
+				 * @param addr  адрес первой страницы диапазона
+				 * @param pages число страниц диапазона
+				 * @param tag   проставляемая метка разряда
+				 *
+				 *
+				 * \~english
+				 * @brief Method of setting class tags on radix map pages
+				 *
+				 * @note Creates the root, middle tiers and leaves as needed, and writes the tags
+				 *       behind a release barrier set by the caller: the reader takes them with an
+				 *       acquire in `classify`
+				 *
+				 * @param addr  address of the first page of the range
+				 * @param pages number of pages in the range
+				 * @param tag   class tag being set
+				 *
+				 * \~
+				 */
+				void paint(const void * addr, const size_t pages, const uint8_t tag) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перестроения таблицы поиска куска по адресу
+				 *
+				 * @param length требуемая длина таблицы в местах
+				 * @return       признак перестроения таблицы
+				 *
+				 * \~english
+				 * @brief Method of rebuilding the chunk lookup table
+				 *
+				 * @param length required table length in slots
+				 * @return       table rebuild flag
+				 *
+				 * \~
+				 */
+				bool rehash(const size_t length) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод внесения куска в таблицу поиска
+				 *
+				 * @param chunk вносимый кусок
+				 * @return      признак внесения куска
+				 *
+				 * \~english
+				 * @brief Method of enrolling a chunk into the lookup table
+				 *
+				 * @param chunk the chunk being enrolled
+				 * @return      enrollment flag
+				 *
+				 * \~
+				 */
+				bool enroll(chunk_t * chunk) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска куска, которому принадлежит адрес
+				 *
+				 * @param addr разбираемый адрес
+				 * @return     найденный кусок либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of looking up the chunk an address belongs to
+				 *
+				 * @param addr address being resolved
+				 * @return     found chunk or nullptr
+				 *
+				 * \~
+				 */
+				chunk_t * discover(const void * addr) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод заведения кучи
+				 *
+				 * @param source   источник страниц
+				 * @param arena    занимаемая при заведении область в байтах
+				 * @param confined запрет обращаться к источнику сверх занятого
+				 * @return         признак заведения кучи
+				 *
+				 * \~english
+				 * @brief Method of initializing the heap
+				 *
+				 * @param source   page source
+				 * @param arena    area to take at initialization in bytes
+				 * @param confined ban on going to the source beyond what is taken
+				 * @return         sign of successful initialization
+				 *
+				 * \~
+				 */
+				bool init(source_t * source, const size_t arena, const bool confined) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод занятия области у заведённой кучи
+				 *
+				 * @note Нужен затем, что у систем ELF подмена именами работает с самого
+				 *       запуска процесса: куча заводится на первой же выдаче стандартной
+				 *       библиотеки, задолго до захвата, и заказанного приложением при
+				 *       заведении там не знает никто. Дозанимает НЕДОСТАЮЩЕЕ, а не
+				 *       заказанное целиком: повторный вызов не обязан удваивать взятое
+				 *
+				 * @param arena    занимаемая область в байтах
+				 * @param confined запрет обращаться к источнику сверх занятого
+				 * @return         признак занятия требуемой области
+				 *
+				 * \~english
+				 * @brief Method of occupying an area of an already initialized heap
+				 *
+				 * @note Needed because on ELF systems name substitution works from process
+				 *       startup: the heap is established on the very first standard library
+				 *       allocation, long before capture, and nobody there knows what the
+				 *       application ordered at initialization. Takes the MISSING part, not the
+				 *       whole requested area
+				 *
+				 * @param arena    area to occupy in bytes
+				 * @param confined ban on going to the source beyond what is taken
+				 * @return         sign of successful occupation
+				 *
+				 * \~
+				 */
+				bool occupy(const size_t arena, const bool confined) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разрушения кучи
+				 *
+				 * @note Отдаёт источнику всё взятое, включая память учётных записей
+				 *
+				 * \~english
+				 * @brief Method of destroying the heap
+				 *
+				 * @note Returns everything taken to the source, including the accounting record
+				 *       memory
+				 *
+				 * \~
+				 */
+				void destroy() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод выдачи области страниц
+				 *
+				 * @param pages  требуемое число страниц кучи
+				 * @param served действительно выданное число страниц, либо nullptr
+				 * @return       адрес выданной области либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating a region of pages
+				 *
+				 * @param pages  required number of heap pages
+				 * @param served actually allocated number of pages, or nullptr
+				 * @return       address of the allocated region or nullptr
+				 *
+				 * \~
+				 */
+				void * alloc(const size_t pages, size_t * served = nullptr) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод возврата области страниц
+				 *
+				 * @note Время передаётся снаружи, а не берётся у системы: куча зовётся
+				 *       из-под замка распределителя, и обращение к часам оттуда стоило бы
+				 *       перехода в ядро на каждом освобождении
+				 *
+				 * @param addr адрес возвращаемой области
+				 * @param now  текущее время в миллисекундах
+				 * @return     признак возврата области
+				 *
+				 * \~english
+				 * @brief Method of returning a region of pages
+				 *
+				 * @note The time is passed from the outside rather than taken from the system:
+				 *       the heap is called under the allocator lock, and a clock call from there
+				 *       would cost a kernel transition on every free
+				 *
+				 * @param addr address of the region being returned
+				 * @param now  current time in milliseconds
+				 * @return     sign of the region having been returned
+				 *
+				 * \~
+				 */
+				bool free(void * addr, const uint64_t now) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод расширения выданной области на месте
+				 *
+				 * @details Растит область за счёт СОСЕДНЕЙ свободной, лежащей сразу за
+				 *          нею в том же куске. Удаётся это не всегда - сосед вправе быть
+				 *          занят, мал или отсутствовать вовсе, - и отказ здесь не
+				 *          ошибка: звавший переносит содержимое обычным путём.
+				 *
+				 * @note Ради этого метод и заведён: перенос содержимого при росте стоит
+				 *       копирования всего блока, и на цепочке удвоений цена его выходит
+				 *       квадратичной. Замером цепочка 16 байт → 256 КБ шла у нас 14 750
+				 *       мкс против 2 499 у системного распределителя, тогда как ОДНО
+				 *       копирование той же цепочки стоит 4 440 - системный попросту не
+				 *       копировал
+				 *
+				 * @param addr  адрес начала расширяемой области
+				 * @param pages требуемое число страниц кучи
+				 * @return      признак состоявшегося расширения
+				 *
+				 * \~english
+				 * @brief Method of expanding an allocated region in place
+				 *
+				 * @details Grows the region at the expense of the ADJACENT free span lying
+				 *          right behind it in the same chunk. This does not always work -
+				 *          the neighbour may be occupied, small, or absent entirely - and
+				 *          refusal here is not an error: the caller moves the content by
+				 *          ordinary means.
+				 *
+				 * @note This is why the method exists: moving the content while growing costs a
+				 *       copy of the whole block, and on a doubling chain its price becomes
+				 *       quadratic. Measured, the chain 16 bytes -> 256 KB took 14 750 us for us
+				 *       against 2 499 for the system allocator, while a SINGLE copy of the same
+				 *       chain costs 4 440 - the system allocator simply did not copy
+				 *
+				 * @param addr  address of the region being expanded
+				 * @param pages new size in pages
+				 * @return      sign of the expansion having taken place
+				 *
+				 * \~
+				 */
+				bool expand(void * addr, const size_t pages) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения размера выданной области
+				 *
+				 * @param addr адрес выданной области
+				 * @return     размер области в страницах кучи, либо нуль
+				 *
+				 * \~english
+				 * @brief Method of determining the size of an allocated region
+				 *
+				 * @param addr address of the allocated region
+				 * @return     region size in heap pages, or zero
+				 *
+				 * \~
+				 */
+				size_t size(const void * addr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска области, которой принадлежит адрес
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала найденной области
+				 * @param pages размер найденной области в страницах кучи
+				 * @param live  признак выданной наружу области
+				 * @return      признак того, что адрес принадлежит куче
+				 *
+				 * \~english
+				 * @brief Method of finding the region an address belongs to
+				 *
+				 * @param addr  address being resolved
+				 * @param begin start address of the found region
+				 * @param pages size of the found region in heap pages
+				 * @param live  sign of the region being issued to the outside
+				 * @return      sign of the address belonging to the heap
+				 *
+				 * \~
+				 */
+				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения метки разряда по адресу
+				 *
+				 * @details Быстрый путь освобождения: отвечает меткой разряда одним
+				 *          чтением, не трогая ни указателей страниц, ни учётной записи области.
+				 *
+				 * @note Нуль означает «ответить меткой нельзя»: адрес не наш, либо
+				 *       страница разряду не отдана. Тогда разбор идёт полным путём - через `describe`
+				 *
+				 * @param addr разбираемый адрес
+				 * @param hint место хранения подсказки поиска
+				 * @return     метка разряда, увеличенная на единицу, либо нуль
+				 *
+				 * \~english
+				 * @brief Method of getting the size class tag by address
+				 *
+				 * @details The fast free path: answers with the class tag in a single read,
+				 *          touching neither page pointers nor the span record.
+				 *
+				 * @note Zero means the tag cannot be answered: the address is not ours, or the
+				 *       page is not given to a class. Then resolution goes the full way through `describe`
+				 *
+				 * @param addr address being resolved
+				 * @param hint lookup hint storage location
+				 * @return     class tag, or zero
+				 *
+				 * \~
+				 */
+				__AWH_INLINE__ uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения записи области по адресу блока
+				 *
+				 * @details Разбор для холодных путей слоя выше: возврат блока в стопку
+				 *          области и решение о возврате области куче.
+				 *
+				 * @param addr разбираемый адрес
+				 * @return     запись области страницы адреса, либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of getting the span record of a block address
+				 *
+				 * @details Resolution for the cold paths of the layer above: returning a
+				 *          block to its span stack and deciding on returning the span.
+				 *
+				 * @param addr address being resolved
+				 * @return     span record of the address page, or nullptr
+				 *
+				 * \~
+				 */
+				span_t * scope(const void * addr) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод описания области, которой принадлежит адрес
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала найденной области
+				 * @param pages размер найденной области в страницах кучи
+				 * @param tag   метка владельца найденной области
+				 * @param hint  место хранения подсказки поиска
+				 * @return      признак того, что адрес принадлежит выданной наружу области
+				 *
+				 * \~english
+				 * @brief Method of describing the region an address belongs to
+				 *
+				 * @param addr  address being resolved
+				 * @param begin start address of the found region
+				 * @param pages size of the found region in heap pages
+				 * @param tag   owner tag of the found region
+				 * @param hint  lookup hint storage location
+				 * @return      sign of the address belonging to a region issued outward
+				 *
+				 * \~
+				 */
+				__AWH_INLINE__ bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод пометки выданной области
+				 *
+				 * @param addr адрес начала выданной области
+				 * @param tag  проставляемая метка владельца
+				 * @return     признак пометки области
+				 *
+				 * \~english
+				 * @brief Method of tagging an allocated region
+				 *
+				 * @param addr address of the region
+				 * @param tag  class tag being set
+				 * @return     sign of the tag having been set
+				 *
+				 * \~
+				 */
+				bool tag(void * addr, const uint32_t tag) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод отдачи системе свободной памяти
+				 *
+				 * @param now текущее время в миллисекундах
+				 * @param all отдавать всё, не глядя на отсрочку
+				 * @return    объём отданной системе памяти в байтах
+				 *
+				 * \~english
+				 * @brief Method of returning free memory to the system
+				 *
+				 * @param now current time in milliseconds
+				 * @param all return everything, ignoring the delay
+				 * @return    volume returned to the system in bytes
+				 *
+				 * \~
+				 */
+				size_t purge(const uint64_t now, const bool all) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод изъятия областей, подлежащих отдаче системе
+				 *
+				 * @note Половина отдачи, идущая ПОД ЗАМКОМ. Вторая половина - обращение к
+				 *       источнику - обязана идти снаружи: то системные вызовы, и держать
+				 *       на них замок кучи значило бы заставить прочие потоки кружить всё
+				 *       время работы ядра
+				 *
+				 * @param now    текущее время в миллисекундах
+				 * @param all    отдавать всё, не глядя на отсрочку
+				 * @param spans  место под изъятые области
+				 * @param limit  наибольшее число изымаемых областей
+				 * @param cursor место перебираемого списка, откуда продолжать
+				 * @return       число изъятых областей
+				 *
+				 * \~english
+				 * @brief Method of detaching the regions to be returned to the system
+				 *
+				 * @note The half of the return that runs UNDER THE LOCK. The second half - the
+				 *       call to the source - must run outside: those are system calls, and
+				 *       holding the heap lock across them would make the other threads spin for
+				 *       the whole time the kernel works
+				 *
+				 * @param now    current time in milliseconds
+				 * @param all    return everything regardless of the delay
+				 * @param spans  place for the detached regions
+				 * @param limit  maximum number of regions to detach
+				 * @param cursor position in the traversed list to continue from
+				 * @return       number of detached regions
+				 *
+				 * \~
+				 */
+				size_t detach(const uint64_t now, const bool all, void ** spans, const size_t limit, size_t * cursor) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод возврата изъятых областей в списки свободных
+				 *
+				 * @note Половина отдачи, идущая ПОД ЗАМКОМ, вслед за обращением к источнику
+				 *
+				 * @param spans изъятые области
+				 * @param count число изъятых областей
+				 * @param given признаки состоявшейся отдачи по каждой области
+				 * @return      объём отданной системе памяти в байтах
+				 *
+				 * \~english
+				 * @brief Method of returning the detached regions to the free lists
+				 *
+				 * @note The half of the return that runs UNDER THE LOCK, following the call to
+				 *       the source
+				 *
+				 * @param spans detached regions
+				 * @param count number of detached regions
+				 * @param given signs of the return having taken place for each region
+				 * @return      amount of memory returned to the system in bytes
+				 *
+				 * \~
+				 */
+				size_t attach(void ** spans, const size_t count, const bool * given) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отдачи содержимого изъятой области источнику
+				 *
+				 * @note Половина отдачи, идущая БЕЗ ЗАМКА. Изъятая область никому не
+				 *       выдаётся и никем не сливается, а источник состояния не хранит, -
+				 *       оттого обращение это замка не требует
+				 *
+				 * @param span изъятая область
+				 * @return     признак состоявшейся отдачи
+				 *
+				 * \~english
+				 * @brief Method of discharging a detached region to the source
+				 *
+				 * @note The region is given back to the source and the memory is released: the
+				 *       page fault cost is paid on the next allocation of the same size
+				 *
+				 * @param span detached region record
+				 * @return     number of pages actually discharged
+				 *
+				 * \~
+				 */
+				bool discharge(void * span) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод задания порядка отдачи памяти системе
+				 *
+				 * @param delay отсрочка в миллисекундах: -1 - не отдавать вовсе
+				 * @param block наименьший отдаваемый кусок в байтах
+				 *
+				 * \~english
+				 * @brief Method of setting the memory release policy
+				 *
+				 * @param delay delay in milliseconds: -1 means never return
+				 * @param block smallest returned piece in bytes
+				 *
+				 * \~
+				 */
+				void policy(const int64_t delay, const size_t block) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод задания потолка взятого у источника
+				 *
+				 * @note Потолок считается по ВЗЯТОМУ у источника, а не по выданному
+				 *       прикладному коду: обращаться к системе сверх него куча не станет,
+				 *       но уже взятое раздаёт до последней страницы
+				 *
+				 * @param limit потолок в байтах: нуль - без потолка
+				 *
+				 * \~english
+				 * @brief Method of setting the ceiling of memory taken from the source
+				 *
+				 * @note The ceiling applies to the page heap and guards: hitting it, the heap
+				 *       answers with refusal
+				 *
+				 * @param limit ceiling in bytes: zero means no ceiling
+				 *
+				 * \~
+				 */
+				void ceiling(const size_t limit) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения упёртости кучи в потолок
+				 *
+				 * @note Признак снимается опросом: он взводится, когда куче отказано в
+				 *       росте, и держится до следующего опроса
+				 *
+				 * @return признак упёртости кучи в потолок
+				 *
+				 * \~english
+				 * @brief Method of determining whether the heap has hit its ceiling
+				 *
+				 * @note The flag is set by the allocation path and cleared by the purge
+				 *       path
+				 *
+				 * @return sign of the heap having hit its ceiling
+				 *
+				 * \~
+				 */
+				bool jammed() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения числа областей, изъятых на время отдачи
+				 *
+				 * @note Ненулевой ответ означает, что отказ выдачи мимолётен: изъятые
+				 *       области вернутся в списки, едва обход закончит обращение к системе
+				 *
+				 * @return число изъятых областей
+				 *
+				 * \~english
+				 * @brief Method of getting the number of spans withheld for purging
+				 *
+				 * @note The value is approximate: it is read without locks, and other
+				 *       threads may be changing the lists at the same time. The exact
+				 *       value is not needed for the purpose of this method. The count
+				 *       is updated by the allocation and free paths
+				 *
+				 * @return number of withheld spans
+				 *
+				 * \~
+				 */
+				size_t pending() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод возврата изъятых областей в списки у потомка ветвления
+				 *
+				 * @note Звать ТОЛЬКО у потомка ветвления. Изъятые области живут в местном
+				 *       массиве на стеке отдающего потока, а ветвление переносит потомку
+				 *       области и счётчик, но не поток, обязанный вернуть их на место:
+				 *       без возврата они выпадают из кучи навсегда. Обход идёт по кускам,
+				 *       а не по спискам - изъятая область ни в одном списке не лежит
+				 *
+				 * @return число возвращённых областей
+				 *
+				 * \~english
+				 * @brief Method of returning withheld spans to the lists in a fork child
+				 *
+				 * @note Call ONLY in a fork child. The detached regions live in a local array
+				 *       on the stack of the returning thread, and the fork hands the child the
+				 *       regions and the counter, but not the thread obliged to put them back:
+				 *       without the return they drop out of the heap forever. The traversal
+				 *       goes over chunks, not over lists - a detached region lies in no list
+				 *       at all
+				 *
+				 * @return number of spans returned to the lists
+				 *
+				 * \~
+				 */
+				size_t reclaim() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод получения состояния кучи
+				 *
+				 * @return состояние кучи
+				 *
+				 * \~english
+				 * @brief Method of getting the heap state
+				 *
+				 * @return heap state
+				 *
+				 * \~
+				 */
+				const state_t & state() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Pages() noexcept;
+		} pages_t;
+	};
+};

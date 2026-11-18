@@ -1,0 +1,1647 @@
+/**
+ * @file emitter.hpp
+ * @date 2026-08-02
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл порождения машинного кода ARM64 — класс Emitter, собирающий
+ *        последовательность команд процессора с отложенным разрешением переходов по меткам
+ *
+ * @section emitter_decisions Намеренные решения
+ *
+ * @details Перечисленное ниже выглядит несообразностью, но выбрано осознанно и
+ *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
+ *          каждый раз с одних и тех же выводов.
+ *
+ *          <b>Порождаемый код перемещаем: прямых адресов он не содержит.</b> Всё,
+ *          что находится вне порождённого кода - таблицы принадлежности байтов,
+ *          подпрограммы разбора, набор классов символов, - достигается смещением
+ *          от единственного указателя, передаваемого при вызове в регистре
+ *          обстановки. Решение принято до написания кодогенератора намеренно:
+ *          задним числом оно не вставляется, а без него порождённый код нельзя
+ *          ни сохранить на диск, ни загрузить обратно, тогда как надстройка Grok
+ *          собирает тысячи выражений на запуске и сборка эта стоит секунд.
+ *          Цена решения - одно лишнее обращение к памяти на вызов подпрограммы.
+ *
+ *          <b>Места кадра адресуются отдельным регистром, а не указателем
+ *          стека.</b> Указателем стека они адресовались прежде, и порождению
+ *          сопоставителя это было безразлично: смещения мест внутри кадра
+ *          от того не менялись. Вызов вложенный и проход повторения, однако,
+ *          требуют записи своей на каждый уровень, а число уровней при
+ *          порождении не известно. Отдельный регистр позволяет сменять адрес
+ *          записи, оставляя смещения мест прежними, - и потому ни одно
+ *          из обращений порождения не меняется при заведении вложенности.
+ *
+ *          Набору x86-64 регистр этот отведён оберегаемый вызываемым: младших
+ *          регистров там свободных нет вовсе - все девять заняты. Оттого вход
+ *          сохраняет его наравне с прочими, а число сохранений становится
+ *          чётным, и указатель стека к границе шестнадцати возвращает придача
+ *          восьми байтов к кадру. Набору ARM64 отведён регистр младший:
+ *          свободных там довольно, а сохранность его при вызовах подпрограмм
+ *          обеспечивает сам сопоставитель, откладывая его в область сохранения.
+ *
+ *          <b>Переходы разрешаются после порождения, а не при нём.</b> Переход
+ *          вперёд ссылается на код, ещё не порождённый, поэтому его смещение
+ *          при порождении неизвестно. Команда размещается пустой, а её положение
+ *          запоминается; разрешение проходит запомненные положения и вписывает
+ *          смещения, когда все метки расставлены. Порождение в два прохода взамен
+ *          этого потребовало бы порождать всё дважды.
+ *
+ *          <b>Выход смещения перехода за пределы поля команды - отказ, а не обрез.</b>
+ *          Условный переход ARM64 несёт девятнадцать разрядов смещения, обычный -
+ *          двадцать шесть, и выражение, порождающее код длиннее, кодогенерации
+ *          не получает вовсе. Обрез смещения дал бы переход в середину чужой
+ *          команды - отказ, неотличимый от порчи памяти.
+ *
+ * \~english
+ * @brief Header file of the generation of ARM64 machine code — the Emitter class, which assembles
+ *        a sequence of processor instructions with deferred resolution of the jumps by labels
+ *
+ * @section emitter_decisions Deliberate decisions
+ *
+ * @details What is listed below looks like an incongruity, but was chosen deliberately and
+ *          is not subject to correction. The section is introduced so that reading the code does not start
+ *          every time from the same conclusions.
+ *          <b>The generated code is relocatable: it holds no direct addresses.</b> Everything
+ *          that lies outside the generated code — the byte belonging tables,
+ *          the parsing subroutines, the set of character classes — is reached by an offset
+ *          from a single pointer passed at the call in the context
+ *          register. The decision was taken before writing the code generator deliberately:
+ *          it cannot be inserted after the fact, and without it the generated code can neither
+ *          be saved to disk nor loaded back, whereas the Grok superstructure
+ *          builds thousands of expressions at startup and that building costs seconds.
+ *          The price of the decision is one extra memory reference per subroutine call.
+ *          <b>The jumps are resolved after the generation rather than during it.</b> A forward
+ *          jump refers to code not yet generated, therefore its offset
+ *          is unknown at generation time. The instruction is placed empty, and its position
+ *          is remembered; the resolution walks the remembered positions and writes in the
+ *          offsets when all the labels have been laid out. Generating in two passes instead of
+ *          that would require generating everything twice.
+ *          <b>A jump offset going beyond the bounds of the instruction field is a refusal rather than a truncation.</b>
+ *          An ARM64 conditional jump carries nineteen bits of offset, an ordinary one
+ *          twenty-six, and an expression generating longer code receives no code
+ *          generation at all. Truncating the offset would give a jump into the middle of a foreign
+ *          instruction — a fault indistinguishable from memory corruption.
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#pragma once
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <vector>
+#include <cstddef>
+#include <cstdint>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "common.hpp"
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include "../sys/macro/suppress.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён модуля регулярных выражений
+	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
+	 */
+	namespace regex {
+		/**
+		 * \~russian
+		 * @brief Значение метки, перехода к какой не размещено
+		 *
+		 * \~english
+		 * @brief Value of a label no jump to which has been placed
+		 *
+		 * \~
+		 */
+		constexpr size_t INVALID_LABEL = static_cast <size_t> (~0ull);
+
+		/**
+		 * \~russian
+		 * @brief Класс порождения машинного кода ARM64
+		 *
+		 * @details Класс собирает последовательность команд процессора, откладывая
+		 *          разрешение переходов до расстановки всех меток. Порождённый код
+		 *          перемещаем: обращения за его пределы выполняются смещением
+		 *          от регистра обстановки.
+		 *
+		 * \~english
+		 * @brief Class of the generation of ARM64 machine code
+		 *
+		 * @details The class assembles a sequence of processor instructions, deferring
+		 *          the resolution of the jumps until all the labels have been laid out. The generated code
+		 *          is relocatable: references beyond its bounds are performed by an offset
+		 *          from the context register.
+		 *
+		 * \~
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Emitter {
+			public:
+				/**
+				 * \~russian
+				 * @brief Номера регистров соглашения о вызове порождённого кода
+				 *
+				 * @details Порождённый сопоставитель вызывается как функция вида
+				 *          «bool (const char * text, size_t size, size_t start,
+				 *          size_t * bounds, const void * context)», отчего первые
+				 *          пять её доводов приходят в регистрах с нулевого по четвёртый.
+				 *          Регистр обстановки удерживается на всём протяжении
+				 *          сопоставления: через него достигается всё внешнее.
+				 *
+				 * \~english
+				 * @brief Register numbers of the calling convention of the generated code
+				 *
+				 * @details The generated matcher is called as a function of the form
+				 *          «bool (const char * text, size_t size, size_t start,
+				 *          size_t * bounds, const void * context)», which is why its first
+				 *          five arguments arrive in the registers from the zeroth to the fourth.
+				 *          The context register is held for the whole duration of the
+				 *          matching: everything external is reached through it.
+				 *
+				 * \~
+				 */
+				enum class reg_t : uint8_t {
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64 под операционную систему Windows
+					 *
+					 * \~english
+					 * If the processor is x86_64 for OS Windows
+					 *
+					 * \~
+					 */
+					#if(defined(__x86_64__) || defined(_M_X64)) && defined(_WIN32)
+						/**
+						 * \~russian
+						 * Номера регистров набора команд x86-64 под Windows
+						 *
+						 * @details Windows держится соглашения своего, а не
+						 *          System V: доводы вызова приходят в регистрах
+						 *          rcx, rdx, r8 и r9, довод пятый передаётся
+						 *          кадром вызова, а оберегаемыми вызываемым
+						 *          числятся rbx, rbp, rsi, rdi и r12-r15.
+						 *          Отображение сложено так, чтобы четыре первых
+						 *          довода легли в те же назначения, что и
+						 *          в System V: подпрограммы обстановки принимают
+						 *          ровно четыре довода, отчего порождение вызова
+						 *          их остаётся общим обоим соглашениям.
+						 *
+						 *          Адрес таблицы обстановки, довод пятый, входом
+						 *          вычитывается из кадра вызова в регистр rdi:
+						 *          он оберегаем вызываемым, отчего переживает
+						 *          вызовы подпрограмм без сохранения.
+						 *
+						 * \~english
+						 * Register numbers of the x86-64 instruction set under Windows
+						 *
+						 * @details Windows keeps to a convention of its own rather than
+						 *          System V: the call arguments arrive in the registers
+						 *          rcx, rdx, r8 and r9, the fifth argument is passed
+						 *          by the call frame, and the callee-saved ones
+						 *          are rbx, rbp, rsi, rdi and r12-r15.
+						 *          The mapping is laid out so that the first four
+						 *          arguments fall into the same assignments as
+						 *          in System V: the context subroutines take
+						 *          exactly four arguments, which is why generating a call to
+						 *          them stays common to both conventions.
+						 *          The address of the context table, the fifth argument, is read out
+						 *          of the call frame by the entry into the rdi register:
+						 *          it is callee-saved, which is why it survives
+						 *          subroutine calls without being saved.
+						 *
+						 * \~
+						 */
+						TEXT    = 0x01, // Адрес начала текста сопоставления, регистр rcx
+						SIZE    = 0x02, // Размер текста сопоставления в байтах, регистр rdx
+						START   = 0x08, // Позиция начала попытки сопоставления, регистр r8
+						BOUNDS  = 0x09, // Адрес набора границ обнаруженного совпадения, регистр r9
+						CONTEXT = 0x07, // Адрес таблицы адресов обстановки исполнения, регистр rdi
+						RESULT  = 0x00, // Результат сопоставления, выдаваемый вызывающей стороне, регистр rax
+						CURSOR  = 0x0A, // Позиция сопоставления в тексте, регистр r10
+						BEGIN   = 0x0B, // Позиция начала обнаруженного совпадения, регистр r11
+						RECORD  = 0x0E, // Адрес записи кадра исполняемого вызова, регистр r14
+						/**
+						 * \~russian
+						 * Адрес вершины области записей, регистр r13
+						 *
+						 * @details Отведение записи ведётся вершиной, а обращение
+						 *          к местам её - регистром записи: снятие уровня
+						 *          вершины не двигает, покуда отступление в него
+						 *          возможно. Эталон PCRE2 держит вершину области
+						 *          в регистре тем же порядком.
+						 *
+						 * \~english
+						 * Address of the summit of the area of records, register r13
+						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
+						 * \~
+						 */
+						SUMMIT  = 0x0D, // Адрес вершины области записей
+						LETTER  = 0x06, // Значение сопоставляемого байта текста, регистр rsi
+						SCRATCH = 0x00, // Промежуточное значение вычисления, регистр rax
+						SPARE   = 0x03, // Второе промежуточное значение вычисления, регистр rbx
+						KEEPER  = 0x0C, // Значение, сохраняемое между шагами сопоставления, регистр r12
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
+					#elif defined(__x86_64__) || defined(_M_X64)
+						/**
+						 * \~russian
+						 * Номера регистров набора команд x86-64
+						 *
+						 * @details Доводы вызова приходят в регистрах rdi, rsi, rdx,
+						 *          rcx и r8, а итог выдаётся в rax - таково соглашение
+						 *          System V. Промежуточное значение отведено тому же
+						 *          rax, что и итог: они не бывают нужны одновременно,
+						 *          а регистров, вызовом не затираемых, всего девять,
+						 *          и одиннадцати назначениям их не достаёт.
+						 *
+						 * \~english
+						 * Register numbers of the x86-64 instruction set
+						 *
+						 * @details The call arguments arrive in the registers rdi, rsi, rdx,
+						 *          rcx and r8, and the result is yielded in rax — such is the System V
+						 *          convention. The intermediate value is allotted the same
+						 *          rax as the result: they are never needed at the same time,
+						 *          and there are only nine registers not clobbered by a call,
+						 *          which is not enough for eleven assignments.
+						 *
+						 * \~
+						 */
+						TEXT    = 0x07, // Адрес начала текста сопоставления, регистр rdi
+						SIZE    = 0x06, // Размер текста сопоставления в байтах, регистр rsi
+						START   = 0x02, // Позиция начала попытки сопоставления, регистр rdx
+						BOUNDS  = 0x01, // Адрес набора границ обнаруженного совпадения, регистр rcx
+						CONTEXT = 0x08, // Адрес таблицы адресов обстановки исполнения, регистр r8
+						RESULT  = 0x00, // Результат сопоставления, выдаваемый вызывающей стороне, регистр rax
+						CURSOR  = 0x09, // Позиция сопоставления в тексте, регистр r9
+						BEGIN   = 0x0A, // Позиция начала обнаруженного совпадения, регистр r10
+						RECORD  = 0x0E, // Адрес записи кадра исполняемого вызова, регистр r14
+						/**
+						 * \~russian
+						 * Адрес вершины области записей, регистр r13
+						 *
+						 * @details Отведение записи ведётся вершиной, а обращение
+						 *          к местам её - регистром записи: снятие уровня
+						 *          вершины не двигает, покуда отступление в него
+						 *          возможно. Эталон PCRE2 держит вершину области
+						 *          в регистре тем же порядком.
+						 *
+						 * \~english
+						 * Address of the summit of the area of records, register r13
+						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
+						 * \~
+						 */
+						SUMMIT  = 0x0D, // Адрес вершины области записей
+						LETTER  = 0x0B, // Значение сопоставляемого байта текста, регистр r11
+						SCRATCH = 0x00, // Промежуточное значение вычисления, регистр rax
+						SPARE   = 0x03, // Второе промежуточное значение вычисления, регистр rbx
+						KEEPER  = 0x0C, // Значение, сохраняемое между шагами сопоставления, регистр r12
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
+					#else
+						TEXT    = 0x00, // Адрес начала текста сопоставления
+						SIZE    = 0x01, // Размер текста сопоставления в байтах
+						START   = 0x02, // Позиция начала попытки сопоставления
+						BOUNDS  = 0x03, // Адрес набора границ обнаруженного совпадения
+						CONTEXT = 0x04, // Адрес таблицы адресов обстановки исполнения
+						RESULT  = 0x00, // Результат сопоставления, выдаваемый вызывающей стороне
+						CURSOR  = 0x05, // Позиция сопоставления в тексте
+						BEGIN   = 0x06, // Позиция начала обнаруженного совпадения
+						RECORD  = 0x0B, // Адрес записи кадра исполняемого вызова
+						/**
+						 * \~russian
+						 * Адрес вершины области записей, регистр x12
+						 *
+						 * @details Отведение записи ведётся вершиной, а обращение
+						 *          к местам её - регистром записи: снятие уровня
+						 *          вершины не двигает, покуда отступление в него
+						 *          возможно. Эталон PCRE2 держит вершину области
+						 *          в регистре тем же порядком.
+						 *
+						 * \~english
+						 * Address of the summit of the area of records, register x12
+						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
+						 * \~
+						 */
+						SUMMIT  = 0x0C, // Адрес вершины области записей
+						LETTER  = 0x07, // Значение сопоставляемого байта текста
+						SCRATCH = 0x08, // Промежуточное значение вычисления
+						SPARE   = 0x09, // Второе промежуточное значение вычисления
+						KEEPER  = 0x0A, // Значение, сохраняемое между шагами сопоставления
+					#endif
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
+					#if defined(__x86_64__) || defined(_M_X64)
+						// Номер регистра связи набора команд x86-64
+						LINK = 0x0D,
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
+					#else
+						// Номер регистра связи прочих наборов команд
+						LINK = 0x1E,
+					#endif
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
+					#if defined(__x86_64__) || defined(_M_X64)
+						// Номер регистра указателя стека набора команд x86-64
+						STACK = 0x04
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
+					#else
+						// Номер регистра указателя стека прочих наборов команд
+						STACK = 0x1F
+					#endif
+				};
+				/**
+				 * \~russian
+				 * @brief Условие выполнения перехода
+				 *
+				 * \~english
+				 * @brief Condition for taking a jump
+				 *
+				 * \~
+				 */
+				enum class cond_t : uint8_t {
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
+					#if defined(__x86_64__) || defined(_M_X64)
+						EQUAL    = 0x04, // Значения равны
+						NOTEQUAL = 0x05, // Значения не равны
+						ABOVE    = 0x03, // Значение не меньше без учёта знака
+						BELOW    = 0x02, // Значение меньше без учёта знака
+						GREATER  = 0x07, // Значение больше без учёта знака
+						LESS     = 0x06  // Значение не больше без учёта знака
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
+					#else
+						EQUAL    = 0x00, // Значения равны
+						NOTEQUAL = 0x01, // Значения не равны
+						ABOVE    = 0x02, // Значение не меньше без учёта знака
+						BELOW    = 0x03, // Значение меньше без учёта знака
+						GREATER  = 0x08, // Значение больше без учёта знака
+						LESS     = 0x09  // Значение не больше без учёта знака
+					#endif
+				};
+			private:
+				/**
+				 * \~russian
+				 * @brief Запись значения регистра в память, только что размещённая
+				 *
+				 * \~english
+				 * @brief A write of a register value to memory, just placed
+				 *
+				 * \~
+				 */
+				typedef struct Stored {
+					// Регистр адреса начала области записи
+					reg_t base;
+					// Регистр записанного значения
+					reg_t source;
+					// Номер записанного значения в области
+					uint32_t index;
+					/**
+					 * \~russian
+					 * @brief Конструктор записи
+					 *
+					 * @param source регистр записанного значения
+					 * @param base   регистр адреса начала области записи
+					 * @param index  номер записанного значения в области
+					 *
+					 * \~english
+					 * @brief Constructor of a record
+					 *
+					 * @param source register of the recorded value
+					 * @param base   register of the base of the record area
+					 * @param index  number of the recorded value in the area
+					 *
+					 * \~
+					 */
+					Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept;
+				} stored_t;
+			/**
+			 * \~russian
+			 * Если процессор принадлежит к E2K
+			 *
+			 * \~english
+			 * If the processor is E2K
+			 *
+			 * \~
+			 */
+			#if defined(__e2k__)
+			private:
+				/**
+				 * \~russian
+				 * @brief Широкая команда процессора, к выдаче отложенная
+				 *
+				 * @details Набор команд e2k исполняет широкую команду, несущую
+				 *          до шести операций каналами. Порождение выдавало по одной
+				 *          операции в команду - занят был один канал из шести, -
+				 *          и уплотнение ведётся откладыванием: команда собранная
+				 *          держится здесь, а операция следующая к ней прирастает,
+				 *          когда канал ей находится и зависимости того не мешают.
+				 *          Наборам команд ARM64 и x86-64 состав этот не нужен вовсе
+				 *          и ими не трогается: команда там одиночная по устройству.
+				 *
+				 * \~english
+				 * @brief A wide processor instruction deferred for emission
+				 *
+				 * @details The e2k instruction set executes a wide instruction carrying
+				 *          up to six operations in channels. The generation emitted one
+				 *          operation per instruction - one channel out of six was busy -
+				 *          and the packing is done by deferral: the assembled instruction
+				 *          is kept here, and the next operation is appended to it when
+				 *          a channel is found for it and the dependencies do not forbid it.
+				 *          The ARM64 and x86-64 instruction sets do not need this state
+				 *          at all and do not touch it: an instruction there is single by design.
+				 *
+				 * \~
+				 */
+				typedef struct Packed {
+					// Признаки наличия начального слога управления
+					bool first;
+					// Признаки наличия конечного слога управления
+					bool second;
+					// Признак наличия отложенной команды
+					bool opened;
+					// Признак наличия слога коротких операций
+					bool stubbed;
+					// Признак наличия слога расширения
+					bool extended;
+					// Количество слогов литералов
+					uint8_t literals;
+					// Маска предикатов, командою записываемых
+					uint8_t predicates;
+					// Слог расширения канала нулевого и признак его наличия
+					uint16_t ales;
+					// Первый признак наличия слога управления
+					uint32_t cs0;
+					// Второй признак наличия слога управления
+					uint32_t cs1;
+					// Слог коротких операций и признак его наличия
+					uint32_t stub;
+					// Маска регистров, командою записываемых
+					uint32_t writes;
+					// Признаки наличия слогов каналов
+					bool has[6];
+					// Слоги арифметико-логических каналов и признаки их наличия
+					uint32_t als[6];
+					// Слоги литералов, младший первым
+					uint32_t lts[2];
+					/**
+					 * \~russian
+					 * @brief Конструктор широкой команды
+					 *
+					 * \~english
+					 * @brief Constructor of a wide command
+					 *
+					 * \~
+					 */
+					explicit Packed() noexcept;
+				} packed_t;
+			private:
+				// Широкая команда процессора, к выдаче отложенная
+				packed_t _packed;
+			#endif
+			private:
+				/**
+				 * \~russian
+				 * @brief Отложенный переход, подлежащий разрешению
+				 *
+				 * \~english
+				 * @brief Deferred jump subject to resolution
+				 *
+				 * \~
+				 */
+				typedef struct Fixup {
+					/**
+					 * \~russian
+					 * @brief Вид команды, смещение к метке несущей
+					 *
+					 * \~english
+					 * @brief Kind of the instruction carrying the offset to a label
+					 *
+					 * \~
+					 */
+					enum class kind_t : uint8_t {
+						JUMP    = 0x00, // Безусловный переход
+						BRANCH  = 0x01, // Переход по условию
+						ADDRESS = 0x02  // Вычисление адреса метки
+					};
+					// Вид команды, смещение к метке несущей
+					kind_t kind;
+					// Номер метки, к какой выполняется переход
+					size_t label;
+					// Положение команды в последовательности
+					size_t position;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Fixup() noexcept;
+				} fixup_t;
+			private:
+				// Флаг отказа порождения машинного кода
+				bool _failed;
+			private:
+				/**
+				 * \~russian
+				 * Количество мест кадра вызова, входом отведённых
+				 *
+				 * @details Место кадра адресуется номером, а размер кадра
+				 *          вычисляется порождением по числу мест, каким оно
+				 *          пользуется. Связи между ними не было никакой:
+				 *          номер, размер кадра превышающий, писался бы за
+				 *          кадр молча, портя стек вызывающего. Ограждение
+				 *          обращает такую запись отказом порождения.
+				 *          Нулевое количество мест ограждения не выполняет -
+				 *          так стоит до размещения входа.
+				 *
+				 * \~english
+				 * The number of the slots of the call frame allocated by the prologue
+				 *
+				 * @details A slot of the frame is addressed by number, and the size of
+				 *          the frame is computed by the generation from the number of slots
+				 *          it uses. There was no tie between them: a number exceeding
+				 *          the size of the frame would be written past the frame silently,
+				 *          corrupting the stack of the caller.
+				 *
+				 * \~
+				 */
+				size_t _seats;
+				/**
+				 * \~russian
+				 * Длина кода на миг завершения ряда записей
+				 *
+				 * @details Значение `SIZE_MAX` означает ряд оборванный: его кладут
+				 *          расстановка метки и размещение цели перехода по адресу
+				 *          в регистре - через них проходит управление со стороны,
+				 *          и содержимое регистров ряду более не известно.
+				 *
+				 * \~english
+				 * The length of the code at the moment the row of writes ended
+				 *
+				 * @details The value `SIZE_MAX` means a broken row: it is put by laying
+				 *          out a mark and by placing the target of a jump to an address in
+				 *          a register - through them the control passes from the outside,
+				 *          and the contents of the registers are no longer known to the row.
+				 *
+				 * \~
+				 */
+				size_t _stamp;
+			private:
+				/**
+				 * \~russian
+				 * Порождаемая последовательность команд процессора
+				 *
+				 * @details Последовательность ведётся байтами, а не словами: набор
+				 *          команд ARM64 несёт команды шириною постоянной, а x86-64 -
+				 *          переменной, и байтовый вид пригоден обоим.
+				 *
+				 * \~english
+				 * Generated sequence of processor instructions
+				 *
+				 * @details The sequence is kept in bytes rather than in words: the ARM64 instruction
+				 *          set carries instructions of a constant width, and x86-64 of a
+				 *          variable one, and the byte form is fit for both.
+				 *
+				 * \~
+				 */
+				vector <uint8_t> _code;
+				// Положения меток в порождаемой последовательности команд
+				vector <size_t> _labels;
+				// Набор отложенных переходов, подлежащих разрешению
+				vector <fixup_t> _fixups;
+				/**
+				 * \~russian
+				 * Ряд записей в память, подряд размещённых
+				 *
+				 * @details Ряд ведётся ради снятия чтения избыточного: порождение
+				 *          кладёт значение в место кадра и тут же читает его оттуда
+				 *          обратно, тогда как оно ещё цело в регистре. Опыт назвал
+				 *          цену такого чтения прямо - оно стоит пересылки из буфера
+				 *          записи, а не обращения к памяти, и стоит её на всяком
+				 *          проходе повторения.
+				 *
+				 *          Ряд ведётся лишь покуда идут записи подряд: запись
+				 *          регистров не меняет, отчего значение, в ряду записанное,
+				 *          заведомо цело. Всякая иная команда ряд обрывает -
+				 *          обрыв опознаётся несовпадением длины кода с меткой ряда,
+				 *          отчего править всякий метод размещения не требуется.
+				 *
+				 * \~english
+				 * A row of writes to memory placed one after another
+				 *
+				 * @details The row is kept to remove a redundant read: the generation
+				 *          puts the value into a place of the frame and at once reads it
+				 *          back from there, whereas it is still intact in the register.
+				 *          The experience named the price of such a read directly - it
+				 *          costs a transfer from the buffer of the write rather than a
+				 *          memory access, and costs it on every trip of the repetition.
+				 *
+				 *          The row is kept only while the writes go one after another: a
+				 *          write of registers changes nothing, hence the value written
+				 *          into the row is known to be intact. Any other command breaks
+				 *          the row - the break is recognised by the length of the code
+				 *          mismatching the mark of the row, so that no method of placing
+				 *          has to be amended.
+				 *
+				 * \~
+				 */
+				vector <stored_t> _stored;
+			private:
+			/**
+			 * \~russian
+			 * Если процессор принадлежит к E2K
+			 *
+			 * \~english
+			 * If the processor is E2K
+			 *
+			 * \~
+			 */
+			#if defined(__e2k__)
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод выдачи широкой команды, к выдаче отложенной
+				 *
+				 * @details Выдача обязательна перед всяким местом, куда управление
+				 *          приходит со стороны либо откуда уходит: заведение метки,
+				 *          переход, вызов, заведение и снятие окна регистров. Иначе
+				 *          операция, к команде прирощенная, оказалась бы исполненной
+				 *          и на том пути, где её быть не должно. Отложенной команды
+				 *          нет - метод не делает ничего.
+				 *
+				 * \~english
+				 * @brief Method of emitting the wide instruction deferred for emission
+				 *
+				 * @details The emission is obligatory before every place control enters
+				 *          from the side or leaves from: declaring a label, a jump, a call,
+				 *          opening and closing the register window. Otherwise an operation
+				 *          appended to the instruction would turn out executed on a path
+				 *          where it must not be. If there is no deferred instruction,
+				 *          the method does nothing.
+				 *
+				 * \~
+				 */
+				void flush() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод отведения канала широкой команды под операцию
+				 *
+				 * @details Операция прирастает к команде отложенной, когда ей
+				 *          находится свободный канал из числа допустимых и когда
+				 *          доводы её не берутся из того, что команда эта пишет:
+				 *          операции широкой команды читают состояние на её начало,
+				 *          а пишут по её завершении. Прирасти нельзя - команда
+				 *          отложенная выдаётся, а место её занимает новая.
+				 *
+				 * @note Запись в регистр, командою читаемый, помехой НЕ является:
+				 *       чтение идёт по началу команды и записи не видит. Помеха -
+				 *       чтение записанного да запись в один регистр дважды.
+				 *
+				 * @param channels маска каналов, операцию принимающих
+				 * @param reads    маска регистров, операцией читаемых
+				 * @param writes   маска регистров, операцией записываемых
+				 * @return         номер отведённого канала широкой команды
+				 *
+				 * \~english
+				 * @brief Method of allocating a wide instruction channel for an operation
+				 *
+				 * @details The operation is appended to the deferred instruction when
+				 *          a free channel is found for it among the allowed ones and when
+				 *          its arguments are not taken from what that instruction writes:
+				 *          the operations of a wide instruction read the state as of its
+				 *          beginning and write upon its completion. If appending is impossible,
+				 *          the deferred instruction is emitted and a new one takes its place.
+				 *
+				 * @note A write into a register read by the instruction is NOT an obstacle:
+				 *       the reading is done as of the beginning of the instruction and does not
+				 *       see the writes. The obstacles are reading what is written and writing
+				 *       into one register twice.
+				 *
+				 * @param channels mask of the channels accepting the operation
+				 * @param reads    mask of the registers read by the operation
+				 * @param writes   mask of the registers written by the operation
+				 * @return         number of the allocated channel of the wide instruction
+				 *
+				 * \~
+				 */
+				uint8_t reserve(const uint8_t channels, const uint32_t reads, const uint32_t writes) noexcept;
+			#endif
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод проверки поддержки порождения машинного кода сборкой
+				 *
+				 * @details Порождение выполнено для наборов команд ARM64, x86-64
+				 *          и Эльбрус (e2k); сборки для прочих наборов (RISC-V, POWER)
+				 *          его не получают. Отсутствие поддержки изъяном не является:
+				 *          сопоставление выполняется исполнением программы, как и прежде.
+				 *
+				 * @note На наборах без порождения методы команд существуют - без них
+				 *       сопоставитель не связывался бы, - но всякий из них лишь
+				 *       отмечает отказ, видимый через «failed», а «resolve» отвечает
+				 *       ложью. Вызов, прошедший мимо этой проверки, получает отказ,
+				 *       а не пустой код, годный с виду. Отказ этот вскрыт на
+				 *       процессоре Эльбрус, первом наборе команд третьем, - и он же
+				 *       стал первым набором, порождение под какой заведено следом:
+				 *       эталонная реализация PCRE2 его не знает вовсе.
+				 *
+				 * @return результат проверки поддержки порождения машинного кода
+				 *
+				 * \~english
+				 * @brief Method of checking the support of machine code generation by the build
+				 *
+				 * @details The generation is implemented for the ARM64, x86-64 and Elbrus (e2k)
+				 *          instruction sets; builds for the other sets (RISC-V, POWER) do not receive it.
+				 *          The absence of the support is not a defect: the matching
+				 *          is performed by executing the program, as before.
+				 *
+				 * @note On the sets without generation the instruction methods exist - without them
+				 *       the matcher would not link, - but each of them only marks a failure
+				 *       visible through «failed», and «resolve» answers false. A call that bypassed
+				 *       this check receives a failure rather than empty code that looks fit.
+				 *       The failure was uncovered on the Elbrus processor, the first third instruction set.
+				 *
+				 * @return result of checking the support of machine code generation
+				 *
+				 * \~
+				 */
+				static bool available() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод проверки сохранности регистра при вызове подпрограммы
+				 *
+				 * @details Соглашение о вызове делит регистры надвое: одни вызываемый
+				 *          обязан вернуть нетронутыми, другие волен затирать. Порождение
+				 *          вызова сохраняет в кадре лишь затираемые: сохранение
+				 *          оберегаемых было бы работою впустую, а всякий вызов
+				 *          подпрограммы обстановки лежит в цикле попыток и платится
+				 *          на каждую позицию начала.
+				 *
+				 *          Набору x86-64 оберегаемыми отведены три регистра из девяти
+				 *          сохраняемых, набору же ARM64 - ни одного: там взяты младшие
+				 *          намеренно, и сохранность их обеспечивает сам сопоставитель.
+				 *
+				 * @param reg проверяемый регистр соглашения о вызове
+				 * @return    результат проверки сохранности регистра при вызове
+				 *
+				 * \~english
+				 * @brief Method of checking the register preservation across a subroutine call
+				 *
+				 * @details The calling convention splits the registers in two: the callee
+				 *          must return some untouched, and is free to clobber the others.
+				 *          The generation of a call saves in the frame only the clobbered
+				 *          ones: saving the preserved ones would be work in vain, while
+				 *          every subroutine call lies in the loop of trials and pays at every
+				 *          position of the start.
+				 *
+				 *          The x86-64 set has three preserved registers of nine saved, while
+				 *          the ARM64 set has none: the lower ones were taken on purpose, and
+				 *          their preservation is ensured by the matcher itself.
+				 *
+				 * @param reg checked register of the calling convention
+				 * @return    result of checking the register preservation across a call
+				 *
+				 * \~
+				 */
+				static bool preserved(const reg_t reg) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод очистки порождаемой последовательности команд
+				 *
+				 * \~english
+				 * @brief Method of clearing the generated instruction sequence
+				 *
+				 * \~
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод заведения метки перехода
+				 *
+				 * @details Заведённая метка положения не имеет: положение она получает
+				 *          расстановкой, а до неё лишь принимает переходы.
+				 *
+				 * @return номер заведённой метки перехода
+				 *
+				 * \~english
+				 * @brief Method of introducing a jump label
+				 *
+				 * @details An introduced label has no position: it gets its position
+				 *          by being laid out, and before that it only takes jumps.
+				 *
+				 * @return number of the introduced jump label
+				 *
+				 * \~
+				 */
+				size_t label() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод расстановки метки перехода
+				 *
+				 * @param label номер расставляемой метки перехода
+				 *
+				 * \~english
+				 * @brief Method of laying out a jump label
+				 *
+				 * @param label number of the jump label being laid out
+				 *
+				 * \~
+				 */
+				void place(const size_t label) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод расстановки метки перехода с выравниванием входа
+				 *
+				 * @param label номер расставляемой метки перехода
+				 *
+				 * @details Метка, обратным переходом в порождённом коде достигаемая,
+				 *          есть голова витка, и выбирается строкою выборки команд
+				 *          процессора на всяком её витке. Виток, вход головы своей
+				 *          строку эту пересекающий, выбирает строк лишних, и расплата
+				 *          та не свойством выражения является, а положением кода:
+				 *          команды, вписанные прежде головы, смещают её как угодно.
+				 *          Выравнивание головы по строке выборки делает вход витка
+				 *          от вставок не зависящим - мера эта общая для машины,
+				 *          а не подгонка под адреса одного стенда. Заполнение
+				 *          до границы строки холостыми командами порождается лишь
+				 *          наборами команд, выборку строкою ведущими: у ARM64
+				 *          команды одной ширины и заполнения не требуется, а широкой
+				 *          команде Эльбруса вход головы обязан лежать на границе
+				 *          команды, и расстановка метки границу эту и так хранит.
+				 *
+				 * \~english
+				 * @brief Method of laying out a jump label with entry alignment
+				 *
+				 * @param label number of the jump label being laid out
+				 *
+				 * @details A label reached by a backward jump in the generated code
+				 *          is a loop head, and the instruction fetch line of the processor
+				 *          is fetched on every iteration of it. A loop whose head entry
+				 *          crosses that line fetches extra lines, and that penalty is
+				 *          a property of the code layout rather than of the expression:
+				 *          instructions written before the head shift it arbitrarily.
+				 *          Aligning the head to the fetch line makes the loop entry
+				 *          independent of insertions - the measure is common to the machine
+				 *          rather than a tuning for the addresses of one stand. Padding
+				 *          up to the line boundary with idle instructions is generated
+				 *          only by the instruction sets that fetch by the line: ARM64 has
+				 *          fixed-width instructions and needs no padding, whereas for
+				 *          the wide instruction of Elbrus the head entry must lie
+				 *          on an instruction boundary anyway, which laying out
+				 *          the label already keeps.
+				 *
+				 * \~
+				 */
+				void aligned(const size_t label) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения входа в порождаемый сопоставитель
+				 *
+				 * @param frame размер отводимого кадра вызова в байтах
+				 *
+				 * @details Вход сохраняет регистры, соглашением о вызове вызываемой
+				 *          стороне доверенные, и отводит кадр вызова. Состав
+				 *          сохраняемого набором команд определяется: ARM64 отводит
+				 *          порождённому коду регистры, сохранения не требующие, а
+				 *          x86-64 их столько не имеет, и часть назначений
+				 *          приходится на регистры сохраняемые.
+				 *
+				 * \~english
+				 * @brief Method of placing the entry into the generated matcher
+				 *
+				 * @param frame size of the allotted call frame in bytes
+				 *
+				 * @details The entry saves the registers entrusted by the calling convention to the callee
+				 *          side and allots the call frame. What is saved
+				 *          is determined by the instruction set: ARM64 allots
+				 *          to the generated code registers that require no saving, whereas
+				 *          x86-64 does not have that many of them, and part of the assignments
+				 *          falls on the saved registers.
+				 *
+				 * \~
+				 */
+				void prologue(const uint32_t frame) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения выхода из порождаемого сопоставителя
+				 *
+				 * @details Выход освобождает кадр вызова и восстанавливает регистры,
+				 *          входом сохранённые. Размещается он перед всяким
+				 *          завершением вызова, а не единожды.
+				 *
+				 * @param frame размер освобождаемого кадра вызова в байтах
+				 *
+				 * \~english
+				 * @brief Method of placing the exit from the generated matcher
+				 *
+				 * @details The exit releases the call frame and restores the registers
+				 *          saved by the entry. It is placed before every
+				 *          completion of the call rather than once.
+				 *
+				 * @param frame size of the released call frame in bytes
+				 *
+				 * \~
+				 */
+				void epilogue(const uint32_t frame) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отведения записи вложенного уровня
+				 *
+				 * @details Места кадра адресуются регистром записи, отчего
+				 *          продвижение его на размер кадра даёт обращениям,
+				 *          порождением размещённым, свежий набор тех же самых
+				 *          мест: ряд, положение своё хранящий, получает его
+				 *          отдельным на каждый уровень вложенности, а сами
+				 *          обращения не меняются ни единым.
+				 *
+				 *          Область записей отводится вызовом сопоставления
+				 *          и стека машины не расходует: проход повторения над
+				 *          областью требует записи своей на каждый проход,
+				 *          и число их доходит до длины текста.
+				 *
+				 * @param frame размер отводимой записи в байтах
+				 *
+				 * \~english
+				 * @brief Method of allotting the record of a nested level
+				 *
+				 * @details The places of the frame are addressed by the record register, and so
+				 *          advancing it by the size of the frame gives the accesses placed by
+				 *          the generation a fresh set of the very same places. The sequence
+				 *          that holds its position receives it separately for every nesting
+				 *          level, and the accesses themselves do not change in any way.
+				 *
+				 *          The area of records is allocated by the call of the matching
+				 *          and does not consume the machine stack: the walk of a repetition
+				 *          over the area requires a record of its own for every pass, and
+				 *          the count of them reaches the length of the text.
+				 *
+				 * @param frame size of the allotted record in bytes
+				 *
+				 * \~
+				 */
+				void enter(const uint32_t frame) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод снятия записи вложенного уровня
+				 *
+				 * @details Размер снимаемой записи обязан совпадать с размером,
+				 *          отведённым при входе в уровень: регистр записи
+				 *          отступает на него, возвращая обращения к местам
+				 *          записи уровня вызывающего.
+				 *
+				 * @param frame размер снимаемой записи в байтах
+				 *
+				 * \~english
+				 * @brief Method of removing the record of a nested level
+				 *
+				 * @details The size of the removed record must match the size allotted
+				 *          at the entry into the level: the record register steps back
+				 *          by it, returning the accesses to the places of the
+				 *          record of the calling level.
+				 *
+				 * @param frame size of the removed record in bytes
+				 *
+				 * \~
+				 */
+				void leave(const uint32_t frame) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения перехода к метке
+				 *
+				 * @param label номер метки, к какой выполняется переход
+				 *
+				 * \~english
+				 * @brief Method of placing a jump to a label
+				 *
+				 * @param label number of the label the jump is taken to
+				 *
+				 * \~
+				 */
+				void jump(const size_t label) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения перехода к метке по условию
+				 *
+				 * @param cond  условие выполнения перехода
+				 * @param label номер метки, к какой выполняется переход
+				 *
+				 * \~english
+				 * @brief Method of placing a conditional jump to a label
+				 *
+				 * @param cond  condition for taking the jump
+				 * @param label number of the label the jump is taken to
+				 *
+				 * \~
+				 */
+				void branch(const cond_t cond, const size_t label) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения сравнения значений регистров
+				 *
+				 * @param first  регистр уменьшаемого значения
+				 * @param second регистр вычитаемого значения
+				 *
+				 * \~english
+				 * @brief Method of placing a comparison of the register values
+				 *
+				 * @param first  register of the minuend value
+				 * @param second register of the subtrahend value
+				 *
+				 * \~
+				 */
+				void compare(const reg_t first, const reg_t second) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения сравнения значения регистра с числом
+				 *
+				 * @details Число размещается в самой команде и потому ограничено
+				 *          двенадцатью разрядами.
+				 *
+				 * @param reg   регистр сравниваемого значения
+				 * @param value сравниваемое число
+				 *
+				 * \~english
+				 * @brief Method of placing a comparison of a register value with a number
+				 *
+				 * @details The number is placed in the instruction itself and is therefore bounded
+				 *          by twelve bits.
+				 *
+				 * @param reg   register of the compared value
+				 * @param value compared number
+				 *
+				 * \~
+				 */
+				void compare(const reg_t reg, const uint32_t value) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения сложения значения регистра с числом
+				 *
+				 * @param target регистр итога сложения
+				 * @param source регистр слагаемого значения
+				 * @param value  прибавляемое число
+				 *
+				 * \~english
+				 * @brief Method of placing an addition of a register value with a number
+				 *
+				 * @param target register of the result of the addition
+				 * @param source register of the addend value
+				 * @param value  added number
+				 *
+				 * \~
+				 */
+				void add(const reg_t target, const reg_t source, const uint32_t value) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения вычитания числа из значения регистра
+				 *
+				 * @param target регистр итога вычитания
+				 * @param source регистр уменьшаемого значения
+				 * @param value  вычитаемое число
+				 *
+				 * \~english
+				 * @brief Method of placing a subtraction of a number from a register value
+				 *
+				 * @param target register of the result of the subtraction
+				 * @param source register of the minuend value
+				 * @param value  subtracted number
+				 *
+				 * \~
+				 */
+				void sub(const reg_t target, const reg_t source, const uint32_t value) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения переноса значения регистра
+				 *
+				 * @param target регистр назначения переноса
+				 * @param source регистр источника переноса
+				 *
+				 * \~english
+				 * @brief Method of placing a move of a register value
+				 *
+				 * @param target destination register of the move
+				 * @param source source register of the move
+				 *
+				 * \~
+				 */
+				void move(const reg_t target, const reg_t source) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения записи числа в регистр
+				 *
+				 * @param target регистр назначения записи
+				 * @param value  записываемое число
+				 *
+				 * \~english
+				 * @brief Method of placing a write of a number into a register
+				 *
+				 * @param target destination register of the write
+				 * @param value  written number
+				 *
+				 * \~
+				 */
+				void move(const reg_t target, const uint64_t value) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения чтения байта текста
+				 *
+				 * @details Байт читается по сумме адреса начала текста и позиции
+				 *          сопоставления, что отвечает обращению к тексту по указателю
+				 *          без проверки границ: положение проверено сравнением выше.
+				 *
+				 * @param target регистр прочитанного значения байта
+				 * @param base   регистр адреса начала области чтения
+				 * @param offset регистр смещения читаемого байта
+				 *
+				 * \~english
+				 * @brief Method of placing a read of a byte of the text
+				 *
+				 * @details The byte is read at the sum of the address of the beginning of the text and the matching
+				 *          position, which corresponds to referring to the text by a pointer
+				 *          without bounds checking: the position was checked by the comparison above.
+				 *
+				 * @param target register of the read byte value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param offset register of the offset of the read byte
+				 *
+				 * \~
+				 */
+				void load(const reg_t target, const reg_t base, const reg_t offset) noexcept;
+				/**
+				 * \~russian
+				 * Если процессор принадлежит к x86_64
+				 *
+				 * \~english
+				 * If the processor is x86_64
+				 *
+				 * \~
+				 */
+				#if defined(__x86_64__) || defined(_M_X64)
+					/**
+					 * \~russian
+					 * @brief Метод размещения поиска первого байта непрерывного диапазона
+					 *
+					 * @details Поиск начинается с KEEPER в тексте TEXT размером SIZE.
+					 *          Найденная позиция остаётся в KEEPER; выполняется переход
+					 *          ready либо empty. Меняются LETTER, SCRATCH, SPARE и XMM0..3.
+					 *          SSE2 читает только полные векторы внутри участка.
+					 *          При lower > upper устанавливается признак отказа порождения.
+					 *
+					 * @param lower нижняя граница диапазона включительно
+					 * @param upper верхняя граница диапазона включительно
+					 * @param ready метка найденного кандидата
+					 * @param empty метка отсутствия кандидата
+					 *
+					 * \~english
+					 * @brief Emit a search for the first byte in a continuous range
+					 *
+					 * @details Search TEXT of SIZE bytes from KEEPER, update KEEPER and
+					 *          branch to ready or empty. Clobber LETTER, SCRATCH, SPARE
+					 *          and XMM0..3. SSE2 loads only complete vectors in the range.
+					 *          If lower > upper, mark code generation as failed.
+					 *
+					 * @param lower inclusive lower byte bound
+					 * @param upper inclusive upper byte bound
+					 * @param ready label for a found candidate
+					 * @param empty label for an exhausted range
+					 *
+					 * \~
+					 */
+					void ranging(const uint8_t lower, const uint8_t upper, const size_t ready, const size_t empty) noexcept;
+				#endif
+				/**
+				 * \~russian
+				 * @brief Метод размещения чтения значения обстановки исполнения
+				 *
+				 * @details Обращение выполняется смещением от регистра обстановки,
+				 *          чем и обеспечивается перемещаемость порождённого кода.
+				 *
+				 * @param target регистр прочитанного значения
+				 * @param index  номер значения в таблице адресов обстановки
+				 *
+				 * \~english
+				 * @brief Method of placing a read of a value of the execution context
+				 *
+				 * @details The reference is performed by an offset from the context register,
+				 *          which is what ensures the relocatability of the generated code.
+				 *
+				 * @param target register of the read value
+				 * @param index  number of the value in the address table of the context
+				 *
+				 * \~
+				 */
+				void context(const reg_t target, const uint32_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения чтения значения из памяти
+				 *
+				 * @param target регистр прочитанного значения
+				 * @param base   регистр адреса начала области чтения
+				 * @param index  номер читаемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a read of a value from memory
+				 *
+				 * @param target register of the read value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param index  number of the read value in the area
+				 *
+				 * \~
+				 */
+				void fetch(const reg_t target, const reg_t base, const uint32_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения записи значения регистра в память
+				 *
+				 * @param source регистр записываемого значения
+				 * @param base   регистр адреса начала области записи
+				 * @param index  номер записываемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a write of a register value into memory
+				 *
+				 * @param source register of the written value
+				 * @param base   register of the address of the beginning of the written area
+				 * @param index  number of the written value in the area
+				 *
+				 * \~
+				 */
+				void store(const reg_t source, const reg_t base, const uint32_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения чтения значения из памяти по адресу в регистре
+				 *
+				 * @details Смещение задаётся регистром, а не полем команды, отчего
+				 *          читаемое место известно лишь при исполнении. Нужно это
+				 *          набору, глубина какого зависит от данных.
+				 *
+				 * @note Порождением сопоставителя обращение это пока не звучит:
+				 *       заведено оно заделом под рекурсию и оставлено намеренно.
+				 *       Непроверенным кодом оно, однако, не остаётся - сличение
+				 *       ведёт проверка «Regex.EmitterIndexed», порождающая образец
+				 *       записи по одному смещению и чтения по другому и прогоняющая
+				 *       его по всем их сочетаниям
+				 *
+				 * @param target регистр прочитанного значения
+				 * @param base   регистр адреса начала области чтения
+				 * @param offset регистр номера читаемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a read of a value from memory by an address in a register
+				 *
+				 * @details The offset is given by a register rather than by a field of the instruction,
+				 *          which is why the place being read is known only at execution time. This is needed by
+				 *          a set whose depth depends on the data: by the return stack
+				 *          of recursive calls.
+				 *
+				 * @note The generation of the matcher does not yet sound this access:
+				 *       it was added for the sake of recursion and is left on purpose.
+				 *       Yet unchecked code it does not stay — the comparison is led by the
+				 *       «Regex.EmitterIndexed» check that generates a sample of a write by
+				 *       one offset and a read by another, and runs it through all their combinations.
+				 *
+				 * @param target register of the read value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param offset register of the number of the read value in the area
+				 *
+				 * \~
+				 */
+				void fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения записи значения регистра в память по адресу в регистре
+				 *
+				 * @param source регистр записываемого значения
+				 * @param base   регистр адреса начала области записи
+				 * @param offset регистр номера записываемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a write of a register value into memory by an address in a register
+				 *
+				 * @param source register of the written value
+				 * @param base   register of the address of the beginning of the write area
+				 * @param offset register of the number of the written value in the area
+				 *
+				 * \~
+				 */
+				void store(const reg_t source, const reg_t base, const reg_t offset) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод размещения вызова подпрограммы по адресу в регистре
+				 *
+				 * @details Вызов выполняется по адресу, прочитанному из обстановки
+				 *          исполнения, чем и сохраняется перемещаемость порождённого
+				 *          кода. Значения регистров, вызовом затираемые, сохраняет
+				 *          сторона вызывающая: соглашение о вызове подпрограмм
+				 *          сохранности младших регистров не обещает.
+				 *
+				 * @param reg регистр адреса вызываемой подпрограммы
+				 *
+				 * \~english
+				 * @brief Method of placing a subroutine call by an address in a register
+				 *
+				 * @details The call is performed by the address read from the execution
+				 *          context, which is what keeps the relocatability of the generated
+				 *          code. The register values clobbered by the call are saved by
+				 *          the calling side: the subroutine calling convention
+				 *          promises no preservation of the lower registers.
+				 *
+				 * @param reg register of the address of the called subroutine
+				 *
+				 * \~
+				 */
+				void call(const reg_t reg) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения вычисления адреса метки
+				 *
+				 * @details Адрес вычисляется прибавлением смещения к положению самой
+				 *          команды, отчего перемещаемость порождённого кода сохраняется:
+				 *          запомненный адрес перемещается вместе с кодом.
+				 *
+				 * @param target регистр вычисленного адреса
+				 * @param label  номер метки, адрес какой вычисляется
+				 *
+				 * \~english
+				 * @brief Method of placing a computation of the address of a label
+				 *
+				 * @details The address is computed by adding the offset to the position of the
+				 *          instruction itself, which is why the relocatability of the generated code is kept:
+				 *          the remembered address moves together with the code.
+				 *
+				 * @param target register of the computed address
+				 * @param label  number of the label whose address is computed
+				 *
+				 * \~
+				 */
+				void address(const reg_t target, const size_t label) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения перехода по адресу в регистре
+				 *
+				 * @param reg регистр адреса выполняемого перехода
+				 *
+				 * \~english
+				 * @brief Method of placing a jump by an address in a register
+				 *
+				 * @param reg register of the address of the taken jump
+				 *
+				 * \~
+				 */
+				void proceed(const reg_t reg) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения метки цели перехода по адресу в регистре
+				 *
+				 * @details Размещается сразу за меткой, куда приходит переход методом
+				 *          «proceed». Наборы команд, требования такого не ставящие,
+				 *          не размещают ничего.
+				 *
+				 * \~english
+				 * @brief Method of placing the target marker of a jump by an address in a register
+				 *
+				 * @details It is placed right after the label the jump arrives at by the
+				 *          «proceed» method. The instruction sets that make no such requirement
+				 *          place nothing.
+				 *
+				 * \~
+				 */
+				void landing() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения завершения вызова
+				 *
+				 * \~english
+				 * @brief Method of placing the completion of the call
+				 *
+				 * \~
+				 */
+				void ret() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод разрешения отложенных переходов
+				 *
+				 * @details Метод вписывает смещения переходов в размещённые команды
+				 *          и обязан вызываться после расстановки всех меток.
+				 *
+				 * @return результат разрешения отложенных переходов
+				 *
+				 * \~english
+				 * @brief Method of resolving the deferred jumps
+				 *
+				 * @details The method writes the jump offsets into the placed instructions
+				 *          and is obliged to be called after all the labels have been laid out.
+				 *
+				 * @return result of resolving the deferred jumps
+				 *
+				 * \~
+				 */
+				bool resolve() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения порождённой последовательности команд
+				 *
+				 * @return порождённая последовательность команд процессора
+				 *
+				 * \~english
+				 * @brief Method of getting the generated instruction sequence
+				 *
+				 * @return generated sequence of processor instructions
+				 *
+				 * \~
+				 */
+				const vector <uint8_t> & code() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения размера порождённого машинного кода
+				 *
+				 * @return размер порождённого машинного кода в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the size of the generated machine code
+				 *
+				 * @return size of the generated machine code in bytes
+				 *
+				 * \~
+				 */
+				size_t length() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки отказа порождения машинного кода
+				 *
+				 * @details Отказ вызывается доводом, не помещающимся в поле команды,
+				 *          обращением к незаведённой метке либо смещением перехода,
+				 *          выходящим за пределы поля. Порождение после отказа
+				 *          продолжается, но код его к исполнению непригоден.
+				 *
+				 * @return результат проверки отказа порождения машинного кода
+				 *
+				 * \~english
+				 * @brief Method of checking a failure of the machine code generation
+				 *
+				 * @details A failure is caused by an argument not fitting into the instruction field,
+				 *          by a reference to a label that was not introduced or by a jump offset
+				 *          going beyond the bounds of the field. The generation continues after a failure,
+				 *          but its code is unfit for execution.
+				 *
+				 * @return result of checking a failure of the machine code generation
+				 *
+				 * \~
+				 */
+				bool failed() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Emitter() noexcept;
+		} emitter_t;
+	};
+};
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include "../sys/macro/restore.hpp"
+#include "../sys/macro/global.hpp"

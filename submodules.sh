@@ -31,9 +31,5 @@ $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 $ROOT/submodule.sh remove a-nts
 $ROOT/submodule.sh add a-nts https://gitflic.ru/project/anyks/nts.git
 
-# Выполняем пересборку сабмодуля nghttp2
-$ROOT/submodule.sh remove nghttp2
-$ROOT/submodule.sh add nghttp2 https://gitflic.ru/project/third_party/nghttp2.git
-
 # Выводим список добавленных модулей
 cat $ROOT/.gitmodules

@@ -27,6 +27,7 @@
 #include <locale>
 #include <string>
 #include <vector>
+#include <string_view>
 #include <limits>
 #include <cctype>
 #include <cwctype>
@@ -844,6 +845,32 @@ namespace awh {
 			 */
 			~Framework() noexcept = default;
 	} fmk_t;
+	/**
+	 * @brief Пространство имён свободных функций сравнения
+	 *
+	 * @details Функции этого пространства имён повторяют одноимённые свободные
+	 *          функции фреймворка AWH v5, на которые опираются перенесённые
+	 *          из v5 модули (HTTP/2, regex, encoding, alloc)
+	 *
+	 */
+	namespace fmk {
+		/**
+		 * @brief Функция сравнения двух строк без учёта регистра
+		 *
+		 * @param first  первое слово
+		 * @param second второе слово
+		 * @return       результат сравнения
+		 */
+		AWH_SHARED_EXPORT bool compare(string_view first, string_view second) noexcept;
+		/**
+		 * @brief Функция сравнения двух строк без учёта регистра
+		 *
+		 * @param first  первое слово
+		 * @param second второе слово
+		 * @return       результат сравнения
+		 */
+		AWH_SHARED_EXPORT bool compare(const char * first, const char * second) noexcept;
+	};
 };
 
 #endif // __AWH_FRAMEWORK__

@@ -1,0 +1,1186 @@
+/**
+ * @file prefilter.hpp
+ * @date 2026-07-31
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл предварительного отбора позиций сопоставления — набор байтов,
+ *        допустимых в начале совпадения, и обязательный литерал совпадения, позволяющие
+ *        пропускать участки текста без запуска конечного автомата
+ *
+ * @section prefilter_decisions Намеренные решения
+ *
+ * @details Перечисленное ниже выглядит несообразностью, но выбрано осознанно и
+ *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
+ *          каждый раз с одних и тех же выводов.
+ *
+ *          <b>Собственный поиск байта включён по умолчанию только на
+ *          OpenBSD x86-64.</b> У этой системы библиотечный memchr проходит
+ *          текст командой repnz scasb. Замена общего поиска на остальных
+ *          системах не обоснована: они сохраняют библиотечный вызов через
+ *          принудительно подставляемую обёртку. Макрос AWH_REGEX_BYTE_SEARCH
+ *          допускает явный выбор для сличений. Вектор читает лишь полные
+ *          шестнадцать байтов внутри участка, хвост читается побайтно;
+ *          выравнивание адреса и доступность соседней страницы не требуются.
+ *          SSE2, NEON и скалярный путь проверяются одним набором примеров,
+ *          включая защищённые страницы — Regex.ByteSearchGuardPages.
+ *
+ *          <b>Проход текста парой байтов начинается с границы тридцати двух
+ *          байтов.</b> Функция прохода несёт атрибут выравнивания начала -
+ *          макрос «AWH_REGEX_ALIGNED» в файле реализации. Без того начало её
+ *          задаёт длина кода, связанного прежде, и правка любой иной единицы
+ *          трансляции его сдвигает. На Apple M4 Max главный оборот прохода -
+ *          двадцать две команды, восемьдесят восемь байтов - ложился от такого
+ *          сдвига то в два отрезка по шестьдесят четыре байта, то в три, и восемь
+ *          строк поиска литерала теряли от 13 до 23 процентов при коде функции,
+ *          совпавшем до байта: правка развёрнутой программы, к поиску литерала
+ *          отношения не имеющая, сдвинула начало прохода в сборке стенда с 52
+ *          на 16 по модулю шестидесяти четырёх. С выравниванием эти строки
+ *          вровень с исходной сборкой: пять пар полных прогонов вперемежку дали
+ *          им от минус 1.5 до плюс 0.7 процента обеими мерами, а середине всех
+ *          строк - минус 0.1 процента разбором и плюс 0.2 кодом.
+ *
+ *          Граница - тридцать два байта, а не шестьдесят четыре, хотя отрезок
+ *          выборки команд - шестьдесят четыре. Выравнивание по шестидесяти
+ *          четырём поднимает выравнивание всего раздела кода, и в сборке стенда,
+ *          где раздел начинается на тридцати двух по модулю шестидесяти четырёх,
+ *          весь код сдвигался на тридцать два байта: пять пар полных прогонов
+ *          удержали тогда просадку разбора у восемнадцати строк исполнения
+ *          с возвратом, от 3.5 до 10.3 процента. Граница в тридцать два раздела
+ *          не сдвигает, а голова оборота - сорок байтов от начала по модулю
+ *          шестидесяти четырёх - при начале прохода на нуле ложится на сорок,
+ *          при начале на тридцати двух - на восемь: оборот умещается в два
+ *          отрезка при обоих положениях, при первом - впритык.
+ *
+ *          Закреплён один проход. Отбор позиции по литералу держит ещё
+ *          «(?:fox|dog)trot» на тексте протокола, но граница в тридцать два
+ *          кладёт его и на положение худшее: сборка, где вместе с проходом
+ *          выровнены отбор, поиск по якорному байту и поиск байта из набора,
+ *          теряла на этой строке 3.7 процента разбором и 5.5 кодом, а сборка
+ *          с одним проходом - 0.7 и 2.6.
+ *
+ *          На x86-64 (FreeBSD, Clang 19) главный оборот прохода длиною в сто
+ *          тридцать три байта и занимает три отрезка при всяком положении, и
+ *          строки поиска литерала к раскладке почти нечувствительны: во всех
+ *          сличениях, при всяком порядке связки, они держались в пределах трёх
+ *          процентов. Visual Studio выравнивания начала функции не знает, а LCC
+ *          атрибут принимает молча и не исполняет; макрос у обоих пуст, код же
+ *          Эльбруса от положения не зависит. Выравнивание головы самого оборота
+ *          атрибутом «clang::code_align» испытано и отвергнуто: Clang 19
+ *          на x86-64 у этого оборота его не исполнил.
+ *
+ *          Проход объявлен в пространстве модуля со связью внешней, а открытым
+ *          договором не объявлен: связь нужна проверке, берущей его адрес, и код
+ *          от неё не зависит - разделы кода совпали побайтно. Закрепляется
+ *          положение против правок чужих, но не своих: правка самой функции
+ *          двигает оборот внутри неё, и голову его надлежит после того сверить
+ *          разборкой. Числа и условия замеров - в «benchmark/regex/COMPARISON.md».
+ *          Закреплено проверкой «Regex.PrefilterAligned».
+ *
+ *          <b>Короткий ведущий литерал выбирает собственный вход JIT при
+ *          связывании обстановки исполнения.</b> На x86-64 длины 4–8
+ *          получают проход с постоянной длиной, а общий «windowed» не
+ *          проверяет применимость специализации при каждом вызове.
+ *          Выбор повторяется при восстановлении записи JIT: в запись
+ *          адрес функции не входит. Общий путь и скалярная сборка
+ *          сохраняют прежние тела. На остальных наборах команд ответ
+ *          об отсутствии специализации подставляется из заголовка,
+ *          не добавляя нового вызова на общем пути.
+ *          Закреплено проверками «Regex.PrefilterSelection»,
+ *          «Regex.PrefilterSelectionGuardPages» и
+ *          «Regex.CodegenSelectionRestore». Пять пар и остаточные
+ *          потери отдельных сценариев описаны в «COMPARISON.md».
+ *
+ *          <b>Двухбайтовый обязательный литерал получает отдельный поиск
+ *          на x86-64 с SSE2.</b> Начальная пара сравнивается до подготовки
+ *          векторов: ранняя находка не оплачивает общий оконный проход.
+ *          Вектор проверяет оба байта целиком, поэтому повторное сличение
+ *          найденного кандидата не требуется. Полный оборот проверяет
+ *          тридцать две позиции в тридцати трёх доступных байтах;
+ *          остаток читается только внутри текста. Маска последнего
+ *          перекрывающегося окна исключает позиции до начала поиска,
+ *          а восьмибайтовая загрузка исключает нули верхней половины.
+ *          Простое включение общего прохода пары без ближней проверки
+ *          отвергнуто: оно замедляло ранние находки. ARM64, Эльбрус
+ *          и скалярная сборка сохраняют прежний путь. Закреплено
+ *          проверками Regex.PrefilterLocateDoublet и
+ *          Regex.PrefilterLocateDoubletGuardPages. Полные парные замеры
+ *          и остаточные сдвиги других сценариев — в COMPARISON.md.
+ *
+ * \~english
+ * @brief Header file of the preliminary selection of matching positions — the set of bytes
+ *        admissible at the beginning of a match and the mandatory literal of a match, which allow
+ *        skipping stretches of the text without starting the finite automaton
+ *
+ * @section prefilter_decisions Deliberate decisions
+ *
+ * @details What is listed below looks like an incongruity, but it was chosen consciously
+ *          and is not subject to correction. The section exists so that an analysis of the code
+ *          does not start each time from the same conclusions.
+ *
+ *          <b>The native byte search is enabled by default only on
+ *          OpenBSD x86-64.</b> Its libc memchr scans text with repnz scasb.
+ *          Replacing libc on other systems has no measured justification;
+ *          they retain the library call through an always-inline wrapper.
+ *          AWH_REGEX_BYTE_SEARCH allows an explicit choice for comparisons.
+ *          Vector loads cover only complete sixteen-byte blocks within the
+ *          range, followed by a bytewise tail. Neither address alignment nor
+ *          access to an adjacent page is required. SSE2, NEON and the scalar
+ *          path share the same tests, including protected pages in
+ *          Regex.ByteSearchGuardPages.
+ *
+ *          <b>The pass through the text by a pair of bytes begins at a thirty-two-byte
+ *          boundary.</b> The function of the pass carries the attribute aligning its
+ *          beginning - the «AWH_REGEX_ALIGNED» macro in the implementation file. Without it
+ *          its beginning is set by the length of the code linked before it, and an edit of any
+ *          other translation unit shifts it. On Apple M4 Max the main loop of the pass - twenty-two
+ *          instructions, eighty-eight bytes - fell under such a shift now into two sixty-four-byte
+ *          stretches, now into three, and eight rows of the literal search lost from 13 to 23
+ *          percent while the code of the function matched to the byte: an edit of the reversed
+ *          program, having nothing to do with the literal search, moved the beginning of the pass
+ *          in the stand build from 52 to 16 modulo sixty-four. With the alignment these rows
+ *          are level with the original build: five pairs of interleaved full runs gave them from
+ *          minus 1.5 to plus 0.7 percent by both measures, and the median of all rows minus 0.1
+ *          percent by interpretation and plus 0.2 by code.
+ *
+ *          The boundary is thirty-two bytes rather than sixty-four, although the instruction
+ *          fetch stretch is sixty-four. Aligning to sixty-four raises the alignment of the whole
+ *          code section, and in the stand build, where the section begins at thirty-two modulo
+ *          sixty-four, all the code shifted by thirty-two bytes: five pairs of full runs then held
+ *          a drop of interpretation on eighteen rows of backtracking execution, from 3.5 to 10.3
+ *          percent. A thirty-two-byte boundary does not shift the section, and the head of the
+ *          loop - forty bytes from the beginning modulo sixty-four - falls at forty when the pass
+ *          begins at zero and at eight when it begins at thirty-two: the loop fits into two
+ *          stretches at both placements, at the first - exactly.
+ *
+ *          Only the pass is pinned. The selection by the literal also holds «(?:fox|dog)trot» on
+ *          the protocol text, but a thirty-two-byte boundary also puts it at a worse placement:
+ *          the build where the selection, the search by an anchor byte and the search for a byte
+ *          of a set are aligned together with the pass lost 3.7 percent by interpretation and 5.5
+ *          by code on this row, while the build with the pass alone lost 0.7 and 2.6.
+ *
+ *          On x86-64 (FreeBSD, Clang 19) the main loop of the pass is one hundred and thirty-three
+ *          bytes long and takes three stretches at any placement, and the rows of the literal
+ *          search are almost insensitive to the layout: in all comparisons, at any link order,
+ *          they stayed within three percent. Visual Studio does not know the alignment of
+ *          a function's beginning, while LCC accepts the attribute silently and does not execute
+ *          it; the macro is empty for both, and the code of Elbrus does not depend on the
+ *          placement. Aligning the head of the loop itself with the «clang::code_align» attribute
+ *          was tried and rejected: Clang 19 on x86-64 did not execute it for this loop.
+ *
+ *          The pass is declared in the namespace of the module with external linkage while the
+ *          public contract does not declare it: the linkage is needed by the test that takes its
+ *          address, and the code does not depend on it - the code sections matched byte for byte.
+ *          The placement is pinned against the edits of others, not against one's own: an edit of
+ *          the function itself moves the loop within it, and its head must then be checked by
+ *          disassembly. The numbers and conditions of the measurements are in
+ *          «benchmark/regex/COMPARISON.md». Pinned by the «Regex.PrefilterAligned» test.
+ *
+ *          <b>A short leading literal selects its JIT entry while the
+ *          execution context is bound.</b> On x86-64, lengths 4–8 use
+ *          a constant-length pass; the general windowed entry performs
+ *          no per-call specialization dispatch. Restoring a JIT record
+ *          repeats the selection because function addresses are not
+ *          serialized. The general and scalar paths retain their bodies.
+ *          On other instruction sets the unavailable specialization is
+ *          reported inline, without adding a call to the general path.
+ *          Covered by Regex.PrefilterSelection,
+ *          Regex.PrefilterSelectionGuardPages and
+ *          Regex.CodegenSelectionRestore. Five paired runs and remaining
+ *          losses in individual scenarios are documented in COMPARISON.md.
+ *
+ *          <b>A mandatory two-byte literal has a dedicated search on
+ *          x86-64 with SSE2.</b> The starting pair is compared before
+ *          preparing vectors, keeping an immediate match inexpensive.
+ *          Both bytes are checked in full, so a vector hit needs no
+ *          second comparison. The main loop checks thirty-two positions
+ *          within thirty-three available bytes; tails stay inside the
+ *          text. The final overlapping window masks positions before
+ *          the search start. The eight-byte load also masks its zeroed
+ *          upper half. An unconditional call to the general paired pass
+ *          was rejected because it slowed early matches. ARM64, Elbrus
+ *          and scalar builds retain their previous path. Covered by
+ *          Regex.PrefilterLocateDoublet and
+ *          Regex.PrefilterLocateDoubletGuardPages. Full paired results
+ *          and remaining shifts in other scenarios are in COMPARISON.md.
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#pragma once
+
+/**
+ * \~russian
+ * @brief Выбор собственного поиска байта
+ *
+ * @details В OpenBSD на x86-64 библиотечный memchr проходит текст командой
+ *          repnz scasb. Собственный проход использует SSE2 и читает только
+ *          внутри заданного участка. На остальных системах сохраняется
+ *          библиотечный поиск. Значения 0 и 1 позволяют сличить оба пути
+ *          двумя сборками стенда; AWH_REGEX_SCALAR отключает векторный путь.
+ *
+ * \~english
+ * @brief Choosing a custom byte search
+ *
+ * @details On OpenBSD/x86-64, the library's `memchr` implementation scans
+ *          the text using the `repnz scasb` instruction. The custom implementation
+ *          uses SSE2 and reads only within the specified range. On other systems,
+ *          the library-based search is retained. Values ​​of 0 and 1 allow for comparing
+ *          both code paths by building the benchmark twice; `AWH_REGEX_SCALAR` disables
+ *          the vectorized path.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_BYTE_SEARCH)
+	/**
+	 * OpenBSD x86_64: используем собственную реализацию
+	 */
+	#if defined(__OpenBSD__) && defined(__x86_64__)
+		/**
+		 * \~russian
+		 * @brief Ищем байт средствами модуля
+		 *
+		 * \~english
+		 * @brief We search a byte by the means of the module
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_BYTE_SEARCH 1
+	/**
+	 * Иначе используем библиотечную реализацию
+	 */
+	#else
+		/**
+		 * \~russian
+		 * @brief Ищем байт средствами библиотеки
+		 *
+		 * \~english
+		 * @brief We search a byte by the means of the library
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_BYTE_SEARCH 0
+	#endif
+#endif
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <string>
+#include <vector>
+#include <cstring>
+#include <cstdint>
+#include <string_view>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../sys/macro/global.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён модуля регулярных выражений
+	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
+	 */
+	namespace regex {
+		/**
+		 * \~russian
+		 * @brief Наибольший набор начальных байтов, поиском отбираемый
+		 *
+		 * @details Отбор позиций начала попытки по набору допустимых байтов
+		 *          ведётся двумя способами. Набор широкий просеивается
+		 *          по позиции: обращение к таблице на каждой позиции дешевле
+		 *          всякого поиска, а пропускает такой набор немногое. Набор
+		 *          узкий, напротив, пропускает почти весь текст, и там
+		 *          окупается поиск байтов набором команд процессора над
+		 *          несколькими байтами сразу.
+		 *
+		 *          Предел взят по числу сравнений, какое вектор несёт за один
+		 *          оборот: четыре байта дают четыре сравнения на шестнадцать
+		 *          байтов текста против шестнадцати обращений к памяти
+		 *          у просеивания. Наборы шире просеиваются, как и прежде.
+		 *
+		 * \~english
+		 * @brief Largest set of starting bytes selected by a search
+		 *
+		 * @details The selection of the positions where an attempt begins by the set
+		 *          of admissible bytes is driven in two ways. A wide set is sifted
+		 *          position by position: an access to the table at every position is cheaper
+		 *          than any search, and such a set skips little. A narrow set, on the contrary,
+		 *          skips almost the whole text, and there a search of the bytes by the
+		 *          instruction set of the processor over several bytes at once pays off.
+		 *
+		 *          The limit is taken by the number of comparisons a vector carries per
+		 *          iteration: four bytes give four comparisons per sixteen bytes of the text
+		 *          against the sixteen memory accesses of the sifting. Wider sets are sifted
+		 *          as before.
+		 *
+		 * \~
+		 */
+		constexpr size_t SPARSE = 8;
+		/**
+		 * \~russian
+		 * @brief Наименьшее ожидаемое число участков со встречами, пробу окупающее
+		 *
+		 * @details Участок со встречами есть отрезок текста в тридцать два байта,
+		 *          где пара байтов сошлась хоть раз: за ним следует разбор встреч
+		 *          его со сличением остатка искомого. Проба редкой пары стоит около
+		 *          семидесяти наносекунд постоянных, а участок такой - нескольких,
+		 *          отсюда и величина.
+		 *
+		 *          Считаются именно участки, а не встречи: встреча лежит в обороте
+		 *          внутреннем, и счёт её давит на регистры оборота внешнего -
+		 *          замером проход замедлялся в 1.84 раза, - тогда как счёт
+		 *          участками не стоит ничего вовсе.
+		 *
+		 *          Прежде величина эта означала **длину остатка** текста, и мера была
+		 *          выбрана неверно в самом основании. Замером сличены оба прохода
+		 *          на длинах от полукилобайта до шестидесяти четырёх килобайтов:
+		 *
+		 *          | текст | 2 КБ | 8 КБ | 64 КБ |
+		 *          |---|---|---|---|
+		 *          | протокола, кандидат один: умолчание к пробе | 0.34 | 0.38 | 0.38 |
+		 *          | пару изматывающий: умолчание к пробе | 4.56 | 9.25 | 16.80 |
+		 *
+		 *          На тексте настоящем проба проигрывает втрое-вчетверо **на всякой
+		 *          длине**, на вырожденном - выигрывает до семнадцати раз. Длина эти
+		 *          случаи не различает вовсе: порог длины отдавал пробе всякий текст
+		 *          подлиннее, кандидатов в нём не спрашивая, - оттого `literal-medium`
+		 *          и отставал в 1.37 раза, тогда как проход парой умолчания шёл
+		 *          у него 43.8 наносекунды против 63.9 у эталона.
+		 *
+		 *          Плотность кандидатов берётся окном, уже пройденным, отчего платы
+		 *          за неё нет вовсе - см. `seek`.
+		 *
+		 * \~english
+		 * @brief Smallest expected number of false candidates that pays the probe off
+		 *
+		 * @details A false candidate is a position where the pair of bytes matched while
+		 *          the comparison of the remainder of the sought sequence failed. A pass by the default
+		 *          pair pays about one and a half nanoseconds for it, whereas the probe of a rare pair
+		 *          costs about seventy nanoseconds of constant cost - hence the value: the probe
+		 *          pays off where the candidates amount to several dozens.
+		 *
+		 *          The count keeps track of stretches, not of matches: a match lies inside the inner
+		 *          loop, and counting it pressures the registers of the outer loop - the pass slowed
+		 *          down by 1.84 times in measurements - whereas counting by stretches costs nothing
+		 *          at all.
+		 *
+		 *          Earlier the value meant the **length of the remainder** of the text, and the
+		 *          measure was chosen wrongly at the very foundation. Both passes were compared
+		 *          on text lengths from half a kilobyte to sixty four kilobytes:
+		 *
+		 *          | text              | 2 KB | 8 KB | 64 KB |
+		 *          |-------------------|------|------|-------|
+		 *          | protocol, one candidate: default to probe | 0.34 | 0.38 | 0.38  |
+		 *          | pair wearing out: default to probe         | 4.56 | 9.25 | 16.80 |
+		 *
+		 *          On real text the probe loses three to four times **at every length**; on degenerate
+		 *          input it wins up to seventeen times. Length does not distinguish these cases at all:
+		 *          the length threshold would give every longer text to the probe without asking
+		 *          how many candidates it has - hence `literal-medium` fell behind by 1.37 times,
+		 *          while the default-pair pass clocked 43.8 nanoseconds against the reference's
+		 *          63.9 nanoseconds.
+		 *
+		 *          The density of candidates is taken from the window already passed, so the pass
+		 *          pays nothing for it - see `seek`.
+		 *
+		 * \~
+		 */
+		constexpr size_t PAYOFF = 24;
+		/**
+		 * \~russian
+		 * @brief Количество встреч первого байта, пробе отводимое
+		 *
+		 * @details Первый байт разборчивостью не отличается, и проход по всем его
+		 *          встречам выродился бы ровно в то, от чего оконный проход и заведён.
+		 *          Число встреч оттого ограничено: не найдя искомого за них, проба
+		 *          уступает место окну.
+		 *
+		 * \~english
+		 * @brief Number of occurrences of the first byte allotted to the probe
+		 *
+		 * @details The first byte is not distinctive, and a pass over all its
+		 *          occurrences would degenerate into exactly what the windowed pass was introduced against.
+		 *          The number of occurrences is therefore bounded: not having found the sought sequence within them, the probe
+		 *          yields its place to the window.
+		 *
+		 * \~
+		 */
+		constexpr size_t ATTEMPTS = 2;
+		/**
+		 * \~russian
+		 * @brief Окно обычного поиска, якорному поиску предшествующее
+		 *
+		 * @details Окно решает, окупится ли выбор пары байтов: совпадение, в окне
+		 *          лежащее, обычный поиск находит дешевле всякой пробы, а
+		 *          совпадение за окном оправдывает и пробу, и якорный поиск
+		 *          по остатку. Размер окна взят так, чтобы проход его целиком
+		 *          не превышал платы за выбор пары: 1024 байта на 8,6 ГБ/с
+		 *          обходятся в 120 наносекунд против 190 у выбора.
+		 *
+		 *          Совпадение, границу окна пересекающее, не теряется: окно
+		 *          просматривается с придачей длины искомого без одного байта,
+		 *          а якорный поиск начинается ровно за окном, отчего всякое
+		 *          положение начала совпадения просматривается единожды.
+		 *
+		 * \~english
+		 * @brief Window of the ordinary search preceding the anchored search
+		 *
+		 * @details The window decides whether selecting a byte pair pays off: a match lying
+		 *          within the window is found by the ordinary search more cheaply than any probe,
+		 *          while a match beyond the window justifies both the probe and the anchored
+		 *          search over the remainder. The size of the window is taken so that walking it
+		 *          entirely does not exceed the cost of selecting a pair: 1024 bytes at 8.6 GB/s
+		 *          cost 120 nanoseconds against the 190 of the selection.
+		 *
+		 *          A match crossing the boundary of the window is not lost: the window is examined
+		 *          with the length of the sought sequence less one byte added to it, while
+		 *          the anchored search begins exactly past the window, which is why every
+		 *          position where a match begins is examined once.
+		 *
+		 * \~
+		 */
+		constexpr size_t WINDOW = 1024;
+		/**
+		 * \~russian
+		 * @brief Длина остатка текста, пробы средствами библиотеки не окупающая
+		 *
+		 * @details Поиск последовательности средствами библиотеки уходит в подпрограмму
+		 *          родовую, и стоит она на коротком тексте дороже самого сопоставления:
+		 *          замером на тексте в шесть байтов - 6.26 наносекунды. Остаток короче
+		 *          порога проходится своим поиском: поиск первого байта набором команд
+		 *          процессора да сличение остатка.
+		 *
+		 * \~english
+		 * @brief Length of the remainder of the text that does not repay a probe by library means
+		 *
+		 * @details Searching for a sequence by library means goes into a generic
+		 *          subroutine, and on a short text it costs more than the matching itself:
+		 *          by measurement on a text of six bytes - 6.26 nanoseconds. A remainder shorter
+		 *          than the threshold is passed by an own search: a search for the first byte by the
+		 *          instruction set of the processor and a comparison of the remainder.
+		 *
+		 * \~
+		 */
+		constexpr size_t SHORTCUT = 16;
+		/**
+		 * \~russian
+		 * @brief Длина ближнего участка текста, пробе первым байтом отводимая
+		 *
+		 * @details Проба ограничена участком ближним: поиск первого байта по тексту
+		 *          целиком выродился бы на тексте, байтом этим насыщенном, ровно в то,
+		 *          от чего оконный проход и заведён.
+		 *
+		 * \~english
+		 * @brief Length of the near stretch of the text allotted to the probe by the first byte
+		 *
+		 * @details The probe is bounded by the near stretch: a search for the first byte over the whole
+		 *          text would degenerate, on a text saturated with that byte, into exactly what
+		 *          the windowed pass was introduced against.
+		 *
+		 * \~
+		 */
+		constexpr size_t LOOKAHEAD = 64;
+
+		/**
+		 * \~russian
+		 * @brief Класс предварительного отбора позиций сопоставления
+		 *
+		 * @details Отбор сокращает работу конечного автомата двумя способами. Набор
+		 *          допустимых начальных байтов позволяет пропускать позиции, с которых
+		 *          совпадение начаться не может. Обязательный литерал позволяет
+		 *          отказаться от сопоставления целиком, если литерал в тексте
+		 *          отсутствует. Оба способа дают надмножество возможных совпадений
+		 *          и на результат сопоставления не влияют.
+		 *
+		 * \~english
+		 * @brief Preliminary selection of matching positions
+		 *
+		 * @details The selection reduces the work of the finite automaton in two ways. The set of
+		 *          admissible starting bytes allows skipping the positions at which
+		 *          a match cannot begin. The mandatory literal allows
+		 *          giving up matching entirely if the literal is absent
+		 *          from the text. Both ways yield a superset of the possible matches
+		 *          and do not affect the result of matching.
+		 *
+		 * \~
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Prefilter {
+			public:
+				/**
+				 * \~russian
+				 * @brief Тип подпрограммы отбора позиции для порождённого кода
+				 *
+				 * \~english
+				 * @brief Type of the position selection routine for generated code
+				 *
+				 * \~
+				 */
+				typedef size_t (* seeker_t) (const char *, size_t, size_t, const void *) noexcept;
+			public:
+				// Флаг разбора текста как последовательности UTF-8
+				bool utf;
+				// Флаг применимости набора допустимых начальных байтов
+				bool active;
+				/**
+				 * \~russian
+				 * @brief Признак единственного допустимого начального байта
+				 *
+				 * @details Единственный допустимый байт отыскивается поиском байта
+				 *          в тексте, выполняемым набором команд процессора над
+				 *          несколькими байтами сразу, тогда как набор допустимых
+				 *          байтов требует перебора текста побайтно.
+				 *
+				 * \~english
+				 * @brief Indication of a single admissible starting byte
+				 *
+				 * @details A single admissible byte is looked up by a byte search
+				 *          in the text performed by processor instructions over
+				 *          several bytes at once, whereas a set of admissible
+				 *          bytes requires walking the text byte by byte.
+				 *
+				 * \~
+				 */
+				bool unique;
+			public:
+				// Общий первый байт альтернативных литералов, если он един
+				char anchor;
+				// Единственный допустимый начальный байт совпадения
+				char letter;
+			public:
+				// Набор байтов, допустимых в начале совпадения
+				bool bytes[256];
+			public:
+				/**
+				 * \~russian
+				 * @brief Наибольшее удаление обязательного литерала от начала совпадения
+				 *
+				 * @details Совпадение обязано литерал содержать, отчего начало его
+				 *          не может лежать дальше чем за удаление до ближайшего
+				 *          вхождения литерала: позиции до «вхождение минус удаление»
+				 *          пропускаются разом, поиском последовательности взамен
+				 *          перебора. Значение «string_view::npos» означает удаление
+				 *          неограниченное - такое даёт всякий узел неограниченной
+				 *          длины, литералу предшествующий, - и при нём литерал
+				 *          служит лишь проверке возможности совпадения.
+				 *
+				 * \~english
+				 * @brief The greatest distance of the mandatory literal from the beginning of a match
+				 *
+				 * @details A match is bound to contain the literal, which is why its beginning
+				 *          cannot lie further than the distance before the nearest
+				 *          occurrence of the literal: the positions before "occurrence minus distance"
+				 *          are skipped at once, by a sequence search instead of
+				 *          a walk. The value "string_view::npos" means an unbounded
+				 *          distance - such is given by any node of unbounded length
+				 *          preceding the literal - and with it the literal
+				 *          serves only the check of the possibility of a match.
+				 *
+				 * \~
+				 */
+				size_t distance;
+			public:
+				/**
+				 * \~russian
+				 * @brief Литерал, присутствующий в любом совпадении выражения
+				 *
+				 * @details Выражению, привязанному к позиции начала поиска, литерал
+				 *          не выводится и остаётся пустым: попытка у такого выражения
+				 *          одна, и поиск литерала у него не читает. Смотрите раздел
+				 *          «Намеренные решения» компилятора.
+				 *
+				 * \~english
+				 * @brief Literal present in every match of the expression
+				 *
+				 * @details For an expression anchored to the search start position the literal
+				 *          is not derived and stays empty: such an expression has a single
+				 *          attempt, and the search does not read its literal. See the section
+				 *          «Deliberate decisions» of the compiler.
+				 *
+				 * \~
+				 */
+				string literal;
+				/**
+				 * \~russian
+				 * @brief Последовательность символов, с которой начинается любое совпадение
+				 *
+				 * @details Ведущий литерал отыскивает позиции возможного начала совпадения
+				 *          поиском последовательности в тексте, тогда как набор допустимых
+				 *          байтов требует перебора текста побайтно. Поиск последовательности
+				 *          пропускает участки текста целиком и потому предпочтителен.
+				 *
+				 * \~english
+				 * @brief The character sequence every match begins with
+				 *
+				 * @details The leading literal locates the positions of a possible beginning of a match
+				 *          by searching for the sequence in the text, whereas the set of admissible
+				 *          bytes requires walking the text byte by byte. Searching for a sequence
+				 *          skips stretches of the text as a whole and is therefore preferable.
+				 *
+				 * \~
+				 */
+				string leading;
+			public:
+				/**
+				 * \~russian
+				 * @brief Альтернативные ведущие литералы выражения, начинающегося с alternation
+				 *
+				 * @details Заполняется, если первый узел выражения — alternation литералов
+				 *          одинаковой длины, и каждый литерал отыскивается SIMD-сканером
+				 *          пары. Содержимое «alts» взаимно исключающее: «alts[0]» и
+				 *          «alts[1]» могут одновременно встретиться в одной позиции текста,
+				 *          но не оба означают совпадение. Длина всех литералов одинакова.
+				 *
+				 *          Поле «anchor» содержит общий первый байт всех литералов,
+				 *          если он един; 0 в противном случае (литералы начинаются
+				 *          с разных байт, и SIMD-скан ведётся по объединению).
+				 *
+				 * \~english
+				 * @brief Alternative leading literals of an expression starting with alternation
+				 *
+				 * @details Filled when the first node of the expression is an alternation of
+				 *          literals of equal length, each located by a SIMD pair scanner.
+				 *          The contents of «alts» are mutually exclusive: «alts[0]» and
+				 *          «alts[1]» can appear in the same text position simultaneously,
+				 *          but both do not indicate a match. All literals have equal length.
+				 *
+				 *          The «anchor» field carries the common first byte of all literals
+				 *          if unique; 0 otherwise (literals start with different bytes,
+				 *          and SIMD scan runs over the union).
+				 *
+				 * \~
+				 */
+				vector <string> alts;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод очистки предварительного отбора позиций
+				 *
+				 * \~english
+				 * @brief Method of clearing the preliminary selection of positions
+				 *
+				 * \~
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод завершения формирования отбора позиций
+				 *
+				 * @details Признак единственного допустимого байта определяется по
+				 *          набору допустимых байтов однажды при компиляции выражения,
+				 *          поскольку перебор набора на каждом сопоставлении обошёлся бы
+				 *          дороже самого отбора позиций.
+				 *
+				 *          Допустимые байты считаются сложением набора словами по
+				 *          восемь байтов, а первый из них отыскивается поиском байта:
+				 *          оба прохода ведутся без перехода на всяком байте. Перебор
+				 *          с переходом на всяком из двухсот пятидесяти шести байтов
+				 *          стоил сборке выражения сценария стенда 5.7 процента, а сумма
+				 *          побайтная, какую Clang на ARM64 ведёт вектором, у Clang
+				 *          на x86-64 с одним SSE2 оставалась побайтной же.
+				 *
+				 * \~english
+				 * @brief Method of finishing the building of the position selection
+				 *
+				 * @details The indication of a single admissible byte is determined from the
+				 *          set of admissible bytes once when compiling the expression,
+				 *          since walking the set on every match would cost
+				 *          more than the position selection itself.
+				 *
+				 *          The admissible bytes are counted by adding the set in words of eight
+				 *          bytes, and the first of them is found by a byte search: both passes
+				 *          run without a branch on every byte. A walk with a branch on every one
+				 *          of the two hundred and fifty six bytes cost the build of the stand
+				 *          scenario expression 5.7 per cent, while a bytewise sum, which Clang on
+				 *          ARM64 carries out with vectors, stayed bytewise with Clang on x86-64
+				 *          with SSE2 alone.
+				 *
+				 * \~
+				 */
+				void finalize() noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод поиска вхождения обязательного литерала в оставшемся тексте
+				 *
+				 * @details Поиск ведётся единожды на сопоставление. Двухбайтовый литерал
+				 *          на x86-64 с SSE2 получает отдельный проход с дешёвой проверкой
+				 *          начальной пары. Общий путь сперва проверяет первый байт
+				 *          в ближнем участке, затем ищет последовательность в остатке.
+				 *          Проверка возможности совпадения использует тот же поиск.
+				 *          Исполнение с возвратом берёт найденное вхождение как есть:
+				 *          прежде оно разыскивало литерал заново, и сопоставление,
+				 *          пробою разрешённое, искало его дважды.
+				 *
+				 * @param text текст сопоставления
+				 * @param pos  позиция начала проверяемого участка текста
+				 * @return     позиция первого вхождения литерала не левее заданной либо
+				 *             «npos» при его отсутствии; литерал пустой входит в заданную
+				 *             позицию, если она не лежит за концом текста
+				 *
+				 * \~english
+				 * @brief Method of searching for an occurrence of the mandatory literal in the remaining text
+				 *
+				 * @details The search is performed once per match. On x86-64 with SSE2, a two-byte
+				 *          literal uses a dedicated pass with an inexpensive check of the starting pair.
+				 *          The general path first probes the initial byte in a nearby stretch and then
+				 *          searches for the sequence over the remainder. The possibility-of-match check
+				 *          uses the same search, and the execution with
+				 *          backtracking takes the found occurrence as is: formerly it searched for the
+				 *          literal anew, and a match resolved by the probe searched for it twice.
+				 *
+				 * @param text text to match
+				 * @param pos  position of the beginning of the checked stretch of the text
+				 * @return     position of the first occurrence of the literal not to the left of the given one
+				 *             or «npos» in its absence; an empty literal occurs at the given
+				 *             position, unless it lies beyond the end of the text
+				 *
+				 * \~
+				 */
+				size_t locate(string_view text, const size_t pos) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод проверки возможности совпадения в оставшемся тексте
+				 *
+				 * @details Проверка выполняется по обязательному литералу совпадения.
+				 *          Отсутствие литерала означает невозможность совпадения.
+				 *
+				 * @param text текст сопоставления
+				 * @param pos  позиция начала проверяемого участка текста
+				 * @return     результат проверки возможности совпадения
+				 *
+				 * \~english
+				 * @brief Method of checking the possibility of a match in the remaining text
+				 *
+				 * @details The check is performed by the mandatory literal of a match.
+				 *          The absence of the literal means that a match is impossible.
+				 *
+				 * @param text text to match
+				 * @param pos  position of the beginning of the checked stretch of the text
+				 * @return     result of checking the possibility of a match
+				 *
+				 * \~
+				 */
+				bool possible(string_view text, const size_t pos) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод поиска ближайшей позиции возможного начала совпадения
+				 *
+				 * @details Поиск выполняется по набору допустимых начальных байтов.
+				 *          В режиме разбора UTF-8 продолжающие байты последовательности
+				 *          пропускаются, поскольку совпадение начинается с границы символа.
+				 *
+				 * @param text текст сопоставления
+				 * @param pos  позиция начала поиска
+				 * @return     позиция возможного начала совпадения либо признак отсутствия
+				 *
+				 * \~english
+				 * @brief Method of searching for the nearest position of a possible beginning of a match
+				 *
+				 * @details The search is performed by the set of admissible starting bytes.
+				 *          In the UTF-8 parsing mode the continuation bytes of a sequence
+				 *          are skipped, since a match begins at a character boundary.
+				 *
+				 * @param text text to match
+				 * @param pos  position to start the search from
+				 * @return     position of a possible beginning of a match or the indication of its absence
+				 *
+				 * \~
+				 */
+				size_t search(string_view text, const size_t pos) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отбора позиции начала совпадения по обязательному литералу
+				 *
+				 * @details Совпадение обязано обязательный литерал содержать, и литерал
+				 *          этот отстоит от начала совпадения не далее чем на удаление.
+				 *          Отсюда: начало совпадения не может лежать раньше, чем
+				 *          за удаление до ближайшего вхождения литерала, и позиции
+				 *          до неё пропускаются разом - поиском последовательности
+				 *          взамен перебора по одной.
+				 *
+				 *          Отсутствие литерала в оставшемся тексте означает отсутствие
+				 *          совпадения, и выводится размер текста - тем же уговором,
+				 *          какого держится поиск по набору допустимых байтов.
+				 *
+				 *          Отбор неприменим при удалении неограниченном и при литерале
+				 *          пустом: в обоих случаях выводится сама позиция поиска,
+				 *          отчего вызывающему проверять применимость не требуется.
+				 *
+				 * @param text текст сопоставления
+				 * @param pos  позиция начала поиска
+				 * @return     позиция возможного начала совпадения либо размер текста
+				 *
+				 * \~english
+				 * @brief Method of selecting the position of the beginning of a match by the mandatory literal
+				 *
+				 * @details A match is bound to contain the mandatory literal, and that literal
+				 *          stands no further from the beginning of the match than the distance.
+				 *          Hence the beginning of a match cannot lie earlier than
+				 *          the distance before the nearest occurrence of the literal, and the positions
+				 *          before it are skipped at once - by a sequence search
+				 *          instead of a walk one by one.
+				 *
+				 *          The absence of the literal in the remaining text means the absence of a match,
+				 *          and the text size is returned - by the same contract that the search by the
+				 *          set of admissible bytes adheres to.
+				 *
+				 *          Selection is not applicable when the distance is unbounded and when the
+				 *          literal is empty: in both cases the search position itself is returned,
+				 *          so the caller does not need to check applicability.
+				 *
+				 * @param text text to match
+				 * @param pos  position to start the search from
+				 * @return     position of a possible beginning of a match, or the text size
+				 *
+				 * \~
+				 */
+				size_t bounded(string_view text, const size_t pos) const noexcept;
+			public:
+				/**
+				 * Если доступен набор команд SSE2
+				 */
+				#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+					/**
+					 * \~russian
+					 * @brief Метод выбора подпрограммы отбора позиции для порождённого кода
+					 *
+					 * @details Выбор выполняется после формирования ведущего литерала.
+					 *          До следующего выбора литерал и признак применимости
+					 *          отбора должны оставаться неизменными. Подпрограмма
+					 *          получает адрес текста, размер, начало поиска и адрес
+					 *          этого объекта. Отсутствие совпадения обозначается
+					 *          размером текста, как и в методе «search».
+					 *
+					 * @return адрес специального отбора либо нулевой адрес для общего пути
+					 *
+					 * \~english
+					 * @brief Method of selecting a position search routine for generated code
+					 *
+					 * @details Select after the leading literal is finalized. The literal
+					 *          and the active flag must remain unchanged until reselection.
+					 *          The routine receives the text address, size, search start
+					 *          and this object's address. A missing match yields the text
+					 *          size, following the contract of the search method.
+					 *
+					 * @return specialized routine or a null pointer for the general path
+					 *
+					 * \~
+					 */
+					seeker_t select() const noexcept;
+				/**
+				 * Иначе используем встроенную реализацию
+				 */
+				#else
+					/**
+					 * \~russian
+					 * @brief Метод выбора подпрограммы отбора позиции для порождённого кода
+					 *
+					 * @details Выбор выполняется после формирования ведущего литерала.
+					 *          До следующего выбора литерал и признак применимости
+					 *          отбора должны оставаться неизменными. Подпрограмма
+					 *          получает адрес текста, размер, начало поиска и адрес
+					 *          этого объекта. Отсутствие совпадения обозначается
+					 *          размером текста, как и в методе «search».
+					 *
+					 * @return адрес специального отбора либо нулевой адрес для общего пути
+					 *
+					 * \~english
+					 * @brief Method of selecting a position search routine for generated code
+					 *
+					 * @details Select after the leading literal is finalized. The literal
+					 *          and the active flag must remain unchanged until reselection.
+					 *          The routine receives the text address, size, search start
+					 *          and this object's address. A missing match yields the text
+					 *          size, following the contract of the search method.
+					 *
+					 * @return specialized routine or a null pointer for the general path
+					 *
+					 * \~
+					 */
+					seeker_t select() const noexcept;
+				#endif
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Prefilter() noexcept;
+		} prefilter_t;
+
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в тексте
+		 *
+		 * @details Поиск последовательности стандартными средствами отыскивает
+		 *          первый байт искомого, а затем сличает остаток. Байт первый
+		 *          разборчивостью не отличается: в связном тексте он встречается
+		 *          на каждом десятке байтов, отчего поиск обрывается непрестанно
+		 *          и идёт со скоростью 8,6 ГБ/с при пределе набора команд
+		 *          в шесть-восемь раз выше.
+		 *
+		 *          Разборчивость даёт пара байтов, в тексте редкая, - см. «anchored».
+		 *          Здесь же остаётся отсев случаев, пробы не стоящих: искомое
+		 *          пустое, искомое об одном байте, отыскиваемое поиском байта,
+		 *          и остаток текста, пробы не окупающий.
+		 *
+		 * @param text текст сопоставления
+		 * @param what искомая последовательность
+		 * @param pos  позиция начала поиска
+		 * @return     позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the text
+		 *
+		 * @details Searching for a sequence by the standard means locates
+		 *          the first byte of the sought sequence and then compares the remainder. The first byte
+		 *          is not distinctive: in connected text it occurs
+		 *          at every ten bytes, which is why the search breaks off incessantly
+		 *          and goes at a speed of 8.6 GB/s while the limit of the instruction set
+		 *          is six to eight times higher.
+		 *
+		 *          Distinctiveness is given by a pair of bytes that is rare in the text — see «anchored».
+		 *          What remains here is the sifting out of the cases not worth a probe: an empty
+		 *          sought sequence, a sought sequence of one byte located by a byte search,
+		 *          and a remainder of the text that does not pay the probe off.
+		 *
+		 * @param text text to match
+		 * @param what sought sequence
+		 * @param pos  position to start the search from
+		 * @return     position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t seek(string_view text, string_view what, const size_t pos) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в окне по паре байтов умолчания
+		 *
+		 * @param text текст сопоставления
+		 * @param what искомая последовательность
+		 * @param pos  позиция начала поиска
+		 * @return     позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the window by the default pair of bytes
+		 *
+		 * @param text text to match
+		 * @param what sought sequence
+		 * @param pos  start position of the search
+		 * @return     position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t windowed(const string_view text, const string_view what, const size_t pos) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в окне со счётом ложных кандидатов
+		 *
+		 * @details Кандидат ложный есть положение, где пара байтов сошлась, а сличение
+		 *          остатка искомого отказало. Число их и решает, окупится ли проба
+		 *          редкой пары: проба стоит около семидесяти наносекунд постоянных,
+		 *          а кандидат ложный - около полутора, отчего проба окупается лишь
+		 *          там, где кандидатов набирается несколько десятков.
+		 *
+		 * @param text     текст сопоставления
+		 * @param what     искомая последовательность
+		 * @param pos      позиция начала поиска
+		 * @param rejected число ложных кандидатов, проходом отвергнутых
+		 * @return         позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the window with a count of false candidates
+		 *
+		 * @details A false candidate is a position where the pair of bytes matched
+		 *          while the comparison of the remainder of the sought sequence failed.
+		 *          The number of these decides whether the probe of a rare pair pays
+		 *          off: the probe costs about seventy nanoseconds of constant cost,
+		 *          and a false candidate costs about one and a half, so the probe
+		 *          pays off only where the candidates amount to several dozens.
+		 *
+		 * @param text     text to match
+		 * @param what     sought sequence
+		 * @param pos      position to start the search from
+		 * @param rejected number of false candidates rejected by the pass
+		 * @return         position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t windowed(const string_view text, const string_view what, const size_t pos, size_t & rejected) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в тексте по паре байтов
+		 *
+		 * @details Функция отделена от поиска общего и вынесена в отдельный файл
+		 *          намеренно. Поиск общий стоит на пути горячем - он зовётся
+		 *          и на текстах коротких, где проба не окупается вовсе, - и телом
+		 *          своим обязан быть таким, чтобы встраивание его было
+		 *          безоговорочным, тогда как тело поиска по паре крупно и несёт
+		 *          команды над вектором, каким в заголовочном файле не место:
+		 *          заголовок этот подключается всюду, а команды те нужны одному
+		 *          лишь поиску.
+		 *
+		 * @param text текст сопоставления
+		 * @param what искомая последовательность
+		 * @param pos  позиция начала поиска
+		 * @return     позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the text by a pair of bytes
+		 *
+		 * @details The function is separated from the general search and moved into a separate file
+		 *          deliberately. The general search stands on the hot path — it is called
+		 *          on short texts too, where the probe does not pay off at all — and its body
+		 *          is obliged to be such that its inlining is
+		 *          unconditional, whereas the body of the search by a pair is large and carries
+		 *          vector instructions, which have no place in a header file:
+		 *          that header is included everywhere, while those instructions are needed by the search
+		 *          alone.
+		 *
+		 * @param text text to match
+		 * @param what sought sequence
+		 * @param pos  position to start the search from
+		 * @return     position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t anchored(const string_view text, const string_view what, const size_t pos) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция отбора позиции по альтернативным ведущим литералам
+		 *
+		 * @details Сканирует текст SIMD-инструкциями по объединению первых байтов
+		 *          альтернатив и проверяет ожидаемый хвост на каждом кандидате.
+		 *
+		 *          Реализованы NEON (arm64) и SSE2 (x86_64) варианты; на остальных
+		 *          архитектурах возвращает размер текста — codegen откатывается
+		 *          на общий путь отбора по набору допустимых байтов.
+		 *
+		 * @param text      адрес текста сопоставления
+		 * @param size      размер текста сопоставления
+		 * @param pos       позиция начала поиска
+		 * @param prefilter адрес объекта префильтра
+		 * @return          позиция совпадения одной из альтернатив либо размер текста
+		 *
+		 * \~english
+		 * @brief Position selection by alternative leading literals
+		 *
+		 * @details Scans the text with SIMD on the union of first bytes of alternatives
+		 *          and verifies the expected tail at each candidate.
+		 *
+		 *          NEON (arm64) and SSE2 (x86_64) variants are implemented; on other
+		 *          architectures it returns the text size - codegen falls back to the
+		 *          common path of selection by the set of admissible bytes.
+		 *
+		 * @param text      address of the matching text
+		 * @param size      size of the matching text
+		 * @param pos       start position of the search
+		 * @param prefilter address of the prefilter object
+		 * @return          position of a matching alternative or the text size
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t alternating(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция поиска первого байта из набора в тексте
+		 *
+		 * @details Функция отыскивает позицию первого байта текста,
+		 *          набору принадлежащего, и служит отбору позиций начала
+		 *          попытки при наборе узком. Набор задаётся перечислением
+		 *          значений, а не таблицей: перечисление размножается
+		 *          по вектору, тогда как таблица обращения к памяти требует.
+		 *
+		 * @param text  текст сопоставления
+		 * @param bytes набор искомых значений байта
+		 * @param count количество искомых значений байта
+		 * @param pos   позиция начала поиска
+		 * @return      позиция найденного байта либо размер текста
+		 *
+		 * \~english
+		 * @brief Function of searching for the first byte of a set in the text
+		 *
+		 * @details The function finds the position of the first byte of the text belonging
+		 *          to the set and serves the selection of the positions where an attempt
+		 *          begins when the set is narrow. The set is given by an enumeration
+		 *          of the values rather than by a table: the enumeration is spread over
+		 *          a vector, whereas a table requires accesses to memory.
+		 *
+		 * @param text  text to match
+		 * @param bytes set of the sought byte values
+		 * @param count number of the sought byte values
+		 * @param pos   position to start the search from
+		 * @return      position of the found byte or the size of the text
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t scattered(const string_view text, const uint8_t * bytes, const size_t count, const size_t pos) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в тексте по заданной паре байтов
+		 *
+		 * @param text   текст сопоставления
+		 * @param what   искомая последовательность
+		 * @param pos    позиция начала поиска
+		 * @param first  смещение первого байта пары в искомой последовательности
+		 * @param second смещение второго байта пары в искомой последовательности
+		 * @return       позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the text by a given pair of bytes
+		 *
+		 * @param text   text to match
+		 * @param what   sought sequence
+		 * @param pos    start position of the search
+		 * @param first  offset of the first byte of the pair in the sought sequence
+		 * @param second offset of the second byte of the pair in the sought sequence
+		 * @return       position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t paired(const string_view text, const string_view what, const size_t pos, const size_t first, const size_t second) noexcept;
+	};
+};

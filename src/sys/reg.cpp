@@ -170,10 +170,16 @@ vector <string> awh::RegExp::exec(const char * text, const size_t size, const ex
 			if(exp->_engine->exec(string_view(text, size), 0, captures)){
 				// Выполняем перебор всех полученных захватов
 				for(auto & capture : captures){
-					// Границы захвата: движок отдаёт начало и конец
-					if((capture.second > capture.first) && (capture.second <= size))
+					/**
+					 * Границы захвата: движок отдаёт начало и конец, а неучаствующий
+					 * захват помечает пределами size_t. Позицию такого захвата сохраняем
+					 * пустым значением: вызывающие модули читают захваты по индексам
+					 */
+					if((capture.first != std::numeric_limits <size_t>::max()) && (capture.second > capture.first) && (capture.second <= size))
 						// Добавляем полученный результат в список
 						result.push_back(string(text + capture.first, capture.second - capture.first));
+					// Если захват не участвовал в сопоставлении
+					else result.emplace_back();
 				}
 			// Если сопоставление не выполнено
 			} else const_cast <regexp_t *> (this)->_error = exp->_engine->message();

@@ -240,7 +240,7 @@ rem  Версии зависимостей записаны в их сценар
 rem  build_third_party.sh этой ветки задаёт их там же, и второй список рядом
 rem  значил бы два источника правды, расходящихся с первой же правки
 rem ----------------------------------------------------------------------------
-for %%D in (a-nts zlib bz2 lz4 zstd lzma brotli nghttp2 static) do (
+for %%D in (a-nts zlib bz2 lz4 zstd lzma brotli static) do (
 	call :run "%%D"
 	if errorlevel 1 exit /b 1
 )

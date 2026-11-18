@@ -21,7 +21,6 @@
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
 - [A-NTS](https://anyks.com/nts)
-- [NgHttp2](https://nghttp2.org/documentation)
 
 ## To build and launch the project
 
@@ -202,15 +201,13 @@ Studio itself and sets up the compiler environment, so this step needs no develo
 > bat\build_third_party.bat
 ```
 
-That one command builds all ten dependencies: A-NTS, zlib, bzip2, lz4, zstd, lzma, Brotli,
-nghttp2. Everything lands in `third_party-msvc` — headers
+That one command builds all seven dependencies: A-NTS, zlib, bzip2, lz4, zstd, lzma, Brotli.
+Everything lands in `third_party-msvc` — headers
 in `include`, archives in `lib`. The version of each dependency is written in its own script
 under `bat\third_party`, and those are the same versions the MinGW build takes from
 `build_third_party.sh`.
 
-Nine of the ten are libraries, and their archives are merged into one `libdependence.lib`.
-The allocator is built after that merge and is deliberately left out of it; the reason is in
-the notes at the end.
+Their archives are merged into one `libdependence.lib`.
 
 The script remembers what it has already built, so a second run costs almost nothing and
 rebuilds only what changed. Three arguments change that:

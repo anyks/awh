@@ -40,7 +40,6 @@ if [ -n "$1" ]; then
 		# Очищаем подпроекты
 		clean_submodule "a-nts"
 		# clean_submodule "openssl"
-		clean_submodule "nghttp2"
 
 		# Удаляем сборочную директорию (префикс у каждой оснастки свой)
 		rm -rf "${AWH_THIRD_PARTY:-$ROOT/third_party}"
@@ -911,114 +910,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Удаляем файл разметки
 		rm -f "__.SYMDEF SORTED"
 	fi
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
-
-# Сборка NgHttp2
-src="$ROOT/submodules/nghttp2"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** NgHttp2 ******\n"
-	cd "$src" || exit 1
-
-	# Версия NgHttp2
-	VER="1.67.1"
-
-	# Переключаемся на master
-	git checkout master
-	# Выполняем удаление предыдущей закаченной версии
-	git tag -d v${VER}
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch v${VER}
-
-	# Каталог для сборки
-	build="out"
-
-	# Создаём каталог сборки
-	mkdir -p ${build} || exit 1
-	# Переходим в каталог
-	cd ${build} || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf ./CMakeCache.txt
-
-	# Деактивируем режим отладки
-	ENABLE_DEBUG="OFF"
-	# Деактивируем сборку отладочной информации
-	BUILD_TYPE="Release"
-
-	# Если режим отладки активирован
-	if [[ $DEBUG = "yes" ]]; then
-		# Активируем режим отладки
-		ENABLE_DEBUG="ON"
-		# Активируем сборку отладочной информации
-		BUILD_TYPE="Debug"
-	fi
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -DENABLE_STATIC_CRT="ON" \
-		 -DENABLE_APP="OFF" \
-		 -DENABLE_DOC="OFF" \
-		 -DWITH_MRUBY="OFF" \
-		 -DWITH_LIBXML2="OFF" \
-		 -DWITH_LIBBPF="OFF" \
-		 -DWITH_NEVERBLEED="OFF" \
-		 -DENABLE_HTTP3="OFF" \
-		 -DENABLE_LIB_ONLY="ON" \
-		 -DENABLE_EXAMPLES="OFF" \
-		 -DBUILD_STATIC_LIBS="ON" \
-		 -DBUILD_SHARED_LIBS="OFF" \
-		 -DENABLE_APP_DEFAULT="ON" \
-		 -DENABLE_HPACK_TOOLS="OFF" \
-		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-		 -DENABLE_WERROR="$ENABLE_DEBUG" \
-		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MSYS Makefiles" \
-		 .. || exit 1
-	else
-		cmake \
-		 -DENABLE_APP="OFF" \
-		 -DENABLE_DOC="OFF" \
-		 -DWITH_MRUBY="OFF" \
-		 -DWITH_LIBXML2="OFF" \
-		 -DWITH_LIBBPF="OFF" \
-		 -DWITH_NEVERBLEED="OFF" \
-		 -DENABLE_HTTP3="OFF" \
-		 -DENABLE_LIB_ONLY="ON" \
-		 -DENABLE_EXAMPLES="OFF" \
-		 -DBUILD_STATIC_LIBS="ON" \
-		 -DBUILD_SHARED_LIBS="OFF" \
-		 -DENABLE_APP_DEFAULT="ON" \
-		 -DENABLE_HPACK_TOOLS="OFF" \
-		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
-		 -DENABLE_WERROR="$ENABLE_DEBUG" \
-		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-		 -DENABLE_FAILMALLOC="$ENABLE_DEBUG" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		.. || exit 1
-	fi
-
-    # -DOPENSSL_LIBRARIES="$PREFIX/lib"
-    # -DOPENSSL_INCLUDE_DIR="$PREFIX/include"
-
-	# Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$MAKE install || exit 1
-
-	# Выполняем компенсацию каталогов
-	restorelibs $PREFIX
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

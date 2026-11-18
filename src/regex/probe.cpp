@@ -1,0 +1,172 @@
+/**
+ * @file probe.cpp
+ * @date 2026-08-29
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Исходный файл учёта путей исполнения сопоставления
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <atomic>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <regex/probe.hpp>
+
+/**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Пространство имён вспомогательных функций
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Набор счётчиков мер работы сопоставления
+	 *
+	 * @details Хранилище разведено с хранилищем путей намеренно: перечисления
+	 *          их несут значения, с нуля начинающиеся, и один набор смешал бы
+	 *          шаги цикла с порождением машинного кода.
+	 *
+	 */
+	static atomic_uint64_t AMOUNTS[static_cast <size_t> (regex::work_t::COUNT)];
+	/**
+	 * @brief Счётчики путей исполнения сопоставления
+	 *
+	 * @details Счётчики заводятся всегда, а приращаются лишь у библиотеки, признаком
+	 *          сборки «AWH_REGEX_PROBING» собранной: место под семь величин ничего
+	 *          не стоит, а условная сборка самого хранилища развела бы устройство
+	 *          библиотеки и её заголовка.
+	 *
+	 */
+	static atomic_uint64_t COUNTERS[static_cast <size_t> (regex::path_t::COUNT)];
+};
+
+/**
+ * @brief Функция проверки заведения учёта путей исполнения
+ *
+ * @return признак заведения учёта путей исполнения
+ *
+ */
+bool awh::regex::enabled() noexcept {
+	/**
+	 * Если учёт путей исполнения сопоставления заведён
+	 */
+	#if defined(AWH_REGEX_PROBING)
+		// Выводим признак заведения учёта путей исполнения
+		return true;
+	/**
+	 * Если учёт путей исполнения сопоставления не заведён
+	 */
+	#else
+		// Выводим отсутствие учёта путей исполнения
+		return false;
+	#endif
+}
+/**
+ * @brief Функция сброса счётчиков путей исполнения
+ *
+ */
+void awh::regex::reset() noexcept {
+	/**
+	 * Обходим счётчиков путей исполнения сопоставления
+	 */
+	for(size_t i = 0; i < static_cast <size_t> (path_t::COUNT); i++)
+		// Сбрасываем очередного счётчика пути исполнения
+		COUNTERS[i].store(0, memory_order_relaxed);
+	/**
+	 * Обходим всех счётчиков мер работы сопоставления
+	 */
+	for(size_t i = 0; i < static_cast <size_t> (work_t::COUNT); i++)
+		// Сбрасываем очередного счётчика меры работы
+		AMOUNTS[i].store(0, memory_order_relaxed);
+}
+/**
+ * @brief Функция извлечения счётчика пути исполнения
+ *
+ * @param path учитываемый путь исполнения сопоставления
+ * @return     количество прохождений пути исполнения
+ *
+ */
+uint64_t awh::regex::count(const path_t path) noexcept {
+	/**
+	 * Если учитываемый путь исполнения за пределы набора выходит
+	 */
+	if(static_cast <size_t> (path) >= static_cast <size_t> (path_t::COUNT))
+		// Выводим отсутствие прохождений пути исполнения
+		return 0;
+	// Выводим количество прохождений пути исполнения
+	return COUNTERS[static_cast <size_t> (path)].load(memory_order_relaxed);
+}
+/**
+ * @brief Функция учёта прохождения пути исполнения
+ *
+ * @param path пройденный путь исполнения сопоставления
+ *
+ */
+void awh::regex::tick(const path_t path) noexcept {
+	/**
+	 * Если пройденный путь исполнения за пределы набора выходит
+	 */
+	if(static_cast <size_t> (path) >= static_cast <size_t> (path_t::COUNT))
+		// Выходим из метода учёта прохождения пути исполнения
+		return;
+	// Учитываем прохождени пути исполнения сопоставления
+	COUNTERS[static_cast <size_t> (path)].fetch_add(1, memory_order_relaxed);
+}
+/**
+ * @brief Функция извлечения счётчика меры работы
+ *
+ * @param work учитываемая мера работы сопоставления
+ * @return     количество операций учитываемой меры
+ *
+ */
+uint64_t awh::regex::amount(const work_t work) noexcept {
+	/**
+	 * Если мера работы за пределами набора счётчиков
+	 */
+	if(static_cast <size_t> (work) >= static_cast <size_t> (work_t::COUNT))
+		// Выводим отсутствие операций учитываемой меры
+		return 0;
+	// Выводим количество операций учитываемой меры работы
+	return AMOUNTS[static_cast <size_t> (work)].load(memory_order_relaxed);
+}
+/**
+ * @brief Функция учёта выполненных операций меры работы
+ *
+ * @param work  выполненная мера работы сопоставления
+ * @param count количество выполненных операций
+ *
+ */
+void awh::regex::spend(const work_t work, const uint64_t count) noexcept {
+	/**
+	 * Если мера работы за пределами набора счётчиков
+	 */
+	if(static_cast <size_t> (work) >= static_cast <size_t> (work_t::COUNT))
+		// Выходим из метода учёта выполненных операций
+		return;
+	// Учитываем выполненных операций меры работы сопоставления
+	AMOUNTS[static_cast <size_t> (work)].fetch_add(count, memory_order_relaxed);
+}

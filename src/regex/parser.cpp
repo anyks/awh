@@ -1,0 +1,6504 @@
+/**
+ * @file parser.cpp
+ * @date 2026-07-31
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Реализация синтаксического разбора регулярных выражений — рекурсивный спуск по тексту
+ *        регулярного выражения синтаксиса PCRE с формированием синтаксического дерева в арене узлов,
+ *        разбором классов символов, групп, кванторов повторения и экранированных последовательностей
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <limits>
+#include <algorithm>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <encoding/ascii.hpp>
+#include <encoding/unicode/unicode.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <regex/probe.hpp>
+#include <regex/parser.hpp>
+
+/**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Пространство имён вспомогательных функций разбора
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция приведения режима компиляции к его числовому значению
+	 *
+	 * @param value режим компиляции регулярного выражения
+	 * @return      числовое значение режима компиляции
+	 *
+	 */
+	static constexpr uint32_t flagOf(const regex::flag_t value) noexcept {
+		// Приводим режим компиляции к числовому значению
+		return static_cast <uint32_t> (value);
+	}
+	/**
+	 * @brief Функция извлечения числового значения шестнадцатеричной цифры
+	 *
+	 * @param letter символ шестнадцатеричной цифры
+	 * @return       числовое значение шестнадцатеричной цифры
+	 *
+	 */
+	static __AWH_INLINE__ uint32_t hexValue(const char letter) noexcept {
+		/**
+		 * Если символ является десятичной цифрой
+		 */
+		if(ascii::isDigit(letter))
+			// Выводим числовое значение десятичной цифры
+			return static_cast <uint32_t> (letter - '0');
+		// Выводим числовое значение шестнадцатеричной цифры
+		return (static_cast <uint32_t> (ascii::toLower(letter) - 'a') + 10);
+	}
+	/**
+	 * @brief Функция проверки допустимости символа имени группы
+	 *
+	 * @param letter проверяемый символ имени группы
+	 * @param first  флаг проверки первого символа имени группы
+	 * @return       результат проверки допустимости символа имени группы
+	 *
+	 */
+	static __AWH_INLINE__ bool isNameChar(const char letter, const bool first) noexcept {
+		/**
+		 * Если проверяется первый символ имени группы
+		 */
+		if(first)
+			// Имя группы начинается с буквы либо знака подчёркивания
+			return (ascii::isAlpha(letter) || (letter == '_'));
+		// Прочие символы имени группы допускают также десятичные цифры
+		return (ascii::isAlnum(letter) || (letter == '_'));
+	}
+	/**
+	 * @brief Функция извлечения десятичного числа начального указания
+	 *
+	 * @details Число, пределом выражения выступающее, читается целиком: запись
+	 *          с посторонним знаком, пустая запись и запись, предел разрядности
+	 *          превышающая, дают отказ - указание таковое разбором отвергается
+	 *          наравне с неизвестным. Нуль записью верной является и отказом
+	 *          не выводится: «(*LIMIT_MATCH=0)» есть предел действующий.
+	 *
+	 * @param text   запись извлекаемого числа
+	 * @param result извлечённое десятичное число
+	 * @return       результат извлечения числа
+	 *
+	 */
+	static __AWH_INLINE__ bool numbering(const string_view text, uint32_t & result) noexcept {
+		// Извлекаемое десятичное число
+		uint64_t value = 0;
+		/**
+		 * Если запись числа пуста
+		 */
+		if(text.empty())
+			// Извлечения числа: отказ
+			return false;
+		/**
+		 * Обходим записю извлекаемого числа
+		 */
+		for(auto & letter : text){
+			/**
+			 * Если очередной знак записи десятичной цифрой не является
+			 */
+			if(!ascii::isDigit(letter))
+				// Извлечения числа: отказ
+				return false;
+			// Добавляем очередной десятичной цифры
+			value = ((value * 10) + static_cast <uint64_t> (letter - '0'));
+			/**
+			 * Если извлечённое число превышает предел разрядности
+			 */
+			if(value > numeric_limits <uint32_t>::max())
+				// Извлечения числа: отказ
+				return false;
+		}
+		// Устанавливаем извлечённого десятичного числа
+		result = static_cast <uint32_t> (value);
+		// Извлечения числа: успех
+		return true;
+	}
+	/**
+	 * @brief Функция проверки размещения элемента сортировки POSIX
+	 *
+	 * @details Элементы сортировки «[.a.]» и равнозначности «[=a=]» заданы
+	 *          стандартом POSIX, однако ни эталоном PCRE2, ни модулем
+	 *          не поддерживаются вовсе. Опознаются они по вводящему знаку
+	 *          и по завершению ему отвечающему: без завершения знак остаётся
+	 *          литералом класса, и «[.a]» классом обыкновенным и является.
+	 *
+	 * @param pattern текст разбираемого регулярного выражения
+	 * @param pos     позиция вводящего знака элемента сортировки
+	 * @return        результат проверки размещения элемента сортировки
+	 *
+	 */
+	static __AWH_INLINE__ bool collating(const string_view pattern, const size_t pos) noexcept {
+		// Получаем размер текста регулярного выражения
+		const size_t size = pattern.size();
+		/**
+		 * Если позиция вводящего знака выходит за пределы выражения
+		 */
+		if(pos >= size)
+			// Проверка размещения элемента сортировки: отказ
+			return false;
+		// Получаем вводящий знак элемента сортировки
+		const char letter = pattern.at(pos);
+		/**
+		 * Если знак вводящим элемент сортировки не является
+		 */
+		if((letter != '.') && (letter != '='))
+			// Проверка размещения элемента сортировки: отказ
+			return false;
+		/**
+		 * Ищем завершени элемента сортировки
+		 *
+		 * @details Поиск ведётся до первой скобки закрывающей неэкранированной:
+		 *          скобка эта завершает класс символов, и знак вводящий остаётся
+		 *          литералом его. Потому «[.a.]» есть элемент сортировки,
+		 *          а «[.a]b.]» - класс из двух знаков.
+		 *
+		 */
+		for(size_t i = (pos + 1); i < size; i++){
+			/**
+			 * Если завершение элемента сортировки обнаружено
+			 */
+			if((pattern.at(i) == letter) && ((i + 1) < size) && (pattern.at(i + 1) == ']'))
+				// Проверка размещения элемента сортировки: успех
+				return true;
+			/**
+			 * Если класс символов завершён скобкой неэкранированной
+			 */
+			if((pattern.at(i) == ']') && (pattern.at(i - 1) != '\\'))
+				// Проверка размещения элемента сортировки: отказ
+				return false;
+		}
+		// Проверка размещения элемента сортировки: отказ
+		return false;
+	}
+};
+
+/**
+ * @brief Метод сброса результатов разбора
+ *
+ */
+void awh::regex::Parser::reset() noexcept {
+	// Сбрасываем позицию разбора
+	this->_pos = 0;
+	// Сбрасываем глубину вложенности проверок окружения
+	this->_look = 0;
+	// Сбрасываем глубину вложенности групп
+	this->_depth = 0;
+	// Сбрасываем общего количества захватывающих групп
+	this->_total = 0;
+	// Сбрасываем позицию начала предварительного прохода
+	this->_begin = 0;
+	// Сбрасываем набор видов заведённых узлов
+	this->_kinds = 0;
+	// Сбрасываем набор режимов компиляции
+	this->_flags = 0;
+	// Сбрасываем набор видов глаголов управления
+	this->_verbs = 0;
+	// Сбрасываем исходного набора режимов компиляции
+	this->_options = 0;
+	// Сбрасываем количество обнаруженных захватывающих групп
+	this->_captures = 0;
+	// Сбрасываем смещение ошибки разбора
+	this->_errorPos = 0;
+	/**
+	 * Сбрасываем количество классов символов
+	 *
+	 * @details Записи хранилища классов сбросом не уничтожаются: ряды их
+	 *          сохраняют место, и классы разбора следующего формируются
+	 *          в нём. Уничтожение записей стоило освобождения рядов всякого
+	 *          класса, а формирование их заново - размещения.
+	 *
+	 */
+	this->_classCount = 0;
+	// Сбрасываем флаг выполненного предварительного прохода
+	this->_counted = false;
+	// Сбрасываем признак разрыва связи квантора
+	this->_barrier = false;
+	// Сбрасываем признак вычисления длины с разрешением вызовов
+	this->_resolving = false;
+	// Сбрасываем ограничени охвата последовательности «\R»
+	this->_restricted = false;
+	// Сбрасываем индекс корневого узла
+	this->_root = INVALID_NODE;
+	// Сбрасываем код ошибки разбора
+	this->_error = error_t::NONE;
+	// Очищаем арену узлов синтаксического дерева
+	this->_nodes.clear();
+	/**
+	 * Очищаем сберегательного ряда составов узлов
+	 *
+	 * @details Разбор, отказом прекращённый, ряд за собою не усекает: усечение
+	 *          там лишнее, ибо дерево выбрасывается целиком. Очистка началом
+	 *          разбора это и покрывает, а место, ряду отведённое, разборы
+	 *          переживает: очистка длины его не касается.
+	 *
+	 */
+	this->_items.clear();
+	// Очищаем хранилищ имён именованных групп
+	this->_names.clear();
+	// Очищаем соответствие имён групп их номерам
+	this->_groups.clear();
+	// Очищаем хранилищ имён отметок глаголов управления
+	this->_markers.clear();
+	// Очищаем хранилищ последовательностей символов
+	this->_strings.clear();
+	// Очищаем набор ретроспективных проверок с вызовом
+	this->_behinds.clear();
+	// Очищаем набор номеров групп вычисляемой длины
+	this->_calling.clear();
+	// Очищаем набор отложенных ссылок
+	this->_deferred.clear();
+	// Сбрасываем пределов, выражением заданных
+	this->_stepLimit = ~0u;
+	// Устанавливаем значение «_depthLimit»
+	this->_depthLimit = ~0u;
+	// Устанавливаем признак «_restricted» в false
+	this->_heapLimit = ~0u;
+	// Сбрасываем соглашени о переводе строки выражения
+	this->_convention = newline_t::LF;
+}
+/**
+ * @brief Метод установки ошибки разбора
+ *
+ * @param error код ошибки разбора регулярного выражения
+ * @param pos   смещение ошибки в тексте регулярного выражения
+ * @return      индекс отсутствующего узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::fail(const error_t error, const size_t pos) noexcept {
+	/**
+	 * Если ошибка разбора ещё не установлена
+	 */
+	if(this->_error == error_t::NONE){
+		// Устанавливаем код ошибки разбора
+		this->_error = error;
+		// Устанавливаем смещение ошибки разбора
+		this->_errorPos = pos;
+	}
+	// Выводим индекс отсутствующего узла синтаксического дерева
+	return INVALID_NODE;
+}
+/**
+ * @brief Метод извлечения кода ошибки разбора
+ *
+ * @return код ошибки последней операции разбора
+ *
+ */
+awh::regex::error_t awh::regex::Parser::error() const noexcept {
+	// Выводим код ошибки последней операции разбора
+	return this->_error;
+}
+/**
+ * @brief Метод извлечения смещения ошибки разбора
+ *
+ * @return смещение ошибки в тексте регулярного выражения
+ *
+ */
+size_t awh::regex::Parser::errorPos() const noexcept {
+	// Выводим смещение ошибки в тексте регулярного выражения
+	return this->_errorPos;
+}
+/**
+ * @brief Метод извлечения текста ошибки разбора
+ *
+ * @return текст ошибки последней операции разбора
+ *
+ */
+string awh::regex::Parser::message() const noexcept {
+	// Выводим текст ошибки последней операции разбора
+	return Parser::message(this->_error);
+}
+/**
+ * @brief Метод толкования кода ошибки текстом
+ *
+ * @param error толкуемый код ошибки
+ * @return      текст толкуемого кода ошибки
+ *
+ */
+string awh::regex::Parser::message(const error_t error) noexcept {
+	/**
+	 * Определяем код ошибки последней операции разбора
+	 */
+	switch(static_cast <uint8_t> (error)){
+		// Ошибок не обнаружено
+		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим сообщение ошибки
+			return "no error";
+		// Внутренняя ошибка разбора
+		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим сообщение ошибки
+			return "internal error";
+		// Обратная косая черта в конце выражения
+		case static_cast <uint8_t> (error_t::TRAILING_BACKSLASH):
+			// Выводим сообщение ошибки
+			return "pattern ends with a backslash";
+		// Неизвестная экранированная последовательность
+		case static_cast <uint8_t> (error_t::UNKNOWN_ESCAPE):
+			// Выводим сообщение ошибки
+			return "unrecognized escape sequence";
+		// Непарная круглая скобка
+		case static_cast <uint8_t> (error_t::UNMATCHED_PAREN):
+			// Выводим сообщение ошибки
+			return "unmatched parenthesis";
+		// Непарная квадратная скобка
+		case static_cast <uint8_t> (error_t::UNMATCHED_BRACKET):
+			// Выводим сообщение ошибки
+			return "missing terminating character for character class";
+		// Непарная фигурная скобка
+		case static_cast <uint8_t> (error_t::UNMATCHED_BRACE):
+			// Выводим сообщение ошибки
+			return "unmatched brace";
+		// Некорректный квантор повторения
+		case static_cast <uint8_t> (error_t::BAD_QUANTIFIER):
+			// Выводим сообщение ошибки
+			return "invalid quantifier";
+		// Квантор повторения без предшествующего элемента
+		case static_cast <uint8_t> (error_t::QUANTIFIER_NO_ATOM):
+			// Выводим сообщение ошибки
+			return "quantifier does not follow a repeatable item";
+		// Значение кванта повторения превышает допустимое
+		case static_cast <uint8_t> (error_t::QUANTIFIER_TOO_BIG):
+			// Выводим сообщение ошибки
+			return "number too big in quantifier";
+		// Некорректный диапазон в классе символов
+		case static_cast <uint8_t> (error_t::BAD_CLASS_RANGE):
+			// Выводим сообщение ошибки
+			return "range out of order in character class";
+		// Некорректная шестнадцатеричная последовательность
+		case static_cast <uint8_t> (error_t::BAD_ESCAPE_HEX):
+			// Выводим сообщение ошибки
+			return "invalid hexadecimal escape sequence";
+		// Некорректная восьмеричная последовательность
+		case static_cast <uint8_t> (error_t::BAD_ESCAPE_OCTAL):
+			// Выводим сообщение ошибки
+			return "invalid octal escape sequence";
+		// Неизвестное свойство Юникода
+		case static_cast <uint8_t> (error_t::BAD_PROPERTY):
+			// Выводим сообщение ошибки
+			return "unknown unicode property name";
+		// Неизвестный класс символов POSIX
+		case static_cast <uint8_t> (error_t::BAD_POSIX_CLASS):
+			// Выводим сообщение ошибки
+			return "unknown posix class name";
+		// Некорректный синтаксис группы
+		case static_cast <uint8_t> (error_t::BAD_GROUP_SYNTAX):
+			// Выводим сообщение ошибки
+			return "unrecognized character after (?";
+		// Некорректное имя именованной группы
+		case static_cast <uint8_t> (error_t::BAD_GROUP_NAME):
+			// Выводим сообщение ошибки
+			return "invalid group name";
+		// Повторное объявление имени группы
+		case static_cast <uint8_t> (error_t::DUPLICATE_NAME):
+			// Выводим сообщение ошибки
+			return "two named groups have the same name";
+		// Ссылка на несуществующую группу
+		case static_cast <uint8_t> (error_t::BAD_BACKREFERENCE):
+			// Выводим сообщение ошибки
+			return "reference to non-existent subpattern";
+		// Некорректный условный шаблон
+		case static_cast <uint8_t> (error_t::BAD_CONDITION):
+			// Выводим сообщение ошибки
+			return "malformed conditional group";
+		// Некорректный рекурсивный вызов
+		case static_cast <uint8_t> (error_t::BAD_RECURSION):
+			// Выводим сообщение ошибки
+			return "invalid recursive call";
+		// Некорректные встроенные опции
+		case static_cast <uint8_t> (error_t::BAD_OPTIONS):
+			// Выводим сообщение ошибки
+			return "invalid inline option";
+		// Превышена допустимая глубина вложенности
+		case static_cast <uint8_t> (error_t::NESTING_TOO_DEEP):
+			// Выводим сообщение ошибки
+			return "parentheses are too deeply nested";
+		// Регулярное выражение превышает допустимый размер
+		case static_cast <uint8_t> (error_t::PATTERN_TOO_LARGE):
+			// Выводим сообщение ошибки
+			return "pattern is too large";
+		// Некорректная последовательность UTF-8 в выражении
+		case static_cast <uint8_t> (error_t::BAD_UTF8):
+			// Выводим сообщение ошибки
+			return "invalid utf-8 sequence in pattern";
+		// Некорректная последовательность UTF-8 в тексте сопоставления
+		case static_cast <uint8_t> (error_t::BAD_UTF8_SUBJECT):
+			// Выводим сообщение ошибки
+			return "invalid utf-8 sequence in subject";
+		// Недопустимая ретроспективная проверка
+		case static_cast <uint8_t> (error_t::LOOKBEHIND_INVALID):
+			// Выводим сообщение ошибки
+			return "invalid lookbehind assertion";
+		// Конструкция не поддерживается модулем
+		case static_cast <uint8_t> (error_t::UNSUPPORTED):
+			// Выводим сообщение ошибки
+			return "unsupported pattern construct";
+		// Выводим текст ошибки превышения допустимого объёма работы сопоставления
+		case static_cast <uint8_t> (error_t::BUDGET_EXCEEDED):
+			// Выводим сообщение ошибки
+			return "match budget exceeded";
+		// Повторный рекурсивный вызов в той же позиции текста
+		case static_cast <uint8_t> (error_t::NESTED_RECURSION):
+			// Выводим сообщение ошибки
+			return "recursive call could loop indefinitely";
+	}
+	// Выводим текст неизвестной ошибки разбора
+	return "unknown error";
+}
+/**
+ * @brief Метод извлечения индекса корневого узла синтаксического дерева
+ *
+ * @return индекс корневого узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::root() const noexcept {
+	// Выводим индекс корневого узла синтаксического дерева
+	return this->_root;
+}
+/**
+ * @brief Метод извлечения количества захватывающих групп
+ *
+ * @return количество захватывающих групп регулярного выражения
+ *
+ */
+uint32_t awh::regex::Parser::captures() const noexcept {
+	// Выводим количество захватывающих групп регулярного выражения
+	return this->_captures;
+}
+/**
+ * @brief Метод извлечения количества классов символов
+ *
+ * @return количество классов символов в хранилище классов
+ *
+ */
+uint32_t awh::regex::Parser::classes() const noexcept {
+	// Выводим количество классов символов текущего разбора
+	return this->_classCount;
+}
+/**
+ * @brief Метод извлечения набора видов глаголов управления
+ *
+ * @return набор видов глаголов управления, разбором заведённых
+ *
+ */
+uint32_t awh::regex::Parser::verbs() const noexcept {
+	// Выводим набор видов глаголов управления, разбором заведённых
+	return this->_verbs;
+}
+/**
+ * @brief Метод извлечения предела шагов сопоставления выражения
+ *
+ * @return предел шагов сопоставления либо нуль при его отсутствии
+ *
+ */
+uint32_t awh::regex::Parser::steps() const noexcept {
+	// Выводим предел шагов сопоставления выражения
+	return this->_stepLimit;
+}
+/**
+ * @brief Метод извлечения предела глубины рекурсивных вызовов выражения
+ *
+ * @return предел глубины рекурсивных вызовов либо нуль при его отсутствии
+ *
+ */
+uint32_t awh::regex::Parser::depth() const noexcept {
+	// Выводим предел глубины рекурсивных вызовов выражения
+	return this->_depthLimit;
+}
+/**
+ * @brief Метод извлечения предела объёма памяти сопоставления выражения
+ *
+ * @return предел объёма памяти в килобайтах либо предельное значение при его отсутствии
+ *
+ */
+uint32_t awh::regex::Parser::heap() const noexcept {
+	// Выводим предел объёма памяти сопоставления выражения
+	return this->_heapLimit;
+}
+/**
+ * @brief Метод извлечения соглашения о переводе строки выражения
+ *
+ * @return соглашение о переводе строки выражения
+ *
+ */
+awh::regex::newline_t awh::regex::Parser::newline() const noexcept {
+	// Выводим соглашение о переводе строки выражения
+	return this->_convention;
+}
+/**
+ * @brief Метод извлечения хранилища имён отметок глаголов управления
+ *
+ * @return хранилище имён отметок глаголов управления
+ *
+ */
+const vector <uint8_t> & awh::regex::Parser::markers() const noexcept {
+	// Выводим хранилище имён отметок глаголов управления
+	return this->_markers;
+}
+/**
+ * @brief Метод извлечения исходного набора режимов компиляции
+ *
+ * @return исходный набор режимов компиляции регулярного выражения
+ *
+ */
+uint32_t awh::regex::Parser::options() const noexcept {
+	// Выводим исходный набор режимов компиляции регулярного выражения
+	return this->_options;
+}
+/**
+ * @brief Метод извлечения узла синтаксического дерева
+ *
+ * @param id индекс узла в арене узлов
+ * @return   узел синтаксического дерева
+ *
+ */
+const awh::regex::node_data_t & awh::regex::Parser::node(const node_id_t id) const noexcept {
+	// Создаём узел пустого выражения для отсутствующего индекса
+	static constexpr node_data_t empty{};
+	/**
+	 * Если индекс узла находится за пределами арены узлов
+	 */
+	if(id >= static_cast <node_id_t> (this->_nodes.size()))
+		// Выводим узел пустого выражения
+		return empty;
+	// Выводим узел синтаксического дерева
+	return this->_nodes.at(id);
+}
+/**
+ * @brief Метод извлечения арены узлов синтаксического дерева
+ *
+ * @return арена узлов синтаксического дерева
+ *
+ */
+const vector <awh::regex::node_data_t> & awh::regex::Parser::nodes() const noexcept {
+	// Выводим арену узлов синтаксического дерева
+	return this->_nodes;
+}
+/**
+ * @brief Метод извлечения класса символов
+ *
+ * @param index индекс класса символов в хранилище классов
+ * @return      класс символов регулярного выражения
+ *
+ */
+const awh::regex::class_t & awh::regex::Parser::charClass(const uint32_t index) const noexcept {
+	// Создаём пустой класс символов для отсутствующего индекса
+	static const class_t empty;
+	/**
+	 * Если индекс класса находится за пределами хранилища классов
+	 */
+	if(index >= this->_classCount)
+		// Выводим пустой класс символов
+		return empty;
+	// Выводим класс символов регулярного выражения
+	return this->_classes.at(index);
+}
+/**
+ * @brief Метод извлечения имени именованной группы
+ *
+ * @param index индекс имени в хранилище имён
+ * @return      имя именованной группы
+ *
+ */
+const string & awh::regex::Parser::name(const uint32_t index) const noexcept {
+	// Создаём пустое имя для отсутствующего индекса
+	static const string empty;
+	/**
+	 * Если индекс имени находится за пределами хранилища имён
+	 */
+	if(index >= static_cast <uint32_t> (this->_names.size()))
+		// Выводим пустое имя именованной группы
+		return empty;
+	// Выводим имя именованной группы
+	return this->_names.at(index);
+}
+/**
+ * @brief Метод извлечения соответствия имён групп их номерам
+ *
+ * @return соответствие имён именованных групп наборам их номеров
+ *
+ */
+const unordered_map <string, vector <uint32_t>> & awh::regex::Parser::groups() const noexcept {
+	// Выводим соответствие имён именованных групп наборам их номеров
+	return this->_groups;
+}
+/**
+ * @brief Метод извлечения последовательности символов узла
+ *
+ * @param offset смещение начала последовательности в хранилище строк
+ * @param length длина последовательности в кодовых значениях
+ * @return       адрес начала последовательности кодовых значений
+ *
+ */
+const uint32_t * awh::regex::Parser::sequence(const uint32_t offset, const uint32_t length) const noexcept {
+	/**
+	 * Если последовательность выходит за пределы хранилища строк
+	 */
+	if((static_cast <size_t> (offset) + static_cast <size_t> (length)) > this->_strings.size())
+		// Выводим отсутствие последовательности символов
+		return nullptr;
+	// Выводим адрес начала последовательности кодовых значений
+	return (this->_strings.data() + offset);
+}
+/**
+ * @brief Метод создания узла синтаксического дерева
+ *
+ * @param type тип создаваемого узла синтаксического дерева
+ * @return     индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::createNode(const node_t type) noexcept {
+	// Получаем индекс создаваемого узла в арене узлов
+	const node_id_t result = static_cast <node_id_t> (this->_nodes.size());
+	// Создаём новый узел синтаксического дерева
+	this->_nodes.emplace_back();
+	// Устанавливаем тип узла синтаксического дерева
+	this->_nodes.back().type = type;
+	// Учитываем вид заведённого узла
+	this->_kinds |= (1u << static_cast <uint8_t> (type));
+	// Устанавливаем набор режимов компиляции узла
+	this->_nodes.back().flags = this->_flags;
+	// Устанавливаем смещение узла в тексте регулярного выражения
+	this->_nodes.back().offset = static_cast <uint32_t> (this->_pos);
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод добавления дочернего узла синтаксического дерева
+ *
+ * @param parent индекс родительского узла в арене узлов
+ * @param child  индекс добавляемого дочернего узла в арене узлов
+ *
+ */
+void awh::regex::Parser::appendChild(const node_id_t parent, const node_id_t child) noexcept {
+	/**
+	 * Если один из переданных индексов отсутствует
+	 */
+	if((parent == INVALID_NODE) || (child == INVALID_NODE))
+		// Выходим из функции
+		return;
+	/**
+	 * Если родительский узел не содержит дочерних узлов
+	 */
+	if(this->_nodes.at(parent).child == INVALID_NODE){
+		// Устанавливаем первого дочернего узла
+		this->_nodes.at(parent).child = child;
+		// Выходим из функции
+		return;
+	}
+	// Получаем индекс последнего дочернего узла
+	node_id_t last = this->_nodes.at(parent).child;
+	/**
+	 * Ищем последнего дочернего узла
+	 */
+	while(this->_nodes.at(last).next != INVALID_NODE)
+		// Переходим к следующему дочернему узлу
+		last = this->_nodes.at(last).next;
+	// Добавляем дочернего узла в конец списка
+	this->_nodes.at(last).next = child;
+}
+/**
+ * @brief Метод создания узла из набора дочерних узлов
+ *
+ * @param type  тип создаваемого узла синтаксического дерева
+ * @param items набор индексов дочерних узлов в арене узлов
+ * @return      индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeList(const node_t type, const vector <node_id_t> & items, const size_t from) noexcept {
+	// Получаем количество дочерних узлов, отметкою основания отсекаемое
+	const size_t count = ((items.size() > from) ? (items.size() - from) : 0);
+	/**
+	 * Если набор дочерних узлов пуст
+	 */
+	if(count == 0)
+		// Выводим индекс созданного узла пустого выражения
+		return this->createNode(node_t::EMPTY);
+	/**
+	 * Если набор состоит из единственного узла
+	 */
+	if(count == 1)
+		// Выводим индекс единственного узла набора без обёртки
+		return items.at(from);
+	// Создаём узл синтаксического дерева
+	const node_id_t result = this->createNode(type);
+	// Устанавливаем первого дочернего узла
+	this->_nodes.at(result).child = items.at(from);
+	/**
+	 * Связываем дочерние узлы между собой
+	 */
+	for(size_t i = (from + 1); i < items.size(); i++)
+		// Устанавливаем следующего узла того же уровня вложенности
+		this->_nodes.at(items.at(i - 1)).next = items.at(i);
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод создания узла последовательности символов
+ *
+ * @param codes набор кодовых значений символов последовательности
+ * @return      индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeString(const vector <uint32_t> & codes) noexcept {
+	/**
+	 * Если набор кодовых значений символов пуст
+	 */
+	if(codes.empty())
+		// Выводим индекс созданного узла пустого выражения
+		return this->createNode(node_t::EMPTY);
+	/**
+	 * Если набор состоит из единственного кодового значения
+	 */
+	if(codes.size() == 1){
+		// Создаём узл одиночного символа
+		const node_id_t result = this->createNode(node_t::LITERAL);
+		// Устанавливаем кодового значения символа
+		this->_nodes.at(result).literal.code = codes.front();
+		// Выводим индекс созданного узла в арене узлов
+		return result;
+	}
+	// Получаем смещение начала последовательности в хранилище строк
+	const uint32_t offset = static_cast <uint32_t> (this->_strings.size());
+	// Размещаем последовательностю в хранилище строк
+	this->_strings.insert(this->_strings.end(), codes.begin(), codes.end());
+	// Создаём узл последовательности символов
+	const node_id_t result = this->createNode(node_t::STRING);
+	// Устанавливаем смещение начала последовательности
+	this->_nodes.at(result).string.offset = offset;
+	// Устанавливаем длину последовательности
+	this->_nodes.at(result).string.length = static_cast <uint32_t> (codes.size());
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод создания узла рекурсивного вызова
+ *
+ * @param number номер вызываемой группы либо нуль для вызова выражения целиком
+ * @param index  индекс имени вызываемой группы в хранилище имён
+ * @param offset смещение вызова в тексте регулярного выражения
+ * @return       индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeRecurse(const uint32_t number, const uint32_t index, const size_t offset) noexcept {
+	// Создаём узл рекурсивного вызова
+	const node_id_t result = this->createNode(node_t::RECURSE);
+	// Устанавливаем номер вызываемой группы
+	this->_nodes.at(result).recurse.number = number;
+	// Устанавливаем индекс имени вызываемой группы
+	this->_nodes.at(result).recurse.name = index;
+	/**
+	 * Если рекурсивный вызов задан именем группы
+	 */
+	if(index != NO_NAME){
+		// Создаём отложенную ссылку на именованную группу
+		deferred_t deferred;
+		// Устанавливаем индекс узла вызова
+		deferred.node = result;
+		// Устанавливаем индекс имени группы
+		deferred.name = index;
+		// Устанавливаем смещение вызова
+		deferred.offset = static_cast <uint32_t> (offset);
+		// Добавляем отложенной ссылки
+		this->_deferred.push_back(deferred);
+	}
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод создания узла ссылки на именованную группу
+ *
+ * @param index  индекс имени группы в хранилище имён
+ * @param offset смещение ссылки в тексте регулярного выражения
+ * @return       индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeBackref(const uint32_t index, const size_t offset) noexcept {
+	// Создаём узл ссылки на захваченную группу
+	const node_id_t result = this->createNode(node_t::BACKREF);
+	// Устанавливаем неразрешённого номера группы
+	this->_nodes.at(result).backref.number = 0;
+	// Устанавливаем индекс имени группы
+	this->_nodes.at(result).backref.name = index;
+	// Создаём отложенную ссылку на именованную группу
+	deferred_t deferred;
+	// Устанавливаем индекс узла ссылки
+	deferred.node = result;
+	// Устанавливаем индекс имени группы
+	deferred.name = index;
+	// Устанавливаем смещение ссылки
+	deferred.offset = static_cast <uint32_t> (offset);
+	// Добавляем отложенной ссылки
+	this->_deferred.push_back(deferred);
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод приведения класса символов к нормальному виду
+ *
+ * @param value класс символов для приведения к нормальному виду
+ *
+ */
+void awh::regex::Parser::normalize(class_t & value) const noexcept {
+	/**
+	 * Если набор диапазонов класса символов пуст
+	 */
+	if(value.ranges.empty())
+		// Выходим из функции
+		return;
+	/**
+	 * Упорядочиваем диапазонов по нижней границе
+	 */
+	::sort(value.ranges.begin(), value.ranges.end(), [](const range_t & a, const range_t & b) noexcept -> bool {
+		// Сравнение границ диапазонов
+		return ((a.begin < b.begin) || ((a.begin == b.begin) && (a.end < b.end)));
+	});
+	// Получаем позицию записи объединённого диапазона
+	size_t index = 0;
+	/**
+	 * Объединяем пересекающихс и смежных диапазонов
+	 */
+	for(size_t i = 1; i < value.ranges.size(); i++){
+		/**
+		 * Если очередной диапазон пересекается с объединяемым либо смежен ему
+		 */
+		if(value.ranges.at(i).begin <= (value.ranges.at(index).end + 1)){
+			/**
+			 * Если очередной диапазон расширяет верхнюю границу
+			 */
+			if(value.ranges.at(i).end > value.ranges.at(index).end)
+				// Расширяем верхней границы объединяемого диапазона
+				value.ranges.at(index).end = value.ranges.at(i).end;
+		// Если очередной диапазон не пересекается с объединяемым
+		} else {
+			// Переходим к следующей позиции записи
+			index++;
+			// Записываем очередного диапазона
+			value.ranges.at(index) = value.ranges.at(i);
+		}
+	}
+	// Усекаем набор диапазонов до объединённого размера
+	value.ranges.resize(index + 1);
+}
+/**
+ * @brief Метод создания узла любого символа с учётом соглашения
+ *
+ * @return индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
+	/**
+	 * Если точка сопоставляет всякий символ безусловно
+	 *
+	 * @details Режим «DOTALL» снимает исключение завершений строк целиком,
+	 *          а соглашение пары возврата каретки одиночных завершений
+	 *          не знает вовсе - точка при них сопоставляет всякий символ.
+	 *
+	 */
+	if(hasFlag(this->_flags, flag_t::DOTALL) || (this->_convention == newline_t::CRLF)){
+		// Сохраняем набор режимов компиляции
+		const uint32_t saved = this->_flags;
+		// Устанавливаем режим соответствия точки переводу строки
+		this->_flags |= flagOf(flag_t::DOTALL);
+		// Создаём узл любого символа
+		const node_id_t result = this->createNode(node_t::ANY);
+		// Восстанавливаем набор режимов компиляции
+		this->_flags = saved;
+		// Выводим индекс созданного узла синтаксического дерева
+		return result;
+	}
+	/**
+	 * Если соглашение о переводе строки является соглашением умолчания
+	 *
+	 * @details Узел любого символа перевод строки исключает сам, и путям
+	 *          исполнения он известен отдельным устройством, отбором позиций
+	 *          и порождением машинного кода в том числе. Соглашение умолчания
+	 *          потому классом не выражается.
+	 *
+	 */
+	if(this->_convention == newline_t::LF)
+		// Выводим индекс созданного узла любого символа
+		return this->createNode(node_t::ANY);
+	// Получаем запись под формируемый класс завершений строк соглашения
+	class_t & value = this->acquireClass();
+	// Устанавливаем отрицани класса символов
+	value.negative = true;
+	/**
+	 * Определяем соглашение о переводе строки выражения
+	 */
+	switch(static_cast <uint8_t> (this->_convention)){
+		// Если соглашение о переводе строки соответствует возврату каретки
+		case static_cast <uint8_t> (newline_t::CR):
+			// Добавляем возврат каретки в класс символов
+			value.ranges.emplace_back(0x0D, 0x0D);
+		break;
+		// Если соглашение о переводе строки соответствует нулевому знаку
+		case static_cast <uint8_t> (newline_t::NIL):
+			// Добавляем нулевого знака в класс символов
+			value.ranges.emplace_back(0x00, 0x00);
+		break;
+		// Если соглашение о переводе строки соответствует строке Юникода
+		case static_cast <uint8_t> (newline_t::ANY): {
+			// Добавляем перевод строки и возврата каретки
+			value.ranges.emplace_back(0x0A, 0x0D);
+			// Добавляем следующей строки
+			value.ranges.emplace_back(0x85, 0x85);
+			// Добавляем разделителей строк и абзацев
+			value.ranges.emplace_back(0x2028, 0x2029);
+		} break;
+		/**
+		 * Если соглашение о переводе строки соответствует возврату каретки и переводу строки
+		 *
+		 * @details Знаки между ними - табуляция вертикальная и подача страницы -
+		 *          завершением строки при соглашении этом не являются, и точка
+		 *          их сопоставляет: диапазоном сплошным они попали бы
+		 *          в исключение по ошибке.
+		 *
+		 */
+		case static_cast <uint8_t> (newline_t::ANYCRLF): {
+			// Добавляем перевод строки в класс символов
+			value.ranges.emplace_back(0x0A, 0x0A);
+			// Добавляем возврат каретки в класс символов
+			value.ranges.emplace_back(0x0D, 0x0D);
+		} break;
+	}
+	// Выводим индекс созданного узла класса символов
+	return this->makeClass(value);
+}
+/**
+ * @brief Метод получения записи под формируемый класс символов
+ *
+ * @return запись под формируемый класс символов
+ *
+ */
+awh::regex::class_t & awh::regex::Parser::acquireClass() noexcept {
+	/**
+	 * Если записи за последней заведённой в хранилище классов нет
+	 */
+	if(this->_classCount >= this->_classes.size())
+		// Добавляем записю в хранилище классов
+		this->_classes.emplace_back();
+	// Получаем запись под формируемый класс символов
+	class_t & result = this->_classes[this->_classCount];
+	// Сбрасываем флаг отрицания класса символов
+	result.negative = false;
+	// Очищаем набор диапазонов с сохранением места
+	result.ranges.clear();
+	// Очищаем набор свойств с сохранением места
+	result.properties.clear();
+	// Выводим запись под формируемый класс символов
+	return result;
+}
+/**
+ * @brief Метод создания узла класса символов
+ *
+ * @param value класс символов, заводимый в хранилище классов
+ * @return      индекс созданного узла в арене узлов
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::makeClass(class_t & value) noexcept {
+	// Приводим класс символов к нормальному виду
+	this->normalize(value);
+	// Получаем индекс класса символов в хранилище классов
+	const uint32_t index = this->_classCount;
+	/**
+	 * Если класс символов собран вне записи хранилища
+	 *
+	 * @details Зовущие формируют класс в записи, методом «acquireClass»
+	 *          полученной, и заведение сводится к счёту. Класс, собранный
+	 *          на стороне, переносится в запись владением, а не снимком:
+	 *          снимок стоил бы размещения рядов заново.
+	 *
+	 */
+	if((index >= this->_classes.size()) || (&value != &this->_classes[index]))
+		// Переносим класс символов в запись хранилища
+		this->acquireClass() = ::move(value);
+	// Заводим класс символов в хранилище классов
+	this->_classCount = (index + 1);
+	// Создаём узл класса символов
+	const node_id_t result = this->createNode(node_t::CLASS);
+	// Устанавливаем индекс класса символов
+	this->_nodes.at(result).charclass.index = index;
+	// Выводим индекс созданного узла в арене узлов
+	return result;
+}
+/**
+ * @brief Метод добавления сокращённого класса символов
+ *
+ * @param letter буква сокращённого класса символов
+ * @param result класс символов для добавления диапазонов
+ * @return       результат добавления сокращённого класса символов
+ *
+ */
+bool awh::regex::Parser::shorthand(const char letter, class_t & result) const noexcept {
+	// Количество диапазонов, набором занятых
+	size_t count = 0;
+	/**
+	 * @brief Наибольшее число диапазонов сокращённого класса символов
+	 *
+	 * @details Самый обширный из сокращённых классов - горизонтальный пробел -
+	 *          задаётся девятью диапазонами, и больше их не бывает ни у одного.
+	 *
+	 */
+	constexpr size_t WIDEST = 9;
+	/**
+	 * Заводим набор диапазонов сокращённого класса символов
+	 *
+	 * @details Набор взят постоянным по месту, а не рядом растущим: число
+	 *          диапазонов у всякого сокращённого класса известно наперёд,
+	 *          а ряд размещался заново на каждое вхождение «\d», «\w», «\s»
+	 *          в выражении - и выходил в образце стека среди первых.
+	 *
+	 */
+	range_t ranges[WIDEST];
+	/**
+	 * Если установлен режим соответствия сокращённых классов свойствам Юникода
+	 *
+	 * @details Режим «UCP» заменяет наборы символов ASCII, задающие сокращённые классы,
+	 *          соответствующими свойствами Юникода, благодаря чему сокращённые классы
+	 *          соответствуют символам за пределами набора ASCII.
+	 *
+	 */
+	if(hasFlag(this->_flags, flag_t::UCP)){
+		// Идентификатор свойства Юникода сокращённого класса символов
+		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
+		/**
+		 * Определяем букву сокращённого класса символов
+		 */
+		switch(ascii::toLower(letter)){
+			// Устанавливаем свойств десятичных цифр
+			case 'd': id = static_cast <uint16_t> (property_id_t::Nd); break;
+			// Устанавливаем свойств символов слова
+			case 'w': id = static_cast <uint16_t> (property_id_t::UCP_WORD); break;
+			// Устанавливаем свойств пробельных символов
+			case 's': id = static_cast <uint16_t> (property_id_t::UCP_SPACE); break;
+		}
+		/**
+		 * Если свойство Юникода сокращённого класса определено
+		 */
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)){
+			// Добавляем свойств Юникода в класс символов
+			result.properties.emplace_back(id, ascii::isUpper(letter));
+			// Формирования сокращённого класса символов: успех
+			return true;
+		}
+	}
+	/**
+	 * Определяем букву сокращённого класса символов
+	 */
+	switch(ascii::toLower(letter)){
+		// Формируем класс десятичных цифр
+		case 'd': ranges[count++] = range_t(0x30, 0x39); break;
+		// Формируем класс символов слова
+		case 'w': {
+			// Добавляем диапазон десятичных цифр
+			ranges[count++] = range_t(0x30, 0x39);
+			// Добавляем диапазон прописных букв
+			ranges[count++] = range_t(0x41, 0x5A);
+			// Добавляем знак подчёркивания
+			ranges[count++] = range_t(0x5F, 0x5F);
+			// Добавляем диапазон строчных букв
+			ranges[count++] = range_t(0x61, 0x7A);
+		} break;
+		// Формируем класс пробельных символов
+		case 's': {
+			// Добавляем диапазон управляющих пробельных символов
+			ranges[count++] = range_t(0x09, 0x0D);
+			// Добавляем символ пробела
+			ranges[count++] = range_t(0x20, 0x20);
+		} break;
+		// Формируем класс горизонтальных пробельных символов
+		case 'h': {
+			// Добавляем символ горизонтальной табуляции
+			ranges[count++] = range_t(0x09, 0x09);
+			// Добавляем символ пробела
+			ranges[count++] = range_t(0x20, 0x20);
+			// Добавляем неразрывный пробел
+			ranges[count++] = range_t(0xA0, 0xA0);
+			// Добавляем пробел огама
+			ranges[count++] = range_t(0x1680, 0x1680);
+			// Добавляем разделитель монгольской гласной
+			ranges[count++] = range_t(0x180E, 0x180E);
+			// Добавляем диапазон пробелов различной ширины
+			ranges[count++] = range_t(0x2000, 0x200A);
+			// Добавляем узкий неразрывный пробел
+			ranges[count++] = range_t(0x202F, 0x202F);
+			// Добавляем математический пробел средней ширины
+			ranges[count++] = range_t(0x205F, 0x205F);
+			// Добавляем идеографический пробел
+			ranges[count++] = range_t(0x3000, 0x3000);
+		} break;
+		// Формируем класс вертикальных пробельных символов
+		case 'v': {
+			// Добавляем диапазон символов перевода строки
+			ranges[count++] = range_t(0x0A, 0x0D);
+			// Добавляем символ следующей строки
+			ranges[count++] = range_t(0x85, 0x85);
+			// Добавляем разделители строк и абзацев
+			ranges[count++] = range_t(0x2028, 0x2029);
+		} break;
+		// Выводим отсутствие сокращённого класса символов
+		default: return false;
+	}
+	/**
+	 * Если сокращённый класс символов задан прописной буквой
+	 */
+	if(ascii::isUpper(letter)){
+		// Получаем наибольшее кодовое значение символа для текущего режима
+		const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
+		// Получаем нижнюю границу дополняемого диапазона
+		uint32_t begin = 0;
+		/**
+		 * Формируем дополнени набора диапазонов
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Получаем очередной диапазон сокращённого класса символов
+			const range_t & range = ranges[i];
+			/**
+			 * Если дополняемый диапазон не пуст
+			 */
+			if(range.begin > begin)
+				// Добавляем дополняемый диапазон в класс символов
+				result.ranges.emplace_back(begin, range.begin - 1);
+			/**
+			 * Если верхняя граница диапазона не достигла предела
+			 */
+			if(range.end < maximum)
+				// Переходим к следующему дополняемому диапазону
+				begin = (range.end + 1);
+			// Если верхняя граница диапазона достигла предела
+			else {
+				// Сбрасываем нижней границы дополняемого диапазона
+				begin = maximum;
+				// Выходим из цикла формирования дополнения
+				break;
+			}
+		}
+		/**
+		 * Если последний дополняемый диапазон не пуст
+		 */
+		if(begin <= maximum)
+			// Добавляем последний дополняемый диапазон в класс символов
+			result.ranges.emplace_back(begin, maximum);
+		// Добавление сокращённого класса символов: успех
+		return true;
+	}
+	// Добавляем диапазонов в класс символов
+	result.ranges.insert(result.ranges.end(), ranges, (ranges + count));
+	// Добавление сокращённого класса символов: успех
+	return true;
+}
+/**
+ * @brief Метод извлечения кодового значения символа в текущей позиции
+ *
+ * @param code кодовое значение извлечённого символа
+ * @return     результат извлечения кодового значения символа
+ *
+ */
+bool awh::regex::Parser::readCode(uint32_t & code) noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если позиция разбора достигла конца регулярного выражения
+	 */
+	if(this->_pos >= size)
+		// Выводим отсутствие кодового значения символа
+		return false;
+	// Получаем первый байт последовательности
+	const uint8_t first = static_cast <uint8_t> (this->_pattern.at(this->_pos));
+	/**
+	 * Если режим разбора UTF-8 не установлен либо байт является символом ASCII
+	 */
+	if(!hasFlag(this->_flags, flag_t::UTF) || (first < 0x80)){
+		// Устанавливаем кодового значения символа
+		code = static_cast <uint32_t> (first);
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+		// Извлечения кодового значения символа: успех
+		return true;
+	}
+	// Количество продолжающих байтов последовательности
+	size_t extra = 0;
+	// Кодовое значение разбираемого символа
+	uint32_t value = 0;
+	/**
+	 * Если последовательность состоит из двух байтов
+	 */
+	if((first & 0xE0) == 0xC0){
+		// Устанавливаем количество продолжающих байтов
+		extra = 1;
+		// Устанавливаем старших битов кодового значения
+		value = static_cast <uint32_t> (first & 0x1F);
+	/**
+	 * Если последовательность состоит из трёх байтов
+	 */
+	} else if((first & 0xF0) == 0xE0) {
+		// Устанавливаем количество продолжающих байтов
+		extra = 2;
+		// Устанавливаем старших битов кодового значения
+		value = static_cast <uint32_t> (first & 0x0F);
+	/**
+	 * Если последовательность состоит из четырёх байтов
+	 */
+	} else if((first & 0xF8) == 0xF0) {
+		// Устанавливаем количество продолжающих байтов
+		extra = 3;
+		// Устанавливаем старших битов кодового значения
+		value = static_cast <uint32_t> (first & 0x07);
+	// Если первый байт последовательности некорректен
+	} else
+		// Выводим отсутствие кодового значения символа
+		return false;
+	/**
+	 * Если последовательность выходит за пределы регулярного выражения
+	 */
+	if((this->_pos + extra) >= size)
+		// Выводим отсутствие кодового значения символа
+		return false;
+	/**
+	 * Разбираем продолжающих байтов последовательности
+	 */
+	for(size_t i = 1; i <= extra; i++){
+		// Получаем очередной продолжающий байт последовательности
+		const uint8_t next = static_cast <uint8_t> (this->_pattern.at(this->_pos + i));
+		/**
+		 * Если байт не является продолжающим
+		 */
+		if((next & 0xC0) != 0x80)
+			// Выводим отсутствие кодового значения символа
+			return false;
+		// Добавляем битов кодового значения
+		value = ((value << 6) | static_cast <uint32_t> (next & 0x3F));
+	}
+	// Создаём таблицу наименьших кодовых значений для длин последовательности
+	static const uint32_t minimum[4] = {0x0, 0x80, 0x800, 0x10000};
+	/**
+	 * Если кодовое значение записано избыточной последовательностью
+	 */
+	if(value < minimum[extra])
+		// Выводим отсутствие кодового значения символа
+		return false;
+	/**
+	 * Если кодовое значение превышает предел либо является суррогатным
+	 */
+	if((value > MAX_CODEPOINT) || ((value >= 0xD800) && (value <= 0xDFFF)))
+		// Выводим отсутствие кодового значения символа
+		return false;
+	// Переходим к следующему символу регулярного выражения
+	this->_pos += (extra + 1);
+	// Устанавливаем кодового значения символа
+	code = value;
+	// Извлечения кодового значения символа: успех
+	return true;
+}
+/**
+ * @brief Метод извлечения целого числа в текущей позиции
+ *
+ * @param result извлечённое значение целого числа
+ * @return       результат извлечения целого числа
+ *
+ */
+bool awh::regex::Parser::readNumber(uint32_t & result) noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Сбрасываем извлекаемого значения целого числа
+	result = 0;
+	// Количество разобранных десятичных цифр
+	size_t count = 0;
+	/**
+	 * Разбираем последовательностю десятичных цифр
+	 */
+	while((this->_pos < size) && ascii::isDigit(this->_pattern.at(this->_pos))){
+		/**
+		 * Если разобранное значение не превышает допустимого предела
+		 *
+		 * @details Значение, превышающее предел, фиксируется на предельном значении,
+		 *          а не приводит к отказу извлечения. Извлечение остаётся успешным,
+		 *          благодаря чему превышение предела обнаруживается потребителем
+		 *          как ошибка значения, а не как отсутствие числа.
+		 *
+		 */
+		if(result <= MAX_REPEAT)
+			// Добавляем очередной десятичной цифры
+			result = ((result * 10) + static_cast <uint32_t> (this->_pattern.at(this->_pos) - '0'));
+		// Фиксируем значение на предельном значении
+		else result = (MAX_REPEAT + 1);
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+		// Увеличиваем количество разобранных десятичных цифр
+		count++;
+	}
+	// Извлечения целого числа
+	return (count > 0);
+}
+/**
+ * @brief Метод проверки начала квантора повторения
+ *
+ * @param pos позиция проверяемой последовательности
+ * @return    результат проверки начала квантора повторения
+ *
+ */
+bool awh::regex::Parser::isQuantifier(const size_t pos) const noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если последовательность не начинается открывающей фигурной скобкой
+	 */
+	if((pos >= size) || (this->_pattern.at(pos) != '{'))
+		// Проверка начала квантора повторения: отказ
+		return false;
+	// Получаем позицию разбора наименьшего числа повторений
+	size_t index = (pos + 1);
+	// Количество разобранных десятичных цифр обеих границ повторений
+	size_t count = 0;
+	/**
+	 * @brief Пропуск пробельных символов внутри квантора повторения
+	 *
+	 * @details Внутри фигурных скобок допускаются пробел и знак табуляции,
+	 *          а прочие пробельные символы квантора не образуют вовсе:
+	 *          «a{ 2 }» есть квантор, а «a{\n2}» - последовательность
+	 *          литералов. Правило это снято с эталонной реализации опытом.
+	 *
+	 */
+	auto skipping = [this, size, &index]() noexcept -> void {
+		/**
+		 * Пропускаем пробельных символов квантора повторения
+		 */
+		while((index < size) && ((this->_pattern.at(index) == ' ') || (this->_pattern.at(index) == '\t')))
+			// Переходим к следующему символу регулярного выражения
+			index++;
+	};
+	// Пропускаем пробельных символов за открывающей фигурной скобкой
+	skipping();
+	/**
+	 * Разбираем наименьшего числа повторений
+	 */
+	while((index < size) && ascii::isDigit(this->_pattern.at(index))){
+		// Переходим к следующему символу регулярного выражения
+		index++;
+		// Увеличиваем количество разобранных десятичных цифр
+		count++;
+	}
+	// Пропускаем пробельных символов за наименьшим числом повторений
+	skipping();
+	/**
+	 * Если квантор повторения не завершён
+	 */
+	if(index >= size)
+		// Проверка начала квантора повторения: отказ
+		return false;
+	/**
+	 * Если наименьшее число повторений опущено
+	 *
+	 * @details Квантор повторения допускает опускание наименьшего числа
+	 *          повторений, которое в этом случае принимается равным нулю.
+	 *          Отсутствие обеих границ кванта повторения квантора не образует.
+	 *
+	 */
+	if((count == 0) && (this->_pattern.at(index) != ','))
+		// Проверка начала квантора повторения: отказ
+		return false;
+	/**
+	 * Если квантор задаёт точное число повторений
+	 */
+	if(this->_pattern.at(index) == '}')
+		// Проверка начала квантора повторения
+		return (count > 0);
+	/**
+	 * Если квантор не содержит разделителя границ диапазона
+	 */
+	if(this->_pattern.at(index) != ',')
+		// Проверка начала квантора повторения: отказ
+		return false;
+	// Переходим к символу за разделителем границ диапазона
+	index++;
+	// Пропускаем пробельных символов за разделителем границ диапазона
+	skipping();
+	/**
+	 * Разбираем наибольшего числа повторений
+	 */
+	while((index < size) && ascii::isDigit(this->_pattern.at(index))){
+		// Переходим к следующему символу регулярного выражения
+		index++;
+		// Увеличиваем количество разобранных десятичных цифр
+		count++;
+	}
+	// Пропускаем пробельных символов за наибольшим числом повторений
+	skipping();
+	/**
+	 * Выводим результат проверки начала квантора повторения
+	 *
+	 * @details Квантор, ни одной цифры не несущий, квантором не является:
+	 *          «a{,}» есть последовательность литералов, а «a{,2}» - квантор.
+	 *
+	 */
+	return ((count > 0) && (index < size) && (this->_pattern.at(index) == '}'));
+}
+/**
+ * @brief Посредник пропуска пробельных символов и комментариев
+ *
+ */
+__AWH_INLINE__ void awh::regex::Parser::skipSpaces() noexcept {
+	/**
+	 * Если режим игнорирования пробельных символов установлен
+	 */
+	if(hasFlag(this->_flags, flag_t::EXTENDED))
+		// Пропускаем пробельных символов и комментариев
+		this->skipExtended();
+}
+/**
+ * @brief Метод пропуска пробельных символов и комментариев в режиме «EXTENDED»
+ *
+ */
+void awh::regex::Parser::skipExtended() noexcept {
+	// Учитываем пропуск пробельных символов и комментариев
+	AWH_REGEX_TICK(path_t::SPACING);
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Пропускаем пробельных символов и комментариев
+	 */
+	while(this->_pos < size){
+		// Получаем очередной символ регулярного выражения
+		const char letter = this->_pattern.at(this->_pos);
+		/**
+		 * Если символ является пробельным
+		 */
+		if(ascii::isSpace(letter)){
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Переходим к следующей итерации пропуска
+			continue;
+		}
+		/**
+		 * Если символ начинает комментарий
+		 */
+		if(letter == '#'){
+			/**
+			 * Пропускаем комментари до конца строки
+			 *
+			 * @details Комментарий завершается переводом строки СОГЛАШЕНИЯ
+			 *          действующего, а не переводом строки всяким: при
+			 *          соглашении «(*CRLF)» одиночный перевод строки
+			 *          комментария не завершает, и «(*CRLF)(?x)(#c\n)a»
+			 *          отвергается несоответствием скобок - правило
+			 *          снято с эталонной реализации опытом.
+			 *
+			 */
+			while(this->_pos < size){
+				// Флаг завершения комментария переводом строки
+				bool finished = false;
+				// Получаем очередной символ комментария
+				const char symbol = this->_pattern.at(this->_pos);
+				/**
+				 * Определяем соглашение о переводе строки выражения
+				 */
+				switch(static_cast <uint8_t> (this->_convention)){
+					// Если соглашением задан перевод строки
+					case static_cast <uint8_t> (newline_t::LF):
+						// Устанавливаем флаг завершения комментария
+						finished = (symbol == '\n');
+					break;
+					// Если соглашением задан возврат каретки
+					case static_cast <uint8_t> (newline_t::CR):
+						// Устанавливаем флаг завершения комментария
+						finished = (symbol == '\r');
+					break;
+					// Если соглашением задан нулевой знак
+					case static_cast <uint8_t> (newline_t::NIL):
+						// Устанавливаем флаг завершения комментария
+						finished = (symbol == '\0');
+					break;
+					/**
+					 * Если соглашением задана пара возврата каретки
+					 *
+					 * @details Пару завершает лишь пара: возврат каретки
+					 *          без перевода строки комментария не рвёт.
+					 *
+					 */
+					case static_cast <uint8_t> (newline_t::CRLF):
+						// Устанавливаем флаг завершения комментария
+						finished = ((symbol == '\r') && ((this->_pos + 1) < size) &&
+						 (this->_pattern.at(this->_pos + 1) == '\n'));
+					break;
+					// Если соглашением заданы возврат каретки, перевод строки либо их пара
+					case static_cast <uint8_t> (newline_t::ANYCRLF):
+						// Устанавливаем флаг завершения комментария
+						finished = ((symbol == '\r') || (symbol == '\n'));
+					break;
+					/**
+					 * Если соглашением задан всякий перевод строки
+					 *
+					 * @details Переводы строки Юникода вне таблицы ASCII здесь
+					 *          не разбираются: эталон их комментарием тоже
+					 *          не рвёт вне режима разбора UTF-8.
+					 *
+					 */
+					case static_cast <uint8_t> (newline_t::ANY):
+						// Устанавливаем флаг завершения комментария
+						finished = (
+							(symbol == '\r') || (symbol == '\n') ||
+							(symbol == '\v') || (symbol == '\f') ||
+							(static_cast <uint8_t> (symbol) == 0x85)
+						);
+					break;
+				}
+				/**
+				 * Если комментарий завершён переводом строки
+				 */
+				if(finished)
+					// Выходим из пропуска комментария
+					break;
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+			}
+			// Переходим к следующей итерации пропуска
+			continue;
+		}
+		// Выходим из цикла пропуска пробельных символов
+		break;
+	}
+}
+/**
+ * @brief Метод извлечения кодового значения экранированного символа
+ *
+ * @param code кодовое значение разобранного символа
+ * @return     результат извлечения кодового значения символа
+ *
+ */
+bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если позиция разбора достигла конца регулярного выражения
+	 */
+	if(this->_pos >= size)
+		// Выводим отсутствие кодового значения символа
+		return false;
+	// Получаем смещение экранированной последовательности
+	const size_t offset = (this->_pos - 1);
+	// Получаем букву экранированной последовательности
+	const char letter = this->_pattern.at(this->_pos);
+	/**
+	 * Определяем букву экранированной последовательности
+	 */
+	switch(letter){
+		// Разбираем символ звонка
+		case 'a': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа звонка
+			code = 0x07;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем символ переключения
+		case 'e': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа переключения
+			code = 0x1B;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем символ перевода страницы
+		case 'f': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа перевода страницы
+			code = 0x0C;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем символ перевода строки
+		case 'n': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа перевода строки
+			code = 0x0A;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем символ возврата каретки
+		case 'r': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа возврата каретки
+			code = 0x0D;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем символ горизонтальной табуляции
+		case 't': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения символа табуляции
+			code = 0x09;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем управляющей последовательности
+		case 'c': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если управляющая последовательность не содержит символа
+			 */
+			if(this->_pos >= size)
+				// Выводим отсутствие кодового значения символа
+				return false;
+			// Получаем символ управляющей последовательности
+			const uint8_t control = static_cast <uint8_t> (this->_pattern.at(this->_pos));
+			/**
+			 * Если символ управляющей последовательности не является символом ASCII
+			 */
+			if(control > 0x7F)
+				// Выводим отсутствие кодового значения символа
+				return false;
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем кодового значения управляющего символа
+			code = (static_cast <uint32_t> (ascii::toUpper(static_cast <char> (control))) ^ 0x40);
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		/**
+		 * Разбираем символ его кодовым значением Юникода
+		 *
+		 * @details Последовательность «\\N{U+HHHH}» задаёт символ значением его
+		 *          кодовым и доступна лишь при разборе последовательностей UTF-8,
+		 *          как то и у эталонной реализации. Последовательность «\\N»
+		 *          без скобок фигурных задаёт любой символ, кроме перевода
+		 *          строки, и здесь не разбирается вовсе.
+		 *
+		 */
+		case 'N': {
+			/**
+			 * Если последовательность не задаёт символа кодовым значением
+			 */
+			if(((this->_pos + 2) >= size) || (this->_pattern.at(this->_pos + 1) != '{') ||
+			    (this->_pattern.at(this->_pos + 2) != 'U'))
+				// Выводим отсутствие кодового значения символа
+				return false;
+			/**
+			 * Если разбор последовательностей UTF-8 не ведётся
+			 */
+			if(!hasFlag(this->_flags, flag_t::UTF)){
+				// Устанавливаем ошибкю неподдерживаемой последовательности
+				this->fail(error_t::UNSUPPORTED, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			/**
+			 * Если за буквой значения кодового не следует знак сложения
+			 */
+			if(((this->_pos + 3) >= size) || (this->_pattern.at(this->_pos + 3) != '+')){
+				// Устанавливаем ошибкю неподдерживаемой последовательности
+				this->fail(error_t::UNSUPPORTED, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			// Сбрасываем кодового значения символа
+			code = 0;
+			// Переходим к первой цифре кодового значения символа
+			this->_pos += 4;
+			// Количество разобранных шестнадцатеричных цифр
+			size_t count = 0;
+			/**
+			 * Разбираем последовательностю шестнадцатеричных цифр
+			 */
+			while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))){
+				// Добавляем очередной шестнадцатеричной цифры
+				code = ((code << 4) | hexValue(this->_pattern.at(this->_pos)));
+				/**
+				 * Если разобранное значение превышает допустимый предел
+				 */
+				if(code > MAX_CODEPOINT){
+					// Устанавливаем ошибкю некорректной шестнадцатеричной последовательности
+					this->fail(error_t::BAD_ESCAPE_HEX, offset);
+					// Выводим отсутствие кодового значения символа
+					return false;
+				}
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Увеличиваем количество разобранных шестнадцатеричных цифр
+				count++;
+			}
+			/**
+			 * Если последовательность не завершена закрывающей фигурной скобкой
+			 */
+			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
+				// Устанавливаем ошибкю некорректной шестнадцатеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_HEX, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			/**
+			 * Если кодовое значение символа отведено суррогатной паре
+			 */
+			if((code >= 0xD800) && (code <= 0xDFFF)){
+				// Устанавливаем ошибкю некорректной шестнадцатеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_HEX, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			// Переходим к символу за закрывающей фигурной скобкой
+			this->_pos++;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+		// Разбираем шестнадцатеричной последовательности
+		case 'x': {
+			// Сбрасываем кодового значения символа
+			code = 0;
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если шестнадцатеричная последовательность заключена в фигурные скобки
+			 */
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')){
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Количество разобранных шестнадцатеричных цифр
+				size_t count = 0;
+				/**
+				 * Получаем наибольшее кодовое значение символа для текущего режима
+				 *
+				 * @details Вне разбора последовательностей UTF-8 текст ведётся
+				 *          октетами, и значение свыше 0xFF в нём не выражается
+				 *          вовсе: эталон такую последовательность отвергает.
+				 *          Модуль же её принимал, собирая выражение, совпадения
+				 *          не дающее никогда, - отказ молчаливый.
+				 *
+				 */
+				const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
+				/**
+				 * Разбираем последовательностю шестнадцатеричных цифр
+				 */
+				while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))){
+					// Добавляем очередной шестнадцатеричной цифры
+					code = ((code << 4) | hexValue(this->_pattern.at(this->_pos)));
+					/**
+					 * Если разобранное значение превышает допустимый предел
+					 */
+					if(code > maximum){
+						// Устанавливаем ошибкю некорректной шестнадцатеричной последовательности
+						this->fail(error_t::BAD_ESCAPE_HEX, offset);
+						// Выводим отсутствие кодового значения символа
+						return false;
+					}
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+					// Увеличиваем количество разобранных шестнадцатеричных цифр
+					count++;
+				}
+				/**
+				 * Если последовательность пуста либо не завершена фигурной скобкой
+				 */
+				if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
+					// Устанавливаем ошибкю некорректной шестнадцатеричной последовательности
+					this->fail(error_t::BAD_ESCAPE_HEX, offset);
+					// Выводим отсутствие кодового значения символа
+					return false;
+				}
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Извлечения кодового значения символа: успех
+				return true;
+			}
+			// Количество разобранных шестнадцатеричных цифр
+			size_t digits = 0;
+			/**
+			 * Разбираем не более двух шестнадцатеричных цифр
+			 */
+			for(size_t i = 0; i < 2; i++){
+				/**
+				 * Если очередной символ не является шестнадцатеричной цифрой
+				 */
+				if((this->_pos >= size) || !ascii::isHex(this->_pattern.at(this->_pos)))
+					// Выходим из цикла разбора шестнадцатеричных цифр
+					break;
+				// Добавляем очередной шестнадцатеричной цифры
+				code = ((code << 4) | hexValue(this->_pattern.at(this->_pos)));
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Увеличиваем количество разобранных шестнадцатеричных цифр
+				digits++;
+			}
+			// Извлечения кодового значения символа
+			return (digits > 0);
+		}
+		// Разбираем восьмеричной последовательности в фигурных скобках
+		case 'o': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если последовательность не начинается фигурной скобкой
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '{')){
+				// Устанавливаем ошибкю некорректной восьмеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			// Сбрасываем кодового значения символа
+			code = 0;
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Количество разобранных восьмеричных цифр
+			size_t count = 0;
+			// Получаем наибольшее кодовое значение символа для текущего режима
+			const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
+			/**
+			 * Разбираем последовательностю восьмеричных цифр
+			 */
+			while((this->_pos < size) && ascii::isOctal(this->_pattern.at(this->_pos))){
+				// Добавляем очередной восьмеричной цифры
+				code = ((code << 3) | static_cast <uint32_t> (this->_pattern.at(this->_pos) - '0'));
+				/**
+				 * Если разобранное значение превышает допустимый предел
+				 */
+				if(code > maximum){
+					// Устанавливаем ошибкю некорректной восьмеричной последовательности
+					this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
+					// Выводим отсутствие кодового значения символа
+					return false;
+				}
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Увеличиваем количество разобранных восьмеричных цифр
+				count++;
+			}
+			/**
+			 * Если последовательность пуста либо не завершена фигурной скобкой
+			 */
+			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
+				// Устанавливаем ошибкю некорректной восьмеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
+				// Выводим отсутствие кодового значения символа
+				return false;
+			}
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Извлечения кодового значения символа: успех
+			return true;
+		}
+	}
+	/**
+	 * Если последовательность является восьмеричной
+	 */
+	if(ascii::isOctal(letter)){
+		// Сбрасываем кодового значения символа
+		code = 0;
+		/**
+		 * Разбираем не более трёх восьмеричных цифр
+		 */
+		for(size_t i = 0; i < 3; i++){
+			/**
+			 * Если очередной символ не является восьмеричной цифрой
+			 */
+			if((this->_pos >= size) || !ascii::isOctal(this->_pattern.at(this->_pos)))
+				// Выходим из цикла разбора восьмеричных цифр
+				break;
+			// Добавляем очередной восьмеричной цифры
+			code = ((code << 3) | static_cast <uint32_t> (this->_pattern.at(this->_pos) - '0'));
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+		}
+		// Извлечения кодового значения символа: успех
+		return true;
+	}
+	// Выводим отсутствие кодового значения символа
+	return false;
+}
+/**
+ * @brief Метод разбора имени именованной группы
+ *
+ * @param terminator символ завершения имени группы
+ * @param index      индекс имени в хранилище имён
+ * @return           результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parseName(const char terminator, uint32_t & index) noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Получаем смещение начала имени группы
+	const size_t offset = this->_pos;
+	/**
+	 * Ищем завершающего символа имени группы
+	 */
+	while((this->_pos < size) && (this->_pattern.at(this->_pos) != terminator)){
+		/**
+		 * Если очередной символ недопустим в имени группы
+		 */
+		if(!isNameChar(this->_pattern.at(this->_pos), (this->_pos == offset))){
+			// Устанавливаем ошибкю некорректного имени группы
+			this->fail(error_t::BAD_GROUP_NAME, this->_pos);
+			// Разбора: отказ
+			return false;
+		}
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	}
+	/**
+	 * Если имя группы пусто либо не завершено ожидаемым символом
+	 */
+	if((this->_pos == offset) || (this->_pos >= size)){
+		// Устанавливаем ошибкю некорректного имени группы
+		this->fail(error_t::BAD_GROUP_NAME, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Получаем имя именованной группы
+	const string name(this->_pattern.substr(offset, this->_pos - offset));
+	// Переходим к символу за завершающим символом имени группы
+	this->_pos++;
+	/**
+	 * Ищем именю группы в хранилище имён
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя группы уже размещено в хранилище имён
+		 */
+		if(this->_names.at(i).compare(name) == 0){
+			// Устанавливаем индекс имени в хранилище имён
+			index = static_cast <uint32_t> (i);
+			// Разбора: успех
+			return true;
+		}
+	}
+	// Устанавливаем индекс имени в хранилище имён
+	index = static_cast <uint32_t> (this->_names.size());
+	// Размещаем именю группы в хранилище имён
+	this->_names.push_back(name);
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Метод разбора свойства Юникода
+ *
+ * @param negative флаг отрицания свойства
+ * @param result   класс символов для добавления свойства
+ * @return         результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) noexcept {
+	// Имя свойства Юникода
+	string name = "";
+	// Получаем смещение начала свойства Юникода
+	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если имя свойства заключено в фигурные скобки
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')){
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+		// Получаем смещение начала имени свойства
+		const size_t begin = this->_pos;
+		/**
+		 * Ищем завершающей фигурной скобки
+		 */
+		while((this->_pos < size) && (this->_pattern.at(this->_pos) != '}'))
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+		/**
+		 * Если имя свойства не завершено фигурной скобкой
+		 */
+		if(this->_pos >= size){
+			// Устанавливаем ошибкю неизвестного свойства Юникода
+			this->fail(error_t::BAD_PROPERTY, offset);
+			// Разбора: отказ
+			return false;
+		}
+		// Получаем имя свойства Юникода
+		name = this->_pattern.substr(begin, this->_pos - begin);
+		// Переходим к символу за завершающей фигурной скобкой
+		this->_pos++;
+	/**
+	 * Если имя свойства задано единственной буквой
+	 */
+	} else if(this->_pos < size) {
+		// Получаем имя свойства Юникода
+		name.assign(1, this->_pattern.at(this->_pos));
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	// Если имя свойства отсутствует
+	} else {
+		// Устанавливаем ошибкю неизвестного свойства Юникода
+		this->fail(error_t::BAD_PROPERTY, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Флаг отрицания свойства Юникода
+	bool inverse = negative;
+	/**
+	 * Если имя свойства начинается со знака отрицания
+	 */
+	if(!name.empty() && (name.front() == '^')){
+		// Инвертируем флаг отрицания свойства
+		inverse = !inverse;
+		// Удаляем знак отрицания из имени свойства
+		name.erase(0, 1);
+	}
+	// Извлекаем идентификатор свойства Юникода по его имени
+	const uint16_t id = awh::unicode::property(name);
+	/**
+	 * Если имя свойства Юникода не распознано
+	 */
+	if(id == static_cast <uint16_t> (property_id_t::UNKNOWN)){
+		// Устанавливаем ошибкю неизвестного свойства Юникода
+		this->fail(error_t::BAD_PROPERTY, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Возвращаемся к началу
+	result.properties.emplace_back(id, inverse);
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Метод разбора класса символов POSIX
+ *
+ * @param result класс символов для добавления диапазонов
+ * @return       результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
+	// Получаем смещение начала класса символов POSIX
+	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Переходим к символу за открывающей последовательностью
+	this->_pos += 2;
+	// Флаг отрицания класса символов POSIX
+	bool negative = false;
+	/**
+	 * Если класс символов POSIX начинается со знака отрицания
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')){
+		// Устанавливаем флаг отрицания класса символов
+		negative = true;
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	}
+	// Получаем смещение начала имени класса символов POSIX
+	const size_t begin = this->_pos;
+	/**
+	 * Ищем завершающей последовательности класса символов
+	 */
+	while((this->_pos < size) && ascii::isAlpha(this->_pattern.at(this->_pos)))
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	/**
+	 * Если класс символов POSIX не завершён ожидаемой последовательностью
+	 */
+	if(((this->_pos + 1) >= size) || (this->_pattern.at(this->_pos) != ':') || (this->_pattern.at(this->_pos + 1) != ']')){
+		// Устанавливаем ошибкю неизвестного класса символов POSIX
+		this->fail(error_t::BAD_POSIX_CLASS, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Получаем имя класса символов POSIX
+	const string name(this->_pattern.substr(begin, this->_pos - begin));
+	// Переходим к символу за завершающей последовательностью
+	this->_pos += 2;
+	// Создаём набор диапазонов класса символов POSIX
+	vector <range_t> ranges;
+	/**
+	 * Если установлен режим соответствия сокращённых классов свойствам Юникода
+	 *
+	 * @details Режим «UCP» заменяет наборы символов ASCII, задающие классы POSIX,
+	 *          соответствующими свойствами Юникода, - ровно так же, как поступает
+	 *          он с сокращёнными классами. Состав каждого класса установлен
+	 *          сличением с эталонной реализацией, а не выведен из названия: классы
+	 *          «punct», «graph», «print» и «xdigit» общей категории Юникода не
+	 *          отвечают вовсе и заданы свойствами составными.
+	 *
+	 *          Классы «blank» и «ascii» заданы диапазонами, а не свойствами:
+	 *          первый совпадает с сокращённым классом «\h», второй от режима не
+	 *          зависит, - а отрицание набора диапазонов выполняется дополнением,
+	 *          отрицание же свойства ведётся признаком самого свойства.
+	 *
+	 */
+	if(hasFlag(this->_flags, flag_t::UCP)){
+		// Идентификатор свойства Юникода класса символов POSIX
+		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
+		/**
+		 * Если класс символов содержит буквы
+		 */
+		if(name.compare("alpha") == 0)
+			// Устанавливаем свойств букв
+			id = static_cast <uint16_t> (property_id_t::L);
+		/**
+		 * Если класс символов содержит буквы и цифры
+		 */
+		else if(name.compare("alnum") == 0)
+			// Устанавливаем свойств букв и цифр
+			id = static_cast <uint16_t> (property_id_t::XAN);
+		/**
+		 * Если класс символов содержит десятичные цифры
+		 */
+		else if(name.compare("digit") == 0)
+			// Устанавливаем свойств десятичных цифр
+			id = static_cast <uint16_t> (property_id_t::Nd);
+		/**
+		 * Если класс символов содержит пробельные символы
+		 */
+		else if(name.compare("space") == 0)
+			// Устанавливаем свойств пробельных символов
+			id = static_cast <uint16_t> (property_id_t::XPS);
+		/**
+		 * Если класс символов содержит прописные буквы
+		 */
+		else if(name.compare("upper") == 0)
+			// Устанавливаем свойств прописных букв
+			id = static_cast <uint16_t> (property_id_t::Lu);
+		/**
+		 * Если класс символов содержит строчные буквы
+		 */
+		else if(name.compare("lower") == 0)
+			// Устанавливаем свойств строчных букв
+			id = static_cast <uint16_t> (property_id_t::Ll);
+		/**
+		 * Если класс символов содержит символы слова
+		 */
+		else if(name.compare("word") == 0)
+			// Устанавливаем свойств символов слова
+			id = static_cast <uint16_t> (property_id_t::XWD);
+		/**
+		 * Если класс символов содержит управляющие символы
+		 */
+		else if(name.compare("cntrl") == 0)
+			// Устанавливаем свойств управляющих символов
+			id = static_cast <uint16_t> (property_id_t::Cc);
+		/**
+		 * Если класс символов содержит знаки пунктуации
+		 */
+		else if(name.compare("punct") == 0)
+			// Устанавливаем свойств знаков пунктуации
+			id = static_cast <uint16_t> (property_id_t::PX_PUNCT);
+		/**
+		 * Если класс символов содержит видимые символы
+		 */
+		else if(name.compare("graph") == 0)
+			// Устанавливаем свойств видимых символов
+			id = static_cast <uint16_t> (property_id_t::PX_GRAPH);
+		/**
+		 * Если класс символов содержит печатаемые символы
+		 */
+		else if(name.compare("print") == 0)
+			// Устанавливаем свойств печатаемых символов
+			id = static_cast <uint16_t> (property_id_t::PX_PRINT);
+		/**
+		 * Если класс символов содержит шестнадцатеричные цифры
+		 */
+		else if(name.compare("xdigit") == 0)
+			// Устанавливаем свойств шестнадцатеричных цифр
+			id = static_cast <uint16_t> (property_id_t::PX_XDIGIT);
+		/**
+		 * Если свойство Юникода класса символов POSIX определено
+		 */
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)){
+			// Добавляем свойств Юникода в класс символов
+			result.properties.emplace_back(id, negative);
+			// Разбора: успех
+			return true;
+		}
+		/**
+		 * Если класс символов содержит горизонтальные пробельные символы
+		 */
+		if(name.compare("blank") == 0){
+			// Добавляем символ горизонтальной табуляции
+			ranges.emplace_back(0x09, 0x09);
+			// Добавляем символ пробела
+			ranges.emplace_back(0x20, 0x20);
+			// Добавляем неразрывный пробел
+			ranges.emplace_back(0xA0, 0xA0);
+			// Добавляем пробел огама
+			ranges.emplace_back(0x1680, 0x1680);
+			// Добавляем разделитель гласной монгольского письма
+			ranges.emplace_back(0x180E, 0x180E);
+			// Добавляем диапазон пробелов различной ширины
+			ranges.emplace_back(0x2000, 0x200A);
+			// Добавляем узкий неразрывный пробел
+			ranges.emplace_back(0x202F, 0x202F);
+			// Добавляем средний математический пробел
+			ranges.emplace_back(0x205F, 0x205F);
+			// Добавляем идеографический пробел
+			ranges.emplace_back(0x3000, 0x3000);
+		}
+	}
+	/**
+	 * Если набор диапазонов сформирован режимом соответствия Юникоду
+	 *
+	 * @details Набор непустой означает, что класс уже задан выше режимом «UCP»,
+	 *          и набор диапазонов набора ASCII, ниже собираемый, к делу не идёт.
+	 *
+	 */
+	if(!ranges.empty())
+		/**
+		 * Пропускаем формирование набора диапазонов набора ASCII
+		 */
+		;
+	/**
+	 * Если класс символов содержит буквы
+	 */
+	else if(name.compare("alpha") == 0) {
+		// Добавляем диапазон прописных букв
+		ranges.emplace_back(0x41, 0x5A);
+		// Добавляем диапазон строчных букв
+		ranges.emplace_back(0x61, 0x7A);
+	/**
+	 * Если класс символов содержит десятичные цифры
+	 */
+	} else if(name.compare("digit") == 0)
+		// Добавляем диапазон десятичных цифр
+		ranges.emplace_back(0x30, 0x39);
+	/**
+	 * Если класс символов содержит буквы и цифры
+	 */
+	else if(name.compare("alnum") == 0) {
+		// Добавляем диапазон десятичных цифр
+		ranges.emplace_back(0x30, 0x39);
+		// Добавляем диапазон прописных букв
+		ranges.emplace_back(0x41, 0x5A);
+		// Добавляем диапазон строчных букв
+		ranges.emplace_back(0x61, 0x7A);
+	/**
+	 * Если класс символов содержит пробельные символы
+	 */
+	} else if(name.compare("space") == 0) {
+		// Добавляем диапазон управляющих пробельных символов
+		ranges.emplace_back(0x09, 0x0D);
+		// Добавляем символ пробела
+		ranges.emplace_back(0x20, 0x20);
+	/**
+	 * Если класс символов содержит прописные буквы
+	 */
+	} else if(name.compare("upper") == 0)
+		// Добавляем диапазон прописных букв
+		ranges.emplace_back(0x41, 0x5A);
+	/**
+	 * Если класс символов содержит строчные буквы
+	 */
+	else if(name.compare("lower") == 0)
+		// Добавляем диапазон строчных букв
+		ranges.emplace_back(0x61, 0x7A);
+	/**
+	 * Если класс символов содержит знаки пунктуации
+	 */
+	else if(name.compare("punct") == 0) {
+		// Добавляем диапазон знаков пунктуации до цифр
+		ranges.emplace_back(0x21, 0x2F);
+		// Добавляем диапазон знаков пунктуации после цифр
+		ranges.emplace_back(0x3A, 0x40);
+		// Добавляем диапазон знаков пунктуации после прописных букв
+		ranges.emplace_back(0x5B, 0x60);
+		// Добавляем диапазон знаков пунктуации после строчных букв
+		ranges.emplace_back(0x7B, 0x7E);
+	/**
+	 * Если класс символов содержит печатаемые символы
+	 */
+	} else if(name.compare("print") == 0)
+		// Добавляем диапазон печатаемых символов
+		ranges.emplace_back(0x20, 0x7E);
+	/**
+	 * Если класс символов содержит видимые символы
+	 */
+	else if(name.compare("graph") == 0)
+		// Добавляем диапазон видимых символов
+		ranges.emplace_back(0x21, 0x7E);
+	/**
+	 * Если класс символов содержит управляющие символы
+	 */
+	else if(name.compare("cntrl") == 0) {
+		// Добавляем диапазон управляющих символов
+		ranges.emplace_back(0x00, 0x1F);
+		// Добавляем символ удаления
+		ranges.emplace_back(0x7F, 0x7F);
+	/**
+	 * Если класс символов содержит шестнадцатеричные цифры
+	 */
+	} else if(name.compare("xdigit") == 0) {
+		// Добавляем диапазон десятичных цифр
+		ranges.emplace_back(0x30, 0x39);
+		// Добавляем диапазон прописных шестнадцатеричных цифр
+		ranges.emplace_back(0x41, 0x46);
+		// Добавляем диапазон строчных шестнадцатеричных цифр
+		ranges.emplace_back(0x61, 0x66);
+	/**
+	 * Если класс символов содержит горизонтальные пробельные символы
+	 */
+	} else if(name.compare("blank") == 0) {
+		// Добавляем символ горизонтальной табуляции
+		ranges.emplace_back(0x09, 0x09);
+		// Добавляем символ пробела
+		ranges.emplace_back(0x20, 0x20);
+	/**
+	 * Если класс символов содержит символы слова
+	 */
+	} else if(name.compare("word") == 0) {
+		// Добавляем диапазон десятичных цифр
+		ranges.emplace_back(0x30, 0x39);
+		// Добавляем диапазон прописных букв
+		ranges.emplace_back(0x41, 0x5A);
+		// Добавляем знак подчёркивания
+		ranges.emplace_back(0x5F, 0x5F);
+		// Добавляем диапазон строчных букв
+		ranges.emplace_back(0x61, 0x7A);
+	/**
+	 * Если класс символов содержит символы ASCII
+	 */
+	} else if(name.compare("ascii") == 0)
+		// Добавляем диапазон символов ASCII
+		ranges.emplace_back(0x00, 0x7F);
+	// Если класс символов POSIX неизвестен
+	else {
+		// Устанавливаем ошибкю неизвестного класса символов POSIX
+		this->fail(error_t::BAD_POSIX_CLASS, offset);
+		// Разбора: отказ
+		return false;
+	}
+	/**
+	 * Если класс символов POSIX задан со знаком отрицания
+	 */
+	if(negative){
+		// Получаем нижнюю границу дополняемого диапазона
+		uint32_t begin = 0;
+		// Получаем наибольшее кодовое значение символа для текущего режима
+		const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
+		/**
+		 * Формируем дополнени набора диапазонов
+		 */
+		for(auto & range : ranges){
+			/**
+			 * Если дополняемый диапазон не пуст
+			 */
+			if(range.begin > begin)
+				// Добавляем дополняемый диапазон в класс символов
+				result.ranges.emplace_back(begin, range.begin - 1);
+			// Переходим к следующему дополняемому диапазону
+			begin = (range.end + 1);
+		}
+		/**
+		 * Если последний дополняемый диапазон не пуст
+		 */
+		if(begin <= maximum)
+			// Добавляем последний дополняемый диапазон в класс символов
+			result.ranges.emplace_back(begin, maximum);
+		// Разбора: успех
+		return true;
+	}
+	// Добавляем диапазонов в класс символов
+	result.ranges.insert(result.ranges.end(), ranges.begin(), ranges.end());
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Метод разбора экранированной последовательности внутри класса символов
+ *
+ * @param result класс символов для добавления диапазонов
+ * @param code   кодовое значение разобранного одиночного символа
+ * @param single флаг разбора одиночного символа
+ * @param ending флаг разбора верхнего края диапазона
+ * @return       результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, bool & single, const bool ending) noexcept {
+	// Получаем смещение начала экранированной последовательности
+	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Переходим к символу за обратной косой чертой
+	this->_pos++;
+	/**
+	 * Если экранированная последовательность не содержит символа
+	 */
+	if(this->_pos >= size){
+		// Устанавливаем ошибкю обратной косой черты в конце выражения
+		this->fail(error_t::TRAILING_BACKSLASH, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Сбрасываем флаг разбора одиночного символа
+	single = false;
+	// Получаем букву экранированной последовательности
+	const char letter = this->_pattern.at(this->_pos);
+	/**
+	 * Определяем букву экранированной последовательности
+	 */
+	switch(letter){
+		// Разбираем сокращённых классов символов
+		case 'd': case 'D': case 'w': case 'W':
+		case 's': case 'S': case 'h': case 'H':
+		case 'v': case 'V': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Добавляем сокращённого класса символов
+			return this->shorthand(letter, result);
+		}
+		// Разбираем свойств Юникода
+		case 'p': case 'P': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Разбираем свойств Юникода
+			return this->parseProperty((letter == 'P'), result);
+		}
+		// Разбираем завершени экранирования последовательности символов
+		case 'E': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Разбор без добавления символов: успех
+			return true;
+		}
+		// Разбираем экранировани последовательности символов
+		case 'Q': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Количество символов разобранной последовательности
+			size_t count = 0;
+			/**
+			 * Разбираем экранируемой последовательности символов
+			 */
+			while(this->_pos < size){
+				/**
+				 * Если экранирование последовательности завершено
+				 */
+				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
+					// Переходим к символу за завершающей последовательностью
+					this->_pos += 2;
+					// Выходим из разбора экранируемой последовательности
+					break;
+				}
+				// Кодовое значение очередного символа последовательности
+				uint32_t value = 0;
+				/**
+				 * Если извлечение кодового значения символа не выполнено
+				 */
+				if(!this->readCode(value)){
+					// Устанавливаем ошибкю некорректной последовательности UTF-8
+					this->fail(error_t::BAD_UTF8, this->_pos);
+					// Разбора: отказ
+					return false;
+				}
+				// Добавляем символ последовательности в класс символов
+				result.ranges.emplace_back(value, value);
+				// Увеличиваем количество символов разобранной последовательности
+				count++;
+			}
+			/**
+			 * Если разобранная последовательность несёт хотя бы один символ
+			 *
+			 * @details Символ последовательности последний нижней границей диапазона
+			 *          выступать вправе: «[\Qa\E-z]» есть диапазон от «a» до «z».
+			 *          Последовательность выводилась прежде набором символов целиком,
+			 *          отчего знак диапазона за нею оборачивался отказом.
+			 *
+			 */
+			if(count > 0){
+				// Получаем положение символа последовательности, краем диапазона выступающего
+				const size_t spot = (ending ? (result.ranges.size() - count) : (result.ranges.size() - 1));
+				// Получаем кодовое значение символа, краем диапазона выступающего
+				code = result.ranges.at(spot).begin;
+				// Извлекаем символ края из состава класса символов
+				result.ranges.erase(result.ranges.begin() + static_cast <ptrdiff_t> (spot));
+				// Устанавливаем флаг разбора одиночного символа
+				single = true;
+			}
+			// Разбора: успех
+			return true;
+		}
+		// Разбираем литералов букв ссылок на группы
+		case 'g': case 'k': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем флаг разбора одиночного символа
+			single = true;
+			// Устанавливаем кодового значения буквы
+			code = static_cast <uint32_t> (letter);
+			// Разбора: успех
+			return true;
+		}
+		// Разбираем литералов десятичных цифр вне восьмеричного диапазона
+		case '8': case '9': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем флаг разбора одиночного символа
+			single = true;
+			// Устанавливаем кодового значения десятичной цифры
+			code = static_cast <uint32_t> (letter);
+			// Разбора: успех
+			return true;
+		}
+		// Разбираем символ возврата на позицию
+		case 'b': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем флаг разбора одиночного символа
+			single = true;
+			// Устанавливаем кодового значения символа возврата
+			code = 0x08;
+			// Разбора: успех
+			return true;
+		}
+	}
+	/**
+	 * Если экранированная последовательность обозначает одиночный символ
+	 */
+	if(this->readEscapeCode(code)){
+		// Устанавливаем флаг разбора одиночного символа
+		single = true;
+		// Разбора: успех
+		return true;
+	}
+	/**
+	 * Если ошибка разбора уже установлена
+	 */
+	if(this->_error != error_t::NONE)
+		// Разбора: отказ
+		return false;
+	/**
+	 * Если экранированная последовательность содержит букву либо цифру
+	 */
+	if(ascii::isAlnum(letter)){
+		// Устанавливаем ошибкю неизвестной экранированной последовательности
+		this->fail(error_t::UNKNOWN_ESCAPE, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Устанавливаем флаг разбора одиночного символа
+	single = true;
+	/**
+	 * Если извлечение кодового значения экранированного символа не выполнено
+	 */
+	if(!this->readCode(code)){
+		// Устанавливаем ошибкю некорректной последовательности UTF-8
+		this->fail(error_t::BAD_UTF8, offset);
+		// Разбора: отказ
+		return false;
+	}
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Метод разбора класса символов
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Получаем смещение начала класса символов
+	const size_t offset = this->_pos;
+	// Переходим к символу за открывающей квадратной скобкой
+	this->_pos++;
+	// Получаем запись под формируемый класс символов
+	class_t & result = this->acquireClass();
+	/**
+	 * Пропускаем последовательностей прозрачных в начале класса
+	 *
+	 * @details Завершение экранирования и дословная последовательность пустая
+	 *          символов не несут и элементами класса не являются, отчего знак
+	 *          отрицания, за ними стоящий, отрицанием и остаётся: «[\Q\E^]»
+	 *          есть класс отрицающий незавершённый, а не класс из знака
+	 *          отрицания. Пропуск ведётся до опознания отрицания намеренно.
+	 *
+	 */
+	while((this->_pos + 1) < size){
+		/**
+		 * Если последовательность завершает экранирование
+		 */
+		if((this->_pattern.at(this->_pos) == '\\') && (this->_pattern.at(this->_pos + 1) == 'E')){
+			// Переходим к символу за завершением экранирования
+			this->_pos += 2;
+			// Переходим к следующей последовательности прозрачной
+			continue;
+		}
+		/**
+		 * Если последовательность является дословной пустой
+		 */
+		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 3) < size) &&
+		   (this->_pattern.at(this->_pos + 1) == 'Q') && (this->_pattern.at(this->_pos + 2) == '\\') &&
+		   (this->_pattern.at(this->_pos + 3) == 'E')){
+			// Переходим к символу за дословной последовательностью пустой
+			this->_pos += 4;
+			// Переходим к следующей последовательности прозрачной
+			continue;
+		}
+		// Выходим из пропуска последовательностей прозрачных
+		break;
+	}
+	/**
+	 * Если класс символов открывается элементом сортировки POSIX
+	 *
+	 * @details Скобка, класс открывающая, вводит элемент сортировки наравне
+	 *          со скобкою внутренней: «[.*.]» есть элемент сортировки,
+	 *          а не класс из трёх знаков. Правило это к классу отрицающему
+	 *          не относится: «[..]» эталон отвергает, а «[^..]» принимает
+	 *          классом из знаков точки, отчего проверка идёт до снятия
+	 *          знака отрицания, а не после него.
+	 *
+	 */
+	if(collating(this->_pattern, this->_pos))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::UNSUPPORTED, offset);
+	/**
+	 * Если класс символов начинается со знака отрицания
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')){
+		// Устанавливаем флаг отрицания класса символов
+		result.negative = true;
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	}
+	/**
+	 * Проверяем размещени класса символов POSIX вне класса символов
+	 *
+	 * @details Класс символов POSIX допускается исключительно внутри класса символов,
+	 *          поэтому последовательность вида «[:alpha:]», разобранная как класс
+	 *          символов целиком, считается ошибкой размещения.
+	 *
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
+		// Получаем позицию поиска завершения класса символов POSIX
+		size_t position = (this->_pos + 1);
+		/**
+		 * Если класс символов POSIX начинается со знака отрицания
+		 */
+		if((position < size) && (this->_pattern.at(position) == '^'))
+			// Пропускаем знак отрицания класса символов POSIX
+			position++;
+		// Получаем позицию начала имени класса символов POSIX
+		const size_t begin = position;
+		/**
+		 * Ищем завершени имени класса символов POSIX
+		 */
+		while((position < size) && ascii::isAlpha(this->_pattern.at(position)))
+			// Переходим к следующему символу регулярного выражения
+			position++;
+		/**
+		 * Если последовательность является классом символов POSIX
+		 */
+		if((position > begin) && ((position + 1) < size) &&
+		   (this->_pattern.at(position) == ':') && (this->_pattern.at(position + 1) == ']'))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_POSIX_CLASS, offset);
+	}
+	// Флаг разбора первого элемента класса символов
+	bool first = true;
+	/**
+	 * Разбираем элементов класса символов
+	 */
+	while(this->_pos < size){
+		/**
+		 * Если класс символов завершён закрывающей квадратной скобкой
+		 */
+		if((this->_pattern.at(this->_pos) == ']') && !first){
+			// Переходим к символу за закрывающей квадратной скобкой
+			this->_pos++;
+			// Выводим индекс сформированного узла класса символов
+			return this->makeClass(result);
+		}
+		/**
+		 * Если элемент завершает экранирование последовательности символов
+		 *
+		 * @details Последовательность «\\E» удаляется из класса символов целиком
+		 *          и элементом класса не является, поэтому закрывающая квадратная
+		 *          скобка, следующая за ней в начале класса, остаётся литералом.
+		 *
+		 */
+		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
+			// Переходим к символу за завершением экранирования
+			this->_pos += 2;
+			// Переходим к следующему элементу класса символов
+			continue;
+		}
+		/**
+		 * Если элемент является дословной последовательностью пустой
+		 *
+		 * @details Последовательность «\\Q\\E» символов не несёт и элементом
+		 *          класса не является наравне с завершением экранирования
+		 *          одиночным: класс «[\\Q\\E]» остаётся незавершённым, а скобка
+		 *          закрывающая - литералом его.
+		 *
+		 */
+		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 3) < size) &&
+		   (this->_pattern.at(this->_pos + 1) == 'Q') && (this->_pattern.at(this->_pos + 2) == '\\') &&
+		   (this->_pattern.at(this->_pos + 3) == 'E')){
+			// Переходим к символу за дословной последовательностью пустой
+			this->_pos += 4;
+			// Переходим к следующему элементу класса символов
+			continue;
+		}
+		// Сбрасываем флаг разбора первого элемента
+		first = false;
+		/**
+		 * Если элемент класса символов является классом символов POSIX
+		 */
+		if((this->_pattern.at(this->_pos) == '[') && collating(this->_pattern, (this->_pos + 1)))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::UNSUPPORTED, offset);
+		/**
+		 * Если элемент класса символов является классом символов POSIX
+		 */
+		if((this->_pattern.at(this->_pos) == '[') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == ':')){
+			/**
+			 * Если разбор класса символов POSIX не выполнен
+			 */
+			if(!this->parsePosix(result))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			/**
+			 * Если за классом символов POSIX следует знак диапазона
+			 *
+			 * @details Класс символов POSIX задаёт набор символов, а не одиночный
+			 *          символ, и границей диапазона выступать не может наравне
+			 *          с классом сокращённым. Проверка эта велась лишь для границы
+			 *          верхней, отчего «[[:alpha:]-z]» принималось, а «[z-[:alpha:]]»
+			 *          отвергалось.
+			 *
+			 */
+			if(((this->_pos + 1) < size) && (this->_pattern.at(this->_pos) == '-') && (this->_pattern.at(this->_pos + 1) != ']'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_CLASS_RANGE, this->_pos);
+			// Переходим к следующему элементу класса символов
+			continue;
+		}
+		// Кодовое значение нижней границы диапазона
+		uint32_t begin = 0;
+		// Флаг разбора одиночного символа
+		bool single = true;
+		/**
+		 * Если элемент класса символов является экранированной последовательностью
+		 */
+		if(this->_pattern.at(this->_pos) == '\\'){
+			/**
+			 * Если разбор экранированной последовательности не выполнен
+			 */
+			if(!this->parseClassEscape(result, begin, single))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+		/**
+		 * Если элемент класса символов является одиночным символом
+		 */
+		} else if(!this->readCode(begin))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_UTF8, this->_pos);
+		/**
+		 * Если элемент класса символов не является одиночным символом
+		 */
+		if(!single){
+			/**
+			 * Если за элементом класса символов следует знак диапазона
+			 *
+			 * @details Сокращённый класс символов и свойство Юникода задают набор
+			 *          символов, а не одиночный символ, поэтому границей диапазона
+			 *          выступать не могут.
+			 *
+			 */
+			if(((this->_pos + 1) < size) && (this->_pattern.at(this->_pos) == '-') && (this->_pattern.at(this->_pos + 1) != ']'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_CLASS_RANGE, this->_pos);
+			// Переходим к следующему элементу класса символов
+			continue;
+		}
+		/**
+		 * Если за элементом класса символов следует знак диапазона
+		 */
+		if(((this->_pos + 1) < size) && (this->_pattern.at(this->_pos) == '-') && (this->_pattern.at(this->_pos + 1) != ']')){
+			// Получаем смещение знака диапазона
+			const size_t position = this->_pos;
+			// Переходим к символу за знаком диапазона
+			this->_pos++;
+			/**
+			 * Пропускаем дословных последовательностей пустых
+			 *
+			 * @details Последовательность «\\Q\\E» символов не несёт и краем диапазона
+			 *          не выступает: «[a-\\Q\\Ez]» есть диапазон от «a» до «z»,
+			 *          а «[a-\\Q\\E]» - класс из знака «a» и знака переноса.
+			 *
+			 */
+			while(((this->_pos + 3) < size) && (this->_pattern.at(this->_pos) == '\\') &&
+			      (this->_pattern.at(this->_pos + 1) == 'Q') && (this->_pattern.at(this->_pos + 2) == '\\') &&
+			      (this->_pattern.at(this->_pos + 3) == 'E'))
+				// Переходим к символу за дословной последовательностью пустой
+				this->_pos += 4;
+			/**
+			 * Если за знаком диапазона следует завершение класса символов
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) == ']')){
+				// Добавляем нижней границы диапазона в класс символов
+				result.ranges.emplace_back(begin, begin);
+				// Добавляем знак диапазона в класс символов
+				result.ranges.emplace_back(static_cast <uint32_t> ('-'), static_cast <uint32_t> ('-'));
+				// Переходим к следующему элементу класса символов
+				continue;
+			}
+			// Кодовое значение верхней границы диапазона
+			uint32_t end = 0;
+			// Флаг разбора одиночного символа верхней границы
+			bool bound = true;
+			/**
+			 * Если верхняя граница диапазона задана классом символов POSIX
+			 *
+			 * @details Класс символов POSIX и элемент сортировки одиночным символом
+			 *          не являются и границей диапазона выступать не могут. Проверка
+			 *          эта на границе верхней отсутствовала, а отказ давал разве что
+			 *          обратный порядок границ, скобкой квадратной случайно
+			 *          полученный: «[z-[:alpha:]]» отвергалось, а «[.-[:punct:]]»
+			 *          принималось.
+			 *
+			 */
+			if((this->_pattern.at(this->_pos) == '[') && ((this->_pos + 1) < size) &&
+			   ((this->_pattern.at(this->_pos + 1) == ':') || collating(this->_pattern, (this->_pos + 1))))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_CLASS_RANGE, position);
+			/**
+			 * Если верхняя граница диапазона является экранированной последовательностью
+			 */
+			if(this->_pattern.at(this->_pos) == '\\'){
+				/**
+				 * Если разбор экранированной последовательности не выполнен
+				 */
+				if(!this->parseClassEscape(result, end, bound, true))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+				/**
+				 * Если верхняя граница диапазона не является одиночным символом
+				 */
+				if(!bound)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_CLASS_RANGE, position);
+			/**
+			 * Если верхняя граница диапазона является одиночным символом
+			 */
+			} else if(!this->readCode(end))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_UTF8, this->_pos);
+			/**
+			 * Если границы диапазона указаны в обратном порядке
+			 */
+			if(end < begin)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_CLASS_RANGE, position);
+			// Добавляем диапазон в класс символов
+			result.ranges.emplace_back(begin, end);
+			// Переходим к следующему элементу класса символов
+			continue;
+		}
+		// Добавляем одиночного символа в класс символов
+		result.ranges.emplace_back(begin, begin);
+	}
+	// Выводим индекс отсутствующего узла синтаксического дерева
+	return this->fail(error_t::UNMATCHED_BRACKET, offset);
+}
+/**
+ * @brief Метод разбора экранированной последовательности вне класса символов
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Получаем смещение начала экранированной последовательности
+	const size_t offset = this->_pos;
+	// Переходим к символу за обратной косой чертой
+	this->_pos++;
+	/**
+	 * Если экранированная последовательность не содержит символа
+	 */
+	if(this->_pos >= size)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::TRAILING_BACKSLASH, offset);
+	// Получаем букву экранированной последовательности
+	const char letter = this->_pattern.at(this->_pos);
+	/**
+	 * Определяем букву экранированной последовательности
+	 */
+	switch(letter){
+		// Разбираем привязок к позиции в тексте
+		case 'A': case 'z': case 'Z': case 'b': case 'B': case 'G': case 'K': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если сброс начала совпадения размещён внутри проверки окружения
+			 */
+			if((letter == 'K') && (this->_look > 0))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNSUPPORTED, offset);
+			// Создаём узл привязки к позиции в тексте
+			const node_id_t result = this->createNode(node_t::ANCHOR);
+			/**
+			 * Определяем букву привязки к позиции в тексте
+			 */
+			switch(letter){
+				// Устанавливаем привязкю к началу текста
+				case 'A': this->_nodes.at(result).anchor.type = anchor_t::TEXT_BEGIN; break;
+				// Устанавливаем привязкю к концу текста
+				case 'z': this->_nodes.at(result).anchor.type = anchor_t::TEXT_END; break;
+				// Устанавливаем привязкю к концу текста с переводом строки
+				case 'Z': this->_nodes.at(result).anchor.type = anchor_t::TEXT_FINISH; break;
+				// Устанавливаем привязкю к границе слова
+				case 'b': this->_nodes.at(result).anchor.type = anchor_t::WORD_EDGE; break;
+				// Устанавливаем привязкю к положению вне границы слова
+				case 'B': this->_nodes.at(result).anchor.type = anchor_t::WORD_INNER; break;
+				// Устанавливаем привязкю к началу попытки поиска
+				case 'G': this->_nodes.at(result).anchor.type = anchor_t::SEARCH_HEAD; break;
+				// Устанавливаем сброс начала совпадения
+				case 'K': this->_nodes.at(result).anchor.type = anchor_t::KEEP_OUT; break;
+			}
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		// Разбираем сокращённых классов символов
+		case 'd': case 'D': case 'w': case 'W':
+		case 's': case 'S': case 'h': case 'H':
+		case 'v': case 'V': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Получаем запись под формируемый класс символов
+			class_t & result = this->acquireClass();
+			/**
+			 * Если добавление сокращённого класса символов не выполнено
+			 */
+			if(!this->shorthand(letter, result))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNKNOWN_ESCAPE, offset);
+			// Выводим индекс сформированного узла класса символов
+			return this->makeClass(result);
+		}
+		// Разбираем свойств Юникода
+		case 'p': case 'P': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Получаем запись под формируемый класс символов
+			class_t & result = this->acquireClass();
+			/**
+			 * Если разбор свойства Юникода не выполнен
+			 */
+			if(!this->parseProperty((letter == 'P'), result))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Выводим индекс сформированного узла класса символов
+			return this->makeClass(result);
+		}
+		// Разбираем любого символа, кроме перевода строки
+		case 'N': {
+			// Кодовое значение символа, заданного значением его кодовым
+			uint32_t value = 0;
+			/**
+			 * Если последовательность задаёт символ кодовым значением Юникода
+			 */
+			if(this->readEscapeCode(value)){
+				// Создаём узл одиночного символа
+				const node_id_t result = this->createNode(node_t::LITERAL);
+				// Устанавливаем кодового значения символа
+				this->_nodes.at(result).literal.code = value;
+				// Выводим индекс сформированного узла синтаксического дерева
+				return result;
+			}
+			/**
+			 * Если разбор кодового значения символа завершился ошибкой
+			 */
+			if(this->_error != error_t::NONE)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если последовательность задаёт символ его именем Юникода
+			 */
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{') && !this->isQuantifier(this->_pos))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNSUPPORTED, offset);
+			// Сохраняем набор режимов компиляции
+			const uint32_t saved = this->_flags;
+			// Снимаем режим соответствия точки переводу строки
+			this->_flags &= ~flagOf(flag_t::DOTALL);
+			// Создаём узл любого символа, кроме перевода строки
+			const node_id_t result = this->makeAny();
+			// Восстанавливаем набор режимов компиляции
+			this->_flags = saved;
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		// Разбираем одиночной единицы кодирования
+		case 'C': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Выводим индекс созданного узла одиночной единицы кодирования
+			return this->createNode(node_t::CODEUNIT);
+		}
+		// Разбираем расширенного графемного кластера
+		case 'X': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Выводим индекс созданного узла расширенного графемного кластера
+			return this->createNode(node_t::GRAPHEME);
+		}
+		// Разбираем последовательностю перевода строки
+		case 'R': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Создаём набор кодовых значений последовательности возврата каретки
+			const vector <uint32_t> codes = {0x0D, 0x0A};
+			// Создаём узл последовательности возврата каретки
+			const node_id_t sequence = this->makeString(codes);
+			// Получаем запись под формируемый класс вертикальных пробельных символов
+			class_t & vertical = this->acquireClass();
+			/**
+			 * Если охват последовательности перевода строки ограничен
+			 *
+			 * @details Указание «(*BSR_ANYCRLF)» сводит охват последовательности
+			 *          к возврату каретки, переводу строки и паре их, тогда как
+			 *          указание «(*BSR_UNICODE)» оставляет охват полным. Соглашения
+			 *          о переводе строки указания эти не касаются вовсе.
+			 *
+			 */
+			if(this->_restricted){
+				// Добавляем возврат каретки в класс символов
+				vertical.ranges.emplace_back(0x0D, 0x0D);
+				// Добавляем перевод строки в класс символов
+				vertical.ranges.emplace_back(0x0A, 0x0A);
+			// Иначе выполняем добавление класса вертикальных пробельных символов
+			} else this->shorthand('v', vertical);
+			// Создаём узл класса вертикальных пробельных символов
+			const node_id_t single = this->makeClass(vertical);
+			// Создаём набор ветвей последовательности перевода строки
+			const vector <node_id_t> items = {sequence, single};
+			// Формируем узл выбора одной из ветвей
+			const node_id_t body = this->makeList(node_t::ALTERNATE, items);
+			/**
+			 * Если формирование узла выбора одной из ветвей не выполнено
+			 */
+			if(body == INVALID_NODE)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			/**
+			 * Создаём узл атомарной группы
+			 *
+			 * @details Последовательность «\\R» атомарна: пара возврата каретки
+			 *          и перевода строки разрыву не подлежит, и возврат внутрь
+			 *          последовательности запрещён. Без атомарности «\\R\\v»
+			 *          сопоставлялся бы паре, где «\\R» брал возврат каретки,
+			 *          а «\\v» - перевод строки, тогда как эталон PCRE2
+			 *          такому сопоставлению отказывает.
+			 *
+			 */
+			const node_id_t result = this->createNode(node_t::GROUP);
+			// Устанавливаем отсутстви номера захватывающей группы
+			this->_nodes.at(result).group.number = 0;
+			// Устанавливаем отсутстви имени группы
+			this->_nodes.at(result).group.name = NO_NAME;
+			// Устанавливаем вид атомарной группы
+			this->_nodes.at(result).group.type = group_t::ATOMIC;
+			// Добавляем тел атомарной группы
+			this->appendChild(result, body);
+			// Выводим индекс сформированного узла атомарной группы
+			return result;
+		}
+		// Разбираем экранировани последовательности символов
+		case 'Q': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Создаём набор кодовых значений экранируемой последовательности
+			vector <uint32_t> codes;
+			/**
+			 * Разбираем экранируемой последовательности символов
+			 */
+			while(this->_pos < size){
+				/**
+				 * Если экранирование последовательности завершено
+				 */
+				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
+					// Переходим к символу за завершающей последовательностью
+					this->_pos += 2;
+					// Выходим из цикла разбора экранируемой последовательности
+					break;
+				}
+				// Кодовое значение очередного символа последовательности
+				uint32_t code = 0;
+				/**
+				 * Если извлечение кодового значения символа не выполнено
+				 */
+				if(!this->readCode(code))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_UTF8, this->_pos);
+				// Добавляем кодового значения символа
+				codes.push_back(code);
+			}
+			// Выводим индекс сформированного узла последовательности символов
+			return this->makeString(codes);
+		}
+		// Разбираем завершени экранирования последовательности символов
+		case 'E': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Выводим индекс созданного узла пустого выражения
+			return this->createNode(node_t::EMPTY);
+		}
+		// Разбираем ссылкю на именованную группу
+		case 'k': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если ссылка на именованную группу не содержит имени
+			 */
+			if(this->_pos >= size)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_GROUP_NAME, offset);
+			// Символ завершения имени именованной группы
+			char terminator = '\0';
+			/**
+			 * Определяем символ начала имени именованной группы
+			 */
+			switch(this->_pattern.at(this->_pos)){
+				// Устанавливаем завершени имени угловой скобкой
+				case '<': terminator = '>'; break;
+				// Устанавливаем завершени имени фигурной скобкой
+				case '{': terminator = '}'; break;
+				// Устанавливаем завершени имени апострофом
+				case '\'': terminator = '\''; break;
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				default: return this->fail(error_t::BAD_GROUP_NAME, this->_pos);
+			}
+			// Переходим к символу за началом имени именованной группы
+			this->_pos++;
+			// Индекс имени группы в хранилище имён
+			uint32_t index = 0;
+			/**
+			 * Если разбор имени именованной группы не выполнен
+			 */
+			if(!this->parseName(terminator, index))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Выводим индекс созданного узла ссылки на захваченную группу
+			return this->makeBackref(index, offset);
+		}
+		// Разбираем ссылкю на группу либо рекурсивного вызова
+		case 'g': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			/**
+			 * Если последовательность не содержит продолжения
+			 */
+			if(this->_pos >= size)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_BACKREFERENCE, offset);
+			// Получаем символ, следующий за признаком последовательности
+			const char next = this->_pattern.at(this->_pos);
+			// Флаг разбора рекурсивного вызова группы
+			const bool recursion = ((next == '<') || (next == '\''));
+			/**
+			 * Если ссылка на группу заключена в ограничители
+			 */
+			if(recursion || (next == '{')){
+				// Получаем символ завершения ссылки на группу
+				const char terminator = ((next == '<') ? '>' : ((next == '{') ? '}' : '\''));
+				// Переходим к первому символу ссылки на группу
+				this->_pos++;
+				/**
+				 * Если ссылка на группу не содержит продолжения
+				 */
+				if(this->_pos >= size)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_BACKREFERENCE, offset);
+				/**
+				 * Если ссылка на группу задана именем группы
+				 */
+				if((this->_pos < size) && !ascii::isDigit(this->_pattern.at(this->_pos)) &&
+				   (this->_pattern.at(this->_pos) != '-') && (this->_pattern.at(this->_pos) != '+')){
+					// Индекс имени группы в хранилище имён
+					uint32_t target = NO_NAME;
+					/**
+					 * Если разбор имени группы не выполнен
+					 */
+					if(!this->parseName(terminator, target))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					/**
+					 * Если разбирается рекурсивный вызов группы
+					 */
+					if(recursion)
+						// Выводим индекс созданного узла рекурсивного вызова
+						return this->makeRecurse(0, target, offset);
+					// Выводим индекс созданного узла ссылки на захваченную группу
+					return this->makeBackref(target, offset);
+				}
+				// Флаг отсчёта номера группы в обратном направлении
+				const bool backward = (this->_pattern.at(this->_pos) == '-');
+				// Флаг задания номера группы относительно текущей позиции
+				const bool relative = ((this->_pattern.at(this->_pos) == '+') || (this->_pattern.at(this->_pos) == '-'));
+				/**
+				 * Если номер группы задан относительно текущей позиции
+				 */
+				if(relative)
+					// Переходим к первому символу номера группы
+					this->_pos++;
+				// Номер группы, на которую выполняется ссылка
+				uint32_t target = 0;
+				/**
+				 * Если извлечение номера группы не выполнено
+				 */
+				if(!this->readNumber(target))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_BACKREFERENCE, offset);
+				/**
+				 * Если ссылка на группу не завершена ожидаемым символом
+				 */
+				if((this->_pos >= size) || (this->_pattern.at(this->_pos) != terminator))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_BACKREFERENCE, offset);
+				// Переходим к символу за завершением ссылки на группу
+				this->_pos++;
+				/**
+				 * Если номер группы задан относительно текущей позиции
+				 */
+				if(relative){
+					/**
+					 * Если номер группы отсчитывается в обратном направлении
+					 */
+					if(backward){
+						/**
+						 * Если номер группы выходит за пределы объявленных групп
+						 */
+						if((target == 0) || (target > this->_captures))
+							// Выводим индекс отсутствующего узла синтаксического дерева
+							return this->fail(error_t::BAD_BACKREFERENCE, offset);
+						// Вычисляем номер группы
+						target = ((this->_captures - target) + 1);
+					// Вычисляем номер группы
+					} else target = (this->_captures + target);
+				}
+				/**
+				 * Если разбирается рекурсивный вызов группы
+				 */
+				if(recursion)
+					// Выводим индекс созданного узла рекурсивного вызова
+					return this->makeRecurse(target, NO_NAME, offset);
+				// Создаём узл ссылки на захваченную группу
+				const node_id_t result = this->createNode(node_t::BACKREF);
+				// Устанавливаем номер группы
+				this->_nodes.at(result).backref.number = target;
+				// Устанавливаем отсутстви имени группы
+				this->_nodes.at(result).backref.name = NO_NAME;
+				// Выводим индекс сформированного узла синтаксического дерева
+				return result;
+			}
+			// Флаг отсчёта номера группы в обратном направлении
+			const bool backward = (next == '-');
+			/**
+			 * Если номер группы отсчитывается в обратном направлении
+			 */
+			if(backward)
+				// Переходим к первому символу номера группы
+				this->_pos++;
+			// Номер группы, на которую выполняется ссылка
+			uint32_t target = 0;
+			/**
+			 * Если извлечение номера группы не выполнено
+			 */
+			if(!this->readNumber(target))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_BACKREFERENCE, offset);
+			/**
+			 * Если номер группы отсчитывается в обратном направлении
+			 */
+			if(backward){
+				/**
+				 * Если номер группы выходит за пределы объявленных групп
+				 */
+				if((target == 0) || (target > this->_captures))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_BACKREFERENCE, offset);
+				// Вычисляем номер группы
+				target = ((this->_captures - target) + 1);
+			}
+			// Создаём узл ссылки на захваченную группу
+			const node_id_t result = this->createNode(node_t::BACKREF);
+			// Устанавливаем номер группы
+			this->_nodes.at(result).backref.number = target;
+			// Устанавливаем отсутстви имени группы
+			this->_nodes.at(result).backref.name = NO_NAME;
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+	}
+	/**
+	 * Если экранированная последовательность является ссылкой на захваченную группу
+	 */
+	if((letter >= '1') && (letter <= '9')){
+		// Номер группы, на которую выполняется ссылка
+		uint32_t number = 0;
+		// Сохраняем позицию разбора экранированной последовательности
+		const size_t saved = this->_pos;
+		/**
+		 * Если извлечение номера группы выполнено и группа существует
+		 */
+		if(this->readNumber(number) && ((number < 10) || (number <= this->total()))){
+			// Создаём узл ссылки на захваченную группу
+			const node_id_t result = this->createNode(node_t::BACKREF);
+			// Устанавливаем номер группы
+			this->_nodes.at(result).backref.number = number;
+			// Устанавливаем отсутстви имени группы
+			this->_nodes.at(result).backref.name = NO_NAME;
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		// Восстанавливаем позицию разбора
+		this->_pos = saved;
+	}
+	// Кодовое значение экранированного символа
+	uint32_t code = 0;
+	/**
+	 * Если экранированная последовательность обозначает одиночный символ
+	 */
+	if(this->readEscapeCode(code)){
+		// Создаём узл одиночного символа
+		const node_id_t result = this->createNode(node_t::LITERAL);
+		// Устанавливаем кодового значения символа
+		this->_nodes.at(result).literal.code = code;
+		// Выводим индекс сформированного узла синтаксического дерева
+		return result;
+	}
+	/**
+	 * Если экранированная последовательность содержит букву либо цифру
+	 */
+	if(ascii::isAlnum(letter))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::UNKNOWN_ESCAPE, offset);
+	/**
+	 * Если извлечение кодового значения экранированного символа не выполнено
+	 */
+	if(!this->readCode(code))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::BAD_UTF8, offset);
+	// Создаём узл одиночного символа
+	const node_id_t result = this->createNode(node_t::LITERAL);
+	// Устанавливаем кодового значения символа
+	this->_nodes.at(result).literal.code = code;
+	// Выводим индекс сформированного узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод разбора встроенных опций регулярного выражения
+ *
+ * @param enable  набор устанавливаемых режимов компиляции
+ * @param disable набор снимаемых режимов компиляции
+ * @return        результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Сбрасываем набор устанавливаемых режимов компиляции
+	enable = 0;
+	// Сбрасываем набор снимаемых режимов компиляции
+	disable = 0;
+	// Флаг разбора снимаемых режимов компиляции
+	bool negative = false;
+	/**
+	 * Разбираем последовательностю букв опций
+	 */
+	while(this->_pos < size){
+		// Числовое значение режима компиляции
+		uint32_t value = 0;
+		// Получаем очередную букву опции
+		const char letter = this->_pattern.at(this->_pos);
+		/**
+		 * Определяем очередную букву опции
+		 */
+		switch(letter){
+			// Устанавливаем режим соответствия точки переводу строки
+			case 's': value = flagOf(flag_t::DOTALL); break;
+			// Устанавливаем режим ограничения сопоставления письменностью
+			case 'r': value = flagOf(flag_t::RESTRICT); break;
+			// Устанавливаем режим повторного объявления имён групп
+			case 'J': value = flagOf(flag_t::DUPNAMES); break;
+			// Устанавливаем режим игнорирования пробельных символов
+			case 'x': value = flagOf(flag_t::EXTENDED); break;
+			// Устанавливаем режим инвертирования жадности кванторов
+			case 'U': value = flagOf(flag_t::UNGREEDY); break;
+			// Устанавливаем режим сопоставления без учёта регистра
+			case 'i': value = flagOf(flag_t::CASELESS); break;
+			// Устанавливаем режим отключения захвата круглыми скобками
+			case 'n': value = flagOf(flag_t::NOCAPTURE); break;
+			// Устанавливаем режим соответствия привязок границам строк
+			case 'm': value = flagOf(flag_t::MULTILINE); break;
+			/**
+			 * Разбираем режим ограничения набора символов
+			 */
+			case 'a': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				/**
+				 * Если режим ограничения задан для отдельного класса символов
+				 *
+				 * @details Буква режима допускает уточняющую букву, ограничивающую
+				 *          набором символов ASCII отдельный сокращённый класс символов.
+				 *
+				 */
+				if(this->_pos < size){
+					// Получаем уточняющую букву режима ограничения
+					const char next = this->_pattern.at(this->_pos);
+					/**
+					 * Если уточняющая буква режима ограничения указана
+					 */
+					if((next == 'P') || (next == 'S') || (next == 'T') || (next == 'W') || (next == 'D'))
+						// Переходим к следующему символу регулярного выражения
+						this->_pos++;
+				}
+				/**
+				 * Если разбираются снимаемые режимы компиляции
+				 */
+				if(negative)
+					// Добавляем снимаемого режима компиляции
+					disable |= flagOf(flag_t::ASCII);
+				// Добавляем устанавливаемого режима компиляции
+				else enable |= flagOf(flag_t::ASCII);
+				// Переходим к следующей итерации разбора
+				continue;
+			}
+			// Разбираем знак снятия режимов компиляции
+			case '-': {
+				/**
+				 * Если знак снятия режимов компиляции уже разобран
+				 */
+				if(negative){
+					// Устанавливаем ошибкю некорректных встроенных опций
+					this->fail(error_t::BAD_OPTIONS, this->_pos);
+					// Разбора: отказ
+					return false;
+				}
+				// Устанавливаем флаг разбора снимаемых режимов
+				negative = true;
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Переходим к следующей итерации разбора
+				continue;
+			}
+			// Выводим результат выполнения разбора
+			default: return true;
+		}
+		/**
+		 * Если разбираются снимаемые режимы компиляции
+		 */
+		if(negative)
+			// Добавляем снимаемого режима компиляции
+			disable |= value;
+		// Если разбираются устанавливаемые режимы компиляции
+		else enable |= value;
+		// Переходим к следующему символу регулярного выражения
+		this->_pos++;
+	}
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Метод разбора условного выражения
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
+	// Номер проверяемой группы
+	uint32_t number = 0;
+	// Индекс имени проверяемой группы
+	uint32_t index = NO_NAME;
+	// Получаем смещение начала условия
+	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Индекс узла проверки окружения, задающей условие
+	node_id_t assertion = INVALID_NODE;
+	// Вид условия условного выражения
+	condition_t type = condition_t::GROUP_SET;
+	/**
+	 * Если условие условного выражения отсутствует
+	 */
+	if((this->_pos + 1) >= size)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::BAD_CONDITION, offset);
+	// Получаем первый символ условия условного выражения
+	const char letter = this->_pattern.at(this->_pos + 1);
+	/**
+	 * Если условие задано проверкой окружения
+	 */
+	if(letter == '?'){
+		// Устанавливаем вид условия, заданного проверкой окружения
+		type = condition_t::ASSERTION;
+		// Разбираем проверкю окружения, задающей условие
+		assertion = this->parseGroup();
+		/**
+		 * Если разбор проверки окружения не выполнен
+		 */
+		if(assertion == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		/**
+		 * Если условие задано конструкцией, не являющейся проверкой окружения
+		 */
+		if(this->_nodes.at(assertion).type != node_t::LOOKAROUND)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_CONDITION, offset);
+	// Если условие задано ссылкой на группу
+	} else {
+		// Переходим к первому символу условия условного выражения
+		this->_pos++;
+		/**
+		 * Если условие является блоком определения групп
+		 */
+		if(((size - this->_pos) >= 6) && (this->_pattern.compare(this->_pos, 6, "DEFINE") == 0)){
+			// Переходим к символу за именем блока определения групп
+			this->_pos += 6;
+			// Устанавливаем вид условия блока определения групп
+			type = condition_t::DEFINE;
+		/**
+		 * Если условие является проверкой выполнения рекурсивного вызова
+		 */
+		} else if(letter == 'R') {
+			// Переходим к символу за признаком рекурсивного вызова
+			this->_pos++;
+			// Устанавливаем вид условия проверки рекурсивного вызова
+			type = condition_t::RECURSING;
+			/**
+			 * Если проверяется рекурсивный вызов именованной группы
+			 */
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '&')){
+				// Переходим к символу за признаком имени группы
+				this->_pos++;
+				/**
+				 * Если разбор имени проверяемой группы не выполнен
+				 */
+				if(!this->parseName(')', index))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+				// Возвращаемся к завершающей круглой скобке условия
+				this->_pos--;
+			/**
+			 * Если проверяется рекурсивный вызов группы по номеру
+			 */
+			} else if((this->_pos < size) && ascii::isDigit(this->_pattern.at(this->_pos))) {
+				/**
+				 * Если извлечение номера проверяемой группы не выполнено
+				 */
+				if(!this->readNumber(number))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_CONDITION, offset);
+			}
+		/**
+		 * Если условие задано именем группы в скобках либо апострофах
+		 */
+		} else if((letter == '<') || (letter == '\'')) {
+			// Получаем символ завершения имени проверяемой группы
+			const char terminator = ((letter == '<') ? '>' : '\'');
+			// Переходим к первому символу имени проверяемой группы
+			this->_pos++;
+			/**
+			 * Если разбор имени проверяемой группы не выполнен
+			 */
+			if(!this->parseName(terminator, index))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Устанавливаем вид условия проверки именованной группы
+			type = condition_t::NAME_SET;
+		/**
+		 * Если условие задано номером группы
+		 */
+		} else if(ascii::isDigit(letter) || (letter == '+') || (letter == '-')) {
+			// Флаг задания номера группы относительно текущей позиции
+			const bool relative = ((letter == '+') || (letter == '-'));
+			// Флаг отсчёта номера группы в обратном направлении
+			const bool backward = (letter == '-');
+			/**
+			 * Если номер группы задан относительно текущей позиции
+			 */
+			if(relative)
+				// Переходим к первому символу номера группы
+				this->_pos++;
+			/**
+			 * Если извлечение номера проверяемой группы не выполнено
+			 */
+			if(!this->readNumber(number))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_CONDITION, offset);
+			/**
+			 * Если номер группы задан относительно текущей позиции
+			 */
+			if(relative){
+				/**
+				 * Если номер группы отсчитывается в обратном направлении
+				 */
+				if(backward){
+					/**
+					 * Если номер группы выходит за пределы объявленных групп
+					 */
+					if((number == 0) || (number > this->_captures))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return this->fail(error_t::BAD_CONDITION, offset);
+					// Вычисляем номер проверяемой группы
+					number = ((this->_captures - number) + 1);
+				// Вычисляем номер проверяемой группы
+				} else number = (this->_captures + number);
+			}
+		// Если условие задано именем группы без ограничителей
+		} else {
+			/**
+			 * Если разбор имени проверяемой группы не выполнен
+			 */
+			if(!this->parseName(')', index))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Возвращаемся к завершающей круглой скобке условия
+			this->_pos--;
+			// Устанавливаем вид условия проверки именованной группы
+			type = condition_t::NAME_SET;
+		}
+		/**
+		 * Если условие не завершено закрывающей круглой скобкой
+		 */
+		if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_CONDITION, offset);
+		// Переходим к символу за завершающей круглой скобкой условия
+		this->_pos++;
+	}
+	// Разбираем ветвю выполненного условия
+	const node_id_t yes = this->parseConcat();
+	/**
+	 * Если разбор ветви выполненного условия не выполнен
+	 */
+	if(yes == INVALID_NODE)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return INVALID_NODE;
+	// Индекс узла ветви невыполненного условия
+	node_id_t no = INVALID_NODE;
+	/**
+	 * Если условное выражение содержит ветвь невыполненного условия
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')){
+		// Переходим к символу за разделителем ветвей
+		this->_pos++;
+		// Разбираем ветвю невыполненного условия
+		no = this->parseConcat();
+		/**
+		 * Если разбор ветви невыполненного условия не выполнен
+		 */
+		if(no == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		/**
+		 * Если условное выражение содержит более двух ветвей
+		 */
+		if((this->_pos < size) && (this->_pattern.at(this->_pos) == '|'))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_CONDITION, this->_pos);
+	}
+	/**
+	 * Если условное выражение не завершено закрывающей круглой скобкой
+	 */
+	if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::UNMATCHED_PAREN, offset);
+	// Переходим к символу за закрывающей круглой скобкой
+	this->_pos++;
+	// Создаём узл условного выражения
+	const node_id_t result = this->createNode(node_t::CONDITION);
+	// Устанавливаем вид условия условного выражения
+	this->_nodes.at(result).condition.type = type;
+	// Устанавливаем номер проверяемой группы
+	this->_nodes.at(result).condition.number = number;
+	// Устанавливаем индекс имени проверяемой группы
+	this->_nodes.at(result).condition.name = index;
+	/**
+	 * Если условие задано проверкой окружения
+	 */
+	if(assertion != INVALID_NODE)
+		// Добавляем проверкю окружения, задающей условие
+		this->appendChild(result, assertion);
+	// Добавляем ветвю выполненного условия
+	this->appendChild(result, yes);
+	/**
+	 * Если условное выражение содержит ветвь невыполненного условия
+	 */
+	if(no != INVALID_NODE)
+		// Добавляем ветвю невыполненного условия
+		this->appendChild(result, no);
+	/**
+	 * Если условие задано именем группы
+	 */
+	if(index != NO_NAME){
+		// Создаём отложенную ссылку на именованную группу
+		deferred_t deferred;
+		// Устанавливаем индекс узла условного выражения
+		deferred.node = result;
+		// Устанавливаем индекс имени группы
+		deferred.name = index;
+		// Устанавливаем смещение условия
+		deferred.offset = static_cast <uint32_t> (offset);
+		// Добавляем отложенной ссылки
+		this->_deferred.push_back(deferred);
+	}
+	// Выводим индекс сформированного узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод разбора группы регулярного выражения
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Получаем смещение начала группы
+	const size_t offset = this->_pos;
+	// Переходим к символу за открывающей круглой скобкой
+	this->_pos++;
+	// Номер захватывающей группы
+	uint32_t number = 0;
+	// Индекс имени именованной группы
+	uint32_t index = NO_NAME;
+	// Сохраняем набор режимов компиляции, действующих до начала группы
+	const uint32_t saved = this->_flags;
+	// Флаг разбора проверки окружения
+	bool assertion = false;
+	// Вид разбираемой группы синтаксического дерева
+	group_t type = group_t::CAPTURE;
+	// Направление и знак проверки окружения
+	look_t direction = look_t::AHEAD;
+	/**
+	 * Если группа является глаголом управления
+	 *
+	 * @details Глаголы управления составляют семью особую: часть их правит
+	 *          возвратом, часть - соглашением о переводе строки, а часть
+	 *          ложится на признаки сборки, уже заведённые. Разбирается здесь
+	 *          глагол отказа, совпадения не дающий никогда, - прочие
+	 *          отвергаются доводом неподдерживаемой конструкции.
+	 *
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '*')){
+		// Переходим к символу за знаком глагола управления
+		this->_pos++;
+		// Получаем позицию начала имени глагола управления
+		const size_t begin = this->_pos;
+		/**
+		 * Ищем завершени имени глагола управления
+		 */
+		while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')') &&
+		      (this->_pattern.at(this->_pos) != ':'))
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+		// Получаем имя разобранного глагола управления
+		const string_view name = this->_pattern.substr(begin, (this->_pos - begin));
+		/**
+		 * Если глагол управления совпадения не даёт никогда
+		 *
+		 * @details Глагол отказа собирается отрицательной опережающей проверкой
+		 *          пустого выражения: устройство это в движке уже заведено
+		 *          и «(?!)» им же и собирается.
+		 *
+		 */
+		if((name == "MARK") || name.empty()){
+			/**
+			 * Если глагол отметки имени не несёт
+			 *
+			 * @details Имя глаголу отметки обязательно: «(*MARK)» и «(*MARK:)»
+			 *          эталон отвергает доводом отсутствия довода.
+			 *
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ':'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNSUPPORTED, offset);
+			// Переходим к символу за разделителем имени отметки
+			this->_pos++;
+			// Получаем позицию начала имени отметки
+			const size_t begin = this->_pos;
+			/**
+			 * Ищем завершени имени отметки
+			 */
+			while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+			/**
+			 * Если глагол отметки не завершён закрывающей круглой скобкой
+			 */
+			if(this->_pos >= size)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNMATCHED_PAREN, offset);
+			/**
+			 * Если имя отметки пусто
+			 */
+			if(this->_pos == begin)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNSUPPORTED, offset);
+			// Получаем смещение имени отметки в хранилище имён
+			const uint32_t spot = static_cast <uint32_t> (this->_markers.size());
+			/**
+			 * Размещаем именю отметки в хранилище имён
+			 */
+			for(size_t index = begin; index < this->_pos; index++)
+				// Добавляем очередного октета имени отметки
+				this->_markers.push_back(static_cast <uint8_t> (this->_pattern.at(index)));
+			// Получаем длину размещённого имени отметки
+			const uint32_t length = static_cast <uint32_t> (this->_markers.size() - static_cast <size_t> (spot));
+			// Переходим к символу за закрывающей круглой скобкой
+			this->_pos++;
+			// Создаём узл глагола управления возвратом
+			const node_id_t result = this->createNode(node_t::CONTROL);
+			// Устанавливаем вид глагола управления возвратом
+			this->_nodes.at(result).control.type = control_t::MARK;
+			// Отмечаем вид глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (control_t::MARK));
+			// Устанавливаем смещение имени отметки в хранилище имён
+			this->_nodes.at(result).control.offset = spot;
+			// Устанавливаем длину имени отметки
+			this->_nodes.at(result).control.length = length;
+			/**
+			 * Если за глаголом отметки следует квантор повторения
+			 */
+			if((this->_pos < size) && (((this->_pattern.at(this->_pos) == '*') ||
+			   (this->_pattern.at(this->_pos) == '+') || (this->_pattern.at(this->_pos) == '?')) ||
+			   ((this->_pattern.at(this->_pos) == '{') && this->isQuantifier(this->_pos))))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, this->_pos);
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		/**
+		 * Если глагол управления правит движком возврата
+		 *
+		 * @details Глаголы эти имени не несут: имя у них эталон принимает,
+		 *          а «(*SKIP:имя)» вдобавок переносит попытку в позицию отметки
+		 *          того имени. Устройство это - пробел, шагом 116 описанный,
+		 *          и глагол с именем отвергается, а не принимается молча
+		 *          с иным смыслом.
+		 *
+		 */
+		if((name == "ACCEPT") || (name == "COMMIT") || (name == "PRUNE") || (name == "SKIP") || (name == "THEN")){
+			// Смещение имени отметки в хранилище имён
+			uint32_t spot = 0;
+			// Длина имени отметки в октетах
+			uint32_t length = 0;
+			/**
+			 * Если глагол управления несёт имя отметки
+			 *
+			 * @details Имя у глагола отсечения означает отметку, глаголу
+			 *          предшествующую: «(*COMMIT:имя)» равен «(*MARK:имя)(*COMMIT)».
+			 *          Глагол переноса имя толкует иначе - ключом розыска отметки
+			 *          живой того имени, отметки своей не заводя вовсе. Имя пустое
+			 *          глагол обращает в безымянный - таково правило эталона,
+			 *          опытом снятое на «a(*SKIP:)b» и «a(*COMMIT:)b».
+			 *
+			 */
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
+				// Переходим к символу за разделителем имени отметки
+				this->_pos++;
+				// Получаем позицию начала имени отметки
+				const size_t begin = this->_pos;
+				/**
+				 * Ищем завершени имени отметки
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				// Получаем смещение имени отметки в хранилище имён
+				spot = static_cast <uint32_t> (this->_markers.size());
+				/**
+				 * Размещаем именю отметки в хранилище имён
+				 */
+				for(size_t index = begin; index < this->_pos; index++)
+					// Добавляем очередного октета имени отметки
+					this->_markers.push_back(static_cast <uint8_t> (this->_pattern.at(index)));
+				// Получаем длину размещённого имени отметки
+				length = static_cast <uint32_t> (this->_markers.size() - static_cast <size_t> (spot));
+			}
+			/**
+			 * Если глагол управления не завершён закрывающей круглой скобкой
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNMATCHED_PAREN, offset);
+			// Переходим к символу за закрывающей круглой скобкой
+			this->_pos++;
+			// Создаём узл глагола управления возвратом
+			const node_id_t result = this->createNode(node_t::CONTROL);
+			/**
+			 * Устанавливаем вид глагола управления возвратом
+			 */
+			this->_nodes.at(result).control.type = ((name == "ACCEPT") ? control_t::ACCEPT :
+			 ((name == "COMMIT") ? control_t::COMMIT : ((name == "PRUNE") ? control_t::PRUNE :
+			 ((name == "SKIP") ? control_t::SKIP : control_t::THEN))));
+			// Отмечаем вид глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (this->_nodes.at(result).control.type));
+			// Устанавливаем смещение имени отметки в хранилище имён
+			this->_nodes.at(result).control.offset = spot;
+			// Устанавливаем длину имени отметки
+			this->_nodes.at(result).control.length = length;
+			/**
+			 * Если за глаголом управления следует квантор повторения
+			 */
+			if((this->_pos < size) && (((this->_pattern.at(this->_pos) == '*') ||
+			   (this->_pattern.at(this->_pos) == '+') || (this->_pattern.at(this->_pos) == '?')) ||
+			   ((this->_pattern.at(this->_pos) == '{') && this->isQuantifier(this->_pos))))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, this->_pos);
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		/**
+		 * Если глагол управления совпадения не даёт никогда
+		 */
+		if((name == "FAIL") || (name == "F")){
+			// Смещение имени отметки в хранилище имён
+			uint32_t spot = 0;
+			// Длина имени отметки в октетах
+			uint32_t length = 0;
+			/**
+			 * Если глагол отказа несёт имя отметки
+			 *
+			 * @details Имя означает отметку, глаголу предшествующую, наравне
+			 *          с глаголами отсечения: «(*FAIL:имя)» равен «(*MARK:имя)(*FAIL)»
+			 *          и имя это выводится при отказе сопоставления.
+			 *
+			 */
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
+				// Переходим к символу за разделителем имени отметки
+				this->_pos++;
+				// Получаем позицию начала имени отметки
+				const size_t begin = this->_pos;
+				/**
+				 * Ищем завершени имени отметки
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				// Получаем смещение имени отметки в хранилище имён
+				spot = static_cast <uint32_t> (this->_markers.size());
+				/**
+				 * Размещаем именю отметки в хранилище имён
+				 */
+				for(size_t index = begin; index < this->_pos; index++)
+					// Добавляем очередного октета имени отметки
+					this->_markers.push_back(static_cast <uint8_t> (this->_pattern.at(index)));
+				// Получаем длину размещённого имени отметки
+				length = static_cast <uint32_t> (this->_markers.size() - static_cast <size_t> (spot));
+			}
+			/**
+			 * Если глагол управления не завершён закрывающей круглой скобкой
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::UNMATCHED_PAREN, offset);
+			// Переходим к символу за закрывающей круглой скобкой
+			this->_pos++;
+			// Создаём узл отрицательной опережающей проверки
+			const node_id_t result = this->createNode(node_t::LOOKAROUND);
+			// Устанавливаем направлени и знака проверки окружения
+			this->_nodes.at(result).look.type = look_t::AHEAD_NEG;
+			// Устанавливаем наименьшей длины проверяемой последовательности
+			this->_nodes.at(result).look.min = 0;
+			// Устанавливаем наибольшей длины проверяемой последовательности
+			this->_nodes.at(result).look.max = 0;
+			// Добавляем пустого тела проверки окружения
+			this->appendChild(result, this->createNode(node_t::EMPTY));
+			/**
+			 * Если за глаголом управления следует квантор повторения
+			 *
+			 * @details Глагол управления кванторам не подлежит наравне
+			 *          с привязками: «(*FAIL)*» эталон отвергает. Признак
+			 *          разрыва связи здесь не годится: он правит одними
+			 *          лишь узлами пустыми, а глагол собирается проверкой
+			 *          окружения, повторению подлежащей.
+			 *
+			 */
+			if((this->_pos < size) && (((this->_pattern.at(this->_pos) == '*') ||
+			   (this->_pattern.at(this->_pos) == '+') || (this->_pattern.at(this->_pos) == '?')) ||
+			   ((this->_pattern.at(this->_pos) == '{') && this->isQuantifier(this->_pos))))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, this->_pos);
+			/**
+			 * Если глагол отказа имени отметки не несёт
+			 */
+			if(length == 0)
+				// Выводим индекс сформированного узла синтаксического дерева
+				return result;
+			// Создаём узл глагола отметки, глаголу отказа предшествующего
+			const node_id_t marker = this->createNode(node_t::CONTROL);
+			// Устанавливаем вид глагола управления возвратом
+			this->_nodes.at(marker).control.type = control_t::MARK;
+			// Отмечаем вид глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (control_t::MARK));
+			// Устанавливаем смещение имени отметки в хранилище имён
+			this->_nodes.at(marker).control.offset = spot;
+			// Устанавливаем длину имени отметки
+			this->_nodes.at(marker).control.length = length;
+			// Выводим индекс узла последовательного сопоставления отметки и отказа
+			return this->makeList(node_t::CONCAT, vector <node_id_t> {marker, result});
+		}
+		/**
+		 * Если глагол управления задаёт группу буквенным именем
+		 *
+		 * @details Семья глаголов буквенных именует конструкции, синтаксисом
+		 *          знаковым уже заведённые: «(*atomic:» есть «(?>», «(*pla:»
+		 *          есть «(?=», а «(*napla:» - «(?*». Разбор их сводится
+		 *          к установке вида группы, после чего тело её разбирается
+		 *          порядком общим. Имя обязано завершаться двоеточием:
+		 *          «(*pla)» эталонная реализация отвергает.
+		 *
+		 */
+		if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
+			// Флаг опознания буквенного имени группы
+			bool known = true;
+			/**
+			 * Определяем конструкцию, буквенным именем заданную
+			 */
+			if(name == "atomic")
+				// Устанавливаем вид атомарной группы
+				type = group_t::ATOMIC;
+			// Если группа задаёт прогон письменности
+			else if((name == "sr") || (name == "script_run"))
+				// Устанавливаем вид прогона письменности
+				type = group_t::SCRIPT;
+			// Если группа задаёт прогон письменности атомарный
+			else if((name == "asr") || (name == "atomic_script_run"))
+				// Устанавливаем вид прогона письменности атомарного
+				type = group_t::SCRIPT_ONCE;
+			// Если группа задаёт положительную опережающую проверку
+			else if((name == "pla") || (name == "positive_lookahead"))
+				// Устанавливаем положительной опережающей проверки
+				direction = look_t::AHEAD;
+			// Если группа задаёт отрицательную опережающую проверку
+			else if((name == "nla") || (name == "negative_lookahead"))
+				// Устанавливаем отрицательной опережающей проверки
+				direction = look_t::AHEAD_NEG;
+			// Если группа задаёт положительную ретроспективную проверку
+			else if((name == "plb") || (name == "positive_lookbehind"))
+				// Устанавливаем положительной ретроспективной проверки
+				direction = look_t::BEHIND;
+			// Если группа задаёт отрицательную ретроспективную проверку
+			else if((name == "nlb") || (name == "negative_lookbehind"))
+				// Устанавливаем отрицательной ретроспективной проверки
+				direction = look_t::BEHIND_NEG;
+			// Если группа задаёт не отсекающую опережающую проверку
+			else if((name == "napla") || (name == "non_atomic_positive_lookahead"))
+				// Устанавливаем не отсекающей опережающей проверки
+				direction = look_t::AHEAD_FREE;
+			// Если группа задаёт не отсекающую ретроспективную проверку
+			else if((name == "naplb") || (name == "non_atomic_positive_lookbehind"))
+				// Устанавливаем не отсекающей ретроспективной проверки
+				direction = look_t::BEHIND_FREE;
+			// Снимаем флаг опознания буквенного имени группы
+			else known = false;
+			/**
+			 * Если буквенное имя группы опознано
+			 */
+			if(known){
+				// Устанавливаем флаг разбора проверки окружения
+				assertion = ((type != group_t::ATOMIC) && (type != group_t::SCRIPT) &&
+				 (type != group_t::SCRIPT_ONCE));
+				// Переходим к символу за двоеточием буквенного имени группы
+				this->_pos++;
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			} else return this->fail(error_t::UNSUPPORTED, offset);
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		} else return this->fail(error_t::UNSUPPORTED, offset);
+	}
+	/**
+	 * Если группа начинается с признака расширенного синтаксиса
+	 */
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '?')){
+		// Переходим к символу за признаком расширенного синтаксиса
+		this->_pos++;
+		/**
+		 * Если признак расширенного синтаксиса не содержит продолжения
+		 */
+		if(this->_pos >= size)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_GROUP_SYNTAX, offset);
+		// Получаем букву расширенного синтаксиса группы
+		const char letter = this->_pattern.at(this->_pos);
+		/**
+		 * Определяем букву расширенного синтаксиса группы
+		 */
+		switch(letter){
+			// Разбираем комментари
+			case '#': {
+				/**
+				 * Ищем завершени комментария
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				/**
+				 * Если комментарий не завершён круглой скобкой
+				 */
+				if(this->_pos >= size)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::UNMATCHED_PAREN, offset);
+				// Переходим к символу за завершающей круглой скобкой
+				this->_pos++;
+				// Выводим индекс созданного узла пустого выражения
+				return this->createNode(node_t::EMPTY);
+			}
+			// Разбираем группу без захвата
+			case ':': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем вид группы без захвата
+				type = group_t::NONCAPTURE;
+			} break;
+			// Разбираем атомарной группы
+			case '>': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем вид атомарной группы
+				type = group_t::ATOMIC;
+			} break;
+			// Разбираем положительной опережающей проверки
+			case '=': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем флаг разбора проверки окружения
+				assertion = true;
+				// Устанавливаем положительной опережающей проверки
+				direction = look_t::AHEAD;
+			} break;
+			/**
+			 * Разбираем не отсекающей опережающей проверки
+			 *
+			 * @details Проверка не отсекающая точки возврата, телом её накопленные,
+			 *          сохраняет: отказ последующего текста продолжается перебором
+			 *          тела, отчего «(?*(a|ab))\\1c» на тексте «abc» совпадает,
+			 *          тогда как «(?=(a|ab))\\1c» отказывает - таково правило
+			 *          эталонной реализации, опытом снятое
+			 *
+			 */
+			case '*': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем флаг разбора проверки окружения
+				assertion = true;
+				// Устанавливаем не отсекающей опережающей проверки
+				direction = look_t::AHEAD_FREE;
+			} break;
+			// Разбираем отрицательной опережающей проверки
+			case '!': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем флаг разбора проверки окружения
+				assertion = true;
+				// Устанавливаем отрицательной опережающей проверки
+				direction = look_t::AHEAD_NEG;
+			} break;
+			// Разбираем ретроспективной проверки либо именованной группы
+			case '<': {
+				/**
+				 * Если признак ретроспективной проверки не содержит продолжения
+				 */
+				if((this->_pos + 1) >= size)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_GROUP_SYNTAX, offset);
+				// Получаем букву признака ретроспективной проверки
+				const char next = this->_pattern.at(this->_pos + 1);
+				/**
+				 * Если разбирается положительная ретроспективная проверка
+				 */
+				if(next == '='){
+					// Переходим к символу за признаком ретроспективной проверки
+					this->_pos += 2;
+					// Устанавливаем флаг разбора проверки окружения
+					assertion = true;
+					// Устанавливаем положительной ретроспективной проверки
+					direction = look_t::BEHIND;
+				/**
+				 * Если разбирается отрицательная ретроспективная проверка
+				 */
+				} else if(next == '!') {
+					// Переходим к символу за признаком ретроспективной проверки
+					this->_pos += 2;
+					// Устанавливаем флаг разбора проверки окружения
+					assertion = true;
+					// Устанавливаем отрицательной ретроспективной проверки
+					direction = look_t::BEHIND_NEG;
+				/**
+				 * Если разбирается не отсекающая ретроспективная проверка
+				 */
+				} else if(next == '*') {
+					// Переходим к символу за признаком ретроспективной проверки
+					this->_pos += 2;
+					// Устанавливаем флаг разбора проверки окружения
+					assertion = true;
+					// Устанавливаем не отсекающей ретроспективной проверки
+					direction = look_t::BEHIND_FREE;
+				// Если разбирается именованная группа
+				} else {
+					// Переходим к символу за началом имени именованной группы
+					this->_pos++;
+					/**
+					 * Если разбор имени именованной группы не выполнен
+					 */
+					if(!this->parseName('>', index))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					// Устанавливаем вид именованной группы
+					type = group_t::NAMED;
+				}
+			} break;
+			// Разбираем именованной группы с именем в апострофах
+			case '\'': {
+				// Переходим к символу за началом имени именованной группы
+				this->_pos++;
+				/**
+				 * Если разбор имени именованной группы не выполнен
+				 */
+				if(!this->parseName('\'', index))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+				// Устанавливаем вид именованной группы
+				type = group_t::NAMED;
+			} break;
+			// Разбираем группу со сбросом нумерации ветвей
+			case '|': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Устанавливаем вид группы со сбросом нумерации ветвей
+				type = group_t::RESET;
+			} break;
+			// Разбираем условного выражения
+			case '(': return this->parseCondition();
+			// Разбираем пустого набора встроенных опций
+			case ')': {
+				// Переходим к символу за закрывающей круглой скобкой
+				this->_pos++;
+				// Устанавливаем признак разрыва связи квантора
+				this->_barrier = true;
+				// Выводим индекс созданного узла пустого выражения
+				return this->createNode(node_t::EMPTY);
+			}
+			// Разбираем рекурсивного вызова выражения целиком
+			case 'R': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				/**
+				 * Если рекурсивный вызов не завершён закрывающей круглой скобкой
+				 */
+				if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_RECURSION, offset);
+				// Переходим к символу за закрывающей круглой скобкой
+				this->_pos++;
+				// Выводим индекс созданного узла рекурсивного вызова
+				return this->makeRecurse(0, NO_NAME, offset);
+			}
+			// Разбираем рекурсивного вызова именованной группы
+			case '&': {
+				// Переходим к первому символу имени вызываемой группы
+				this->_pos++;
+				// Индекс имени вызываемой группы
+				uint32_t target = NO_NAME;
+				/**
+				 * Если разбор имени вызываемой группы не выполнен
+				 */
+				if(!this->parseName(')', target))
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+				// Выводим индекс созданного узла рекурсивного вызова
+				return this->makeRecurse(0, target, offset);
+			}
+			// Разбираем конструкций синтаксиса языка Python
+			case 'P': {
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				/**
+				 * Если конструкция не содержит продолжения
+				 */
+				if(this->_pos >= size)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_GROUP_SYNTAX, offset);
+				// Получаем букву конструкции синтаксиса языка Python
+				const char next = this->_pattern.at(this->_pos);
+				/**
+				 * Если конструкция объявляет именованную группу
+				 */
+				if(next == '<'){
+					// Переходим к первому символу имени именованной группы
+					this->_pos++;
+					/**
+					 * Если разбор имени именованной группы не выполнен
+					 */
+					if(!this->parseName('>', index))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					// Устанавливаем вид именованной группы
+					type = group_t::NAMED;
+					// Выходим из разбора расширенного синтаксиса группы
+					break;
+				}
+				// Индекс имени группы конструкции
+				uint32_t target = NO_NAME;
+				/**
+				 * Если конструкция является ссылкой на именованную группу
+				 */
+				if(next == '='){
+					// Переходим к первому символу имени группы
+					this->_pos++;
+					/**
+					 * Если разбор имени группы не выполнен
+					 */
+					if(!this->parseName(')', target))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					// Выводим индекс созданного узла ссылки на захваченную группу
+					return this->makeBackref(target, offset);
+				}
+				/**
+				 * Если конструкция является рекурсивным вызовом именованной группы
+				 */
+				if(next == '>'){
+					// Переходим к первому символу имени группы
+					this->_pos++;
+					/**
+					 * Если разбор имени группы не выполнен
+					 */
+					if(!this->parseName(')', target))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					// Выводим индекс созданного узла рекурсивного вызова
+					return this->makeRecurse(0, target, offset);
+				}
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_GROUP_SYNTAX, offset);
+			}
+			/**
+			 * Разбираем прочих конструкций расширенного синтаксиса группы
+			 */
+			default: {
+				/**
+				 * Определяем задание номера вызываемой группы относительно текущей позиции
+				 *
+				 * @details Знак «-» начинает как относительный вызов группы, так и снятие
+				 *          встроенных опций, поэтому вызовом группы последовательность
+				 *          считается только при наличии десятичной цифры за знаком.
+				 *
+				 */
+				const bool signedNumber = (
+					((letter == '+') || (letter == '-')) &&
+					((this->_pos + 1) < size) && ascii::isDigit(this->_pattern.at(this->_pos + 1))
+				);
+				/**
+				 * Если конструкция является рекурсивным вызовом группы по номеру
+				 */
+				if(ascii::isDigit(letter) || signedNumber){
+					// Флаг отсчёта номера группы в обратном направлении
+					const bool backward = (letter == '-');
+					// Флаг задания номера группы относительно текущей позиции
+					const bool relative = ((letter == '+') || (letter == '-'));
+					/**
+					 * Если номер группы задан относительно текущей позиции
+					 */
+					if(relative)
+						// Переходим к первому символу номера группы
+						this->_pos++;
+					// Номер вызываемой группы
+					uint32_t target = 0;
+					/**
+					 * Если извлечение номера вызываемой группы не выполнено
+					 */
+					if(!this->readNumber(target))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return this->fail(error_t::BAD_RECURSION, offset);
+					/**
+					 * Если рекурсивный вызов не завершён закрывающей круглой скобкой
+					 */
+					if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return this->fail(error_t::BAD_RECURSION, offset);
+					// Переходим к символу за закрывающей круглой скобкой
+					this->_pos++;
+					/**
+					 * Если номер группы задан относительно текущей позиции
+					 */
+					if(relative){
+						/**
+						 * Если номер группы отсчитывается в обратном направлении
+						 */
+						if(backward){
+							/**
+							 * Если номер группы выходит за пределы объявленных групп
+							 */
+							if((target == 0) || (target > this->_captures))
+								// Выводим индекс отсутствующего узла синтаксического дерева
+								return this->fail(error_t::BAD_RECURSION, offset);
+							// Вычисляем номер вызываемой группы
+							target = ((this->_captures - target) + 1);
+						// Вычисляем номер вызываемой группы
+						} else target = (this->_captures + target);
+					}
+					/**
+					 * Если номер вызываемой группы отсутствует и задан относительно позиции
+					 *
+					 * @details Нулевой номер вызываемой группы, заданный без знака,
+					 *          обозначает рекурсивный вызов выражения целиком.
+					 *
+					 */
+					if((target == 0) && relative)
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return this->fail(error_t::BAD_RECURSION, offset);
+					// Выводим индекс созданного узла рекурсивного вызова
+					return this->makeRecurse(target, NO_NAME, offset);
+				}
+				/**
+				 * Если конструкция является встроенными опциями регулярного выражения
+				 */
+				if((letter == 'i') || (letter == 'm') || (letter == 's') || (letter == 'x') ||
+				   (letter == 'U') || (letter == 'J') || (letter == '^') || (letter == '-') ||
+				   (letter == 'a') || (letter == 'n') || (letter == 'r')){
+					/**
+					 * Если конструкция сбрасывает режимы компиляции к исходным
+					 */
+					if(letter == '^'){
+						// Переходим к следующему символу регулярного выражения
+						this->_pos++;
+						/**
+						 * Снимаем изменяемых режимов компиляции
+						 *
+						 * @details Сброс снимает режимы «i», «m», «n», «s» и «x»,
+						 *          а режимов «U» и «J» не касается: правило это
+						 *          снято с эталонной реализации опытом. Снималась
+						 *          прежде обратная жадность, режимом сброса не
+						 *          управляемая, а отмена захвата круглыми скобками
+						 *          не снималась вовсе.
+						 *
+						 */
+						this->_flags &= ~(
+							flagOf(flag_t::CASELESS) | flagOf(flag_t::MULTILINE) |
+						    flagOf(flag_t::DOTALL) | flagOf(flag_t::EXTENDED) |
+						    flagOf(flag_t::NOCAPTURE)
+						);
+					}
+					// Набор устанавливаемых режимов компиляции
+					uint32_t enable = 0;
+					// Набор снимаемых режимов компиляции
+					uint32_t disable = 0;
+					/**
+					 * Если разбор встроенных опций не выполнен
+					 */
+					if(!this->parseOptions(enable, disable))
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return INVALID_NODE;
+					// Устанавливаем разобранных режимов компиляции
+					this->_flags |= enable;
+					// Снимаем разобранных режимов компиляции
+					this->_flags &= ~disable;
+					/**
+					 * Если встроенные опции не завершены
+					 */
+					if(this->_pos >= size)
+						// Выводим индекс отсутствующего узла синтаксического дерева
+						return this->fail(error_t::BAD_OPTIONS, offset);
+					/**
+					 * Если встроенные опции действуют до конца охватывающей группы
+					 */
+					if(this->_pattern.at(this->_pos) == ')'){
+						// Переходим к символу за закрывающей круглой скобкой
+						this->_pos++;
+						// Устанавливаем признак разрыва связи квантора
+						this->_barrier = true;
+						// Выводим индекс созданного узла пустого выражения
+						return this->createNode(node_t::EMPTY);
+					}
+					/**
+					 * Если встроенные опции действуют в пределах группы
+					 */
+					if(this->_pattern.at(this->_pos) == ':'){
+						// Переходим к символу за разделителем опций и тела группы
+						this->_pos++;
+						// Устанавливаем вид группы без захвата
+						type = group_t::NONCAPTURE;
+						// Выходим из разбора расширенного синтаксиса группы
+						break;
+					}
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::BAD_OPTIONS, this->_pos);
+				}
+				/**
+				 * Если конструкция является вызовом внешней функции
+				 */
+				if(letter == 'C')
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::UNSUPPORTED, offset);
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_GROUP_SYNTAX, this->_pos);
+			}
+		}
+	/**
+	 * Если разбирается группа без захвата, заданная режимом компиляции
+	 */
+	} else if(hasFlag(this->_flags, flag_t::NOCAPTURE))
+		// Устанавливаем вид группы без захвата
+		type = group_t::NONCAPTURE;
+	/**
+	 * Если разбирается захватывающая группа
+	 *
+	 * @details Вид группы здесь проверяется, ибо разбор буквенного имени
+	 *          группы - «(*atomic:», «(*pla:» и прочие - вид её задаёт
+	 *          сам, признака расширенного синтаксиса не встречая:
+	 *          без проверки им отводился номер захвата мнимый,
+	 *          и «(*napla:(a|ab))\\1c» ссылался не на ту группу.
+	 *
+	 */
+	else if((type == group_t::CAPTURE) && !assertion)
+		// Устанавливаем номер захватывающей группы
+		number = ++this->_captures;
+	/**
+	 * Если разбирается именованная захватывающая группа
+	 */
+	if(type == group_t::NAMED){
+		// Устанавливаем номер захватывающей группы
+		number = ++this->_captures;
+		// Получаем набор номеров, имени группы отвечающих
+		auto & records = this->_groups[this->_names.at(index)];
+		// Флаг объявления имени группы под этим же номером
+		bool declared = false;
+		/**
+		 * Перебираем номеров, имени группы отвечающих
+		 */
+		for(const uint32_t record : records){
+			/**
+			 * Если имя группы объявлено под этим же номером
+			 */
+			if(record == number){
+				// Устанавливаем флаг объявления имени
+				declared = true;
+				// Выходим из перебора номеров имени группы
+				break;
+			}
+		}
+		/**
+		 * Если имя группы объявлено под номером иным, а повторение запрещено
+		 *
+		 * @details Имя, объявленное дважды под номером одним, повторением
+		 *          не считается: так объявляются одноимённые группы ветвей
+		 *          группы со сбросом нумерации, где ветвь всякая нумерацию
+		 *          начинает заново. Имя же под номером иным есть объявление
+		 *          повторное и требует признака «DUPNAMES» наравне
+		 *          с объявлением вне группы со сбросом.
+		 *
+		 */
+		if(!records.empty() && !declared && !hasFlag(this->_flags, flag_t::DUPNAMES))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::DUPLICATE_NAME, offset);
+		/**
+		 * Если имя группы под этим номером ещё не объявлено
+		 */
+		if(!declared)
+			// Сохраняем соответствие имени группы её номеру
+			records.push_back(number);
+	}
+	/**
+	 * Если превышена допустимая глубина вложенности групп
+	 */
+	if(++this->_depth > MAX_NESTING)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::NESTING_TOO_DEEP, offset);
+	// Индекс сформированного узла синтаксического дерева
+	node_id_t result = INVALID_NODE;
+	/**
+	 * Если разбирается проверка окружения
+	 */
+	if(assertion){
+		// Создаём узл проверки окружения
+		result = this->createNode(node_t::LOOKAROUND);
+		// Устанавливаем наименьшей длины проверяемой последовательности
+		this->_nodes.at(result).look.min = 0;
+		// Устанавливаем наибольшей длины проверяемой последовательности
+		this->_nodes.at(result).look.max = 0;
+		// Устанавливаем направлени и знака проверки окружения
+		this->_nodes.at(result).look.type = direction;
+		// Увеличиваем глубину вложенности проверок окружения
+		this->_look++;
+		// Разбираем тел проверки окружения
+		const node_id_t body = this->parseAlternate();
+		// Уменьшаем глубину вложенности проверок окружения
+		this->_look--;
+		/**
+		 * Если разбор тела проверки окружения не выполнен
+		 */
+		if(body == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		// Наибольшая длина проверяемой последовательности
+		uint32_t most = 0;
+		// Наименьшая длина проверяемой последовательности
+		uint32_t least = 0;
+		// Добавляем тел проверки окружения
+		this->appendChild(result, body);
+		// Вычисляем длину проверяемой последовательности
+		this->measure(body, least, most);
+		// Устанавливаем наименьшей длины проверяемой последовательности
+		this->_nodes.at(result).look.min = least;
+		// Устанавливаем наибольшей длины проверяемой последовательности
+		this->_nodes.at(result).look.max = most;
+		/**
+		 * Если длина последовательности ретроспективной проверки не ограничена
+		 */
+		if(((direction == look_t::BEHIND) || (direction == look_t::BEHIND_NEG) ||
+		    (direction == look_t::BEHIND_FREE)) && (most == UNBOUNDED)){
+			/**
+			 * Если тело проверки несёт вызов подпрограммы
+			 *
+			 * @details Длина вызова берётся длиною вызываемой группы, а группа
+			 *          вправе объявляться и позже проверки: «(?<=(?+1))(a)»
+			 *          эталон принимает. Длина такой проверки вычисляется
+			 *          по завершении разбора наравне со ссылками отложенными,
+			 *          и отказ, буде длина неограниченной останется,
+			 *          выводится тем же смещением.
+			 *
+			 */
+			if(this->referring(body)){
+				// Запоминаем проверки, длину коей даёт вызов
+				this->_behinds.emplace_back(result, offset);
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			} else return this->fail(error_t::LOOKBEHIND_INVALID, offset);
+		}
+	/**
+	 * Если разбирается группа со сбросом нумерации ветвей
+	 */
+	} else if(type == group_t::RESET) {
+		// Получаем номер захватывающей группы до начала разбора ветвей
+		const uint32_t begin = this->_captures;
+		// Наибольший номер захватывающей группы среди разобранных ветвей
+		uint32_t maximum = begin;
+		/**
+		 * Получаем отметку основания состава в сберегательном ряду
+		 *
+		 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+		 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+		 *          Отказ разбора усечения не требует - разбор прекращается
+		 *          целиком, а ряд очищается началом следующего.
+		 *
+		 */
+		const size_t base = this->_items.size();
+		// Заводим обозреватель состава накапливаемого узла
+		vector <node_id_t> & items = this->_items;
+		/**
+		 * Разбираем ветвей группы со сбросом нумерации
+		 */
+		for(;;){
+			// Сбрасываем номер захватывающей группы
+			this->_captures = begin;
+			// Разбираем очередной ветви группы
+			const node_id_t branch = this->parseConcat();
+			/**
+			 * Если разбор очередной ветви группы не выполнен
+			 */
+			if(branch == INVALID_NODE)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return INVALID_NODE;
+			// Добавляем разобранной ветви группы
+			items.push_back(branch);
+			/**
+			 * Если номер захватывающей группы превышает наибольший
+			 */
+			if(this->_captures > maximum)
+				// Устанавливаем наибольшего номера захватывающей группы
+				maximum = this->_captures;
+			/**
+			 * Если ветви группы разобраны полностью
+			 */
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '|'))
+				// Выходим из цикла разбора ветвей группы
+				break;
+			// Переходим к символу за разделителем ветвей
+			this->_pos++;
+		}
+		// Устанавливаем наибольшего номера захватывающей группы
+		this->_captures = maximum;
+		// Создаём узл группы со сбросом нумерации ветвей
+		result = this->createNode(node_t::GROUP);
+		// Устанавливаем вид группы со сбросом нумерации ветвей
+		this->_nodes.at(result).group.type = group_t::RESET;
+		// Устанавливаем отсутстви номера захватывающей группы
+		this->_nodes.at(result).group.number = 0;
+		// Устанавливаем отсутстви имени группы
+		this->_nodes.at(result).group.name = NO_NAME;
+		// Формируем узл выбора одной из ветвей группы
+		const node_id_t body = this->makeList(node_t::ALTERNATE, items, base);
+		// Усекаем сберегательного ряда до отметки основания
+		this->_items.resize(base);
+		// Добавляем тел группы
+		this->appendChild(result, body);
+	// Если разбирается прочая группа регулярного выражения
+	} else {
+		// Создаём узл группы
+		result = this->createNode(node_t::GROUP);
+		// Устанавливаем вид группы синтаксического дерева
+		this->_nodes.at(result).group.type = type;
+		// Устанавливаем номер захватывающей группы
+		this->_nodes.at(result).group.number = number;
+		// Устанавливаем индекс имени группы
+		this->_nodes.at(result).group.name = index;
+		// Разбираем тел группы
+		const node_id_t body = this->parseAlternate();
+		/**
+		 * Если разбор тела группы не выполнен
+		 */
+		if(body == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		// Добавляем тел группы
+		this->appendChild(result, body);
+	}
+	// Уменьшаем глубину вложенности групп
+	this->_depth--;
+	/**
+	 * Если группа не завершена закрывающей круглой скобкой
+	 */
+	if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::UNMATCHED_PAREN, offset);
+	// Переходим к символу за закрывающей круглой скобкой
+	this->_pos++;
+	// Восстанавливаем набор режимов компиляции
+	this->_flags = saved;
+	// Выводим индекс сформированного узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод разбора одиночного элемента выражения
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseAtom() noexcept {
+	// Пропускаем пробельных символов и комментариев
+	this->skipSpaces();
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если позиция разбора достигла конца регулярного выражения
+	 */
+	if(this->_pos >= size)
+		// Выводим индекс созданного узла пустого выражения
+		return this->createNode(node_t::EMPTY);
+	// Получаем смещение начала элемента выражения
+	const size_t offset = this->_pos;
+	/**
+	 * Определяем символ начала элемента выражения
+	 */
+	switch(this->_pattern.at(this->_pos)){
+		// Разбираем группу регулярного выражения
+		case '(': return this->parseGroup();
+		// Разбираем класс символов
+		case '[': return this->parseClass();
+		// Разбираем экранированной последовательности
+		case '\\': return this->parseEscape();
+		// Разбираем любого символа
+		case '.': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Выводим индекс созданного узла любого символа
+			return this->makeAny();
+		}
+		// Разбираем привязкю к началу текста либо строки
+		case '^': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Создаём узл привязки к позиции в тексте
+			const node_id_t result = this->createNode(node_t::ANCHOR);
+			// Устанавливаем привязкю к началу текста либо строки
+			this->_nodes.at(result).anchor.type = anchor_t::LINE_BEGIN;
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		// Разбираем привязкю к концу текста либо строки
+		case '$': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Создаём узл привязки к позиции в тексте
+			const node_id_t result = this->createNode(node_t::ANCHOR);
+			// Устанавливаем привязкю к концу текста либо строки
+			this->_nodes.at(result).anchor.type = anchor_t::LINE_END;
+			// Выводим индекс сформированного узла синтаксического дерева
+			return result;
+		}
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		case '*': case '+': case '?': return this->fail(error_t::QUANTIFIER_NO_ATOM, offset);
+		/**
+		 * Разбираем открывающей фигурной скобки
+		 */
+		case '{': {
+			/**
+			 * Если последовательность образует квантор повторения
+			 *
+			 * @details Корректный квантор повторения, которому не предшествует
+			 *          повторяемый элемент, считается ошибкой. Последовательность,
+			 *          не образующая квантора, разбирается как литерал.
+			 *
+			 */
+			if(this->isQuantifier(this->_pos))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, offset);
+		} break;
+	}
+	// Кодовое значение одиночного символа
+	uint32_t code = 0;
+	/**
+	 * Если извлечение кодового значения символа не выполнено
+	 */
+	if(!this->readCode(code))
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return this->fail(error_t::BAD_UTF8, offset);
+	// Создаём узл одиночного символа
+	const node_id_t result = this->createNode(node_t::LITERAL);
+	// Устанавливаем кодового значения символа
+	this->_nodes.at(result).literal.code = code;
+	// Выводим индекс сформированного узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод разбора кванторов повторения элемента выражения
+ *
+ * @param node индекс узла, к которому применяется квантор повторения
+ * @return     индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) noexcept {
+	// Учитываем разбор кванторов повторения
+	AWH_REGEX_TICK(path_t::QUANTIFYING);
+	/**
+	 * Если переданный узел отсутствует
+	 */
+	if(node == INVALID_NODE)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return INVALID_NODE;
+	// Пропускаем пробельных символов и комментариев
+	this->skipSpaces();
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Если позиция разбора достигла конца регулярного выражения
+	 */
+	if(this->_pos >= size)
+		// Выводим индекс переданного узла синтаксического дерева
+		return node;
+	// Наименьшее число повторений элемента выражения
+	uint32_t min = 0;
+	// Наибольшее число повторений элемента выражения
+	uint32_t max = 0;
+	// Получаем смещение начала квантора повторения
+	const size_t offset = this->_pos;
+	/**
+	 * Определяем допустимость повторения переданного узла
+	 *
+	 * @details Привязки к позиции в тексте и пустые выражения не сопоставляют
+	 *          последовательности символов, поэтому их повторение не имеет смысла
+	 *          и считается ошибкой. Проверки окружения повторение допускают.
+	 *
+	 */
+	const bool repeatable = (
+		(this->_nodes.at(node).type != node_t::ANCHOR) &&
+		(this->_nodes.at(node).type != node_t::EMPTY) &&
+		(this->_nodes.at(node).type != node_t::REPEAT)
+	);
+	/**
+	 * Определяем символ квантора повторения
+	 */
+	switch(this->_pattern.at(this->_pos)){
+		// Проверяем допустимостю повторения переданного узла
+		case '*': case '+': case '?': case '{': {
+			/**
+			 * Если повторение переданного узла недопустимо
+			 */
+			if(!repeatable && (this->_pattern.at(this->_pos) != '{'))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, offset);
+		} break;
+	}
+	/**
+	 * Определяем символ квантора повторения
+	 */
+	switch(this->_pattern.at(this->_pos)){
+		// Разбираем квантор произвольного числа повторений
+		case '*': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем наименьшего числа повторений
+			min = 0;
+			// Устанавливаем отсутстви ограничения повторений
+			max = UNBOUNDED;
+		} break;
+		// Разбираем квантор одного и более повторений
+		case '+': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем наименьшего числа повторений
+			min = 1;
+			// Устанавливаем отсутстви ограничения повторений
+			max = UNBOUNDED;
+		} break;
+		// Разбираем квантор необязательного элемента
+		case '?': {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем наименьшего числа повторений
+			min = 0;
+			// Устанавливаем наибольшего числа повторений
+			max = 1;
+		} break;
+		// Разбираем квантор заданного числа повторений
+		case '{': {
+			// Сохраняем позицию разбора квантора повторения
+			const size_t saved = this->_pos;
+			// Переходим к символу за открывающей фигурной скобкой
+			this->_pos++;
+			// Флаг успешного разбора квантора повторения
+			bool success = false;
+			// Сбрасываем наименьшего числа повторений
+			min = 0;
+			/**
+			 * @brief Пропуск пробельных символов внутри квантора повторения
+			 *
+			 * @details Внутри фигурных скобок допускаются пробел и знак табуляции
+			 *          наравне с проверкой начала квантора: расхождение этих двух
+			 *          разборов обернулось бы принятием одного и отказом другого.
+			 *
+			 */
+			auto skipping = [this, size]() noexcept -> void {
+				/**
+				 * Пропускаем пробельных символов квантора повторения
+				 */
+				while((this->_pos < size) && ((this->_pattern.at(this->_pos) == ' ') || (this->_pattern.at(this->_pos) == '\t')))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+			};
+			// Пропускаем пробельных символов за открывающей фигурной скобкой
+			skipping();
+			/**
+			 * Определяем наличие наименьшего числа повторений
+			 *
+			 * @details Опущенное наименьшее число повторений принимается равным нулю.
+			 *
+			 */
+			const bool least = ((this->_pos < size) && (this->_pattern.at(this->_pos) == ','));
+			/**
+			 * Если извлечение наименьшего числа повторений выполнено
+			 */
+			if(least || this->readNumber(min)){
+				// Пропускаем пробельных символов за наименьшим числом повторений
+				skipping();
+				/**
+				 * Если квантор задаёт точное число повторений
+				 */
+				if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
+					// Переходим к символу за закрывающей фигурной скобкой
+					this->_pos++;
+					// Устанавливаем наибольшего числа повторений
+					max = min;
+					// Устанавливаем флаг успешного разбора
+					success = true;
+				/**
+				 * Если квантор задаёт диапазон числа повторений
+				 */
+				} else if((this->_pos < size) && (this->_pattern.at(this->_pos) == ',')) {
+					// Переходим к символу за разделителем границ диапазона
+					this->_pos++;
+					// Пропускаем пробельных символов за разделителем границ
+					skipping();
+					/**
+					 * Если квантор не задаёт наибольшего числа повторений
+					 *
+					 * @details Наибольшее число повторений опускается лишь при заданном
+					 *          наименьшем: квантор, ни одной цифры не несущий, квантором
+					 *          не является вовсе и остаётся последовательностью литералов.
+					 *
+					 */
+					if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
+						// Переходим к символу за закрывающей фигурной скобкой
+						this->_pos++;
+						// Устанавливаем отсутстви ограничения повторений
+						max = UNBOUNDED;
+						// Устанавливаем флаг успешного разбора
+						success = true;
+					/**
+					 * Если извлечение наибольшего числа повторений выполнено
+					 */
+					} else if(this->readNumber(max)) {
+						// Пропускаем пробельных символов за наибольшим числом повторений
+						skipping();
+						/**
+						 * Если квантор повторения завершён закрывающей фигурной скобкой
+						 */
+						if((this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
+							// Переходим к символу за закрывающей фигурной скобкой
+							this->_pos++;
+							// Устанавливаем флаг успешного разбора
+							success = true;
+						}
+					}
+				}
+			}
+			/**
+			 * Если разбор квантора повторения не выполнен
+			 */
+			if(!success){
+				// Восстанавливаем позицию разбора
+				this->_pos = saved;
+				// Выводим индекс переданного узла синтаксического дерева
+				return node;
+			}
+			/**
+			 * Если повторение переданного узла недопустимо
+			 */
+			if(!repeatable)
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_NO_ATOM, offset);
+			/**
+			 * Если границы кванта повторения превышают допустимое значение
+			 */
+			if((min > MAX_REPEAT) || ((max != UNBOUNDED) && (max > MAX_REPEAT)))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::QUANTIFIER_TOO_BIG, offset);
+			/**
+			 * Если границы кванта повторения указаны в обратном порядке
+			 */
+			if((max != UNBOUNDED) && (max < min))
+				// Выводим индекс отсутствующего узла синтаксического дерева
+				return this->fail(error_t::BAD_QUANTIFIER, offset);
+		} break;
+		// Выводим индекс переданного узла синтаксического дерева
+		default: return node;
+	}
+	// Режим жадности квантора повторения
+	greed_t greed = greed_t::GREEDY;
+	/**
+	 * Если квантор повторения содержит признак режима жадности
+	 */
+	if(this->_pos < size){
+		/**
+		 * Если квантор повторения является ленивым
+		 */
+		if(this->_pattern.at(this->_pos) == '?'){
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем ленивого режима жадности
+			greed = greed_t::LAZY;
+		/**
+		 * Если квантор повторения является захватывающим
+		 */
+		} else if(this->_pattern.at(this->_pos) == '+') {
+			// Переходим к следующему символу регулярного выражения
+			this->_pos++;
+			// Устанавливаем захватывающего режима жадности
+			greed = greed_t::POSSESSIVE;
+		}
+	}
+	/**
+	 * Если установлен режим инвертирования жадности кванторов
+	 */
+	if(hasFlag(this->_flags, flag_t::UNGREEDY) && (greed != greed_t::POSSESSIVE))
+		// Инвертируем режим жадности квантора повторения
+		greed = ((greed == greed_t::GREEDY) ? greed_t::LAZY : greed_t::GREEDY);
+	// Создаём узл повторения
+	const node_id_t result = this->createNode(node_t::REPEAT);
+	// Устанавливаем наименьшего числа повторений
+	this->_nodes.at(result).repeat.min = min;
+	// Устанавливаем наибольшего числа повторений
+	this->_nodes.at(result).repeat.max = max;
+	// Устанавливаем режим жадности квантора повторения
+	this->_nodes.at(result).repeat.greed = greed;
+	// Устанавливаем повторяемого элемента выражения
+	this->_nodes.at(result).child = node;
+	/**
+	 * Если за квантором повторения следует ещё один квантор
+	 */
+	if(this->_pos < size){
+		// Получаем символ, следующий за квантором повторения
+		const char letter = this->_pattern.at(this->_pos);
+		/**
+		 * Если следующий символ является квантором повторения
+		 */
+		if((letter == '*') || (letter == '+') || (letter == '?'))
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return this->fail(error_t::BAD_QUANTIFIER, this->_pos);
+	}
+	// Выводим индекс сформированного узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод разбора элемента выражения с квантором повторения
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseRepeat() noexcept {
+	// Разбираем одиночного элемента выражения
+	const node_id_t node = this->parseAtom();
+	/**
+	 * Если разбор одиночного элемента выражения не выполнен
+	 */
+	if(node == INVALID_NODE)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return INVALID_NODE;
+	/**
+	 * Если режим игнорирования пробельных символов не установлен
+	 *
+	 * @details Разбор кванторов зовётся за всяким элементом выражения, а квантор
+	 *          следует за немногими, и вызов, делать которому нечего, проходил
+	 *          пропуск пробелов, чтение вида узла и два перехода по знаку. Знак
+	 *          квантора проверяется здесь; в режиме же «EXTENDED» квантор вправе
+	 *          отстоять от элемента пробелами и примечаниями, и решает разбор
+	 *          кванторов сам.
+	 *
+	 */
+	if(!hasFlag(this->_flags, flag_t::EXTENDED)){
+		/**
+		 * Если позиция разбора достигла конца регулярного выражения
+		 */
+		if(this->_pos >= this->_pattern.size())
+			// Выводим индекс разобранного элемента выражения
+			return node;
+		/**
+		 * Определяем символ, следующий за элементом выражения
+		 */
+		switch(this->_pattern.at(this->_pos)){
+			// Если символ начинает квантор повторения
+			case '*': case '+': case '?': case '{': break;
+			// Выводим индекс разобранного элемента выражения
+			default: return node;
+		}
+	}
+	// Разбор кванторов повторения элемента выражения
+	return this->parseQuantifier(node);
+}
+/**
+ * @brief Метод разбора последовательности элементов выражения
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Получаем отметку основания состава в сберегательном ряду
+	 *
+	 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+	 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+	 *          Отказ разбора усечения не требует - разбор прекращается
+	 *          целиком, а ряд очищается началом следующего.
+	 *
+	 */
+	const size_t base = this->_items.size();
+	// Заводим обозреватель состава накапливаемого узла
+	vector <node_id_t> & items = this->_items;
+	/**
+	 * Флаг размещения барьера перед текущей позицией разбора
+	 *
+	 * @details Встроенные опции не сопоставляют символов, однако разрывают связь
+	 *          квантора повторения с предшествующим элементом выражения, поэтому
+	 *          квантор, следующий за встроенными опциями, считается ошибкой.
+	 *
+	 */
+	bool barrier = false;
+	/**
+	 * Разбираем элементов последовательности
+	 */
+	for(;;){
+		// Пропускаем пробельных символов и комментариев
+		this->skipSpaces();
+		/**
+		 * Если позиция разбора достигла конца регулярного выражения
+		 */
+		if(this->_pos >= size)
+			// Выходим из цикла разбора элементов последовательности
+			break;
+		// Получаем очередной символ регулярного выражения
+		const char letter = this->_pattern.at(this->_pos);
+		/**
+		 * Если последовательность элементов завершена
+		 */
+		if((letter == '|') || (letter == ')'))
+			// Выходим из цикла разбора элементов последовательности
+			break;
+		/**
+		 * Если элемент завершает экранирование последовательности символов
+		 *
+		 * @details Последовательность «\\E» не сопоставляет символов и не образует
+		 *          элемента выражения, поэтому следующий за ней квантор повторения
+		 *          применяется к элементу, предшествующему завершению экранирования.
+		 *
+		 */
+		if(((letter == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')) ||
+		   ((letter == '\\') && ((this->_pos + 3) < size) && (this->_pattern.at(this->_pos + 1) == 'Q') &&
+		    (this->_pattern.at(this->_pos + 2) == '\\') && (this->_pattern.at(this->_pos + 3) == 'E')) ||
+		   ((letter == '(') && ((this->_pos + 2) < size) && (this->_pattern.at(this->_pos + 1) == '?') &&
+		    (this->_pattern.at(this->_pos + 2) == '#'))){
+			/**
+			 * Если элемент является комментарием
+			 */
+			if(letter == '('){
+				/**
+				 * Ищем завершени комментария
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				/**
+				 * Если комментарий не завершён круглой скобкой
+				 */
+				if(this->_pos >= size)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return this->fail(error_t::UNMATCHED_PAREN, this->_pos);
+				// Переходим к символу за завершающей круглой скобкой
+				this->_pos++;
+			/**
+			 * Если элемент является дословной последовательностью пустой
+			 *
+			 * @details Последовательность «\\Q\\E» символов не несёт и элемента
+			 *          выражения не образует наравне с завершением экранирования
+			 *          одиночным, отчего и снимается здесь же: разбор её
+			 *          обыкновенный выдал бы узел пустой, а квантор за ним -
+			 *          отказ отсутствием элемента повторяемого.
+			 *
+			 */
+			} else if(this->_pattern.at(this->_pos + 1) == 'Q')
+				// Переходим к символу за дословной последовательностью пустой
+				this->_pos += 4;
+			// Переходим к символу за завершением экранирования
+			else this->_pos += 2;
+			/**
+			 * Если за удалённым элементом следует признак режима жадности
+			 *
+			 * @details Удаляемый элемент выражения не разделяет квантор повторения
+			 *          и следующий за ним признак режима жадности, поэтому признак
+			 *          применяется к предшествующему квантору повторения.
+			 *
+			 */
+			if((items.size() > base) && !barrier && (this->_pos < size) &&
+			   (this->_nodes.at(items.back()).type == node_t::REPEAT) &&
+			   (this->_nodes.at(items.back()).repeat.greed == greed_t::GREEDY) &&
+			   ((this->_pattern.at(this->_pos) == '?') || (this->_pattern.at(this->_pos) == '+'))){
+				// Устанавливаем режим жадности квантора повторения
+				this->_nodes.at(items.back()).repeat.greed = (
+					(this->_pattern.at(this->_pos) == '?') ?
+					greed_t::LAZY : greed_t::POSSESSIVE
+				);
+				// Переходим к следующему символу регулярного выражения
+				this->_pos++;
+				// Переходим к следующему элементу последовательности
+				continue;
+			}
+			/**
+			 * Если квантор повторения допускает связь с предшествующим элементом
+			 *
+			 * @details Состав сличается с отметкою основания, а не с пустотою ряда:
+			 *          ряд общий на все вызовы, и пустым он у вызова вложенного
+			 *          не бывает вовсе. Сличение с пустотою связывало квантор
+			 *          с элементом вызова чужого - ветви соседней либо
+			 *          последовательности объемлющей.
+			 *
+			 */
+			if((items.size() > base) && !barrier){
+				// Разбираем кванторов повторения предшествующего элемента
+				items.back() = this->parseQuantifier(items.back());
+				/**
+				 * Если разбор кванторов повторения не выполнен
+				 */
+				if(items.back() == INVALID_NODE)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+			}
+			// Переходим к следующему элементу последовательности
+			continue;
+		}
+		// Разбираем очередного элемента последовательности
+		const node_id_t node = this->parseRepeat();
+		/**
+		 * Если разбор очередного элемента последовательности не выполнен
+		 */
+		if(node == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		/**
+		 * Если разобранный элемент является пустым выражением
+		 */
+		if(this->_nodes.at(node).type == node_t::EMPTY){
+			/**
+			 * Устанавливаем флаг размещения барьера
+			 *
+			 * @details Барьер ставят одни лишь встроенные настройки символов.
+			 *          Прочие элементы пустые - примечание, завершение
+			 *          экранирования и дословная последовательность пустая -
+			 *          прозрачны: квантор за ними применяется к элементу,
+			 *          им предшествующему. Барьер, настройками поставленный,
+			 *          элементом прозрачным не снимается.
+			 *
+			 */
+			barrier = (barrier || this->_barrier);
+			// Сбрасываем признак разрыва связи квантора
+			this->_barrier = false;
+			/**
+			 * Если квантор повторения допускает связь с предшествующим элементом
+			 *
+			 * @details Элемент пустой прозрачен, и квантор за ним применяется
+			 *          к элементу, ему предшествующему. Без разбора этого квантор
+			 *          читался бы началом элемента следующего и отвергался
+			 *          отсутствием элемента повторяемого.
+			 *
+			 */
+			if((items.size() > base) && !barrier){
+				// Разбираем кванторов повторения предшествующего элемента
+				items.back() = this->parseQuantifier(items.back());
+				/**
+				 * Если разбор кванторов повторения не выполнен
+				 */
+				if(items.back() == INVALID_NODE)
+					// Выводим индекс отсутствующего узла синтаксического дерева
+					return INVALID_NODE;
+			}
+			// Переходим к следующему элементу последовательности
+			continue;
+		}
+		// Сбрасываем флаг размещения барьера
+		barrier = false;
+		// Сбрасываем признак разрыва связи квантора
+		this->_barrier = false;
+		// Добавляем разобранного элемента последовательности
+		items.push_back(node);
+	}
+	/**
+	 * Выводим индекс сформированного узла последовательности элементов
+	 * Формируем узл последовательности элементов
+	 */
+	const node_id_t outcome = this->makeList(node_t::CONCAT, items, base);
+	// Усекаем сберегательного ряда до отметки основания
+	this->_items.resize(base);
+	// Возвращаем результат
+	return outcome;
+}
+/**
+ * @brief Метод разбора выражения выбора одной из ветвей
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	// Разбираем первой ветви выражения
+	const node_id_t first = this->parseConcat();
+	/**
+	 * Если разбор первой ветви выражения не выполнен
+	 */
+	if(first == INVALID_NODE)
+		// Выводим индекс отсутствующего узла синтаксического дерева
+		return INVALID_NODE;
+	/**
+	 * Если выражение не содержит выбора одной из ветвей
+	 */
+	if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '|'))
+		// Выводим индекс сформированного узла первой ветви
+		return first;
+	/**
+	 * Получаем отметку основания состава в сберегательном ряду
+	 *
+	 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+	 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+	 *          Отказ разбора усечения не требует - разбор прекращается
+	 *          целиком, а ряд очищается началом следующего.
+	 *
+	 */
+	const size_t base = this->_items.size();
+	// Заводим обозреватель состава накапливаемого узла
+	vector <node_id_t> & items = this->_items;
+	// Добавляем первой ветви выражения
+	items.push_back(first);
+	/**
+	 * Разбираем прочих ветвей выражения
+	 */
+	while((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')){
+		// Переходим к символу за разделителем ветвей
+		this->_pos++;
+		// Разбираем очередной ветви выражения
+		const node_id_t branch = this->parseConcat();
+		/**
+		 * Если разбор очередной ветви выражения не выполнен
+		 */
+		if(branch == INVALID_NODE)
+			// Выводим индекс отсутствующего узла синтаксического дерева
+			return INVALID_NODE;
+		// Добавляем разобранной ветви выражения
+		items.push_back(branch);
+	}
+	/**
+	 * Выводим индекс сформированного узла выбора одной из ветвей
+	 * Формируем узл выбора одной из ветвей
+	 */
+	const node_id_t outcome = this->makeList(node_t::ALTERNATE, items, base);
+	// Усекаем сберегательного ряда до отметки основания
+	this->_items.resize(base);
+	// Возвращаем результат
+	return outcome;
+}
+/**
+ * @brief Метод разбора начальных указаний регулярного выражения
+ *
+ */
+void awh::regex::Parser::settings() noexcept {
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Разбираем начальных указаний регулярного выражения
+	 */
+	while((this->_pos + 2) < size){
+		/**
+		 * Если очередное указание не начинается знаком глагола управления
+		 */
+		if((this->_pattern.at(this->_pos) != '(') || (this->_pattern.at(this->_pos + 1) != '*'))
+			// Выходим из разбора начальных указаний
+			break;
+		// Получаем позицию начала имени указания
+		const size_t begin = (this->_pos + 2);
+		// Получаем позицию поиска завершения имени указания
+		size_t index = begin;
+		/**
+		 * Ищем завершени имени указания
+		 */
+		while((index < size) && (this->_pattern.at(index) != ')'))
+			// Переходим к следующему символу регулярного выражения
+			index++;
+		/**
+		 * Если указание не завершено закрывающей круглой скобкой
+		 */
+		if(index >= size)
+			// Выходим из разбора начальных указаний
+			break;
+		// Набор устанавливаемых режимов компиляции
+		uint32_t enable = 0;
+		// Набор снимаемых режимов компиляции
+		uint32_t disable = 0;
+		// Получаем имя разобранного указания
+		const string_view name = this->_pattern.substr(begin, (index - begin));
+		/**
+		 * Если указание задаёт разбор последовательностей UTF-8
+		 */
+		if(name == "UTF")
+			// Устанавливаем режим разбора последовательностей UTF-8
+			enable = flagOf(flag_t::UTF);
+		/**
+		 * Если указание задаёт учёт свойств Юникода
+		 */
+		else if(name == "UCP")
+			// Устанавливаем режим учёта свойств Юникода
+			enable = flagOf(flag_t::UCP);
+		/**
+		 * Если указание запрещает пустое совпадение
+		 */
+		else if(name == "NOTEMPTY")
+			// Устанавливаем режим запрета пустого совпадения
+			enable = flagOf(flag_t::NOTEMPTY);
+		/**
+		 * Если указание запрещает пустое совпадение в позиции начала попытки
+		 */
+		else if(name == "NOTEMPTY_ATSTART")
+			// Устанавливаем режим запрета пустого совпадения в начале
+			enable = flagOf(flag_t::ATSTART);
+		/**
+		 * Если указание отменяет привязку выражения, ведущей точкой заданную
+		 *
+		 * @details Указание отменяет оптимизацию, обращающую ведущее «.*»
+		 *          в привязку к началу текста. Оптимизации такой у модуля
+		 *          нет вовсе, отчего указание принимается и не правит
+		 *          ничего: отвергать его нельзя - выражения с ним
+		 *          собираются эталоном и обязаны собираться здесь.
+		 *
+		 */
+		else if(name == "NO_DOTSTAR_ANCHOR")
+			// Пропускаем указания, оптимизации не имеющего
+			enable = 0;
+		/**
+		 * Если указание отменяет порождение машинного кода
+		 */
+		else if(name == "NO_JIT")
+			// Снимаем режим порождения машинного кода
+			disable = flagOf(flag_t::JIT);
+		/**
+		 * Если указание задаёт соглашение о переводе строки выражения
+		 */
+		else if(name == "CR")
+			// Устанавливаем соглашени возврата каретки
+			this->_convention = newline_t::CR;
+		/**
+		 * Если указание задаёт соглашение перевода строки
+		 */
+		else if(name == "LF")
+			// Устанавливаем соглашени перевода строки
+			this->_convention = newline_t::LF;
+		/**
+		 * Если указание задаёт соглашение пары возврата каретки
+		 */
+		else if(name == "CRLF")
+			// Устанавливаем соглашени пары возврата каретки
+			this->_convention = newline_t::CRLF;
+		/**
+		 * Если указание задаёт соглашение возврата каретки либо перевода строки
+		 */
+		else if(name == "ANYCRLF")
+			// Устанавливаем соглашени возврата каретки либо перевода строки
+			this->_convention = newline_t::ANYCRLF;
+		/**
+		 * Если указание задаёт соглашение всякого перевода строки Юникода
+		 */
+		else if(name == "ANY")
+			// Устанавливаем соглашени всякого перевода строки Юникода
+			this->_convention = newline_t::ANY;
+		/**
+		 * Если указание задаёт соглашение нулевого знака
+		 */
+		else if(name == "NUL")
+			// Устанавливаем соглашени нулевого знака
+			this->_convention = newline_t::NIL;
+		/**
+		 * Если указание ограничивает охват последовательности «\R»
+		 */
+		else if(name == "BSR_ANYCRLF")
+			// Устанавливаем ограничени охвата последовательности «\R»
+			this->_restricted = true;
+		/**
+		 * Если указание снимает ограничение охвата последовательности «\R»
+		 */
+		else if(name == "BSR_UNICODE")
+			// Снимаем ограничени охвата последовательности «\R»
+			this->_restricted = false;
+		/**
+		 * Если указание отменяет оптимизации отыскания начала совпадения
+		 */
+		else if(name == "NO_START_OPT")
+			// Устанавливаем режим снятия оптимизаций начала совпадения
+			enable = flagOf(flag_t::NOSTART);
+		/**
+		 * Если указание задаёт предел шагов сопоставления либо глубины вызовов
+		 *
+		 * @details Предел, выражением заданный, предел вызывающей стороны понижает,
+		 *          но не повышает: правило это снято с эталонной реализации.
+		 *          Предел кучи «(*LIMIT_HEAP=N)» не принимается вовсе - учёта
+		 *          памяти движок не ведёт, и приём указания был бы обещанием
+		 *          несбыточным.
+		 *
+		 */
+		else if(((name.size() > 12) && ((name.compare(0, 12, "LIMIT_MATCH=") == 0) ||
+		         (name.compare(0, 12, "LIMIT_DEPTH=") == 0))) ||
+		        ((name.size() > 11) && (name.compare(0, 11, "LIMIT_HEAP=") == 0))) {
+			// Извлекаемое значение предела указания
+			uint32_t value = 0;
+			// Получаем положение знака равенства записи указания
+			const size_t spot = name.find('=');
+			/**
+			 * Если извлечение значения предела не выполнено
+			 *
+			 * @details Нуль записью верной является: «(*LIMIT_MATCH=0)» есть предел
+			 *          действующий, сопоставление отвергающий первым же шагом.
+			 *          Потому разбор ведётся отдельным доводом, а не нулём выводимым.
+			 *
+			 */
+			if(!numbering(name.substr(spot + 1), value))
+				// Выходим из разбора начальных указаний
+				break;
+			/**
+			 * Если указание задаёт предел шагов сопоставления
+			 */
+			if(name.at(6) == 'M')
+				// Устанавливаем предел шагов сопоставления выражения
+				this->_stepLimit = value;
+			/**
+			 * Если указание задаёт предел глубины рекурсивных вызовов
+			 */
+			else if(name.at(6) == 'D')
+				// Устанавливаем предел глубины рекурсивных вызовов
+				this->_depthLimit = value;
+			// Иначе выполняем установку предела объёма памяти сопоставления
+			else this->_heapLimit = value;
+			// Переходим к символу за закрывающей круглой скобкой указания
+			this->_pos = (index + 1);
+			// Переходим к следующему начальному указанию
+			continue;
+		}
+		/**
+		 * Если указание отменяет самовозведение кванторов в собственнические
+		 *
+		 * @details Оптимизации этой у модуля нет вовсе: кванторы собственническими
+		 *          сами собою не становятся, что и доказано шагом 103 - эталон
+		 *          сличается с модулем лишь при её отмене. Указание принимается
+		 *          и действия не имеет, ибо отменять нечего.
+		 *
+		 */
+		else if(name == "NO_AUTO_POSSESS")
+			// Пропускаем указания, действия не имеющего
+			enable = 0;
+		/**
+		 * Прекращаем разбор начальных указаний
+		 */
+		else break;
+		// Устанавливаем разобранных режимов компиляции
+		this->_flags |= enable;
+		// Снимаем разобранных режимов компиляции
+		this->_flags &= ~disable;
+		// Сохраняем изменённого набора режимов компиляции
+		this->_options = this->_flags;
+		// Переходим к символу за закрывающей круглой скобкой указания
+		this->_pos = (index + 1);
+	}
+}
+/**
+ * @brief Метод предварительного прохода по регулярному выражению
+ *
+ * @return результат выполнения предварительного прохода
+ *
+ */
+bool awh::regex::Parser::prescan() noexcept {
+	// Учитываем предварительного прохода по регулярному выражению
+	AWH_REGEX_TICK(path_t::PRESCANNING);
+	// Флаг нахождения позиции разбора внутри класса символов
+	bool inClass = false;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
+	/**
+	 * Проходим по тексту регулярного выражения
+	 *
+	 * @details Проход не учитывает сброса нумерации ветвей конструкцией «(?|...)»,
+	 *          поэтому для выражений с такой конструкцией количество групп может быть
+	 *          завышено. Завышение количества влияет лишь на различение ссылок на
+	 *          захваченные группы и восьмеричных последовательностей, разрешая ссылку
+	 *          там, где её корректность проверяется на этапе разрешения ссылок.
+	 *
+	 */
+	for(size_t i = this->_begin; i < size; i++){
+		// Получаем очередной символ регулярного выражения
+		const char letter = this->_pattern.at(i);
+		/**
+		 * Если очередной символ является обратной косой чертой
+		 */
+		if(letter == '\\'){
+			// Пропускаем экранированного символа
+			i++;
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		}
+		/**
+		 * Если позиция прохода находится внутри класса символов
+		 */
+		if(inClass){
+			/**
+			 * Если класс символов завершён закрывающей квадратной скобкой
+			 */
+			if(letter == ']')
+				// Сбрасываем флаг нахождения внутри класса символов
+				inClass = false;
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		}
+		/**
+		 * Если очередной символ начинает класс символов
+		 */
+		if(letter == '['){
+			// Устанавливаем флаг нахождения внутри класса символов
+			inClass = true;
+			/**
+			 * Если класс символов начинается со знака отрицания
+			 */
+			if(((i + 1) < size) && (this->_pattern.at(i + 1) == '^'))
+				// Пропускаем знак отрицания класса символов
+				i++;
+			/**
+			 * Если класс символов начинается с закрывающей квадратной скобки
+			 */
+			if(((i + 1) < size) && (this->_pattern.at(i + 1) == ']'))
+				// Пропускаем закрывающей квадратной скобки
+				i++;
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		}
+		/**
+		 * Если очередной символ не начинает группу
+		 */
+		if(letter != '(')
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		/**
+		 * Если группа является глаголом управления
+		 *
+		 * @details Глагол управления захватывающей группой не является
+		 *          и в счёт их не идёт: «(*FAIL)» есть глагол, а не группа.
+		 *
+		 */
+		if(((i + 1) < size) && (this->_pattern.at(i + 1) == '*')){
+			/**
+			 * Ищем завершени глагола управления
+			 */
+			while((i < size) && (this->_pattern.at(i) != ')'))
+				// Переходим к следующему символу регулярного выражения
+				i++;
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		}
+		/**
+		 * Если группа не содержит признака расширенного синтаксиса
+		 */
+		if(((i + 1) >= size) || ((this->_pattern.at(i + 1) != '?') && (this->_pattern.at(i + 1) != '*'))){
+			// Увеличиваем общее количество захватывающих групп
+			this->_total++;
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		}
+		/**
+		 * Если группа является глаголом управления
+		 *
+		 * @details Глагол управления захвата не выполняет, и учёт его группой
+		 *          захватывающей смещал нумерацию: «(*napla:(a|ab))\\1c»
+		 *          ссылался на группу мнимую и совпадения не давал вовсе.
+		 *
+		 */
+		if(this->_pattern.at(i + 1) == '*')
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		/**
+		 * Если признак расширенного синтаксиса не содержит продолжения
+		 */
+		if((i + 2) >= size)
+			// Переходим к следующему символу регулярного выражения
+			continue;
+		// Получаем букву расширенного синтаксиса группы
+		const char next = this->_pattern.at(i + 2);
+		/**
+		 * Если группа является именованной с именем в апострофах
+		 */
+		if(next == '\'')
+			// Увеличиваем общее количество захватывающих групп
+			this->_total++;
+		/**
+		 * Если группа является именованной с именем в угловых скобках
+		 */
+		else if((next == '<') && ((i + 3) < size) && (this->_pattern.at(i + 3) != '=') &&
+		        (this->_pattern.at(i + 3) != '!') && (this->_pattern.at(i + 3) != '*'))
+			// Увеличиваем общее количество захватывающих групп
+			this->_total++;
+		/**
+		 * Если группа является именованной в синтаксисе языка Python
+		 */
+		else if((next == 'P') && ((i + 3) < size) && (this->_pattern.at(i + 3) == '<'))
+			// Увеличиваем общее количество захватывающих групп
+			this->_total++;
+	}
+	// Выполнение предварительного прохода: успех
+	return true;
+}
+/**
+ * @brief Метод извлечения общего количества захватывающих групп выражения
+ *
+ * @return общее количество захватывающих групп выражения
+ *
+ */
+uint32_t awh::regex::Parser::total() noexcept {
+	/**
+	 * Если предварительный проход ещё не выполнен
+	 */
+	if(!this->_counted){
+		// Проходим по регулярному выражению предварительно
+		this->prescan();
+		// Устанавливаем флаг выполненного предварительного прохода
+		this->_counted = true;
+	}
+	// Выводим общее количество захватывающих групп
+	return this->_total;
+}
+/**
+ * @brief Метод проверки нужды обхода узлов вида при разрешении ссылок
+ *
+ * @param type вид узлов синтаксического дерева
+ * @return     результат проверки нужды обхода узлов
+ *
+ */
+__AWH_INLINE__ bool awh::regex::Parser::walks(const node_t type) noexcept {
+	/**
+	 * Если узел такого вида разбором не заводился
+	 */
+	if((this->_kinds & (1u << static_cast <uint8_t> (type))) == 0)
+		// Выводим отсутствие нужды обхода узлов
+		return false;
+	// Учитываем обход узлов разрешением ссылок
+	AWH_REGEX_TICK(path_t::RESOLVING);
+	// Выводим нужду обхода узлов
+	return true;
+}
+/**
+ * @brief Метод проверки возможности пустого сопоставления узла
+ *
+ * @param id индекс узла в арене узлов
+ * @return   результат проверки возможности пустого сопоставления
+ *
+ */
+bool awh::regex::Parser::nullable(const node_id_t id) const noexcept {
+	// Наименьшая длина сопоставляемой узлом последовательности
+	uint32_t least = 0;
+	// Наибольшая длина сопоставляемой узлом последовательности
+	uint32_t most = 0;
+	// Вычисляем длину сопоставляемой узлом последовательности
+	this->measureNode(id, least, most);
+	// Проверка возможности пустого сопоставления
+	return (least == 0);
+}
+/**
+ * @brief Метод вычисления длины сопоставляемой узлом последовательности
+ *
+ * @param id  индекс узла в арене узлов
+ * @param min наименьшая длина сопоставляемой последовательности
+ * @param max наибольшая длина сопоставляемой последовательности
+ *
+ */
+void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_t & max) const noexcept {
+	// Сбрасываем наименьшей длины последовательности
+	min = 0;
+	// Сбрасываем наибольшей длины последовательности
+	max = 0;
+	/**
+	 * Если индекс узла находится за пределами арены узлов
+	 */
+	if(id >= static_cast <node_id_t> (this->_nodes.size()))
+		// Выходим из функции
+		return;
+	// Получаем узел синтаксического дерева
+	const node_data_t & node = this->_nodes.at(id);
+	/**
+	 * Определяем тип узла синтаксического дерева
+	 */
+	switch(static_cast <uint8_t> (node.type)){
+		// Вычисляем длину узла пустого выражения
+		case static_cast <uint8_t> (node_t::EMPTY):
+		// Вычисляем длину узла привязки к позиции в тексте
+		case static_cast <uint8_t> (node_t::ANCHOR):
+		// Вычисляем длину узла проверки окружения
+		case static_cast <uint8_t> (node_t::LOOKAROUND): return;
+		// Вычисляем длину узла любого символа
+		case static_cast <uint8_t> (node_t::ANY):
+		// Вычисляем длину узла класса символов
+		case static_cast <uint8_t> (node_t::CLASS):
+		// Вычисляем длину узла одиночного символа
+		case static_cast <uint8_t> (node_t::LITERAL):
+		// Вычисляем длину узла одиночной единицы кодирования
+		case static_cast <uint8_t> (node_t::CODEUNIT): {
+			// Устанавливаем наименьшей длины последовательности
+			min = 1;
+			// Устанавливаем наибольшей длины последовательности
+			max = 1;
+		} return;
+		// Вычисляем длину узла последовательности символов
+		case static_cast <uint8_t> (node_t::STRING): {
+			// Устанавливаем наименьшей длины последовательности
+			min = node.string.length;
+			// Устанавливаем наибольшей длины последовательности
+			max = node.string.length;
+		} return;
+		// Вычисляем длину узла последовательности элементов
+		case static_cast <uint8_t> (node_t::CONCAT):
+		// Вычисляем длину узла группы
+		case static_cast <uint8_t> (node_t::GROUP): {
+			// Вычисляем длину последовательности дочерних узлов
+			this->measure(node.child, min, max);
+		} return;
+		// Вычисляем длину узла выбора одной из ветвей
+		case static_cast <uint8_t> (node_t::ALTERNATE):
+		// Вычисляем длину узла условного выражения
+		case static_cast <uint8_t> (node_t::CONDITION): {
+			// Флаг вычисления длины первой ветви выражения
+			bool first = true;
+			// Количество ветвей выражения
+			size_t branches = 0;
+			/**
+			 * Обходим ветвей выражения
+			 */
+			for(node_id_t branch = node.child; branch != INVALID_NODE; branch = this->_nodes.at(branch).next){
+				// Наименьшая длина последовательности ветви выражения
+				uint32_t lower = 0;
+				// Наибольшая длина последовательности ветви выражения
+				uint32_t upper = 0;
+				/**
+				 * Если узел является условием, заданным проверкой окружения
+				 *
+				 * @details Проверка, условием служащая, ветвью не является
+				 *          и длины выражению не даёт: она лишь выбирает ветвь.
+				 *
+				 */
+				if((node.type == node_t::CONDITION) && (node.condition.type == condition_t::ASSERTION) && (branch == node.child))
+					// Переходим к следующей ветви выражения
+					continue;
+				// Увеличиваем количество ветвей выражения
+				branches++;
+				// Вычисляем длину последовательности ветви выражения
+				this->measureNode(branch, lower, upper);
+				/**
+				 * Если вычисляется длина первой ветви выражения
+				 */
+				if(first){
+					// Устанавливаем наименьшей длины последовательности
+					min = lower;
+					// Устанавливаем наибольшей длины последовательности
+					max = upper;
+					// Сбрасываем флаг вычисления первой ветви
+					first = false;
+					// Переходим к следующей ветви выражения
+					continue;
+				}
+				/**
+				 * Если наименьшая длина ветви меньше вычисленной
+				 */
+				if(lower < min)
+					// Устанавливаем наименьшей длины последовательности
+					min = lower;
+				/**
+				 * Если наибольшая длина ветви не ограничена либо превышает вычисленную
+				 */
+				if((upper == UNBOUNDED) || ((max != UNBOUNDED) && (upper > max)))
+					// Устанавливаем наибольшей длины последовательности
+					max = upper;
+			}
+			/**
+			 * Если условное выражение ветви невыполнения не несёт
+			 *
+			 * @details Ветвь невыполнения, опущенная в записи, есть ветвь ПУСТАЯ,
+			 *          и длина условия ею начинается с нуля: «(?<=(?(1)b))»
+			 *          сопоставляется и длиною нулевою, когда условие
+			 *          не выполнено, а без учёта того ретроспективная
+			 *          проверка длину нулевую не перебирала вовсе
+			 *          и совпадения не находила.
+			 *
+			 */
+			if((node.type == node_t::CONDITION) && (branches < 2))
+				// Устанавливаем наименьшей длины последовательности нулевою
+				min = 0;
+		} return;
+		// Вычисляем длину узла повторения
+		case static_cast <uint8_t> (node_t::REPEAT): {
+			// Наименьшая длина последовательности повторяемого элемента
+			uint32_t lower = 0;
+			// Наибольшая длина последовательности повторяемого элемента
+			uint32_t upper = 0;
+			// Вычисляем длину последовательности повторяемого элемента
+			this->measureNode(node.child, lower, upper);
+			/**
+			 * Если наименьшая длина повторяемого элемента ограничена
+			 */
+			if(lower != UNBOUNDED)
+				// Вычисляем наименьшей длины последовательности
+				min = (lower * node.repeat.min);
+			// Устанавливаем отсутстви ограничения наименьшей длины
+			else min = UNBOUNDED;
+			/**
+			 * Если повторяемый элемент не сопоставляет последовательности символов
+			 */
+			if(upper == 0)
+				// Устанавливаем наибольшей длины последовательности
+				max = 0;
+			/**
+			 * Если число повторений либо длина повторяемого элемента не ограничены
+			 */
+			else if((node.repeat.max == UNBOUNDED) || (upper == UNBOUNDED))
+				// Устанавливаем отсутстви ограничения длины
+				max = UNBOUNDED;
+			// Вычисляем наибольшей длины последовательности
+			else max = (upper * node.repeat.max);
+		} return;
+	}
+	/**
+	 * Если узел является вызовом подпрограммы либо ссылкой на захват
+	 *
+	 * @details Длина обоих есть длина указанной группы, и берётся она лишь
+	 *          по завершении разбора: группа вправе объявляться и позже.
+	 *          Ссылка длину эту получает по праву: захват её и есть текст
+	 *          группы, а длина его - длина тела группы. Вызов выражения
+	 *          целиком, равно как и возвращающийся в собственное тело,
+	 *          даёт длину неограниченную - эталон такую проверку
+	 *          отвергает наравне с нами.
+	 *
+	 */
+	if(this->_resolving && ((node.type == node_t::RECURSE) || (node.type == node_t::BACKREF))){
+		// Получаем номер группы, вызовом либо ссылкою указанной
+		const uint32_t number = ((node.type == node_t::RECURSE) ? node.recurse.number : node.backref.number);
+		/**
+		 * Если вызывается выражение целиком
+		 */
+		if(number == 0){
+			// Устанавливаем отсутстви ограничения длины
+			max = UNBOUNDED;
+			// Выходим из вычисления длины последовательности
+			return;
+		}
+		// Ищем узл указанной захватывающей группы
+		const node_id_t group = this->grouping(number);
+		/**
+		 * Если вызываемая группа отсутствует либо длина её вычисляется ныне
+		 */
+		if((group == INVALID_NODE) || !this->_calling.emplace(number).second){
+			// Устанавливаем отсутстви ограничения длины
+			max = UNBOUNDED;
+			// Выходим из вычисления длины последовательности
+			return;
+		}
+		// Вычисляем длину последовательности вызываемой группы
+		this->measure(this->_nodes.at(group).child, min, max);
+		// Снимаем номер группы с набора вычисляемых
+		this->_calling.erase(number);
+		// Выходим из вычисления длины последовательности
+		return;
+	}
+	/**
+	 * Вычисляем длину прочих узлов синтаксического дерева
+	 *
+	 * @details Ссылки на захваченные группы, рекурсивные вызовы и графемные кластеры
+	 *          сопоставляют последовательность, длина которой на этапе разбора
+	 *          неизвестна, поэтому она считается неограниченной.
+	 *
+	 */
+	max = UNBOUNDED;
+}
+/**
+ * @brief Метод проверки наличия вызова подпрограммы либо ссылки на захват
+ *
+ * @details Длина обоих берётся длиною группы, ими указанной, и вычисляется
+ *          по завершении разбора: группа вправе объявляться и позже.
+ *
+ * @param id индекс узла, с которого начинается обход
+ * @return   результат проверки наличия вызова либо ссылки
+ *
+ */
+bool awh::regex::Parser::referring(const node_id_t id) const noexcept {
+	/**
+	 * Обходим цепочкю узлов одного уровня вложенности
+	 */
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next){
+		/**
+		 * Если узел является вызовом подпрограммы
+		 */
+		if((this->_nodes.at(index).type == node_t::RECURSE) || (this->_nodes.at(index).type == node_t::BACKREF))
+			// Проверка наличия вызова либо ссылки: успех
+			return true;
+		/**
+		 * Если вложенная цепочка узлов несёт вызов либо ссылку
+		 */
+		if(this->referring(this->_nodes.at(index).child))
+			// Проверка наличия вызова либо ссылки: успех
+			return true;
+	}
+	// Проверка наличия вызова либо ссылки: отказ
+	return false;
+}
+/**
+ * @brief Метод поиска узла захватывающей группы по её номеру
+ *
+ * @details Поиск ведётся по арене узлов, а не обходом дерева: узел группы
+ *          в ней и лежит, а обход дерева требовал бы корня, каковой
+ *          устанавливается лишь по завершении разрешения ссылок.
+ *          Группы одного номера допускает сброс нумерации ветвей,
+ *          и берётся первая наравне с рекурсивным вызовом.
+ *
+ * @param number номер разыскиваемой захватывающей группы
+ * @return       индекс узла захватывающей группы
+ *
+ */
+awh::regex::node_id_t awh::regex::Parser::grouping(const uint32_t number) const noexcept {
+	/**
+	 * Обходим арену узлов синтаксического дерева
+	 */
+	for(size_t index = 0; index < this->_nodes.size(); index++){
+		/**
+		 * Если узел является захватывающей группой искомого номера
+		 */
+		if((this->_nodes.at(index).type == node_t::GROUP) && (this->_nodes.at(index).group.number == number))
+			// Выводим индекс узла захватывающей группы
+			return static_cast <node_id_t> (index);
+	}
+	// Выводим индекс отсутствующего узла синтаксического дерева
+	return INVALID_NODE;
+}
+/**
+ * @brief Метод вычисления длины сопоставляемой узлами последовательности
+ *
+ * @param id  индекс первого узла цепочки в арене узлов
+ * @param min наименьшая длина сопоставляемой последовательности
+ * @param max наибольшая длина сопоставляемой последовательности
+ *
+ */
+void awh::regex::Parser::measure(const node_id_t id, uint32_t & min, uint32_t & max) const noexcept {
+	// Сбрасываем наименьшей длины последовательности
+	min = 0;
+	// Сбрасываем наибольшей длины последовательности
+	max = 0;
+	/**
+	 * Обходим цепочкю узлов одного уровня вложенности
+	 */
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next){
+		// Наибольшая длина последовательности, сопоставляемой узлом
+		uint32_t most = 0;
+		// Наименьшая длина последовательности, сопоставляемой узлом
+		uint32_t least = 0;
+		// Вычисляем длину последовательности, сопоставляемой узлом
+		this->measureNode(index, least, most);
+		/**
+		 * Если наименьшая длина последовательности узла либо накопленная не ограничены
+		 */
+		if((least == UNBOUNDED) || (min == UNBOUNDED))
+			// Устанавливаем отсутстви ограничения наименьшей длины
+			min = UNBOUNDED;
+		// Добавляем наименьшей длины последовательности узла
+		else min += least;
+		/**
+		 * Если наибольшая длина последовательности узла либо накопленная не ограничены
+		 */
+		if((most == UNBOUNDED) || (max == UNBOUNDED))
+			// Устанавливаем отсутстви ограничения наибольшей длины
+			max = UNBOUNDED;
+		// Добавляем наибольшей длины последовательности узла
+		else max += most;
+	}
+}
+/**
+ * @brief Метод разрешения отложенных ссылок на именованные группы
+ *
+ * @return результат разрешения отложенных ссылок
+ *
+ */
+bool awh::regex::Parser::resolve() noexcept {
+	/**
+	 * Разрешаем отложенных ссылок на именованные группы
+	 */
+	for(auto & deferred : this->_deferred){
+		// Ищем именю группы в соответствии имён группы их номерам
+		auto i = this->_groups.find(this->name(deferred.name));
+		/**
+		 * Если группа с указанным именем не объявлена
+		 */
+		if(i == this->_groups.end()){
+			// Устанавливаем ошибкю ссылки на несуществующую группу
+			this->fail(error_t::BAD_BACKREFERENCE, deferred.offset);
+			// Разрешение отложенных ссылок: отказ
+			return false;
+		}
+		/**
+		 * Если разрешаемый узел является ссылкой на захваченную группу
+		 */
+		if(this->_nodes.at(deferred.node).type == node_t::BACKREF)
+			// Устанавливаем номер группы ссылки
+			this->_nodes.at(deferred.node).backref.number = i->second.front();
+		/**
+		 * Если разрешаемый узел является рекурсивным вызовом
+		 */
+		else if(this->_nodes.at(deferred.node).type == node_t::RECURSE)
+			// Устанавливаем номер вызываемой группы
+			this->_nodes.at(deferred.node).recurse.number = i->second.front();
+		/**
+		 * Если разрешаемый узел является условным выражением
+		 */
+		else if(this->_nodes.at(deferred.node).type == node_t::CONDITION)
+			// Устанавливаем номер проверяемой группы
+			this->_nodes.at(deferred.node).condition.number = i->second.front();
+	}
+	/**
+	 * Вычисляем длину ретроспективных проверок с вызовом
+	 *
+	 * @details Длина вызова берётся длиною вызываемой группы, а группа вправе
+	 *          объявляться и позже проверки: вычисление ведётся здесь, когда
+	 *          дерево разбора построено целиком и номера вызовов разрешены.
+	 *          Длина, неограниченной оставшаяся, означает отказ - вызов
+	 *          рекурсивный либо группа неограниченной длины.
+	 *
+	 */
+	for(auto & behind : this->_behinds){
+		// Наибольшая длина проверяемой последовательности
+		uint32_t most = 0;
+		// Наименьшая длина проверяемой последовательности
+		uint32_t least = 0;
+		// Устанавливаем признак вычисления длины с разрешением вызовов
+		this->_resolving = true;
+		// Вычисляем длину проверяемой последовательности
+		this->measure(this->_nodes.at(behind.first).child, least, most);
+		// Сбрасываем признак вычисления длины с разрешением вызовов
+		this->_resolving = false;
+		/**
+		 * Если длина проверяемой последовательности не ограничена
+		 */
+		if(most == UNBOUNDED){
+			// Устанавливаем ошибкю недопустимой ретроспективной проверки
+			this->fail(error_t::LOOKBEHIND_INVALID, behind.second);
+			// Разрешение отложенных ссылок: отказ
+			return false;
+		}
+		// Устанавливаем наибольшей длины проверяемой последовательности
+		this->_nodes.at(behind.first).look.max = most;
+		// Устанавливаем наименьшей длины проверяемой последовательности
+		this->_nodes.at(behind.first).look.min = least;
+	}
+	/**
+	 * Если разбор заводил узлы условных выражений
+	 *
+	 * @details Обход дерева ради узлов одного вида шёл разбору всякого
+	 *          выражения, а узлы эти у выражений почти всех отсутствуют:
+	 *          набор видов, заведением узла копимый, обход отменяет.
+	 *
+	 */
+	if(this->walks(node_t::CONDITION)){
+		/**
+		 * Проверяем существовани групп, условиями указанных
+		 *
+		 * @details Номер группы условия проверяется по завершении разбора наравне
+		 *          со ссылками и рекурсивными вызовами: группа, номером указанная,
+		 *          вправе объявляться и позже самого условия. Эталон PCRE2 условие
+		 *          принимает ровно тогда, когда номер не превышает общего количества
+		 *          групп выражения, - и вид задания номера, прямой либо
+		 *          относительный, различия не делает.
+		 *
+		 */
+		for(auto & node : this->_nodes){
+			/**
+			 * Если узел не является условным выражением по номеру группы
+			 */
+			if(node.type != node_t::CONDITION)
+				// Переходим к следующему узлу синтаксического дерева
+				continue;
+			/**
+			 * Если условие задано не номером группы
+			 *
+			 * @details Условие рекурсивного вызова проверяется наравне с условием
+			 *          захвата, однако нуль означает у него вызов рекурсивный
+			 *          какой угодно и группы не называет вовсе.
+			 *
+			 */
+			if((node.condition.type != condition_t::GROUP_SET) &&
+			  ((node.condition.type != condition_t::RECURSING) || (node.condition.number == 0)))
+				// Переходим к следующему узлу синтаксического дерева
+				continue;
+			/**
+			 * Если группа, номером указанная, выражением не объявлена
+			 */
+			if((node.condition.number == 0) || (node.condition.number > this->_captures)){
+				// Устанавливаем ошибкю ссылки на несуществующую группу
+				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
+				// Разрешение отложенных ссылок: отказ
+				return false;
+			}
+		}
+	}
+	/**
+	 * Если разбор заводил узлы ссылок на захваченные группы
+	 *
+	 * @details Обход дерева ради узлов одного вида шёл разбору всякого
+	 *          выражения, а узлы эти у выражений почти всех отсутствуют:
+	 *          набор видов, заведением узла копимый, обход отменяет.
+	 *
+	 */
+	if(this->walks(node_t::BACKREF)){
+		/**
+		 * Проверяем ссылок на захваченные группы по номеру
+		 */
+		for(auto & node : this->_nodes){
+			/**
+			 * Если узел не является ссылкой на захваченную группу
+			 */
+			if(node.type != node_t::BACKREF)
+				// Переходим к следующему узлу синтаксического дерева
+				continue;
+			/**
+			 * Если ссылка указывает на несуществующую группу
+			 */
+			if((node.backref.number == 0) || (node.backref.number > this->_captures)){
+				// Устанавливаем ошибкю ссылки на несуществующую группу
+				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
+				// Разрешение отложенных ссылок: отказ
+				return false;
+			}
+		}
+	}
+	/**
+	 * Если разбор заводил узлы рекурсивных вызовов
+	 *
+	 * @details Обход дерева ради узлов одного вида шёл разбору всякого
+	 *          выражения, а узлы эти у выражений почти всех отсутствуют:
+	 *          набор видов, заведением узла копимый, обход отменяет.
+	 *
+	 */
+	if(this->walks(node_t::RECURSE)){
+		/**
+		 * Проверяем рекурсивных вызовов групп по номеру
+		 */
+		for(auto & node : this->_nodes){
+			/**
+			 * Если узел не является рекурсивным вызовом
+			 */
+			if(node.type != node_t::RECURSE)
+				// Переходим к следующему узлу синтаксического дерева
+				continue;
+			/**
+			 * Если вызов выполняется для выражения целиком
+			 */
+			if((node.recurse.number == 0) && (node.recurse.name == NO_NAME))
+				// Переходим к следующему узлу синтаксического дерева
+				continue;
+			/**
+			 * Если вызов выполняется для несуществующей группы
+			 */
+			if(node.recurse.number > this->_captures){
+				// Устанавливаем ошибкю ссылки на несуществующую группу
+				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
+				// Разрешение отложенных ссылок: отказ
+				return false;
+			}
+		}
+	}
+	// Разрешение отложенных ссылок: успех
+	return true;
+}
+/**
+ * @brief Метод разбора регулярного выражения
+ *
+ * @param pattern текст регулярного выражения для разбора
+ * @param flags   набор режимов компиляции регулярного выражения
+ * @return        результат выполнения разбора
+ *
+ */
+bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexcept {
+	// Сбрасываем результатов предыдущего разбора
+	this->reset();
+	// Устанавливаем набор режимов компиляции
+	this->_flags = flags;
+	// Сохраняем исходного набора режимов компиляции
+	this->_options = flags;
+	// Устанавливаем текст разбираемого регулярного выражения
+	this->_pattern = pattern;
+	/**
+	 * Если размер регулярного выражения превышает допустимый
+	 */
+	if(pattern.size() > 0x100000){
+		// Устанавливаем ошибкю превышения размера регулярного выражения
+		this->fail(error_t::PATTERN_TOO_LARGE, 0);
+		// Разбора: отказ
+		return false;
+	}
+	// Сбрасываем позицию разбора
+	this->_pos = 0;
+	/**
+	 * Разбираем начальных указаний регулярного выражения
+	 *
+	 * @details Указания разбираются до предварительного прохода: они правят
+	 *          режимом разбора последовательностей UTF-8, от какого зависит
+	 *          и чтение самого выражения, а проход начинается с позиции,
+	 *          ими оставленной.
+	 *
+	 */
+	this->settings();
+	/**
+	 * Запоминаем позицию начала предварительного прохода
+	 *
+	 * @details Проход считает захватывающие группы выражения, а число их нужно
+	 *          одной лишь ссылке с номером от десяти, и ведётся он по требованию -
+	 *          первою такой ссылкой. Прежде проход по выражению целиком шёл
+	 *          всякому разбору. Выражение длиннее мегабайта отвергнуто выше,
+	 *          и позиция в тридцать два разряда ложится.
+	 *
+	 */
+	this->_begin = static_cast <uint32_t> (this->_pos);
+	// Разбираем регулярного выражения
+	const node_id_t root = this->parseAlternate();
+	/**
+	 * Если разбор регулярного выражения не выполнен
+	 */
+	if(root == INVALID_NODE)
+		// Разбора: отказ
+		return false;
+	/**
+	 * Если регулярное выражение разобрано не полностью
+	 */
+	if(this->_pos < this->_pattern.size()){
+		// Устанавливаем ошибкю непарной круглой скобки
+		this->fail(error_t::UNMATCHED_PAREN, this->_pos);
+		// Разбора: отказ
+		return false;
+	}
+	/**
+	 * Если разрешение отложенных ссылок не выполнено
+	 */
+	if(!this->resolve())
+		// Разбора: отказ
+		return false;
+	// Устанавливаем индекс корневого узла синтаксического дерева
+	this->_root = root;
+	// Разбора: успех
+	return true;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Parser::Parser() noexcept :
+ _barrier(false), _counted(false),
+ _resolving(false), _restricted(false),
+ _pos(0), _errorPos(0), _root(INVALID_NODE),
+ _look(0), _depth(0), _total(0), _flags(0),
+ _begin(0), _kinds(0), _verbs(0), _options(0),
+ _captures(0), _classCount(0), _stepLimit(~0u),
+ _heapLimit(~0u), _depthLimit(~0u),
+ _error(error_t::NONE), _convention(newline_t::LF) {
+	// Резервируем память под арену узлов синтаксического дерева
+	this->_nodes.reserve(64);
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Parser::Deferred::Deferred() noexcept :
+ node(INVALID_NODE), name(0), offset(0) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::regex::Parser::~Parser() noexcept = default;

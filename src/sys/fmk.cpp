@@ -16,6 +16,7 @@
  * Подключаем заголовочный файл
  */
 #include <sys/fmk.hpp>
+#include <encoding/ascii.hpp>
 #include <encoding/charset/charset.hpp>
 #include <alloc/alloc.hpp>
 
@@ -5351,4 +5352,48 @@ awh::Framework::Framework(const string & locale) noexcept {
 	this->_buffers = this->_regexp.build("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)$", {regexp_t::option_t::UTF8});
 	// Устанавливаем регулярное выражение для парсинга байт
 	this->_bytes = this->_regexp.build("([\\d\\.\\,]+)\\s*(bytes|b|Kb|Mb|Gb|Tb)$", {regexp_t::option_t::UTF8, regexp_t::option_t::CASELESS});
+}
+/**
+ * @brief Функция сравнения двух строк без учёта регистра
+ *
+ * @param first  первое слово
+ * @param second второе слово
+ * @return       результат сравнения
+ */
+bool awh::fmk::compare(string_view first, string_view second) noexcept {
+	// Если строки пришли не пустыми
+	if(!first.empty() && !second.empty()){
+		// Если длины строк не совпадают, сравнивать их незачем
+		if(first.size() != second.size())
+			// Возвращаем результат сравнения
+			return false;
+		/**
+		 * Выполняем перебор обоих строк
+		 */
+		for(size_t i = 0; i < first.size(); ++i){
+			// Выполняем сравнение очередного символа без учёта регистра
+			if(!ascii::equals(first[i], second[i]))
+				// Возвращаем результат сравнения
+				return false;
+		}
+		// Возвращаем результат сравнения
+		return true;
+	}
+	// Возвращаем значение по умолчанию
+	return (first.size() == second.size());
+}
+/**
+ * @brief Функция сравнения двух строк без учёта регистра
+ *
+ * @param first  первое слово
+ * @param second второе слово
+ * @return       результат сравнения
+ */
+bool awh::fmk::compare(const char * first, const char * second) noexcept {
+	// Если данные для сравнения не пришли пустыми
+	if((first != nullptr) && ((* first) != '\0') && (second != nullptr) && ((* second) != '\0'))
+		// Выполняем перебор обоих строк
+		return awh::fmk::compare(string_view{first}, string_view{second});
+	// Возвращаем значение по умолчанию
+	return (first == second);
 }

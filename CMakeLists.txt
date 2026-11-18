@@ -392,7 +392,6 @@ if (Dependence_FOUND)
     message(STATUS "ZSTD include dir found: " ${ZSTD_INCLUDE_DIR})
     message(STATUS "LZMA include dir found: " ${LZMA_INCLUDE_DIR})
     message(STATUS "ZLib include dir found: " ${ZLIB_INCLUDE_DIR})
-    message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "A-NTS include dir found: " ${NTS_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 else (Dependence_FOUND)
@@ -493,6 +492,13 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/alloc/vessel.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/prompt.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/scatter.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/provider.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/headers.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/parser.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/h2.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/frame.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/hpack.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
@@ -619,13 +625,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      # её global.hpp при NTS_STATICLIB оставляет объявления без атрибута импорта
      ##
     add_compile_definitions(NTS_STATICLIB)
-    ##
-     # Заголовки nghttp2 на Windows тоже объявляют имена берущимися из динамической
-     # библиотеки, пока не сказано обратное. Признак этот nghttp2 ставит СВОЕЙ цели
-     # сборки, а мы подключаем его архив путём к файлу - свойство цели до нас не
-     # доходит, и связывание отвечает о неразрешённых именах вида __imp_nghttp2_*
-     ##
-    add_compile_definitions(NGHTTP2_STATICLIB)
     ##
      # export MSYS="error_start:%WD%dumper.exe -d -c %1 %2"
      # Устанавливаем необходимые зависимости для MS Windows. Тройка ole32/shell32/uuid нужна

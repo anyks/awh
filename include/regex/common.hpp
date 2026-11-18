@@ -1,0 +1,2261 @@
+/**
+ * @file common.hpp
+ * @date 2026-07-31
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл общих определений модуля регулярных выражений — коды ошибок разбора,
+ *        флаги режимов компиляции, типы узлов синтаксического дерева, структуры класса символов,
+ *        узла дерева и арены узлов
+ *
+ * \~english
+ * @brief Header file of the common definitions of the regular expression module — parse error codes,
+ *        compilation mode flags, syntax tree node types, structures of a character class,
+ *        a tree node and the node arena
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#pragma once
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <new>
+#include <vector>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <utility>
+#include <stdexcept>
+#include <type_traits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../sys/macro/global.hpp"
+#include "../encoding/unicode/types.hpp"
+
+/**
+ * \~russian
+ * @brief Если предсказание маловероятной ветви ещё не определено
+ *
+ * @details Предсказание расставляется у заслонов, исполняемых на каждом
+ *          символе: ветвь отказа там не берётся почти никогда, и указание
+ *          на то уводит её с пути горячего. У Visual Studio средства такого
+ *          нет вовсе - «__builtin_expect» ему неизвестен, - отчего
+ *          предсказание там сводится к самому условию.
+ *
+ * \~english
+ * @brief If the prediction of an unlikely branch is not yet defined
+ *
+ * @details The prediction is placed at the gates that are executed for every
+ *          character: the failure branch is almost never taken there, and
+ *          pointing it out takes it off the hot path. Visual Studio does not
+ *          have such a facility at all — «__builtin_expect» is unknown to it —
+ *          so the prediction there collapses to the condition itself.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_UNLIKELY)
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#if defined(__GNUC__) || defined(__clang__)
+		/**
+		 * \~russian
+		 * @brief Предсказание маловероятной ветви средствами GCC и Clang
+		 *
+		 * \~english
+		 * @brief A prediction of an improbable branch by the means of GCC and Clang
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_UNLIKELY(expression) __builtin_expect(!!(expression), 0)
+	/**
+	 * Если средства предсказания у компилятора нет
+	 */
+	#else
+		/**
+		 * \~russian
+		 * @brief Предсказание маловероятной ветви, к условию сведённое
+		 *
+		 * \~english
+		 * @brief A prediction of an improbable branch, reduced to a condition
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_UNLIKELY(expression) (expression)
+	#endif
+#endif
+
+/**
+ * \~russian
+ * @brief Если запрет подстановки метода телом вызывающего ещё не определён
+ *
+ * @details Запрет нужен исполнению с возвратом и медленному пути пополнения
+ *          набора записей ниже. Определение ведётся здесь одним местом:
+ *          файл этот подключают все заголовочные файлы модуля, кроме
+ *          prefilter.hpp, а тому запрет не нужен.
+ *
+ * \~english
+ * @brief If the prohibition of method inlining into the caller is not yet defined
+ *
+ * @details The prohibition is needed for the backtracking execution and the
+ *          slow path of replenishing the set of records below. The definition
+ *          is kept here in one place: this file is included by all header
+ *          files of the module except prefilter.hpp, which does not need it.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_NOINLINE)
+	/**
+	 * Если компилятор является Visual Studio
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * \~russian
+		 * @brief Запрет подстановки средствами Visual Studio
+		 *
+		 * \~english
+		 * @brief A forbid of an inlining by the means of Visual Studio
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_NOINLINE __declspec(noinline)
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * \~russian
+		 * @brief Запрет подстановки средствами GCC и Clang
+		 *
+		 * \~english
+		 * @brief A forbid of an inlining by the means of GCC and Clang
+		 *
+		 * \~
+		 */
+		#define AWH_REGEX_NOINLINE __attribute__((noinline))
+	#endif
+#endif
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include "../sys/macro/suppress.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён модуля регулярных выражений
+	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
+	 */
+	namespace regex {
+		/**
+		 * \~russian
+		 * @brief Индекс узла синтаксического дерева в арене
+		 *
+		 * \~english
+		 * @brief Index of a syntax tree node in the arena
+		 *
+		 * \~
+		 */
+		using node_id_t = uint32_t;
+
+		/**
+		 * \~russian
+		 * @brief Наибольшее кодовое значение символа Юникода
+		 *
+		 * \~english
+		 * @brief Largest code point value of a Unicode character
+		 *
+		 * \~
+		 */
+		constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
+		/**
+		 * \~russian
+		 * @brief Значение индекса отсутствующего имени группы
+		 *
+		 * \~english
+		 * @brief Index value of a missing group name
+		 *
+		 * \~
+		 */
+		constexpr uint32_t NO_NAME = static_cast <uint32_t> (~0u);
+		/**
+		 * \~russian
+		 * @brief Верхняя граница кванта, обозначающая отсутствие ограничения
+		 *
+		 * \~english
+		 * @brief Upper bound of a quantifier denoting the absence of a limit
+		 *
+		 * \~
+		 */
+		constexpr uint32_t UNBOUNDED = static_cast <uint32_t> (~0u);
+		/**
+		 * \~russian
+		 * @brief Значение индекса отсутствующего узла синтаксического дерева
+		 *
+		 * \~english
+		 * @brief Index value of a missing syntax tree node
+		 *
+		 * \~
+		 */
+		constexpr node_id_t INVALID_NODE = static_cast <node_id_t> (~0u);
+
+		/**
+		 * \~russian
+		 * @brief Режим жадности квантора повторения
+		 *
+		 * \~english
+		 * @brief Greediness mode of a repetition quantifier
+		 *
+		 * \~
+		 */
+		enum class greed_t : uint8_t {
+			GREEDY     = 0x00, // Наибольшее число повторений с возвратом
+			LAZY       = 0x01, // Наименьшее число повторений с возвратом
+			POSSESSIVE = 0x02  // Наибольшее число повторений без возврата
+		};
+		/**
+		 * \~russian
+		 * @brief Вид условия условного выражения
+		 *
+		 * \~english
+		 * @brief Kind of the condition of a conditional expression
+		 *
+		 * \~
+		 */
+		enum class condition_t : uint8_t {
+			GROUP_SET = 0x00, // Условие выполнено, если группа с указанным номером захвачена
+			NAME_SET  = 0x01, // Условие выполнено, если группа с указанным именем захвачена
+			RECURSING = 0x02, // Условие выполнено, если выполняется рекурсивный вызов
+			ASSERTION = 0x03, // Условие задано проверкой окружения
+			DEFINE    = 0x04  // Условие не выполняется никогда, блок определения групп
+		};
+		/**
+		 * \~russian
+		 * @brief Вид глагола управления возвратом
+		 *
+		 * @details Глаголы эти правят движком возврата: завершают сопоставление,
+		 *          отсекают точки возврата накопленные и переносят попытку
+		 *          сопоставления. Смысл каждого снят с эталонной реализации опытом.
+		 *
+		 * \~english
+		 * @brief Kind of a backtracking control verb
+		 *
+		 * @details Those verbs govern the backtracking engine: they finish the matching,
+		 *          cut off the accumulated backtracking points and move the matching
+		 *          attempt. The meaning of each is taken from the reference implementation by experiment.
+		 *
+		 * \~
+		 */
+		enum class control_t : uint8_t {
+			ACCEPT = 0x00, // Завершение сопоставления с успехом в текущей позиции
+			COMMIT = 0x01, // Отказ сопоставления целиком без переноса попытки
+			PRUNE  = 0x02, // Отказ попытки сопоставления с переносом её на знак
+			SKIP   = 0x03, // Отказ попытки с переносом её в позицию глагола
+			THEN   = 0x04, // Переход к ветви следующей охватывающей группы
+			MARK   = 0x05  // Отметка ветви именем, наружу выводимым
+		};
+		/**
+		 * \~russian
+		 * @brief Соглашение о переводе строки регулярного выражения
+		 *
+		 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале выражения
+		 *          и правит тремя устройствами: точкой, привязками к границам строк
+		 *          и привязкой конца текста. Последовательность «\\R» от соглашения
+		 *          не зависит вовсе - её охват правится указаниями «(*BSR_*)»
+		 *          отдельно. Правила эти сняты с эталонной реализации опытом.
+		 *
+		 * \~english
+		 * @brief Newline convention of a regular expression
+		 *
+		 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
+		 *          and governs three things: the dot, the anchors to the line boundaries
+		 *          and the anchor of the end of the text. The «\\R» sequence does not depend
+		 *          on the convention at all — its coverage is governed by the «(*BSR_*)» options
+		 *          separately. Those rules are taken from the reference implementation by experiment.
+		 *
+		 * \~
+		 */
+		enum class newline_t : uint8_t {
+			LF      = 0x00, // Перевод строки, соглашение умолчания
+			CR      = 0x01, // Возврат каретки
+			NIL     = 0x02, // Нулевой знак
+			ANY     = 0x03, // Всякий перевод строки Юникода
+			CRLF    = 0x04, // Пара возврата каретки с переводом строки
+			ANYCRLF = 0x05  // Возврат каретки, перевод строки либо их пара
+		};
+		/**
+		 * \~russian
+		 * @brief Направление и знак проверки окружения
+		 *
+		 * \~english
+		 * @brief Direction and sign of a lookaround check
+		 *
+		 * \~
+		 */
+		enum class look_t : uint8_t {
+			AHEAD        = 0x00, // Положительная опережающая проверка
+			AHEAD_NEG    = 0x01, // Отрицательная опережающая проверка
+			BEHIND       = 0x02, // Положительная ретроспективная проверка
+			BEHIND_NEG   = 0x03, // Отрицательная ретроспективная проверка
+			AHEAD_FREE   = 0x04, // Не отсекающая опережающая проверка
+			BEHIND_FREE  = 0x05  // Не отсекающая ретроспективная проверка
+		};
+		/**
+		 * \~russian
+		 * @brief Вид группы синтаксического дерева
+		 *
+		 * \~english
+		 * @brief Kind of a syntax tree group
+		 *
+		 * \~
+		 */
+		enum class group_t : uint8_t {
+			CAPTURE     = 0x00, // Захватывающая группа
+			NAMED       = 0x01, // Именованная захватывающая группа
+			NONCAPTURE  = 0x02, // Группа без захвата
+			ATOMIC      = 0x03, // Атомарная группа, запрещающая возврат внутрь себя
+			RESET       = 0x04, // Группа со сбросом нумерации ветвей, конструкция «(?|...)»
+			SCRIPT      = 0x05, // Прогон письменности, конструкция «(*sr:...)»
+			SCRIPT_ONCE = 0x06  // Прогон письменности атомарный, конструкция «(*asr:...)»
+		};
+		/**
+		 * \~russian
+		 * @brief Тип привязки к позиции в тексте
+		 *
+		 * \~english
+		 * @brief Type of the anchor to a position in the text
+		 *
+		 * \~
+		 */
+		enum class anchor_t : uint8_t {
+			TEXT_BEGIN  = 0x00, // Начало текста, последовательность «\A»
+			TEXT_END    = 0x01, // Конец текста, последовательность «\z»
+			TEXT_FINISH = 0x02, // Конец текста с необязательным переводом строки, последовательность «\Z»
+			LINE_BEGIN  = 0x03, // Начало текста или строки, символ «^»
+			LINE_END    = 0x04, // Конец текста или строки, символ «$»
+			WORD_EDGE   = 0x05, // Граница слова, последовательность «\b»
+			WORD_INNER  = 0x06, // Положение вне границы слова, последовательность «\B»
+			SEARCH_HEAD = 0x07, // Начало текущей попытки поиска, последовательность «\G»
+			KEEP_OUT    = 0x08  // Сброс начала совпадения, последовательность «\K»
+		};
+		/**
+		 * \~russian
+		 * @brief Тип узла синтаксического дерева регулярного выражения
+		 *
+		 * \~english
+		 * @brief Node type of the syntax tree of a regular expression
+		 *
+		 * \~
+		 */
+		enum class node_t : uint8_t {
+			EMPTY      = 0x00, // Пустое выражение, соответствующее пустой строке
+			LITERAL    = 0x01, // Одиночный символ
+			STRING     = 0x02, // Последовательность символов, сопоставляемая целиком
+			CLASS      = 0x03, // Класс символов
+			ANY        = 0x04, // Любой символ с учётом режима «DOTALL»
+			CODEUNIT   = 0x0E, // Одиночная единица кодирования, последовательность «\C»
+			GRAPHEME   = 0x0F, // Расширенный графемный кластер, последовательность «\X»
+			CONTROL    = 0x10, // Глагол управления возвратом
+			ANCHOR     = 0x05, // Привязка к позиции в тексте
+			CONCAT     = 0x06, // Последовательное сопоставление дочерних узлов
+			ALTERNATE  = 0x07, // Выбор одного из дочерних узлов
+			REPEAT     = 0x08, // Повторение дочернего узла
+			GROUP      = 0x09, // Группа, в том числе захватывающая
+			LOOKAROUND = 0x0A, // Опережающая или ретроспективная проверка
+			BACKREF    = 0x0B, // Ссылка на ранее захваченную группу
+			RECURSE    = 0x0C, // Рекурсивный вызов выражения или его группы
+			CONDITION  = 0x0D  // Условное выражение
+		};
+		/**
+		 * \~russian
+		 * @brief Коды ошибок разбора регулярного выражения
+		 *
+		 * \~english
+		 * @brief Parse error codes of a regular expression
+		 *
+		 * \~
+		 */
+		enum class error_t : uint8_t {
+			NONE               = 0x00, // Ошибок не обнаружено
+			INTERNAL           = 0x01, // Внутренняя ошибка разбора
+			TRAILING_BACKSLASH = 0x02, // Обратная косая черта в конце выражения
+			UNKNOWN_ESCAPE     = 0x03, // Неизвестная экранированная последовательность
+			UNMATCHED_PAREN    = 0x04, // Непарная круглая скобка
+			UNMATCHED_BRACKET  = 0x05, // Непарная квадратная скобка
+			UNMATCHED_BRACE    = 0x06, // Непарная фигурная скобка
+			BAD_QUANTIFIER     = 0x07, // Некорректный квантор повторения
+			QUANTIFIER_NO_ATOM = 0x08, // Квантор повторения без предшествующего элемента
+			QUANTIFIER_TOO_BIG = 0x09, // Значение кванта повторения превышает допустимое
+			BAD_CLASS_RANGE    = 0x0A, // Некорректный диапазон в классе символов
+			BAD_ESCAPE_HEX     = 0x0B, // Некорректная шестнадцатеричная последовательность
+			BAD_ESCAPE_OCTAL   = 0x0C, // Некорректная восьмеричная последовательность
+			BAD_PROPERTY       = 0x0D, // Неизвестное свойство Юникода
+			BAD_POSIX_CLASS    = 0x0E, // Неизвестный класс символов POSIX
+			BAD_GROUP_SYNTAX   = 0x0F, // Некорректный синтаксис группы
+			BAD_GROUP_NAME     = 0x10, // Некорректное имя именованной группы
+			DUPLICATE_NAME     = 0x11, // Повторное объявление имени группы
+			BAD_BACKREFERENCE  = 0x12, // Ссылка на несуществующую группу
+			BAD_CONDITION      = 0x13, // Некорректный условный шаблон
+			BAD_RECURSION      = 0x14, // Некорректный рекурсивный вызов
+			BAD_OPTIONS        = 0x15, // Некорректные встроенные опции
+			NESTING_TOO_DEEP   = 0x16, // Превышена допустимая глубина вложенности
+			PATTERN_TOO_LARGE  = 0x17, // Регулярное выражение превышает допустимый размер
+			BAD_UTF8           = 0x18, // Некорректная последовательность UTF-8 в выражении
+			LOOKBEHIND_INVALID = 0x19, // Недопустимая ретроспективная проверка
+			UNSUPPORTED        = 0x1A, // Конструкция не поддерживается модулем
+			BUDGET_EXCEEDED    = 0x1B, // Превышен допустимый объём работы сопоставления
+			NESTED_RECURSION   = 0x1C, // Повторный рекурсивный вызов в той же позиции текста
+			BAD_UTF8_SUBJECT   = 0x1D  // Некорректная последовательность UTF-8 в тексте сопоставления
+		};
+		/**
+		 * \~russian
+		 * @brief Флаги режимов компиляции регулярного выражения
+		 *
+		 * @details Значения флагов допускают побитовое объединение. Часть флагов
+		 *          может изменяться внутри выражения встроенными опциями вида «(?i)»,
+		 *          такие флаги хранятся в каждом узле дерева отдельно.
+		 *
+		 * \~english
+		 * @brief Compilation mode flags of a regular expression
+		 *
+		 * @details The flag values admit bitwise combination. Some of the flags
+		 *          can be changed inside the expression by inline options of the «(?i)» form,
+		 *          such flags are stored in every tree node separately.
+		 *
+		 * \~
+		 */
+		enum class flag_t : uint32_t {
+			NONE       = 0x0000, // Режимы не установлены
+			CASELESS   = 0x0001, // Сопоставление без учёта регистра символов
+			MULTILINE  = 0x0002, // Привязки «^» и «$» соответствуют границам строк текста
+			DOTALL     = 0x0004, // Точка соответствует любому символу, включая перевод строки
+			EXTENDED   = 0x0008, // Пробельные символы выражения игнорируются, «#» начинает комментарий
+			UNGREEDY   = 0x0010, // Кванторы повторения инвертируют жадность
+			UTF        = 0x0020, // Текст и выражение разбираются как последовательность UTF-8
+			UCP        = 0x0040, // Классы символов учитывают свойства Юникода
+			ANCHORED   = 0x0080, // Сопоставление выполняется только с начала текста
+			NOTEMPTY   = 0x0100, // Пустое совпадение считается отсутствием совпадения
+			DOLLAR_END = 0x0200, // Привязка «$» не соответствует переводу строки в конце текста
+			DUPNAMES   = 0x0400, // Допускается повторное объявление имён групп
+			NOCAPTURE  = 0x0800, // Круглые скобки не образуют захватывающих групп
+			ASCII      = 0x1000, // Сокращённые классы символов ограничены символами ASCII
+			RESTRICT   = 0x2000, // Сопоставление без учёта регистра ограничено одной письменностью
+			/**
+			 * \~russian
+			 * @brief Сопоставление выполняется порождённым машинным кодом
+			 *
+			 * @details Режим порождает при сборке выражения сопоставитель в виде
+			 *          машинного кода и исполняет им сопоставление. Кодогенерацию
+			 *          получает подмножество выражений, а не всякое выражение:
+			 *          непринятое сопоставляется исполнением программы, как и без
+			 *          режима, - установка режима отказом сборки не оборачивается.
+			 *          Режим включается сборкой явно, поскольку выигрыш его
+			 *          не всеобщ: на коротких текстах расход на предварительный
+			 *          отбор позиций сравним с самим сопоставлением.
+			 *
+			 * @warning Режим этот прежде звался «MACHINE», и имя пришлось сменить:
+			 *          FreeBSD объявляет `MACHINE` макросом в `<machine/param.h>`,
+			 *          подставляя вместо него строку с названием обработчика. Область
+			 *          видимости перечисления от такого не защищает - препроцессор про
+			 *          неё не знает и правит текст до разбора, - и сборка на FreeBSD
+			 *          обрывалась отказом. Заводя здесь новые режимы, следует сличать
+			 *          имя с системными макросами: `EXTENDED`, `ANCHORED`, `RESTRICT`
+			 *          и прочие односложные имена подвержены тому же
+			 *
+			 * \~english
+			 * @brief Matching is performed by generated machine code
+			 *
+			 * @details The mode makes the expression build produce a matcher in the form of
+			 *          machine code and performs matching with it. Code generation covers
+			 *          a subset of expressions rather than every expression:
+			 *          one that is not accepted is matched by executing the program, as without
+			 *          the mode — setting the mode never turns into a build failure.
+			 *          The mode is enabled by the build explicitly, since its gain
+			 *          is not universal: on short texts the cost of preliminary
+			 *          position selection is comparable to matching itself.
+			 *
+			 * @warning This mode used to be called «MACHINE», and the name had to be changed:
+			 *          FreeBSD declares `MACHINE` a macro in `<machine/param.h>`,
+			 *          substituting a string with the processor name for it. The enumeration scope
+			 *          gives no protection from that — the preprocessor knows nothing about
+			 *          it and edits the text before parsing — and the build on FreeBSD
+			 *          ended in failure. When adding new modes here, the name should be checked
+			 *          against the system macros: `EXTENDED`, `ANCHORED`, `RESTRICT`
+			 *          and other single-word names are subject to the same
+			 *
+			 * \~
+			 */
+			JIT = 0x4000,
+			/**
+			 * \~russian
+			 * @brief Текст сопоставления на правильность записи не проверяется
+			 *
+			 * @details Под режимом «UTF» текст разбирается посимвольно, и запись,
+			 *          кодировке UTF-8 не отвечающая, разбору не поддаётся, поэтому
+			 *          сопоставление проверяет её при всяком вызове. Проверка эта
+			 *          проходит текст целиком, и проход по длинному тексту, ведомый
+			 *          повторными вызовами от очередной позиции, обходится
+			 *          квадратично: каждый вызов проверяет весь остаток заново.
+			 *
+			 *          Режим снимает проверку, возлагая правильность записи на
+			 *          вызывающую сторону. Устанавливать его следует лишь там, где
+			 *          текст проверен единожды снаружи, - разбор текста с неверной
+			 *          записью под этим режимом выдаёт границы, символам не
+			 *          отвечающие.
+			 *
+			 * \~english
+			 * @brief The matched text is not checked for encoding validity
+			 *
+			 * @details Under the «UTF» mode the text is parsed character by character, and an encoding
+			 *          that does not conform to UTF-8 cannot be parsed, therefore
+			 *          matching checks it on every call. That check
+			 *          walks the whole text, and a pass over a long text driven
+			 *          by repeated calls from the next position costs
+			 *          quadratically: every call rechecks the whole remainder anew.
+			 *          The mode removes the check, laying the validity of the encoding on
+			 *          the calling side. It should be set only where the
+			 *          text has been checked once from the outside — parsing a text with an invalid
+			 *          encoding under this mode yields boundaries that do not correspond
+			 *          to characters.
+			 *
+			 * \~
+			 */
+			UNCHECKED = 0x8000,
+			/**
+			 * \~russian
+			 * @brief Оптимизации отыскания начала совпадения не применяются
+			 *
+			 * @details Сборка выводит набор допустимых начальных байтов и обязательный
+			 *          литерал совпадения, каковыми сопоставление отсеивает позиции,
+			 *          совпадения дать не способные. Отбор этот исхода не меняет,
+			 *          а меняет одну лишь скорость, и режим снимает его целиком.
+			 *
+			 *          Режим отвечает указанию «(*NO_START_OPT)» эталонной реализации
+			 *          и заведён ради него: своей нужды снимать отбор у модуля нет.
+			 *
+			 * \~english
+			 * @brief The optimizations of finding the start of a match are not applied
+			 *
+			 * @details The compilation derives the set of admissible starting bytes and the required
+			 *          literal of a match, by which the matching filters out the positions
+			 *          incapable of yielding a match. That filtering does not change the outcome,
+			 *          it changes the speed alone, and the mode removes it entirely.
+			 *          The mode corresponds to the «(*NO_START_OPT)» option of the reference implementation
+			 *          and is declared for its sake: the module has no need of its own to remove the filtering.
+			 *
+			 * \~
+			 */
+			NOSTART = 0x10000,
+			/**
+			 * \~russian
+			 * @brief Пустое совпадение в позиции начала попытки совпадением не считается
+			 *
+			 * @details Режим запрещает совпадение пустое одною лишь позицией начала
+			 *          поиска, тогда как режим «NOTEMPTY» запрещает его всюду:
+			 *          «(*NOTEMPTY_ATSTART)a*» на тексте «b» даёт совпадение
+			 *          пустое в позиции первой, а не отказ. Режим отвечает
+			 *          указанию «(*NOTEMPTY_ATSTART)» эталонной реализации.
+			 *
+			 * \~english
+			 * @brief An empty match at the position of the start of the attempt is not counted as a match
+			 *
+			 * @details The mode forbids an empty match at the search start position alone,
+			 *          whereas the «NOTEMPTY» mode forbids it everywhere:
+			 *          «(*NOTEMPTY_ATSTART)a*» on the text «b» yields an empty match
+			 *          at the first position rather than a refusal. The mode corresponds
+			 *          to the «(*NOTEMPTY_ATSTART)» option of the reference implementation.
+			 *
+			 * \~
+			 */
+			ATSTART = 0x20000
+		};
+
+		/**
+		 * \~russian
+		 * @brief Идентификатор свойства Юникода
+		 *
+		 * @details Идентификаторы свойств заданы модулем Юникода, откуда их берут
+		 *          и порождаемые таблицы базы данных символов. Обозначение заведено
+		 *          затем, чтобы разбор регулярных выражений обращался к свойствам
+		 *          Юникода собственным именем, не оговаривая их размещения.
+		 *
+		 * \~english
+		 * @brief Unicode property identifier
+		 *
+		 * @details The property identifiers are set by the Unicode module, which is also where
+		 *          the generated character database tables take them from. The designation is introduced
+		 *          so that regular expression parsing refers to the Unicode properties
+		 *          by their own name without stipulating their placement.
+		 *
+		 * \~
+		 */
+		using property_id_t = awh::unicode::property_id_t;
+
+		/**
+		 * \~russian
+		 * @brief Ссылка на класс символов программы
+		 *
+		 * @details Программа хранит диапазоны и свойства всех классов сплошными
+		 *          наборами, а класс задаёт ссылкой на участки этих наборов.
+		 *          Устройство это заведено взамен набора классов, где каждый
+		 *          нёс свои наборы: классов в программе десятки тысяч, и
+		 *          размещение под каждый двух наборов отдельных обходилось
+		 *          дороже всей прочей сборки программы вместе взятой.
+		 *
+		 * \~english
+		 * @brief Reference to a character class of the program
+		 *
+		 * @details The program stores the ranges and properties of all classes as contiguous
+		 *          sequences, and defines a class by a reference to spans of those sequences.
+		 *          This arrangement was introduced in place of a sequence of classes where each one
+		 *          carried its own sequences: there are tens of thousands of classes in a program, and
+		 *          allocating two separate sequences for each one cost
+		 *          more than all the rest of building the program taken together.
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ ClassRef {
+			/**
+			 * \~russian
+			 * Флаг отрицания класса символов
+			 *
+			 * @note Хранится байтом, а не логическим значением: набор классов
+			 *       восстанавливается обзором образа памяти записи хранилища, а запись
+			 *       приходит извне - подделанный байт дал бы значению логического типа
+			 *       состояние, языком не отведённое
+			 *
+			 * \~english
+			 * Character class negation flag
+			 *
+			 * @note Stored as a byte rather than as a boolean value: the set of classes
+			 *       is restored by viewing the memory image of the storage record, and the record
+			 *       comes from the outside — a forged byte would give a value of the boolean type
+			 *       a state that the language does not provide for
+			 *
+			 * \~
+			 */
+			uint8_t negative;
+			// Номер первого диапазона класса в наборе диапазонов программы
+			uint32_t ranges;
+			// Количество диапазонов класса символов
+			uint32_t rangeCount;
+			// Номер первого свойства класса в наборе свойств программы
+			uint32_t properties;
+			// Количество свойств Юникода класса символов
+			uint32_t propertyCount;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit ClassRef() noexcept;
+		} classref_t;
+		/**
+		 * \~russian
+		 * @brief Диапазон кодовых значений символов класса
+		 *
+		 * \~english
+		 * @brief Range of the code point values of the class characters
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Range {
+			// Верхняя граница диапазона включительно
+			uint32_t end;
+			// Нижняя граница диапазона включительно
+			uint32_t begin;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Range() noexcept;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * @param begin нижняя граница диапазона включительно
+			 * @param end   верхняя граница диапазона включительно
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * @param begin lower bound of the range inclusive
+			 * @param end   upper bound of the range inclusive
+			 *
+			 * \~
+			 */
+			Range(const uint32_t begin, const uint32_t end) noexcept;
+		} range_t;
+		/**
+		 * \~russian
+		 * @brief Ссылка на свойство Юникода в классе символов
+		 *
+		 * \~english
+		 * @brief Reference to a Unicode property in a character class
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Property {
+			// Идентификатор свойства Юникода
+			uint16_t id;
+			/**
+			 * \~russian
+			 * @brief Флаг отрицания свойства, устанавливается для последовательности «\P»
+			 *
+			 * @note Хранится байтом, а не логическим значением: набор свойств
+			 *       восстанавливается обзором образа памяти записи хранилища, а запись
+			 *       приходит извне - подделанный байт дал бы значению логического типа
+			 *       состояние, языком не отведённое
+			 *
+			 * \~english
+			 * @brief Property negation flag, set for the «\P» sequence
+			 *
+			 * @note Stored as a byte rather than as a boolean value: the set of properties
+			 *       is restored by viewing the memory image of the storage record, and the record
+			 *       comes from the outside — a forged byte would give a value of the boolean type
+			 *       a state that the language does not provide for
+			 *
+			 * \~
+			 */
+			uint8_t negative;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Property() noexcept;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * @param id       идентификатор свойства Юникода
+			 * @param negative флаг отрицания свойства
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * @param id       Unicode property identifier
+			 * @param negative property negation flag
+			 *
+			 * \~
+			 */
+			Property(const uint16_t id, const bool negative) noexcept;
+		} property_t;
+		/**
+		 * \~russian
+		 * @brief Класс символов регулярного выражения
+		 *
+		 * @details Класс символов хранится в виде отсортированного набора непересекающихся
+		 *          диапазонов кодовых значений и набора ссылок на свойства Юникода. Отрицание
+		 *          класса сохраняется отдельным флагом и применяется к объединению диапазонов
+		 *          и свойств целиком.
+		 *
+		 *          Вид этот служит сборке класса разбором выражения. Программа
+		 *          скомпилированная хранит классы иначе - сплошными наборами
+		 *          диапазонов и свойств вместе с набором ссылок на участки, -
+		 *          и выдаёт их обзором.
+		 *
+		 * \~english
+		 * @brief Character class of a regular expression
+		 *
+		 * @details A character class is stored as a sorted sequence of non-overlapping
+		 *          ranges of code point values and a sequence of references to Unicode properties. The negation
+		 *          of the class is kept as a separate flag and is applied to the union of the ranges
+		 *          and the properties as a whole.
+		 *          This form serves to build the class by parsing the expression. A compiled
+		 *          program stores the classes differently — as contiguous sequences of
+		 *          ranges and properties together with a sequence of references to spans —
+		 *          and yields them as a view.
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Class {
+			// Флаг отрицания класса символов
+			bool negative;
+			// Набор диапазонов кодовых значений символов
+			vector <range_t> ranges;
+			// Набор ссылок на свойства Юникода
+			vector <property_t> properties;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Class() noexcept;
+		} class_t;
+		/**
+		 * \~russian
+		 * @brief Шаблон класса обзора непрерывного участка набора
+		 *
+		 * @tparam T тип записи обозреваемого набора
+		 *
+		 * \~english
+		 * @brief Template for the class of a continuous sequence segment review
+		 *
+		 * @tparam T record type of the viewed sequence
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Класс обзора непрерывного участка набора
+		 *
+		 * @details Обзор ведёт указание на начало участка и количество записей
+		 *          в нём, владения набором не принимая. Служит он выдаче
+		 *          участков наборов сплошных, в каких хранятся диапазоны и
+		 *          свойства классов символов программы.
+		 *
+		 * \~english
+		 * @brief Class of the continuous sequence segment review
+		 *
+		 * @details The view is driven by a pointer to the beginning of the span
+		 *          and the number of records in it, taking no ownership of the
+		 *          sequence. It serves to yield spans of contiguous sequences
+		 *          that hold the ranges and properties of the character
+		 *          classes of the program.
+		 *
+		 * \~
+		 */
+		class Span {
+			public:
+				// Количество записей обозреваемого участка
+				size_t count;
+				// Указание на начало обозреваемого участка
+				const T * records;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения количества записей участка
+				 *
+				 * @return количество записей обозреваемого участка
+				 *
+				 * \~english
+				 * @brief Method of getting the number of records of the span
+				 *
+				 * @return number of records of the viewed span
+				 *
+				 * \~
+				 */
+				size_t size() const noexcept {
+					// Выводим количество записей
+					return this->count;
+				}
+				/**
+				 * \~russian
+				 * @brief Метод проверки отсутствия записей участка
+				 *
+				 * @return результат проверки отсутствия записей участка
+				 *
+				 * \~english
+				 * @brief Method of checking the absence of records of the span
+				 *
+				 * @return result of checking the absence of records of the viewed span
+				 *
+				 * \~
+				 */
+				bool empty() const noexcept {
+					// Ноль элементов — набор пуст
+					return (this->count == 0);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения указания за последнюю запись участка
+				 *
+				 * @return указание за последнюю запись обозреваемого участка
+				 *
+				 * \~english
+				 * @brief Method of getting the pointer past the last record of the span
+				 *
+				 * @return pointer past the last record of the viewed span
+				 *
+				 * \~
+				 */
+				const T * end() const noexcept {
+					// Выводим последний итератор
+					return (this->records + this->count);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод извлечения указания на первую запись участка
+				 *
+				 * @return указание на первую запись обозреваемого участка
+				 *
+				 * \~english
+				 * @brief Method of getting the pointer to the first record of the span
+				 *
+				 * @return pointer to the first record of the viewed span
+				 *
+				 * \~
+				 */
+				const T * begin() const noexcept {
+					// Выводим начальный итератор
+					return this->records;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Оператор извлечения записи участка по номеру
+				 *
+				 * @param index номер извлекаемой записи участка
+				 * @return      извлечённая запись обозреваемого участка
+				 *
+				 * \~english
+				 * @brief Operator of getting a record of the span by number
+				 *
+				 * @param index number of the record of the span to get
+				 * @return      the obtained record of the viewed span
+				 *
+				 * \~
+				 */
+				const T & operator [] (const size_t index) const noexcept {
+					// Выводим запрашиваемую запись
+					return this->records[index];
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Span() noexcept : count(0), records(nullptr) {}
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * @param records указание на начало обозреваемого участка
+				 * @param count   количество записей обозреваемого участка
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * @param records pointer to the beginning of the viewed span
+				 * @param count   number of records of the viewed span
+				 *
+				 * \~
+				 */
+				Span(const T * records, const size_t count) noexcept : count(count), records(records) {}
+		};
+		/**
+		 * \~russian
+		 * @brief Шаблон класса набора записей, владеющий содержимым либо обозревающий запись
+		 *
+		 * @tparam T тип записи набора
+		 *
+		 * \~english
+		 * @brief Record set class template that owns the content or views a record.
+		 *
+		 * @tparam T record type of the sequence
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Класс набора записей, владеющий содержимым либо обозревающий запись
+		 *
+		 * @details Набор ведёт себя двояко. Собираемый компиляцией, он содержимым
+		 *          владеет и пополняется как обычный набор. Восстановленный из
+		 *          хранилища, он обозревает участок записи, лежащей в памяти
+		 *          целиком, и своего содержимого не имеет вовсе: восстановление
+		 *          сводится к установке указания и количества, минуя размещение
+		 *          и перенос. Всякое изменение набора обозревающего обращает его
+		 *          во владеющий, перенося содержимое к себе, поэтому обзор
+		 *          подмены записи допустить не может.
+		 *
+		 * \~english
+		 * @brief A record set class that owns the content or views a record.
+		 *
+		 * @details The sequence behaves in two ways. Built by compilation, it
+		 *          owns its content and is filled like an ordinary sequence.
+		 *          Restored from the storage, it views a span of a record that
+		 *          lies in memory as a whole, and has no content of its own at
+		 *          all: restoration amounts to setting the pointer and the
+		 *          count, bypassing allocation and copying. Any modification of
+		 *          a viewing sequence turns it into an owning one by moving the
+		 *          content to itself, therefore a view cannot allow substitution
+		 *          of the record.
+		 *
+		 * \~
+		 */
+		class Sequence {
+			private:
+				// Количество записей набора
+				uint32_t _count;
+				/**
+				 * \~russian
+				 * @brief Количество записей, размещённых набором
+				 *
+				 * @details Значение отлично от нуля, если набор содержимым
+				 *          владеет, и равно нулю, если набор обозревает участок
+				 *          записи. Признак владения отдельным полем не заведён
+				 *          намеренно: набор входит в программу пятью полями, и
+				 *          размер его сказывается на расходе сопоставления
+				 *          через попадание полей программы в общую строку кэша.
+				 *
+				 * \~english
+				 * @brief Number of records allocated by the sequence
+				 *
+				 * @details The value is non-zero if the sequence owns its content
+				 *          and equals zero if the sequence views a span of a
+				 *          record. A separate ownership field is not introduced
+				 *          deliberately: the sequence enters the program as five fields, and
+				 *          its size tells on the cost of matching
+				 *          through the program fields falling into a common cache line.
+				 *
+				 * \~
+				 */
+				uint32_t _capacity;
+			private:
+				// Указание на начало записей набора
+				const T * _records;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод размещения записей набора
+				 *
+				 * @param capacity требуемое количество размещаемых записей
+				 *
+				 * \~english
+				 * @brief Method of allocating the records of the sequence
+				 *
+				 * @param capacity required number of records to allocate
+				 *
+				 * \~
+				 */
+				void grow(const size_t capacity) noexcept {
+					/**
+					 * Если размещённого количества записей достаёт
+					 */
+					if(this->_capacity >= capacity)
+						// Выходим из метода размещения записей
+						return;
+					// Получаем требуемое количество размещаемых записей
+					size_t required = (this->_capacity > 0 ? (static_cast <size_t> (this->_capacity) * 2) : 8);
+					/**
+					 * Если удвоения размещённого количества не достаёт
+					 */
+					if(required < capacity)
+						// Устанавливаем требуемого количества записей
+						required = capacity;
+					// Размещаем записей набора
+					T * records = static_cast <T *> (::malloc(required * sizeof(T)));
+					/**
+					 * Если размещение записей набора не выполнено
+					 */
+					if(records == nullptr)
+						// Выходим из метода размещения записей
+						return;
+					/**
+					 * Если набор содержит записи
+					 */
+					if(this->_count > 0)
+						// Переносим записей набора
+						::memcpy(records, this->_records, (static_cast <size_t> (this->_count) * sizeof(T)));
+					/**
+					 * Если набор содержимым владеет
+					 */
+					if(this->_capacity > 0)
+						// Освобождаем прежних записей набора
+						::free(const_cast <T *> (this->_records));
+					// Устанавливаем указани на начало записей набора
+					this->_records = records;
+					// Устанавливаем размещённого количества записей
+					this->_capacity = static_cast <uint32_t> (required);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод расширения набора под запись, добавляемую в конец
+				 *
+				 * @details Медленный путь размещения записи: набор обозревающий
+				 *          обращается во владеющий, а владеющий, места лишённый,
+				 *          размещает записи заново. Путь вынесен из размещения
+				 *          записи и подстановке запрещён намеренно - см. метод
+				 *          размещения записи в конце набора.
+				 *
+				 * \~english
+				 * @brief Method of expanding the sequence for a record appended to the end
+				 *
+				 * @details The slow path of constructing a record: a viewing sequence is turned
+				 *          into an owning one, and an owning one that lacks room allocates its
+				 *          records anew. The path is taken out of constructing a record and is
+				 *          forbidden from inlining deliberately - see the method of constructing
+				 *          a record at the end of the sequence.
+				 *
+				 * \~
+				 */
+				AWH_REGEX_NOINLINE void expand() noexcept {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Размещаем записей набора
+					this->grow(static_cast <size_t> (this->_count) + 1);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод очистки набора записей
+				 *
+				 * \~english
+				 * @brief Method of clearing the sequence of records
+				 *
+				 * \~
+				 */
+				void clear() noexcept {
+					/**
+					 * Если набор содержимым владеет
+					 */
+					if(this->_capacity > 0)
+						// Освобождаем записей набора
+						::free(const_cast <T *> (this->_records));
+					// Сбрасываем указани на начало записей набора
+					this->_records = nullptr;
+					// Сбрасываем количество записей набора
+					this->_count = 0;
+					// Сбрасываем размещённого количества записей
+					this->_capacity = 0;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод проверки владения набором своим содержимым
+				 *
+				 * @return результат проверки владения содержимым
+				 *
+				 * \~english
+				 * @brief Method of checking whether the sequence owns its content
+				 *
+				 * @return result of checking the ownership of the content
+				 *
+				 * \~
+				 */
+				bool owned() const noexcept {
+					// Ненулевая ёмкость означает отведённое хранилище
+					return (this->_capacity > 0);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод проверки отсутствия записей набора
+				 *
+				 * @return результат проверки отсутствия записей набора
+				 *
+				 * \~english
+				 * @brief Method of checking the absence of records of the sequence
+				 *
+				 * @return result of checking the absence of records of the sequence
+				 *
+				 * \~
+				 */
+				bool empty() const noexcept {
+					// Ноль элементов — хранилище пусто
+					return (this->_count == 0);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения количества записей набора
+				 *
+				 * @return количество записей набора
+				 *
+				 * \~english
+				 * @brief Method of getting the number of records of the sequence
+				 *
+				 * @return number of records of the sequence
+				 *
+				 * \~
+				 */
+				size_t size() const noexcept {
+					// Выводим количество записей в наборе
+					return static_cast <size_t> (this->_count);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод установки обзора участка записи
+				 *
+				 * @param records указание на начало записей участка
+				 * @param count   количество записей участка
+				 *
+				 * \~english
+				 * @brief Method of setting a view of a span of a record
+				 *
+				 * @param records pointer to the beginning of the records of the span
+				 * @param count   number of records of the span
+				 *
+				 * \~
+				 */
+				void attach(const T * records, const size_t count) noexcept {
+					// Освобождаем собственного содержимого набора
+					this->clear();
+					// Устанавливаем указани на начало записей набора
+					this->_records = records;
+					// Устанавливаем количество записей набора
+					this->_count = static_cast <uint32_t> (count);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения указания на начало записей набора
+				 *
+				 * @return указание на начало записей набора
+				 *
+				 * \~english
+				 * @brief Method of getting the pointer to the beginning of the records of the sequence
+				 *
+				 * @return pointer to the beginning of the records of the sequence
+				 *
+				 * \~
+				 */
+				const T * data() const noexcept {
+					// Выводим данные блока записей
+					return this->_records;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения указания за последнюю запись набора
+				 *
+				 * @return указание за последнюю запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting the pointer past the last record of the sequence
+				 *
+				 * @return pointer past the last record of the sequence
+				 *
+				 * \~
+				 */
+				const T * end() const noexcept {
+					// Выводим итератор последней записи
+					return (this->_records + this->_count);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод извлечения указания на первую запись набора
+				 *
+				 * @return указание на первую запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting the pointer to the first record of the sequence
+				 *
+				 * @return pointer to the first record of the sequence
+				 *
+				 * \~
+				 */
+				const T * begin() const noexcept {
+					// Выводим итератор начальной записи
+					return this->_records;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения первой записи набора
+				 *
+				 * @return первая запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting the first record of the sequence
+				 *
+				 * @return first record of the sequence
+				 *
+				 * \~
+				 */
+				const T & front() const noexcept {
+					// Выводим первую запись
+					return this->_records[0];
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения последней записи набора
+				 *
+				 * @return последняя запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting the last record of the sequence
+				 *
+				 * @return last record of the sequence
+				 *
+				 * \~
+				 */
+				const T & back() const noexcept {
+					// Выводим последнюю запись
+					return this->_records[this->_count - 1];
+				}
+				/**
+				 * \~russian
+				 * @brief Метод извлечения изменяемой последней записи набора
+				 *
+				 * @return последняя запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting the mutable last record of the sequence
+				 *
+				 * @return last record of the sequence
+				 *
+				 * \~
+				 */
+				T & back() {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Выводим извлечённую запись набора
+					return const_cast <T *> (this->_records)[this->_count - 1];
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод получения изменяемых записей набора
+				 *
+				 * @details Набор обозревающий обращается во владеющий однажды, и
+				 *          проход по записям указателем не несёт на всякой записи
+				 *          ни проверки границ, ни проверки владения. Проходы
+				 *          разметки программы при сборке обходят набор инструкций
+				 *          целиком, и извлечение по номеру с проверкой - вызов
+				 *          внешний - обходилось им дороже самой разметки. Указатель
+				 *          годен, покуда набор не растёт.
+				 *
+				 * @return изменяемые записи набора
+				 *
+				 * \~english
+				 * @brief Method of getting the mutable records of the sequence
+				 *
+				 * @details A viewing sequence is turned into an owning one once, and a pass
+				 *          over the records by pointer carries neither a bounds check nor
+				 *          an ownership check on every record. The pointer stays valid
+				 *          as long as the sequence does not grow.
+				 *
+				 * @return the mutable records of the sequence
+				 *
+				 * \~
+				 */
+				T * records() noexcept {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Выводим изменяемые записи набора
+					return const_cast <T *> (this->_records);
+				}
+				
+			public:
+				/**
+				 * \~russian
+				 * @brief Оператор извлечения записи набора по номеру
+				 *
+				 * @param index номер извлекаемой записи набора
+				 * @return      извлечённая запись набора
+				 *
+				 * \~english
+				 * @brief Operator of getting a record of the sequence by number
+				 *
+				 * @param index number of the record of the sequence to get
+				 * @return      the obtained record of the sequence
+				 *
+				 * \~
+				 */
+				const T & operator [] (const size_t index) const noexcept {
+					// Выводим запрашиваемую запись
+					return this->_records[index];
+				}
+				/**
+				 * \~russian
+				 * @brief Метод извлечения записи набора по номеру с проверкой границ
+				 *
+				 * @param index номер извлекаемой записи набора
+				 * @return      извлечённая запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting a record of the sequence by number with bounds checking
+				 *
+				 * @param index number of the record of the sequence to get
+				 * @return      the obtained record of the sequence
+				 *
+				 * \~
+				 */
+				const T & at(const size_t index) const {
+					/**
+					 * Если номер записи набору не принадлежит
+					 */
+					if(index >= static_cast <size_t> (this->_count))
+						// Выбрасываем исключени выхода за границы набора
+						throw out_of_range("regex::Sequence::at");
+					// Выводим извлечённую запись набора
+					return this->_records[index];
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Оператор извлечения изменяемой записи набора по номеру
+				 *
+				 * @param index номер извлекаемой записи набора
+				 * @return      извлечённая запись набора
+				 *
+				 * \~english
+				 * @brief Operator of getting a mutable record of the sequence by number
+				 *
+				 * @param index number of the record of the sequence to get
+				 * @return      the obtained record of the sequence
+				 *
+				 * \~
+				 */
+				T & operator [] (const size_t index) {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Выводим извлечённую запись набора
+					return const_cast <T *> (this->_records)[index];
+				}
+				/**
+				 * \~russian
+				 * @brief Метод извлечения изменяемой записи набора по номеру
+				 *
+				 * @param index номер извлекаемой записи набора
+				 * @return      извлечённая запись набора
+				 *
+				 * \~english
+				 * @brief Method of getting a mutable record of the sequence by number
+				 *
+				 * @param index number of the record of the sequence to get
+				 * @return      the obtained record of the sequence
+				 *
+				 * \~
+				 */
+				T & at(const size_t index) {
+					/**
+					 * Если номер записи набору не принадлежит
+					 */
+					if(index >= static_cast <size_t> (this->_count))
+						// Выбрасываем исключени выхода за границы набора
+						throw out_of_range("regex::Sequence::at");
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Выводим извлечённую запись набора
+					return const_cast <T *> (this->_records)[index];
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод добавления записи в конец набора
+				 *
+				 * @param record добавляемая запись набора
+				 *
+				 * \~english
+				 * @brief Method of appending a record to the end of the sequence
+				 *
+				 * @param record record of the sequence to append
+				 *
+				 * \~
+				 */
+				__AWH_INLINE__ void push(const T & record) {
+					// Размещаем записю в конце набора
+					this->emplace(record);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Шаблон метода размещения записи в конце набора
+				 *
+				 * @tparam Args типы параметров размещаемой записи
+				 *
+				 * \~english
+				 * @brief Template for the method of appending a record to the end of a set
+				 *
+				 * @tparam Args parameter types of the record to construct
+				 *
+				 * \~
+				 */
+				template <typename... Args>
+				/**
+				 * \~russian
+				 * @brief Метод размещения записи в конце набора
+				 *
+				 * @details Размещение ведётся двумя путями. Быстрый - место есть,
+				 *          и набор им владеет, - стоит одного сравнения и самой
+				 *          записи и подставляется телом вызывающего. Медленный -
+				 *          набор обозревающий либо места лишённый - вынесен в метод
+				 *          расширения, подстановке запрещённый. Условие быстрого
+				 *          пути одно на оба признака: у набора обозревающего место
+				 *          равно нулю и количества не превышает.
+				 *
+				 *          Устройство это заведено ради сборки программы: всякая
+				 *          инструкция её размещается здесь, и сборка набора образцов
+				 *          Grok с выражениями стенда размещает их за круг двести
+				 *          семьдесят тысяч. Метод размещения целиком прежде
+				 *          подстановке не поддавался: медленный путь делал его велик,
+				 *          и вызов на всякую инструкцию стоил 8% времени всей сборки.
+				 *          Запрет подстановки медленного пути ставится явно:
+				 *          Clang выносит его и сам, а GCC и LCC без запрета
+				 *          подставляли его в размещение, и то снова разрасталось.
+				 *
+				 *          Размещение отдаёт указание на запись, а не принимает её
+				 *          собранной в стороне: запись, собранную в стороне, GCC
+				 *          складывал в стеке по полям и переносил чтениями шире
+				 *          записей, её наполнивших, а такое чтение на x86-64 ждёт
+				 *          завершения записей. Сборка набора у GCC выходила оттого
+				 *          медленнее прежней, тогда как у Clang, раскладывавшего
+				 *          запись по регистрам, - быстрее. Поля, дописанные через
+				 *          указание, ложатся на место сразу у всякого собирателя.
+				 *
+				 *          Количество записей читается однажды, до записи: запись
+				 *          инструкции ведётся и байтами, а байт вправе совпасть
+				 *          с полем набора, отчего чтение после неё собиратель
+				 *          обязан повторить.
+				 *
+				 * @param args параметры размещаемой записи набора
+				 * @return     указание на размещённую запись либо nullptr, если места
+				 *             под запись набор не получил; указание годно, покуда
+				 *             набор не растёт
+				 *
+				 * \~english
+				 * @brief Method of constructing a record at the end of the sequence
+				 *
+				 * @details A record is constructed by one of two paths. The fast one - there is
+				 *          room and the sequence owns it - costs one comparison and the write
+				 *          itself and is inlined into the caller. The slow one - a viewing
+				 *          sequence or one lacking room - is taken out into the method of
+				 *          expansion, which is forbidden from inlining. The condition of the fast
+				 *          path is one for both signs: a viewing sequence has zero room, which
+				 *          does not exceed the count.
+				 *
+				 *          The arrangement is introduced for building a program: every
+				 *          instruction of it is constructed here, and building the set of Grok
+				 *          patterns with the expressions of the benchmark stand constructs two
+				 *          hundred seventy thousand of them per round. The method of
+				 *          construction as a whole previously did not yield to inlining: the slow
+				 *          path made it large, and a call per instruction cost 8% of the time of
+				 *          the whole build. Inlining of the slow path is forbidden explicitly:
+				 *          Clang takes it out by itself, while GCC and LCC without the prohibition
+				 *          inlined it into the construction, and the latter grew large again.
+				 *
+				 *          The construction hands out a pointer to the record rather than taking
+				 *          the record assembled aside: a record assembled aside was put together
+				 *          by GCC on the stack field by field and moved by reads wider than the
+				 *          writes that filled it, and such a read on x86-64 waits for the writes
+				 *          to complete. The build of the set with GCC came out slower than before
+				 *          because of that, while with Clang, which laid the record out in registers,
+				 *          it came out faster. Fields written through the pointer land in place at
+				 *          once with every compiler.
+				 *
+				 *          The count of records is read once, before the write: the write of an
+				 *          instruction is done by bytes as well, and a byte may coincide with a field
+				 *          of the sequence, so the compiler is obliged to repeat a read made after it.
+				 *
+				 * @param args parameters of the record of the sequence to construct
+				 * @return     pointer to the constructed record or nullptr if the sequence did not
+				 *             obtain room for the record; the pointer stays valid as long as the
+				 *             sequence does not grow
+				 *
+				 * \~
+				 */
+				__AWH_INLINE__ T * emplace(Args &&... args) {
+					/**
+					 * Если места под запись нет либо набор обозревающий
+					 */
+					if(this->_capacity <= this->_count){
+						// Расширяем набор медленным путём
+						this->expand();
+						/**
+						 * Если размещения записей набора не достаёт
+						 */
+						if(this->_capacity <= this->_count)
+							// Выводим отсутствие размещённой записи
+							return nullptr;
+					}
+					// Получаем количество записей набора
+					const uint32_t count = this->_count;
+					// Получаем указание на место размещаемой записи
+					T * const record = (const_cast <T *> (this->_records) + count);
+					// Размещаем записю в конце набора
+					new (record) T(std::forward <Args> (args)...);
+					// Увеличиваем количество записей набора
+					this->_count = (count + 1);
+					// Выводим указание на размещённую запись
+					return record;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод добавления участка записей в конец набора
+				 *
+				 * @param records указание на начало добавляемых записей
+				 * @param count   количество добавляемых записей
+				 *
+				 * \~english
+				 * @brief Method of appending a span of records to the end of the sequence
+				 *
+				 * @param records pointer to the beginning of the records to append
+				 * @param count   number of records to append
+				 *
+				 * \~
+				 */
+				void append(const T * records, const size_t count) {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					/**
+					 * Если добавляемый участок записей пуст
+					 */
+					if(count == 0)
+						// Выходим из метода добавления участка записей
+						return;
+					// Размещаем записей набора
+					this->grow(static_cast <size_t> (this->_count) + count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < (static_cast <size_t> (this->_count) + count))
+						// Выходим из метода добавления участка записей
+						return;
+					// Переносим добавляемого участка записей
+					::memcpy((const_cast <T *> (this->_records) + this->_count), records, (count * sizeof(T)));
+					// Увеличиваем количество записей набора
+					this->_count = static_cast <uint32_t> (static_cast <size_t> (this->_count) + count);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод обращения набора обозревающего во владеющий
+				 *
+				 * \~english
+				 * @brief Method of turning a viewing sequence into an owning one
+				 *
+				 * \~
+				 */
+				void detach() noexcept {
+					/**
+					 * Если набор содержимым уже владеет
+					 */
+					if(this->_capacity > 0)
+						// Выходим из метода обращения набора
+						return;
+					// Получаем обозреваемый участок записи
+					const T * records = this->_records;
+					// Получаем количество записей обозреваемого участка
+					const size_t count = static_cast <size_t> (this->_count);
+					// Сбрасываем количество записей набора
+					this->_count = 0;
+					// Сбрасываем указани на начало записей набора
+					this->_records = nullptr;
+					// Размещаем записей набора
+					this->grow(count > 0 ? count : 1);
+					/**
+					 * Если размещение записей набора выполнено
+					 */
+					if((this->_capacity > 0) && (count > 0)){
+						// Переносим обозреваемого содержимого к себе
+						::memcpy(const_cast <T *> (this->_records), records, (count * sizeof(T)));
+						// Устанавливаем количество записей набора
+						this->_count = static_cast <uint32_t> (count);
+					}
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод предварительного размещения записей набора
+				 *
+				 * @param count количество размещаемых записей набора
+				 *
+				 * \~english
+				 * @brief Method of pre-allocating the records of the sequence
+				 *
+				 * @param count number of records of the sequence to allocate
+				 *
+				 * \~
+				 */
+				void reserve(const size_t count) {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					// Размещаем записей набора
+					this->grow(count);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод изменения количества записей набора
+				 *
+				 * @param count требуемое количество записей набора
+				 *
+				 * \~english
+				 * @brief Method of changing the number of records of the sequence
+				 *
+				 * @param count required number of records of the sequence
+				 *
+				 * \~
+				 */
+				void resize(const size_t count) {
+					// Обращаемся набор обозревающего во владеющий
+					this->detach();
+					/**
+					 * Если количество записей набора сокращается
+					 */
+					if(count <= static_cast <size_t> (this->_count)){
+						// Устанавливаем количество записей набора
+						this->_count = static_cast <uint32_t> (count);
+						// Выходим из метода изменения количества записей
+						return;
+					}
+					// Размещаем записей набора
+					this->grow(count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < count)
+						// Выходим из метода изменения количества записей
+						return;
+					/**
+					 * Размещаем добавляемых записей набора
+					 */
+					for(size_t i = static_cast <size_t> (this->_count); i < count; i++)
+						// Размещаем очередной записи набора
+						new (const_cast <T *> (this->_records) + i) T();
+					// Устанавливаем количество записей набора
+					this->_count = static_cast <uint32_t> (count);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод замещения содержимого набора повторением записи
+				 *
+				 * @param count  количество записей набора
+				 * @param record замещающая запись набора
+				 *
+				 * \~english
+				 * @brief Method of replacing the content of the sequence with a repeated record
+				 *
+				 * @param count  number of records of the sequence
+				 * @param record replacing record
+				 *
+				 * \~
+				 */
+				void assign(const size_t count, const T & record) {
+					// Очищаем набор записей
+					this->clear();
+					// Размещаем записей набора
+					this->grow(count);
+					/**
+					 * Если размещения записей набора не достаёт
+					 */
+					if(static_cast <size_t> (this->_capacity) < count)
+						// Выходим из метода замещения содержимого набора
+						return;
+					/**
+					 * Размещаем записей набора
+					 */
+					for(size_t i = 0; i < count; i++)
+						// Размещаем очередной записи набора
+						new (const_cast <T *> (this->_records) + i) T(record);
+					// Устанавливаем количество записей набора
+					this->_count = static_cast <uint32_t> (count);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод сброса набора записей с сохранением размещения
+				 *
+				 * @details Сброс отличается от очистки тем, что место, набором
+				 *          занятое, за ним остаётся: набор, вновь наполняемый,
+				 *          размещения не запрашивает, пока прежнего места ему
+				 *          достаёт. Заведён он ради сберегательной программы
+				 *          построителя, наполняемой при каждой компиляции.
+				 *
+				 * \~english
+				 * @brief Method of resetting the sequence keeping its allocation
+				 *
+				 * @details The reset differs from clearing in that the space occupied
+				 *          by the sequence stays with it: a sequence being filled anew
+				 *          requests no allocation while the former space suffices.
+				 *          It is introduced for the scratch program of the compiler,
+				 *          filled at every compilation.
+				 *
+				 * \~
+				 */
+				void reset() noexcept {
+					/**
+					 * \~russian
+					 * Если набор содержимым не владеет
+					 *
+					 * @details Набор обозревающий места своего не имеет вовсе,
+					 *          и удержать ему нечего: сброс его равен очистке.
+					 *
+					 * \~english
+					 * If the sequence does not own its content
+					 *
+					 * @details A viewing sequence has no room of its own at all,
+					 *          and there is nothing to retain: its reset amounts to clearing.
+					 *
+					 * \~
+					 */
+					if(this->_capacity == 0){
+						// Сбрасываем указани на начало записей набора
+						this->_records = nullptr;
+						// Сбрасываем количество записей набора
+						this->_count = 0;
+						// Выходим из метода сброса набора записей
+						return;
+					}
+					// Сбрасываем количество записей набора
+					this->_count = 0;
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Sequence() noexcept : _count(0), _capacity(0), _records(nullptr) {
+					/**
+					 * Набор пригоден лишь записям, перенос каких выполняется
+					 * переносом памяти: содержимое его переносится, размещается
+					 * и освобождается без вызова конструкторов копирования и
+					 * деструкторов.
+					 */
+					static_assert(is_trivially_destructible <T> ::value, "regex::Sequence: the destruction record type requires");
+					static_assert(is_trivially_copyable <T> ::value, "regex::Sequence: the type of record cannot be transferred via memory");
+				}
+				/**
+				 * \~russian
+				 * @brief Конструктор копирования
+				 *
+				 * @param sequence копируемый набор записей
+				 *
+				 * \~english
+				 * @brief Copy constructor
+				 *
+				 * @param sequence sequence of records to copy
+				 *
+				 * \~
+				 */
+				Sequence(const Sequence & sequence) noexcept :
+				 _count(sequence._count), _capacity(0), _records(sequence._records) {
+					/**
+					 * \~russian
+					 * @brief Если копируемый набор записей не содержит
+					 *
+					 * @details Набор пустой перенимается пустым же, а не обзором
+					 *          места копируемого: обзор такой указывал бы на место
+					 *          чужое, живущее лишь пока живёт набор копируемый,
+					 *          а обращение обзора во владение запрашивало бы место
+					 *          под ноль записей.
+					 *
+					 * \~english
+					 * @brief If the sequence being copied has no records
+					 *
+					 * @details An empty sequence is taken over as empty rather than by
+					 *          viewing the room of the source one: such a view would
+					 *          point at foreign room, which lives only as long as the
+					 *          source sequence lives, and turning the view into owning
+					 *          would request room for no entries.
+					 *
+					 * \~
+					 */
+					if(this->_count == 0){
+						// Сбрасываем указани на начало записей набора
+						this->_records = nullptr;
+						// Выходим из конструктора копирования
+						return;
+					}
+					/**
+					 * Если копируемый набор содержимым владеет
+					 */
+					if(sequence._capacity > 0)
+						// Обращаемся набор обозревающего во владеющий
+						this->detach();
+				}
+				/**
+				 * \~russian
+				 * @brief Оператор присваивания копированием
+				 *
+				 * @param sequence копируемый набор записей
+				 * @return         текущий набор записей
+				 *
+				 * \~english
+				 * @brief Copy assignment operator
+				 *
+				 * @param sequence sequence of records to copy
+				 * @return         the current sequence of records
+				 *
+				 * \~
+				 */
+				Sequence & operator = (const Sequence & sequence) noexcept {
+					/**
+					 * Если присваивание выполняется самому себе
+					 */
+					if(this == &sequence)
+						// Выводим текущий набор записей
+						return (* this);
+					// Очищаем набор записей
+					this->clear();
+					/**
+					 * \~russian
+					 * @brief Если копируемый набор записей не содержит
+					 *
+					 * @details Набор пустой перенимается пустым же, а не обзором
+					 *          места копируемого: обзор такой указывал бы на место
+					 *          чужое, живущее лишь пока живёт набор копируемый,
+					 *          а обращение обзора во владение запрашивало бы место
+					 *          под ноль записей.
+					 *
+					 * \~english
+					 * @brief If the sequence being copied has no records
+					 *
+					 * @details An empty sequence is taken over as empty rather than by
+					 *          viewing the room of the source one: such a view would
+					 *          point at foreign room, which lives only as long as the
+					 *          source sequence lives, and turning the view into owning
+					 *          would request room for no entries.
+					 *
+					 * \~
+					 */
+					if(sequence._count == 0)
+						// Выводим текущий набор записей
+						return (* this);
+					// Устанавливаем указани на начало записей набора
+					this->_records = sequence._records;
+					// Устанавливаем количество записей набора
+					this->_count = sequence._count;
+					/**
+					 * Если копируемый набор содержимым владеет
+					 */
+					if(sequence._capacity > 0)
+						// Обращаемся набор обозревающего во владеющий
+						this->detach();
+					// Выводим текущий набор записей
+					return (* this);
+				}
+			public:
+				/**
+				 * \~russian
+				 * @brief Деструктор
+				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
+				 */
+				~Sequence() noexcept {
+					// Очищаем набор записей
+					this->clear();
+				}
+		};
+		/**
+		 * \~russian
+		 * @brief Обзор класса символов программы
+		 *
+		 * @details Обзор выдаётся программой и владения наборами не принимает:
+		 *          он действителен, пока действительна сама программа.
+		 *
+		 * \~english
+		 * @brief View of a character class of the program
+		 *
+		 * @details The view is yielded by the program and takes no ownership of the sequences:
+		 *          it is valid as long as the program itself is valid.
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ ClassView {
+			// Флаг отрицания класса символов
+			bool negative;
+			// Обзор набора диапазонов кодовых значений символов
+			Span <range_t> ranges;
+			// Обзор набора ссылок на свойства Юникода
+			Span <property_t> properties;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit ClassView() noexcept;
+		} classview_t;
+		/**
+		 * \~russian
+		 * @brief Узел синтаксического дерева регулярного выражения
+		 *
+		 * @details Узлы хранятся в арене и связываются между собой индексами. Значение
+		 *          отдельных полей определяется типом узла: поля объединены в анонимное
+		 *          объединение для узлов, хранящих несовместимые между собой данные.
+		 *
+		 * \~english
+		 * @brief Node of the syntax tree of a regular expression
+		 *
+		 * @details The nodes are stored in an arena and are linked to each other by indices. The meaning
+		 *          of the individual fields is determined by the node type: the fields are combined into an anonymous
+		 *          union for the nodes that hold data incompatible with each other.
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Node {
+			// Тип узла синтаксического дерева
+			node_t type;
+			// Индекс следующего узла того же уровня вложенности
+			node_id_t next;
+			// Индекс первого дочернего узла в арене
+			node_id_t child;
+			// Набор режимов компиляции, действующих для данного узла
+			uint32_t flags;
+			// Смещение узла в тексте регулярного выражения
+			uint32_t offset;
+			/**
+			 * \~russian
+			 * @brief Данные узла, определяемые его типом
+			 *
+			 * \~english
+			 * @brief Node data determined by its type
+			 *
+			 * \~
+			 */
+			union {
+				/**
+				 * \~russian
+				 * @brief Данные узла одиночного символа
+				 *
+				 * \~english
+				 * @brief Data of a single character node
+				 *
+				 * \~
+				 */
+				struct {
+					// Кодовое значение символа
+					uint32_t code;
+				} literal;
+				/**
+				 * \~russian
+				 * @brief Данные узла последовательности символов
+				 *
+				 * \~english
+				 * @brief Data of a character sequence node
+				 *
+				 * \~
+				 */
+				struct {
+					// Смещение начала последовательности в хранилище строк
+					uint32_t offset;
+					// Длина последовательности в кодовых значениях
+					uint32_t length;
+				} string;
+				/**
+				 * \~russian
+				 * @brief Данные узла класса символов
+				 *
+				 * \~english
+				 * @brief Data of a character class node
+				 *
+				 * \~
+				 */
+				struct {
+					// Индекс класса символов в хранилище классов
+					uint32_t index;
+				} charclass;
+				/**
+				 * \~russian
+				 * @brief Данные узла привязки к позиции в тексте
+				 *
+				 * \~english
+				 * @brief Data of a text position anchor node
+				 *
+				 * \~
+				 */
+				struct {
+					// Тип привязки к позиции в тексте
+					anchor_t type;
+				} anchor;
+				/**
+				 * \~russian
+				 * @brief Данные узла повторения
+				 *
+				 * \~english
+				 * @brief Data of a repetition node
+				 *
+				 * \~
+				 */
+				struct {
+					// Наименьшее число повторений
+					uint32_t min;
+					// Наибольшее число повторений либо значение «UNBOUNDED»
+					uint32_t max;
+					// Режим жадности квантора повторения
+					greed_t greed;
+				} repeat;
+				/**
+				 * \~russian
+				 * @brief Данные узла группы
+				 *
+				 * \~english
+				 * @brief Data of a group node
+				 *
+				 * \~
+				 */
+				struct {
+					// Вид группы синтаксического дерева
+					group_t type;
+					// Номер захватывающей группы, отсчитываемый с единицы
+					uint32_t number;
+					// Индекс имени группы в хранилище имён
+					uint32_t name;
+				} group;
+				/**
+				 * \~russian
+				 * @brief Данные узла проверки окружения
+				 *
+				 * \~english
+				 * @brief Data of a lookaround node
+				 *
+				 * \~
+				 */
+				struct {
+					// Направление и знак проверки окружения
+					look_t type;
+					// Наименьшая длина проверяемой последовательности
+					uint32_t min;
+					// Наибольшая длина проверяемой последовательности
+					uint32_t max;
+				} look;
+				/**
+				 * \~russian
+				 * @brief Данные узла ссылки на захваченную группу
+				 *
+				 * \~english
+				 * @brief Data of a captured group reference node
+				 *
+				 * \~
+				 */
+				struct {
+					// Номер группы, отсчитываемый с единицы
+					uint32_t number;
+					// Индекс имени группы в хранилище имён
+					uint32_t name;
+				} backref;
+				/**
+				 * \~russian
+				 * @brief Данные узла глагола управления возвратом
+				 *
+				 * \~english
+				 * @brief Data of a backtracking control verb node
+				 *
+				 * \~
+				 */
+				struct {
+					// Вид глагола управления возвратом
+					control_t type;
+					// Смещение имени отметки в хранилище имён разбора
+					uint32_t offset;
+					// Длина имени отметки в октетах
+					uint32_t length;
+				} control;
+				/**
+				 * \~russian
+				 * @brief Данные узла рекурсивного вызова
+				 *
+				 * \~english
+				 * @brief Data of a recursive call node
+				 *
+				 * \~
+				 */
+				struct {
+					// Номер вызываемой группы либо нуль для вызова выражения целиком
+					uint32_t number;
+					// Индекс имени вызываемой группы в хранилище имён
+					uint32_t name;
+				} recurse;
+				/**
+				 * \~russian
+				 * @brief Данные узла условного выражения
+				 *
+				 * \~english
+				 * @brief Data of a conditional expression node
+				 *
+				 * \~
+				 */
+				struct {
+					// Вид условия условного выражения
+					condition_t type;
+					// Номер проверяемой группы, отсчитываемый с единицы
+					uint32_t number;
+					// Индекс имени проверяемой группы в хранилище имён
+					uint32_t name;
+				} condition;
+			};
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			constexpr Node() noexcept :
+			 type(node_t::EMPTY),
+			 next(INVALID_NODE), child(INVALID_NODE),
+			 flags(0), offset(0), literal{0} {}
+		} node_data_t;
+	};
+};
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include "../sys/macro/restore.hpp"

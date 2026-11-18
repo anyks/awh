@@ -1,0 +1,2543 @@
+/**
+ * @file storage.cpp
+ * @date 2026-08-04
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Файл реализации хранилища собранных регулярных выражений —
+ *        запись собранных выражений последовательностью байтов и восстановление
+ *        их из записи без повторного разбора и компиляции
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <ctime>
+#include <cstring>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../include/sys/log.hpp"
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <regex/storage.hpp>
+
+/**
+ * Если сборка выполняется для операционной системы семейства Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Подключаем заголовочные файлы Windows
+	 */
+	#include <windows.h>
+/**
+ * Если сборка выполняется для операционных систем семейства POSIX
+ */
+#else
+	/**
+	 * Подключаем заголовочные файлы POSIX
+	 */
+	#include <sys/utsname.h>
+#endif
+
+/**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Пространство имён вспомогательных функций
+ *
+ */
+namespace {
+	/**
+	 * @brief Наибольшее допустимое количество выражений записи
+	 *
+	 */
+	constexpr uint32_t MAX_EXPRESSIONS = 0x400000;
+	/**
+	 * @brief Наибольший допустимый размер записи хранилища
+	 *
+	 * @details Размер ограничен затем, чтобы запись испорченная, объявляющая
+	 *          количество несообразное, не привела к попытке размещения памяти
+	 *          объёмом непомерным до чтения самого содержимого.
+	 *
+	 */
+	constexpr size_t MAX_STORAGE = (1024ull * 1024ull * 1024ull);
+};
+
+/**
+ * @brief Пространство имён вспомогательных функций записи и чтения
+ *
+ */
+namespace {
+
+	/**
+	 * @brief Функция записи восьмиразрядного числа
+	 *
+	 * @param value  записываемое число
+	 * @param result запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void write8(const uint8_t value, string & result) noexcept {
+		// Записываем числ
+		result.push_back(static_cast <char> (value));
+	}
+	/**
+	 * @brief Функция записи шестнадцатиразрядного числа
+	 *
+	 * @param value  записываемое число
+	 * @param result запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void write16(const uint16_t value, string & result) noexcept {
+		/**
+		 * Записываем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 16; shift += 8)
+			// Записываем очередного байта числа
+			result.push_back(static_cast <char> ((value >> shift) & 0xFF));
+	}
+	/**
+	 * @brief Функция записи тридцатидвухразрядного числа
+	 *
+	 * @details Разрядность эта хранилищем сейчас не звучит: числа его укладываются
+	 *          в длину переменную, а разрядности постоянные служат заголовку.
+	 *          Из семейства она всё же не изымается - восемь, шестнадцать,
+	 *          тридцать два и шестьдесят четыре разряда стоят набором полным,
+	 *          и изъятие середины его заставило бы заводить её заново при
+	 *          первой же смене состава заголовка.
+	 *
+	 * @param value  записываемое число
+	 * @param result запись хранилища
+	 *
+	 */
+	[[maybe_unused]] static __AWH_INLINE__ void write32(const uint32_t value, string & result) noexcept {
+		/**
+		 * Записываем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 32; shift += 8)
+			// Записываем очередного байта числа
+			result.push_back(static_cast <char> ((value >> shift) & 0xFF));
+	}
+	/**
+	 * @brief Функция записи шестидесятичетырёхразрядного числа
+	 *
+	 * @param value  записываемое число
+	 * @param result запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void write64(const uint64_t value, string & result) noexcept {
+		/**
+		 * Записываем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 64; shift += 8)
+			// Записываем очередного байта числа
+			result.push_back(static_cast <char> ((value >> shift) & 0xFF));
+	}
+	/**
+	 * @brief Функция записи числа переменной длины
+	 *
+	 * @param value  записываемое число
+	 * @param result запись хранилища
+	 *
+	 * @details Число записывается семью разрядами на байт, старший разряд байта
+	 *          отмечает продолжение. Значения малые - а таковы почти все адреса,
+	 *          номера и границы диапазонов - занимают один-два байта взамен
+	 *          четырёх, отчего запись сокращается втрое, а чтение ускоряется
+	 *          соразмерно объёму прочитанного.
+	 *
+	 */
+	static __AWH_INLINE__ void writeVar(uint32_t value, string & result) noexcept {
+		/**
+		 * Записываем числ семиразрядными долями
+		 */
+		while(value >= 0x80){
+			// Записываем очередной доли числа с отметкой продолжения
+			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
+			// Сдвигаем числ к следующей доле
+			value >>= 7;
+		}
+		// Записываем последней доли числа
+		result.push_back(static_cast <char> (value));
+	}
+	/**
+	 * @brief Функция чтения числа переменной длины
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	static __AWH_INLINE__ bool readVar(string_view data, size_t & offset, uint32_t & value) noexcept {
+		// Сбрасываем прочитанного числа
+		value = 0;
+		/**
+		 * Читаем числ семиразрядными долями
+		 */
+		for(uint8_t shift = 0; shift < 35; shift += 7){
+			/**
+			 * Если запись оборвана до завершения числа
+			 */
+			if(offset >= data.size())
+				// Чтение числа: отказ
+				return false;
+			// Получаем очередной байт числа
+			const uint8_t letter = static_cast <uint8_t> (data[offset++]);
+			/**
+			 * Если доля числа разрядность его превышает
+			 */
+			if((shift == 28) && ((letter & 0x7F) > 0x0F))
+				// Чтение числа: отказ
+				return false;
+			// Добавляем долю числа
+			value |= (static_cast <uint32_t> (letter & 0x7F) << shift);
+			/**
+			 * Если байт продолжения не отмечает
+			 */
+			if((letter & 0x80) == 0)
+				// Чтение числа: успех
+				return true;
+		}
+		// Чтение числа: отказ
+		return false;
+	}
+	/**
+	 * @brief Функция записи последовательности символов
+	 *
+	 * @param value  записываемая последовательность
+	 * @param result запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void writeText(const string & value, string & result) noexcept {
+		// Записываем длину последовательности
+		writeVar(static_cast <uint32_t> (value.size()), result);
+		// Записываем содержимого последовательности
+		result.append(value);
+	}
+	/**
+	 * @brief Функция чтения восьмиразрядного числа
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	static __AWH_INLINE__ bool read8(string_view data, size_t & offset, uint8_t & value) noexcept {
+		/**
+		 * Если запись оборвана до завершения числа
+		 */
+		if((offset + 1) > data.size())
+			// Чтение числа: отказ
+			return false;
+		// Читаем числ
+		value = static_cast <uint8_t> (data[offset++]);
+		// Чтение числа: успех
+		return true;
+	}
+	/**
+	 * @brief Функция чтения шестнадцатиразрядного числа
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	static __AWH_INLINE__ bool read16(string_view data, size_t & offset, uint16_t & value) noexcept {
+		/**
+		 * Если запись оборвана до завершения числа
+		 */
+		if((offset + 2) > data.size())
+			// Чтение числа: отказ
+			return false;
+		// Сбрасываем прочитанного числа
+		value = 0;
+		/**
+		 * Читаем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 16; shift += 8)
+			// Читаем очередного байта числа
+			value |= (static_cast <uint16_t> (static_cast <uint8_t> (data[offset++])) << shift);
+		// Чтение числа: успех
+		return true;
+	}
+	/**
+	 * @brief Функция чтения тридцатидвухразрядного числа
+	 *
+	 * @details Разрядность эта хранилищем сейчас не звучит - см. write32.
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	[[maybe_unused]] static __AWH_INLINE__ bool read32(string_view data, size_t & offset, uint32_t & value) noexcept {
+		/**
+		 * Если запись оборвана до завершения числа
+		 */
+		if((offset + 4) > data.size())
+			// Чтение числа: отказ
+			return false;
+		// Сбрасываем прочитанного числа
+		value = 0;
+		/**
+		 * Читаем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 32; shift += 8)
+			// Читаем очередного байта числа
+			value |= (static_cast <uint32_t> (static_cast <uint8_t> (data[offset++])) << shift);
+		// Чтение числа: успех
+		return true;
+	}
+	/**
+	 * @brief Функция чтения шестидесятичетырёхразрядного числа
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	static __AWH_INLINE__ bool read64(string_view data, size_t & offset, uint64_t & value) noexcept {
+		/**
+		 * Если запись оборвана до завершения числа
+		 */
+		if((offset + 8) > data.size())
+			// Чтение числа: отказ
+			return false;
+		// Сбрасываем прочитанного числа
+		value = 0;
+		/**
+		 * Читаем числ байтами от младшего
+		 */
+		for(uint8_t shift = 0; shift < 64; shift += 8)
+			// Читаем очередного байта числа
+			value |= (static_cast <uint64_t> (static_cast <uint8_t> (data[offset++])) << shift);
+		// Чтение числа: успех
+		return true;
+	}
+	/**
+	 * @brief Функция чтения последовательности символов
+	 *
+	 * @param data   запись хранилища
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанная последовательность
+	 * @return       результат чтения последовательности
+	 *
+	 */
+	static __AWH_INLINE__ bool readText(string_view data, size_t & offset, string & value) noexcept {
+		// Длина прочитанной последовательности
+		uint32_t length = 0;
+		/**
+		 * Если чтение длины последовательности не выполнено
+		 */
+		if(!readVar(data, offset, length))
+			// Чтение последовательности: отказ
+			return false;
+		/**
+		 * Если запись оборвана до завершения последовательности
+		 */
+		if((offset + static_cast <size_t> (length)) > data.size())
+			// Чтение последовательности: отказ
+			return false;
+		// Читаем содержимого последовательности
+		value.assign(data.substr(offset, length));
+		// Переносим позицию чтения записи
+		offset += static_cast <size_t> (length);
+		// Чтение последовательности: успех
+		return true;
+	}
+	/**
+	 * @brief Функция опознания устройства машины
+	 *
+	 * @return опознание устройства машины
+	 *
+	 * @details Опознание собирается из порядка байтов машины и размеров
+	 *          структур, образом памяти записываемых. Запись, порождённая
+	 *          машиной устройства иного, прочитана была бы неверно, поэтому
+	 *          восстановление сличает опознание со своим.
+	 *
+	 */
+	static __AWH_INLINE__ uint16_t platform() noexcept {
+		// Проба порядка байтов машины
+		const uint32_t probe = 0x01020304;
+		// Собираемое опознание устройства машины
+		uint16_t result = static_cast <uint16_t> ((* reinterpret_cast <const uint8_t *> (&probe)) & 0x0F);
+		// Добавляем размер инструкции программы
+		result = static_cast <uint16_t> (result | (static_cast <uint16_t> (sizeof(awh::regex::instruction_t)) << 4));
+		// Добавляем размер диапазона кодовых значений
+		result = static_cast <uint16_t> (result ^ (static_cast <uint16_t> (sizeof(awh::regex::range_t)) << 10));
+		// Добавляем размер ссылки на класс символов
+		result = static_cast <uint16_t> (result ^ (static_cast <uint16_t> (sizeof(awh::regex::classref_t)) << 12));
+		// Добавляем размер ссылки на свойство Юникода
+		result = static_cast <uint16_t> (result ^ (static_cast <uint16_t> (sizeof(awh::regex::property_t)) << 14));
+		// Выводим опознание устройства машины
+		return result;
+	}
+	/**
+	 * @brief Функция опознания машины, запись породившей
+	 *
+	 * @return опознание машины
+	 *
+	 * @details Опознание собирается свойствами системы и оборудования, какие
+	 *          доступны без особых прав на всех системах набора: именем узла,
+	 *          именем и изданием системы, именем набора команд. Опознаётся им
+	 *          машина «такая же», а не «та самая»: серийные номера платы и
+	 *          процессора добывались бы по-разному на восьми семействах систем,
+	 *          а кое-где требовали бы прав, отчего перенос модуля обошёлся бы
+	 *          дороже приобретаемой строгости.
+	 *
+	 *          Опознание сличается восстановлением, ибо запись несёт машинный
+	 *          код, машине порождения принадлежащий: код тот перемещаем внутри
+	 *          машины, но не между машинами, и годен лишь набору команд, для
+	 *          какого порождён.
+	 *
+	 */
+	static __AWH_INLINE__ uint64_t hardware() noexcept {
+		// Собираемое опознание машины
+		uint64_t result = 0xCBF29CE484222325ull;
+		/**
+		 * @brief Функция примешивания последовательности к опознанию
+		 *
+		 * @param value примешиваемая последовательность
+		 *
+		 */
+		auto mixing = [&result](const char * value) noexcept -> void {
+			/**
+			 * Если примешиваемая последовательность задана
+			 */
+			if(value != nullptr){
+				/**
+				 * Перебираем примешиваемой последовательности
+				 */
+				for(size_t i = 0; value[i] != '\0'; i++){
+					// Смешиваем очередного байта последовательности
+					result ^= static_cast <uint64_t> (static_cast <uint8_t> (value[i]));
+					// Умножаем накопленного опознания
+					result *= 0x100000001B3ull;
+				}
+			}
+			// Разделяем примешиваемых последовательностей
+			result *= 0x9E3779B97F4A7C15ull;
+		};
+		/**
+		 * Если сборка выполняется для операционной системы семейства Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Имя узла машины
+			char node[MAX_COMPUTERNAME_LENGTH + 1];
+			// Размер имени узла машины
+			DWORD size = static_cast <DWORD> (sizeof(node));
+			/**
+			 * Если имя узла машины получено
+			 */
+			if(::GetComputerNameA(node, &size))
+				// Примешиваем именю узла машины
+				mixing(node);
+			// Примешиваем опознани системы
+			mixing("Windows");
+		/**
+		 * Если сборка выполняется для операционных систем семейства POSIX
+		 */
+		#else
+			// Свойства системы машины
+			struct utsname system;
+			/**
+			 * Если свойства системы машины получены
+			 */
+			if(::uname(&system) == 0){
+				// Примешиваем именю узла машины
+				mixing(system.nodename);
+				// Примешиваем именю системы машины
+				mixing(system.sysname);
+				// Примешиваем издани системы машины
+				mixing(system.release);
+				// Примешиваем именю набора команд машины
+				mixing(system.machine);
+			}
+		#endif
+		// Выводим опознание машины
+		return result;
+	}
+	/**
+	 * @brief Функция выравнивания записи по границе восьми байтов
+	 *
+	 * @param result запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void align(string & result) noexcept {
+		/**
+		 * Добавляем байтов заполнения до границы
+		 */
+		while((result.size() % 8) != 0)
+			// Добавляем байт заполнения
+			result.push_back('\0');
+	}
+	/**
+	 * @brief Шаблон функции записи набора образом памяти
+	 *
+	 * @tparam T тип записи набора
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция записи набора образом памяти
+	 *
+	 * @details Набор пишется образом памяти затем, чтобы восстановление его
+	 *          свелось к установке обзора на участок записи, минуя размещение
+	 *          и перенос. Участок выравнивается по границе восьми байтов:
+	 *          обзор выдаёт записи типом, а обращение к ним по указанию
+	 *          невыровненному допустимо не всякой машиной.
+	 *
+	 * @param records записываемый набор
+	 * @param result  запись хранилища
+	 *
+	 */
+	static __AWH_INLINE__ void writeRegion(const awh::regex::Sequence <T> & records, string & result) noexcept {
+		// Записываем количество записей набора
+		writeVar(static_cast <uint32_t> (records.size()), result);
+		// Выравниваем записю по границе восьми байтов
+		align(result);
+		/**
+		 * Если набор записей не пуст
+		 */
+		if(!records.empty())
+			// Записываем набор образом памяти
+			result.append(reinterpret_cast <const char *> (records.data()), (records.size() * sizeof(T)));
+	}
+	/**
+	 * @brief Шаблон функции восстановления набора из образа памяти
+	 *
+	 * @tparam T тип записи набора
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция восстановления набора из образа памяти
+	 *
+	 * @details Набор восстанавливается обзором участка записи, если участок
+	 *          выровнен по границе, требуемой типом записи. Выравнивание
+	 *          соблюдается записью, но запись приходит извне и начало её
+	 *          в памяти границе отвечать не обязано, поэтому невыровненный
+	 *          участок переносится в собственное содержимое набора.
+	 *
+	 * @param  data    запись хранилища
+	 * @param  offset  позиция чтения записи
+	 * @param  limit   наибольшее допустимое количество записей набора
+	 * @param  records восстанавливаемый набор
+	 * @return         результат восстановления набора
+	 *
+	 */
+	static __AWH_INLINE__ bool readRegion(string_view data, size_t & offset, const size_t limit, awh::regex::Sequence <T> & records) noexcept {
+		// Количество записей восстанавливаемого набора
+		uint32_t count = 0;
+		/**
+		 * Если чтение количества записей набора не выполнено
+		 */
+		if(!readVar(data, offset, count))
+			// Восстановление набора: отказ
+			return false;
+		/**
+		 * Если количество записей набора превышает допустимое
+		 */
+		if(static_cast <size_t> (count) > limit)
+			// Восстановление набора: отказ
+			return false;
+		/**
+		 * Пропускаем байтов заполнения до границы восьми байтов
+		 */
+		while((offset % 8) != 0){
+			/**
+			 * Если запись оборвана до границы выравнивания
+			 */
+			if(offset >= data.size())
+				// Восстановление набора: отказ
+				return false;
+			// Переходим к следующему байту записи
+			offset++;
+		}
+		// Получаем размер участка записи, занимаемого набором
+		const size_t size = (static_cast <size_t> (count) * sizeof(T));
+		/**
+		 * Если участок записи за её пределы выходит
+		 */
+		if(size > (data.size() - offset))
+			// Восстановление набора: отказ
+			return false;
+		// Получаем указание на начало участка записи
+		const char * region = (data.data() + offset);
+		/**
+		 * Если участок записи границе, требуемой типом записи, отвечает
+		 */
+		if((reinterpret_cast <uintptr_t> (region) % alignof(T)) == 0)
+			// Устанавливаем обзор участка записи
+			records.attach(reinterpret_cast <const T *> (region), static_cast <size_t> (count));
+		/**
+		 * Если участок записи границе не отвечает
+		 */
+		else {
+			// Очищаем восстанавливаемого набора
+			records.clear();
+			// Размещаем записей набора
+			records.resize(static_cast <size_t> (count));
+			/**
+			 * Если набор записей не пуст
+			 */
+			if(count > 0)
+				// Переносим участок записи в содержимое набора
+				::memcpy(&records.at(0), region, size);
+		}
+		// Переходим за участок записи, занимаемый набором
+		offset += size;
+		// Восстановление набора: успех
+		return true;
+	}
+	/**
+	 * @brief Функция вычисления контрольной суммы записи
+	 *
+	 * @param data запись хранилища
+	 * @return     вычисленная контрольная сумма записи
+	 *
+	 * @details Сумма служит обнаружению порчи записи, а не защите от подмены
+	 *          намеренной: восстановление проверяет содержимое поля за полем и
+	 *          на сумму в этом не полагается.
+	 *
+	 */
+	static __AWH_INLINE__ uint64_t checksum(string_view data) noexcept {
+		// Получаем позицию чтения записи
+		size_t offset = 0;
+		// Накопленная контрольная сумма записи
+		uint64_t result = 0xCBF29CE484222325ull;
+		/**
+		 * Перебираем записю восьмибайтовыми долями
+		 *
+		 * @details Сумма считается словами, а не байтами: запись достигает
+		 *          мегабайтов, и побайтовый обход её обходился дороже разбора
+		 *          всего содержимого. Доли собираются из байтов явно, а не
+		 *          переносом памяти, дабы значение суммы не зависело от порядка
+		 *          байтов машины и запись оставалась переносимой.
+		 *
+		 */
+		for(; (offset + 8) <= data.size(); offset += 8){
+			// Собираемая доля записи
+			uint64_t block = 0;
+			/**
+			 * Собираем долю записи байтами от младшего
+			 */
+			for(uint8_t shift = 0; shift < 64; shift += 8)
+				// Добавляем очередного байта доли
+				block |= (static_cast <uint64_t> (static_cast <uint8_t> (data[offset + (shift >> 3)])) << shift);
+			// Смешиваем долю записи
+			result ^= block;
+			// Умножаем накопленной суммы
+			result *= 0x100000001B3ull;
+			// Перемешиваем накопленной суммы
+			result ^= (result >> 29);
+		}
+		/**
+		 * Перебираем остатк записи побайтно
+		 */
+		for(; offset < data.size(); offset++){
+			// Смешиваем очередного байта записи
+			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
+			// Умножаем накопленной суммы
+			result *= 0x100000001B3ull;
+		}
+		// Выводим вычисленную контрольную сумму записи
+		return result;
+	}
+};
+
+/**
+ * @brief Метод записи программы регулярного выражения
+ *
+ * @param program записываемая программа
+ * @param result  запись хранилища
+ *
+ */
+void awh::regex::Storage::save(const program_t & program, string & result) const noexcept {
+	// Записываем опознани программы
+	write64(program.id, result);
+	// Записываем количество захватывающих групп
+	writeVar(program.captures, result);
+	// Записываем количество ячеек состояния
+	writeVar(program.cells, result);
+	// Записываем набор режимов компиляции
+	writeVar(program.flags, result);
+	// Записываем предел шагов сопоставления выражения
+	writeVar(program.steps, result);
+	// Записываем предел глубины рекурсивных вызовов выражения
+	writeVar(program.depth, result);
+	// Записываем предел объёма памяти сопоставления выражения
+	writeVar(program.heap, result);
+	// Записываем соглашени о переводе строки выражения
+	write8(static_cast <uint8_t> (program.newline), result);
+	// Записываем номер ячейки отметки последней
+	writeVar(program.marker, result);
+	// Записываем признаков программы
+	write8(static_cast <uint8_t> (program.plain ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.sweeping ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.anchored ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.startline ? 1 : 0), result);
+	// Записываем последовательностю символов выражения
+	writeText(program.text, result);
+	// Записываем признаков предварительного отбора позиций
+	write8(static_cast <uint8_t> (program.prefilter.active ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.prefilter.utf ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.prefilter.unique ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.prefilter.letter), result);
+	/**
+	 * Перебираем набор допустимых начальных байтов
+	 *
+	 * @details Набор пишется битовой картой, а не байтом на признак: признаков
+	 *          в нём двести пятьдесят шесть на каждую программу, и запись их
+	 *          порознь обходилась восьмикратно дороже как местом, так и
+	 *          временем чтения - на каждый признак приходилась своя проверка
+	 *          границ записи.
+	 *
+	 */
+	for(size_t i = 0; i < 256; i += 8){
+		// Собираемая доля битовой карты
+		uint8_t block = 0;
+		/**
+		 * Собираем долю битовой карты
+		 */
+		for(uint8_t bit = 0; bit < 8; bit++)
+			// Устанавливаем признак допустимости байта
+			block |= (program.prefilter.bytes[i + bit] ? static_cast <uint8_t> (1 << bit) : 0);
+		// Записываем долю битовой карты
+		write8(block, result);
+	}
+	// Записываем литерала, присутствующего в любом совпадении
+	writeText(program.prefilter.literal, result);
+	// Записываем последовательностю начала любого совпадения
+	writeText(program.prefilter.leading, result);
+	/**
+	 * Записываем альтернативных ведущих литералов
+	 *
+	 * @details Альтернативы пишутся только при непустом «alts»: для одиночного
+	 *          ведущего литерала и пустого «alts» хранилище на диске то же, что
+	 *          прежде. Количество альтернатив ограничено четырьмя, ибо запись
+	 *          SIMD-пары более четырёх байт в первом проходе цикла не закрывает.
+	 *
+	 */
+	writeVar(static_cast <uint32_t> (program.prefilter.alts.size()), result);
+	/**
+	 * @brief Цикл записи альтернатив просеивания
+	 *
+	 */
+	for(const auto & alt : program.prefilter.alts)
+		// Записываем литерал альтернативы
+		writeText(alt, result);
+	// Записываем общего первого байта альтернатив
+	write8(static_cast <uint8_t> (program.prefilter.anchor), result);
+	/**
+	 * Записываем удалени обязательного литерала от начала совпадения
+	 *
+	 * @details Удаление вычисляется разбором синтаксического дерева, какого
+	 *          запись не несёт, отчего восстановить его по записи иначе
+	 *          как чтением нельзя. Отсутствие же его обратило бы отбор
+	 *          позиций по литералу в отбор по удалению нулевому, то есть
+	 *          отвергло бы совпадения, литералом не начинаемые.
+	 *
+	 */
+	write64(static_cast <uint64_t> (program.prefilter.distance), result);
+	// Записываем набор инструкций программы образом памяти
+	writeRegion(program.instructions, result);
+	// Записываем хранилищ ссылок на классы символов образом памяти
+	writeRegion(program.classes, result);
+	// Записываем сплошного набора диапазонов образом памяти
+	writeRegion(program.ranges, result);
+	// Записываем сплошного набора свойств Юникода образом памяти
+	writeRegion(program.properties, result);
+	// Записываем хранилищ последовательностей символов образом памяти
+	writeRegion(program.strings, result);
+	// Записываем хранилищ имён отметок глаголов управления
+	writeRegion(program.markers, result);
+}
+/**
+ * @brief Метод восстановления программы регулярного выражения
+ *
+ * @param data    запись хранилища
+ * @param offset  позиция чтения записи
+ * @param program восстанавливаемая программа
+ * @return        результат восстановления программы
+ *
+ */
+bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & program) const noexcept {
+	// Очищаем восстанавливаемой программы
+	program.clear();
+	// Признак программы, читаемый записью
+	uint8_t flag = 0;
+	/**
+	 * Если чтение полей программы не выполнено
+	 */
+	if(!read64(data, offset, program.id) ||
+	   !readVar(data, offset, program.captures) ||
+	   !readVar(data, offset, program.cells) ||
+	   !readVar(data, offset, program.flags) ||
+	   !readVar(data, offset, program.steps) ||
+	   !readVar(data, offset, program.depth) ||
+	   !readVar(data, offset, program.heap)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Соглашение о переводе строки, читаемое записью
+	uint8_t convention = 0;
+	/**
+	 * Если чтение соглашения о переводе строки не выполнено
+	 */
+	if(!read8(data, offset, convention)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если соглашение о переводе строки набором не заведено
+	 */
+	if(convention > static_cast <uint8_t> (newline_t::ANYCRLF)){
+		// Устанавливаем ошибку неверного устройства записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Устанавливаем соглашени о переводе строки выражения
+	program.newline = static_cast <newline_t> (convention);
+	/**
+	 * Если чтение номера ячейки отметки последней не выполнено
+	 */
+	if(!readVar(data, offset, program.marker)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Читаем признаков программы
+	 */
+	for(uint8_t pass = 0; pass < 4; pass++){
+		/**
+		 * Если чтение очередного признака программы не выполнено
+		 */
+		if(!read8(data, offset, flag)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление программы: отказ
+			return false;
+		}
+		/**
+		 * Определяем читаемый признак программы
+		 */
+		switch(pass){
+			// Устанавливаем признак выражения, сопоставляемого литералом
+			case 0: program.plain = (flag != 0); break;
+			// Устанавливаем признак прохода текста единственной попыткой
+			case 1: program.sweeping = (flag != 0); break;
+			// Устанавливаем признак привязки к позиции начала поиска
+			case 2: program.anchored = (flag != 0); break;
+			// Устанавливаем признак привязки к началу строки
+			case 3: program.startline = (flag != 0); break;
+		}
+	}
+	/**
+	 * Если чтение последовательности символов выражения не выполнено
+	 */
+	if(!readText(data, offset, program.text)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Читаем признаков предварительного отбора позиций
+	 */
+	for(uint8_t pass = 0; pass < 4; pass++){
+		/**
+		 * Если чтение очередного признака отбора позиций не выполнено
+		 */
+		if(!read8(data, offset, flag)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление программы: отказ
+			return false;
+		}
+		/**
+		 * Определяем читаемый признак предварительного отбора позиций
+		 */
+		switch(pass){
+			// Устанавливаем признак действия отбора позиций
+			case 0: program.prefilter.active = (flag != 0); break;
+			// Устанавливаем признак разбора текста как UTF-8
+			case 1: program.prefilter.utf = (flag != 0); break;
+			// Устанавливаем признак единственного начального байта
+			case 2: program.prefilter.unique = (flag != 0); break;
+			// Устанавливаем единственного начального байта
+			case 3: program.prefilter.letter = flag; break;
+		}
+	}
+	/**
+	 * Читаем битовой карты допустимых начальных байтов
+	 */
+	for(size_t i = 0; i < 256; i += 8){
+		// Читаемая доля битовой карты
+		uint8_t block = 0;
+		/**
+		 * Если чтение доли битовой карты не выполнено
+		 */
+		if(!read8(data, offset, block)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление программы: отказ
+			return false;
+		}
+		/**
+		 * Разбираем долю битовой карты
+		 */
+		for(uint8_t bit = 0; bit < 8; bit++)
+			// Устанавливаем признак допустимости байта
+			program.prefilter.bytes[i + bit] = (((block >> bit) & 0x01) != 0);
+	}
+	/**
+	 * Если чтение последовательностей предварительного отбора не выполнено
+	 */
+	if(!readText(data, offset, program.prefilter.literal) ||
+	   !readText(data, offset, program.prefilter.leading)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Инициализируем количество найденных альтернатив
+	uint32_t altCount = 0;
+	/**
+	 * Читаем альтернативных ведущих литералов
+	 *
+	 * @details Пустое количество альтернатив оставляет «alts» пустым —
+	 *          запись прежней версии формата совместима снизу вверх. Содержимое
+	 *          «anchor» при пустых «alts» не имеет значения, читается и
+	 *          игнорируется ради выравнивания формата.
+	 *
+	 */
+	if(!readVar(data, offset, altCount)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если альтернатив больше допустимого
+	 */
+	if(altCount > regex::SPARSE){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Резервируем мест под альтернативы
+	program.prefilter.alts.reserve(altCount);
+	/**
+	 * Читаем альтернатив
+	 */
+	for(uint32_t i = 0; i < altCount; i++){
+		// Создаём запись очередной альтернативы
+		string alt;
+		/**
+		 * Если чтение литерала альтернативы не выполнено
+		 */
+		if(!readText(data, offset, alt)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление программы: отказ
+			return false;
+		}
+		// Добавляем альтернативу в набор
+		program.prefilter.alts.push_back(alt);
+	}
+	// Инициируем значение якоря
+	uint8_t anchor = 0;
+	/**
+	 * Читаем общего первого байта альтернатив
+	 */
+	if(!read8(data, offset, anchor)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Устанавливаем общий первый байт альтернатив
+	program.prefilter.anchor = static_cast <char> (anchor);
+	// Удаление обязательного литерала от начала совпадения
+	uint64_t distance = 0;
+	/**
+	 * Если чтение удаления обязательного литерала не выполнено
+	 */
+	if(!read64(data, offset, distance)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Устанавливаем удалени обязательного литерала
+	program.prefilter.distance = static_cast <size_t> (distance);
+	/**
+	 * Если восстановление набора инструкций программы не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_PROGRAM, program.instructions)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если восстановление хранилища ссылок на классы символов не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_PROGRAM, program.classes)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если восстановление сплошного набора диапазонов не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_STORAGE, program.ranges)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если восстановление сплошного набора свойств Юникода не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_STORAGE, program.properties)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если восстановление хранилища последовательностей символов не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_STORAGE, program.strings)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если восстановление хранилища имён отметок не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_STORAGE, program.markers)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление программы: отказ
+		return false;
+	}
+	/**
+	 * Если правильность восстановленной программы не подтверждена
+	 *
+	 * @details Проверка эта - единственный заслон от записи, нарочно
+	 *          подделанной: контрольная сумма ловит порчу случайную, но
+	 *          подделыватель считает её заново. Наборы программы обозревают
+	 *          запись прямо на месте, а адреса переходов, указания на классы
+	 *          символов и участки сплошных наборов употребляются исполнением
+	 *          без проверки границ, отчего запись с указаниями наружу вывела
+	 *          бы чтение за пределы её самой.
+	 *
+	 */
+	if(!this->verify(program)){
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Восстановление программы: отказ
+		return false;
+	}
+	// Восстановление программы: успех
+	return true;
+}
+/**
+ * @brief Метод проверки правильности программы регулярного выражения
+ *
+ * @param program проверяемая программа
+ * @return        результат проверки правильности программы
+ *
+ */
+bool awh::regex::Storage::verify(const program_t & program) const noexcept {
+	// Получаем количество инструкций программы
+	const size_t count = program.instructions.size();
+	/**
+	 * @brief Проверка принадлежности адреса программе
+	 *
+	 * @param address проверяемый адрес инструкции
+	 * @return        результат проверки принадлежности адреса программе
+	 *
+	 */
+	auto inside = [&](const address_t address) noexcept -> bool {
+		// Проверка принадлежности адреса программе
+		return ((address == INVALID_ADDRESS) || (static_cast <size_t> (address) < count));
+	};
+	/**
+	 * Перебираем набор инструкций программы
+	 */
+	for(size_t index = 0; index < program.instructions.size(); index++){
+		// Получаем очередное указание проверяемой программы
+		const auto & instruction = program.instructions[index];
+		/**
+		 * Если длина ряда одинаковых инструкций несообразна
+		 *
+		 * @details Пометка ряда велит исполнению с возвратом поглотить столько копий
+		 *          инструкции разом и перешагнуть через них счётчиком инструкций.
+		 *          Запись поддельная увела бы счётчик за пределы программы, а пометка,
+		 *          копиям не отвечающая, заставила бы перешагнуть через инструкции
+		 *          иные - совпадение пропало бы молча. Нуль же означал бы ряд пустой,
+		 *          счётчика инструкций не двигающий вовсе.
+		 *
+		 *          Проверяется лишь звено ближайшее, а не ряд целиком: пометка всякой
+		 *          копии есть пометка следующей, единицей увеличенная, отчего проверка
+		 *          соседа по цепочке ряд целиком и выводит, обходясь одним проходом
+		 *          по программе взамен прохода по каждому ряду.
+		 *
+		 */
+		if(instruction.repeat != 1){
+			/**
+			 * Если ряд пуст либо за пределы программы выходит
+			 */
+			if((instruction.repeat == 0) || ((index + 1) >= count))
+				// Проверка правильности программы: отказ
+				return false;
+			// Получаем инструкцию, за разбираемой следующую
+			const auto & next = program.instructions[index + 1];
+			/**
+			 * Если инструкции ряда не одинаковы либо длина ряда не убывает единицей
+			 */
+			if(!identical(instruction, next) || (next.repeat != static_cast <uint16_t> (instruction.repeat - 1)))
+				// Проверка правильности программы: отказ
+				return false;
+		}
+		/**
+		 * Определяем код операции инструкции программы
+		 */
+		switch(static_cast <uint8_t> (instruction.type)){
+			/**
+			 * Если инструкция сопоставляет одиночный символ
+			 */
+			case static_cast <uint8_t> (opcode_t::CHAR): {
+				// Получаем длину литерала, с инструкции начинающегося
+				const size_t length = static_cast <size_t> (instruction.letter.length);
+				/**
+				 * Если инструкция литерала не несёт
+				 *
+				 * @details Отсутствие пометки поведения не меняет: литерал
+				 *          проходится тогда по одной инструкции.
+				 *
+				 */
+				if(length == 0)
+					// Прекращаем проверку инструкции
+					break;
+				/**
+				 * Если пометка литерала несообразна самой инструкции
+				 *
+				 * @details Пометка велит исполнению с возвратом сличить байты
+				 *          литерала с текстом разом и перешагнуть через инструкции
+				 *          литерала счётчиком. Длина непомерная увела бы чтение
+				 *          за пределы инструкции, а пометка у символа, байтом
+				 *          дословно не сопоставляемого, - у символа без учёта
+				 *          регистра либо за пределами ASCII, - сличила бы байты
+				 *          там, где сопоставление шире байта: совпадение пропало
+				 *          бы молча. Первый байт литерала есть сам символ.
+				 *
+				 */
+				if((length > MAX_LITERAL) || !verbatim(instruction) || (static_cast <uint8_t> (instruction.letter.bytes[0]) != instruction.letter.code))
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если литерал длиннее одного символа
+				 *
+				 * @details Проверяется лишь звено ближайшее, как и у ряда: байты
+				 *          литерала за первым суть начало литерала следующей
+				 *          инструкции, а та проверяется сама, отчего проверка
+				 *          соседа по цепочке литерал целиком и выводит. Литерал
+				 *          следующей инструкции бывает и длиннее остатка: пометка
+				 *          вмещает не весь литерал, а начало его.
+				 *
+				 */
+				if(length > 1){
+					/**
+					 * Если литерал за пределы программы выходит
+					 */
+					if((index + 1) >= count)
+						// Проверка правильности программы: отказ
+						return false;
+					// Получаем инструкцию, за разбираемой следующую
+					const auto & next = program.instructions[index + 1];
+					/**
+					 * Если инструкция следующая литерала не продолжает
+					 */
+					if((next.type != opcode_t::CHAR) || (static_cast <size_t> (next.letter.length) < (length - 1)))
+						// Проверка правильности программы: отказ
+						return false;
+					/**
+					 * Сличаем байтов литерала с литералом инструкции следующей
+					 */
+					for(size_t i = 1; i < length; i++){
+						/**
+						 * Если байт литерала литералу следующему не отвечает
+						 */
+						if(instruction.letter.bytes[i] != next.letter.bytes[i - 1])
+							// Проверка правильности программы: отказ
+							return false;
+					}
+				}
+			} break;
+			/**
+			 * Если инструкция сопоставляет символ из класса символов
+			 */
+			case static_cast <uint8_t> (opcode_t::CLASS): {
+				/**
+				 * Если указание на класс символов хранилищу не принадлежит
+				 */
+				if(static_cast <size_t> (instruction.charclass.index) >= program.classes.size())
+					// Проверка правильности программы: отказ
+					return false;
+			}
+			/**
+			 * Прочие символьные коды пометки литерала нести не вправе
+			 */
+			[[fallthrough]];
+			/**
+			 * Если инструкция сопоставляет любой символ, единицу кодирования либо графему
+			 *
+			 * @details Исполнение с возвратом без своего случая литерала читает
+			 *          пометку у всякого символьного кода, не сверяя кода операции,
+			 *          и пометка у кода иного, нежели одиночный символ, велела бы ему
+			 *          сличить байты, каких он не несёт: класс символов отказал бы там,
+			 *          где символ ему принадлежит, - совпадение пропало бы молча.
+			 *          Сборка со своим случаем, признак «AWH_REGEX_LITERAL_CASE»,
+			 *          пометки у них не читает, но запись отвергается и ею: опознание
+			 *          устройства машины у x86-64 и ARM64 одно, и запись, принятая
+			 *          одной, была бы принята и другой.
+			 *
+			 */
+			case static_cast <uint8_t> (opcode_t::ANY):
+			case static_cast <uint8_t> (opcode_t::CODEUNIT):
+			case static_cast <uint8_t> (opcode_t::GRAPHEME): {
+				/**
+				 * Если символьный код пометку литерала несёт
+				 */
+				if(instruction.letter.length != 0)
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция выполняет переход по двум ветвям
+			 */
+			case static_cast <uint8_t> (opcode_t::SPLIT): {
+				/**
+				 * Если адреса ветвей программе не принадлежат
+				 */
+				if(!inside(instruction.split.first) || !inside(instruction.split.second) ||
+				 !inside(instruction.split.run))
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если признак бесплодности возврата в ряд поддельный
+				 *
+				 * @details Признак снимает точки возврата ряда повторения целиком,
+				 *          и запись поддельная сняла бы их там, где перебор длин
+				 *          плодотворен: совпадение пропало бы молча. Значение
+				 *          признака иное, нежели ноль либо единица, запись выдаёт.
+				 *
+				 */
+				if((instruction.split.solid > 1) || (instruction.split.lazily > 1))
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если количество копий ограниченного повторения несообразно
+				 *
+				 * @details Пометка цепочки велит исполнению с возвратом поглотить
+				 *          столько копий разом и перейти к ветви завершения. Запись
+				 *          поддельная поглотила бы текста больше, нежели цепочка
+				 *          допускает, - «\\d{1,3}» приняло бы число из десяти цифр, -
+				 *          и совпадение пришло бы там, где ему прийти не должно.
+				 *
+				 *          Проверяется лишь звено ближайшее, а не цепочка целиком:
+				 *          пометка всякого звена есть пометка следующего, единицей
+				 *          увеличенная, отчего проверка соседа по цепочке выводит её
+				 *          целиком, обходясь одним проходом по программе.
+				 *
+				 */
+				if(instruction.split.most != 0){
+					/**
+					 * Если переход несёт разом пометку ряда безграничного
+					 *
+					 * @details Исполнение читает пометку ряда ПЕРВОЙ, и переход, обе
+					 *          несущий, был бы пройден без предела вовсе: «\d{1,3}»
+					 *          поглотило бы цифр столько, сколько их в тексте.
+					 *
+					 */
+					if(instruction.split.run != INVALID_ADDRESS)
+						// Проверка правильности программы: отказ
+						return false;
+					/**
+					 * Если тело повторения за переходом не следует
+					 *
+					 * @details Цепочка ведёт телом ветвь первую, а выходом - вторую,
+					 *          и тело всякий раз следует за переходом: исполнение
+					 *          адреса тела не хранит вовсе, а выводит его положением.
+					 *
+					 */
+					if((static_cast <size_t> (instruction.split.first) != (index + 1)) || ((index + 1) >= count))
+						// Проверка правильности программы: отказ
+						return false;
+					// Получаем инструкцию тела ограниченного повторения
+					const auto & body = program.instructions[index + 1];
+					/**
+					 * Если телом повторения сопоставляется не одиночный символ
+					 */
+					if(!identical(body, body))
+						// Проверка правильности программы: отказ
+						return false;
+					/**
+					 * Если звено не последнее в цепочке ограниченного повторения
+					 */
+					if(instruction.split.most > 1){
+						/**
+						 * Если за телом повторения звено цепочки не следует
+						 */
+						if(((index + 3) >= count) || (program.instructions[index + 2].type != opcode_t::SPLIT))
+							// Проверка правильности программы: отказ
+							return false;
+						// Получаем звено цепочки, за телом повторения следующее
+						const auto & following = program.instructions[index + 2];
+						/**
+						 * Если звено цепочки ведёт к иному выходу либо пометку несёт иную
+						 */
+						if((following.split.second != instruction.split.second) ||
+						   (following.split.most != static_cast <uint16_t> (instruction.split.most - 1)))
+							// Проверка правильности программы: отказ
+							return false;
+						/**
+						 * Если тело звена цепочки телу разбираемого перехода не одинаково
+						 */
+						if(!identical(body, program.instructions[index + 3]))
+							// Проверка правильности программы: отказ
+							return false;
+					/**
+					 * Если ветвь завершения следует не за телом повторения
+					 *
+					 * @details Звено последнее одну лишь копию и несёт: выход его
+					 *          стоит сразу за телом.
+					 *
+					 */
+					} else if(static_cast <size_t> (instruction.split.second) != (index + 2))
+						// Проверка правильности программы: отказ
+						return false;
+				}
+			} break;
+			/**
+			 * Если инструкция выполняет безусловный переход
+			 */
+			case static_cast <uint8_t> (opcode_t::JUMP): {
+				/**
+				 * Если адрес перехода программе не принадлежит
+				 */
+				if(!inside(instruction.jump.target))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция запоминает границу захвата
+			 */
+			case static_cast <uint8_t> (opcode_t::SAVE): {
+				/**
+				 * Если номер места границы захвата выражению не принадлежит
+				 *
+				 * @details Набор мест несёт границы захвата и ячейки состояния
+				 *          подряд, а инструкция сохранения позиции пишет и в те,
+				 *          и в другие: атомарная группа сохраняет позицию начала
+				 *          в ячейке, а не в границе захвата. Поэтому проверяется
+				 *          принадлежность всему набору мест, а не одним лишь
+				 *          границам захвата.
+				 *
+				 */
+				if(static_cast <size_t> (instruction.save.slot) >= (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция отмечает либо откатывает точки возврата
+			 */
+			case static_cast <uint8_t> (opcode_t::MARK):
+			case static_cast <uint8_t> (opcode_t::CUT): {
+				/**
+				 * Если номер ячейки отметки несообразен
+				 *
+				 * @details Ячейки отметок атомарных групп ведутся счётчиком своим,
+				 *          отдельным от ячеек состояния повторений, и в программе
+				 *          количество их не хранится: исполнение с возвратом
+				 *          наращивает набор отметок по мере надобности. Поэтому
+				 *          проверяется лишь сообразность номера - отметок в
+				 *          выражении не более, чем инструкций.
+				 *
+				 */
+				if(static_cast <size_t> (instruction.atomic.cell) >= MAX_PROGRAM)
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция сопоставляет захваченный текст
+			 */
+			case static_cast <uint8_t> (opcode_t::BACKREF): {
+				/**
+				 * Если номер группы выражению не принадлежит
+				 */
+				if(instruction.backref.number > program.captures)
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция проверяет продвижение по тексту
+			 */
+			case static_cast <uint8_t> (opcode_t::PROGRESS): {
+				/**
+				 * Если номер ячейки либо адрес завершения не принадлежат выражению
+				 *
+				 * @details Ячейки состояния повторений размещаются в наборе мест
+				 *          следом за границами захвата, поэтому номер ячейки
+				 *          отсчитывается от размера набора границ.
+				 *
+				 */
+				if((static_cast <size_t> (instruction.progress.cell) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells))) ||
+				 !inside(instruction.progress.target))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция выполняет проверку окружения
+			 */
+			case static_cast <uint8_t> (opcode_t::LOOK): {
+				/**
+				 * Если адреса проверки окружения программе не принадлежат
+				 */
+				if(!inside(instruction.look.body) || !inside(instruction.look.target) ||
+				   !inside(instruction.look.alternate))
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если тело проверки окружения указывает на неё же
+				 *
+				 * @details Тело исполняется вложенным исполнением, и указание тела
+				 *          на саму проверку дало бы вложенность бесконечную. Сборка
+				 *          такого не порождает, а запись поддельная - вполне.
+				 *
+				 *          Заслон этот исполнение не заменяет, а дополняет: связка
+				 *          проверок, указывающих одна на другую, здесь не ловится,
+				 *          и стережёт её предел вложенности исполнений.
+				 *
+				 */
+				if(static_cast <size_t> (instruction.look.body) == index)
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если границы длины сопоставляемого текста несообразны
+				 */
+				if(instruction.look.least > instruction.look.most)
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если ячейка позиции начала не отсекающей проверки не заведена
+				 */
+				if((instruction.look.atomic == 0) && (static_cast <size_t> (instruction.look.cell) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells))))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция проверяет прогон письменности
+			 */
+			case static_cast <uint8_t> (opcode_t::SCRIPT): {
+				/**
+				 * Если ячейка позиции начала прогона письменности не заведена
+				 */
+				if(static_cast <size_t> (instruction.save.slot) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция восстанавливает позицию начала не отсекающей проверки
+			 */
+			case static_cast <uint8_t> (opcode_t::RESET): {
+				/**
+				 * Если ячейка позиции начала проверки либо адрес продолжения несообразны
+				 */
+				if((static_cast <size_t> (instruction.reset.cell) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells))) ||
+				 !inside(instruction.reset.target))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция выполняет рекурсивный вызов подвыражения
+			 */
+			case static_cast <uint8_t> (opcode_t::CALL): {
+				/**
+				 * Если адрес тела либо номер группы выражению не принадлежат
+				 */
+				if(!inside(instruction.call.body) || (instruction.call.number > program.captures))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+			/**
+			 * Если инструкция выполняет условное выражение
+			 */
+			case static_cast <uint8_t> (opcode_t::CONDITION): {
+				/**
+				 * Если адреса ветвей условия программе не принадлежат
+				 */
+				if(!inside(instruction.condition.positive) || !inside(instruction.condition.negative))
+					// Проверка правильности программы: отказ
+					return false;
+				/**
+				 * Если номер группы условия выражению не принадлежит
+				 */
+				if((instruction.condition.type == test_t::CAPTURED) &&
+				 (instruction.condition.number > program.captures))
+					// Проверка правильности программы: отказ
+					return false;
+			} break;
+		}
+	}
+	/**
+	 * Перебираем хранилищ ссылок на классы символов
+	 *
+	 * @details Ссылка указывает на участок сплошного набора диапазонов и на
+	 *          участок сплошного набора свойств. Обзор класса выдаётся по ней
+	 *          без проверки границ, поскольку обращение к нему идёт на каждом
+	 *          символе, поэтому принадлежность участков наборам удостоверяется
+	 *          здесь, до всякого сопоставления.
+	 *
+	 */
+	for(const auto & value : program.classes){
+		/**
+		 * Если участок набора диапазонов набору не принадлежит
+		 */
+		if((static_cast <size_t> (value.ranges) + static_cast <size_t> (value.rangeCount)) > program.ranges.size())
+			// Проверка правильности программы: отказ
+			return false;
+		/**
+		 * Если участок набора свойств набору не принадлежит
+		 */
+		if((static_cast <size_t> (value.properties) + static_cast <size_t> (value.propertyCount)) > program.properties.size())
+			// Проверка правильности программы: отказ
+			return false;
+	}
+	/**
+	 * Если количество ячеек состояния превышает допустимое
+	 */
+	if(static_cast <size_t> (program.cells) > MAX_PROGRAM)
+		// Проверка правильности программы: отказ
+		return false;
+	/**
+	 * Если количество захватывающих групп превышает допустимое
+	 */
+	if(static_cast <size_t> (program.captures) > MAX_PROGRAM)
+		// Проверка правильности программы: отказ
+		return false;
+	// Первый допустимый начальный байт отбора позиций
+	size_t first = 0;
+	// Количество допустимых начальных байтов отбора позиций
+	size_t admitted = 0;
+	/**
+	 * Перебираем набор допустимых начальных байтов
+	 */
+	for(size_t i = 0; i < 256; i++){
+		/**
+		 * Если байт в начале совпадения допустим
+		 */
+		if(program.prefilter.bytes[i]){
+			/**
+			 * Если допустимый байт обнаружен впервые
+			 */
+			if(admitted == 0)
+				// Устанавливаем первого допустимого байта
+				first = i;
+			// Увеличиваем количество допустимых начальных байтов
+			admitted++;
+		}
+	}
+	/**
+	 * Если признак единственного начального байта набору допустимых не отвечает
+	 *
+	 * @details Признак и сам байт выводятся из набора однажды, при сборке,
+	 *          и пишутся рядом с ним. Отбор позиций при байте единственном
+	 *          читает один лишь байт, а проверка байта на месте у исполнения
+	 *          с возвратом - набор: два равносильных пути обязаны отвечать
+	 *          одинаково. Запись, где признак набору не отвечает, выдаёт себя
+	 *          сама - сборка такой не порождает.
+	 *
+	 */
+	if((program.prefilter.unique != (admitted == 1)) ||
+	   (program.prefilter.unique && (static_cast <size_t> (static_cast <uint8_t> (program.prefilter.letter)) != first)))
+		// Проверка правильности программы: отказ
+		return false;
+	// Проверка правильности программы: успех
+	return true;
+}
+/**
+ * @brief Метод записи программы регулярного выражения
+ *
+ * @param program записываемая программа
+ * @param result  запись хранилища
+ *
+ */
+bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & result) const noexcept {
+	// Очищаем записю хранилища
+	result.clear();
+	// Сбрасываем код ошибки хранилища
+	this->_error = storage_error_t::NONE;
+	/**
+	 * Если количество записываемых выражений превышает допустимое
+	 */
+	if(expressions.size() > static_cast <size_t> (MAX_EXPRESSIONS)){
+		// Устанавливаем ошибку превышения размера записи
+		this->_error = storage_error_t::TOO_LARGE;
+		// Запись собранных выражений: отказ
+		return false;
+	}
+	// Содержимое записи хранилища
+	string payload;
+	// Записываем количество собранных выражений
+	writeVar(static_cast <uint32_t> (expressions.size()), payload);
+	/**
+	 * Перебираем набор собранных выражений
+	 */
+	for(const auto & expression : expressions){
+		/**
+		 * Если собранное выражение не установлено
+		 */
+		if(!expression){
+			// Устанавливаем ошибку несообразного содержимого записи
+			this->_error = storage_error_t::BAD_CONTENT;
+			// Запись собранных выражений: отказ
+			return false;
+		}
+		// Записываем признаков собранного выражения
+		write8(static_cast <uint8_t> (expression->backtracking ? 1 : 0), payload);
+		write8(static_cast <uint8_t> (expression->ready ? 1 : 0), payload);
+		write8(static_cast <uint8_t> (expression->reversible ? 1 : 0), payload);
+		// Записываем программу сопоставления в прямом направлении
+		this->save(expression->forward, payload);
+		// Записываем программу сопоставления в обратном направлении
+		this->save(expression->backward, payload);
+		// Записываем количество именованных групп выражения
+		writeVar(static_cast <uint32_t> (expression->names.size()), payload);
+		/**
+		 * Перебираем соответстви имён именованных групп
+		 */
+		for(const auto & item : expression->names){
+			// Записываем именю именованной группы
+			writeText(item.first, payload);
+			// Записываем количество номеров именованной группы
+			writeVar(static_cast <uint32_t> (item.second.size()), payload);
+			/**
+			 * Перебираем набор номеров именованной группы
+			 */
+			for(const auto & number : item.second)
+				// Записываем номер именованной группы
+				writeVar(number, payload);
+		}
+		/**
+		 * Если порождённый сопоставитель выражения готов
+		 *
+		 * @details Порождённый код записывается затем, чтобы восстановление
+		 *          обошлось без порождения заново: замер даёт четыре с
+		 *          половиною микросекунды на выражение без него и почти
+		 *          четырнадцать с ним, то есть порождение обходится втрое
+		 *          дороже всего прочего восстановления. Годен код лишь набору
+		 *          команд, для какого порождён, поэтому запись несёт его
+		 *          опознание, а несовпадение оборачивается порождением заново.
+		 *
+		 */
+		if(expression->machine && expression->machine->ready()){
+			// Запись порождённого сопоставителя выражения
+			string machine;
+			/**
+			 * Если запись порождённого сопоставителя выполнена
+			 */
+			if(expression->machine->save(machine)){
+				// Записываем признак наличия порождённого сопоставителя
+				write8(1, payload);
+				// Записываем размер порождённого сопоставителя
+				writeVar(static_cast <uint32_t> (machine.size()), payload);
+				// Записываем порождённого сопоставителя выражения
+				payload.append(machine);
+			// Записываем отсутстви порождённого сопоставителя
+			} else write8(0, payload);
+		// Записываем отсутстви порождённого сопоставителя
+		} else write8(0, payload);
+	}
+	/**
+	 * Если размер записи хранилища превышает допустимый
+	 */
+	if(payload.size() > MAX_STORAGE){
+		// Устанавливаем ошибку превышения размера записи
+		this->_error = storage_error_t::TOO_LARGE;
+		// Запись собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если запись хранилища подлежит сжатию
+	 */
+	if(this->_method != compressor::method_t::NONE){
+		/**
+		 * Если обработчик сжатия записи не установлен
+		 */
+		if(!this->_pack){
+			// Устанавливаем ошибку отсутствия обработчика метода сжатия
+			this->_error = storage_error_t::BAD_METHOD;
+			// Запись собранных выражений: отказ
+			return false;
+		}
+		// Сжатое содержимое записи хранилища
+		string packed = "";
+		/**
+		 * Если сжатие содержимого записи не выполнено
+		 */
+		if(!this->_pack(payload, packed) || packed.empty()){
+			// Устанавливаем ошибку невыполненного сжатия записи
+			this->_error = storage_error_t::BAD_PACKING;
+			// Запись собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Шифруем сжатое содержимое записи
+		 *
+		 * @details Шифрование идёт ПОСЛЕ сжатия: содержимое шифрованное сжатию
+		 *          не поддаётся вовсе, и обратный порядок обратил бы сжатие
+		 *          в пустую работу.
+		 *
+		 */
+		if(this->_ciphered){
+			// Зашифрованное содержимое записи хранилища
+			string sealed = "";
+			/**
+			 * Если обработчик зашифрования не установлен либо зашифрование не выполнено
+			 */
+			if(!this->_encrypt || !this->_encrypt(packed, sealed) || sealed.empty()){
+				// Устанавливаем ошибку невыполненного шифрования записи
+				this->_error = storage_error_t::BAD_CIPHER;
+				// Запись собранных выражений: отказ
+				return false;
+			}
+			// Заменяем сжатого содержимого зашифрованным
+			packed = ::move(sealed);
+		}
+		// Размещаем записю хранилища
+		result.reserve(packed.size() + 64);
+		// Записываем опознани записи хранилища
+		write64(STORAGE_MAGIC, result);
+		// Записываем версию устройства записи
+		write16(STORAGE_VERSION, result);
+		// Записываем опознани устройства машины
+		write16(platform(), result);
+		// Записываем метод сжатия записи хранилища
+		write8(static_cast <uint8_t> (this->_method), result);
+		// Записываем признак шифрования записи хранилища
+		write8((this->_ciphered ? 1 : 0), result);
+		// Записываем байтов выравнивания заголовка записи
+		write16(0, result);
+		// Записываем размер сжатого содержимого записи
+		write64(static_cast <uint64_t> (packed.size()), result);
+		// Записываем размер содержимого записи до сжатия
+		write64(static_cast <uint64_t> (payload.size()), result);
+		// Записываем контрольной суммы сжатого содержимого
+		write64(checksum(packed), result);
+		// Записываем опознани машины, запись породившей
+		write64(hardware(), result);
+		// Записываем мгновени порождения записи
+		write64(static_cast <uint64_t> (::time(nullptr)), result);
+		// Записываем срок годности записи
+		write64(this->_lifetime, result);
+		// Записываем сжатого содержимого записи хранилища
+		result.append(packed);
+		// Запись собранных выражений: успех
+		return true;
+	}
+	/**
+	 * Шифруем содержимое записи хранилища
+	 */
+	if(this->_ciphered){
+		// Зашифрованное содержимое записи хранилища
+		string sealed = "";
+		/**
+		 * Если обработчик зашифрования не установлен либо зашифрование не выполнено
+		 */
+		if(!this->_encrypt || !this->_encrypt(payload, sealed) || sealed.empty()){
+			// Устанавливаем ошибку невыполненного шифрования записи
+			this->_error = storage_error_t::BAD_CIPHER;
+			// Запись собранных выражений: отказ
+			return false;
+		}
+		// Заменяем содержимого записи зашифрованным
+		payload = ::move(sealed);
+	}
+	// Размещаем записю хранилища
+	result.reserve(payload.size() + 64);
+	// Записываем опознани записи хранилища
+	write64(STORAGE_MAGIC, result);
+	// Записываем версию устройства записи
+	write16(STORAGE_VERSION, result);
+	/**
+	 * Записываем опознани устройства машины
+	 *
+	 * @details Наборы программы пишутся образом памяти, поэтому запись отвечает
+	 *          порядку байтов машины и размещению полей структур, какое сборщик
+	 *          волен избирать сам. Опознание несёт порядок байтов и размеры
+	 *          структур, а восстановление сличает его со своим и запись чужую
+	 *          отвергает. Так же поступает и эталон: запись, порождённая
+	 *          «pcre2_serialize_encode», переносу между машинами не подлежит.
+	 *
+	 */
+	write16(platform(), result);
+	// Записываем метод сжатия записи хранилища
+	write8(static_cast <uint8_t> (compressor::method_t::NONE), result);
+	// Записываем признак шифрования записи хранилища
+	write8((this->_ciphered ? 1 : 0), result);
+	// Записываем байтов выравнивания заголовка записи
+	write16(0, result);
+	// Записываем размер содержимого записи
+	write64(static_cast <uint64_t> (payload.size()), result);
+	// Записываем размер содержимого записи до сжатия
+	write64(0, result);
+	// Записываем контрольной суммы содержимого
+	write64(checksum(payload), result);
+	/**
+	 * Записываем опознани машины, запись породившей
+	 *
+	 * @details Опознание сличается восстановлением: запись несёт машинный код,
+	 *          машине порождения принадлежащий, и переносу между машинами
+	 *          не подлежит.
+	 *
+	 */
+	write64(hardware(), result);
+	// Записываем мгновени порождения записи
+	write64(static_cast <uint64_t> (::time(nullptr)), result);
+	// Записываем срок годности записи
+	write64(this->_lifetime, result);
+	// Записываем содержимого записи хранилища
+	result.append(payload);
+	// Запись собранных выражений: успех
+	return true;
+}
+/**
+ * @brief Метод восстановления собранных выражений
+ *
+ * @param data   запись хранилища
+ * @param result набор восстановленных выражений
+ * @return       результат восстановления собранных выражений
+ *
+ */
+bool awh::regex::Storage::load(string_view data, vector <exp_t> & result) const noexcept {
+	// Восстанавливаем собранных выражений из копии записи
+	return this->restore(make_shared <const string> (data), result);
+}
+/**
+ * @brief Метод восстановления собранных выражений
+ *
+ * @param data   запись хранилища
+ * @param result набор восстановленных выражений
+ * @return       результат восстановления собранных выражений
+ *
+ */
+bool awh::regex::Storage::adopt(string && data, vector <exp_t> & result) const noexcept {
+	// Восстанавливаем собранных выражений из переданной записи
+	return this->restore(make_shared <const string> (::move(data)), result);
+}
+/**
+ * @brief Метод восстановления собранных выражений из записи
+ *
+ * @param blob   запись хранилища, взятая во владение
+ * @param result набор восстановленных выражений
+ * @return       результат восстановления собранных выражений
+ *
+ */
+bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept {
+	/**
+	 * Если восстановление собранных выражений выполнено
+	 */
+	if(this->restoring(blob, result))
+		// Восстановление собранных выражений: успех
+		return true;
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Записываем ошибку в лог
+		log::debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, {blob ? blob->size() : 0}, log::flag_t::CRITICAL, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		log::print("Storage record of %zu bytes could not be restored: error %u", log::flag_t::CRITICAL, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+	#endif
+	// Восстановление собранных выражений: отказ
+	return false;
+}
+/**
+ * @brief Метод восстановления собранных выражений телом своим
+ *
+ * @param blob   запись хранилища, взятая во владение
+ * @param result набор восстановленных выражений
+ * @return       результат восстановления собранных выражений
+ *
+ */
+bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept {
+	// Получаем обзор записи хранилища
+	const string_view data(blob ? string_view(* blob) : string_view());
+	// Очищаем набор восстановленных выражений
+	result.clear();
+	// Сбрасываем код ошибки хранилища
+	this->_error = storage_error_t::NONE;
+	/**
+	 * Если запись хранилища пуста
+	 */
+	if(data.empty()){
+		// Устанавливаем ошибку пустой записи
+		this->_error = storage_error_t::EMPTY;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Позиция чтения записи хранилища
+	size_t offset = 0;
+	// Опознание записи хранилища
+	uint64_t magic = 0;
+	/**
+	 * Если чтение опознания записи не выполнено
+	 */
+	if(!read64(data, offset, magic)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если опознание записи не совпадает
+	 */
+	if(magic != STORAGE_MAGIC){
+		// Устанавливаем ошибку несовпадения опознания записи
+		this->_error = storage_error_t::BAD_MAGIC;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Версия устройства записи хранилища
+	uint16_t version = 0;
+	/**
+	 * Если чтение версии устройства записи не выполнено
+	 */
+	if(!read16(data, offset, version)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если версия устройства записи не поддерживается
+	 */
+	if(version != STORAGE_VERSION){
+		// Устанавливаем ошибку неподдерживаемой версии записи
+		this->_error = storage_error_t::BAD_VERSION;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Опознание устройства машины
+	uint16_t machine = 0;
+	// Байты выравнивания заголовка записи
+	uint16_t padding = 0;
+	// Метод сжатия записи хранилища и признак шифрования её
+	uint8_t method = 0, sealed = 0;
+	/**
+	 * Если чтение опознания устройства машины не выполнено
+	 */
+	if(!read16(data, offset, machine) || !read8(data, offset, method) ||
+	   !read8(data, offset, sealed) || !read16(data, offset, padding)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если признак шифрования записи вида недопустимого либо выравнивание не пусто
+	 */
+	if((sealed > 1) || (padding != 0)){
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если запись порождена машиной устройства иного
+	 */
+	if(machine != platform()){
+		// Устанавливаем ошибку несовпадения устройства машины
+		this->_error = storage_error_t::BAD_PLATFORM;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Размер содержимого записи, размер его до сжатия и контрольная сумма
+	uint64_t length = 0, origin = 0, sum = 0;
+	/**
+	 * Если чтение размеров содержимого либо суммы не выполнено
+	 */
+	if(!read64(data, offset, length) || !read64(data, offset, origin) || !read64(data, offset, sum)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Опознание машины, мгновение порождения и срок годности записи
+	uint64_t owner = 0, created = 0, lifetime = 0;
+	/**
+	 * Если чтение опознания машины, мгновения порождения либо срока не выполнено
+	 */
+	if(!read64(data, offset, owner) || !read64(data, offset, created) || !read64(data, offset, lifetime)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если запись порождена машиной иной
+	 *
+	 * @details Опознание устройства машины сличается отдельно и говорит лишь
+	 *          о размещении полей: запись же несёт машинный код, машине
+	 *          порождения принадлежащий, отчего сличается и сама машина.
+	 *
+	 */
+	if(owner != hardware()){
+		// Устанавливаем ошибку несовпадения машины записи
+		this->_error = storage_error_t::BAD_MACHINE;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если срок годности записи задан
+	 *
+	 * @details Мгновение порождения сличается с нынешним по часам системы,
+	 *          а запись из будущего просроченной не числится: часы машины
+	 *          переводимы, и отказ по ним обернулся бы отказом работы.
+	 *
+	 */
+	if(lifetime > 0){
+		// Получаем нынешнее мгновение по часам системы
+		const uint64_t now = static_cast <uint64_t> (::time(nullptr));
+		/**
+		 * Если срок годности записи истёк
+		 */
+		if((now > created) && ((now - created) > lifetime)){
+			// Устанавливаем ошибку истечения срока годности записи
+			this->_error = storage_error_t::EXPIRED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+	}
+	/**
+	 * Если объявленный размер содержимого записи не отвечает её длине
+	 */
+	if(length != static_cast <uint64_t> (data.size() - offset)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Получаем содержимое записи хранилища
+	string_view payload = data.substr(offset);
+	/**
+	 * Если контрольная сумма содержимого записи не совпадает
+	 */
+	if(checksum(payload) != sum){
+		// Устанавливаем ошибку несовпадения контрольной суммы
+		this->_error = storage_error_t::BAD_CHECKSUM;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Держатель содержимого записи, обозреваемого наборами программ
+	shared_ptr <const string> holder = blob;
+	/**
+	 * Если запись хранилища шифрована
+	 *
+	 * @details Расшифрование идёт ПЕРЕД разжатием: шифрование выполнялось
+	 *          последним, а снимается первым. Расшифрованное содержимое
+	 *          берётся держателем во владение - обзоры программ обращаются
+	 *          к нему, а не к записи поданной.
+	 *
+	 */
+	if(sealed > 0){
+		/**
+		 * Если обработчик расшифрования записи не установлен
+		 */
+		if(!this->_decrypt){
+			// Устанавливаем ошибку отсутствия обработчика расшифрования
+			this->_error = storage_error_t::BAD_METHOD;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Расшифрованное содержимое записи хранилища
+		auto opened = make_shared <string> ();
+		/**
+		 * Если расшифрование содержимого записи не выполнено
+		 */
+		if(!this->_decrypt(payload, * opened) || opened->empty()){
+			// Устанавливаем ошибку невыполненного расшифрования записи
+			this->_error = storage_error_t::BAD_CIPHER;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Передаём расшифрованного содержимого держателю
+		holder = opened;
+		// Устанавливаем обзор расшифрованного содержимого записи
+		payload = string_view(* holder);
+	}
+	/**
+	 * Если запись хранилища сжата
+	 */
+	if(method != static_cast <uint8_t> (compressor::method_t::NONE)){
+		/**
+		 * Если обработчик разжатия записи не установлен
+		 */
+		if(!this->_unpack){
+			// Устанавливаем ошибку отсутствия обработчика метода сжатия
+			this->_error = storage_error_t::BAD_METHOD;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Если размер содержимого до сжатия превышает допустимый
+		 */
+		if(origin > static_cast <uint64_t> (MAX_STORAGE)){
+			// Устанавливаем ошибку превышения размера записи
+			this->_error = storage_error_t::TOO_LARGE;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Разжатое содержимое записи хранилища
+		string unpacked;
+		/**
+		 * Если разжатие содержимого записи не выполнено
+		 */
+		if(!this->_unpack(payload, unpacked)){
+			// Устанавливаем ошибку невыполненного разжатия записи
+			this->_error = storage_error_t::BAD_PACKING;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Если размер разжатого содержимого объявленному не отвечает
+		 */
+		if(static_cast <uint64_t> (unpacked.size()) != origin){
+			// Устанавливаем ошибку несообразного содержимого записи
+			this->_error = storage_error_t::BAD_CONTENT;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Передаём разжатого содержимого держателю
+		 *
+		 * @details Наборы программ обозревают участки содержимого разжатого,
+		 *          а не самой записи, поэтому держателем становится оно.
+		 *          Запись сжатая по выходе из восстановления не нужна вовсе.
+		 *
+		 */
+		holder = make_shared <const string> (::move(unpacked));
+		// Устанавливаем обзор разжатого содержимого записи
+		payload = string_view(* holder);
+	/**
+	 * Если объявленный размер содержимого до сжатия не пуст
+	 */
+	} else if(origin != 0) {
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Сбрасываем позицию чтения содержимого записи
+	offset = 0;
+	// Количество восстанавливаемых выражений
+	uint32_t count = 0;
+	/**
+	 * Если чтение количества выражений не выполнено
+	 */
+	if(!readVar(payload, offset, count)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	/**
+	 * Если количество выражений превышает допустимое
+	 */
+	if(count > MAX_EXPRESSIONS){
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Размещаем набор восстановленных выражений
+	result.reserve(static_cast <size_t> (count));
+	/**
+	 * Восстанавливаем набор выражений
+	 */
+	for(uint32_t i = 0; i < count; i++){
+		// Создаём восстанавливаемое выражение
+		auto expression = make_shared <expression_t> ();
+		// Признак выражения, читаемый записью
+		uint8_t flag = 0;
+		/**
+		 * Если чтение признаков выражения не выполнено
+		 */
+		if(!read8(payload, offset, flag)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Устанавливаем признак исполнения выражения с возвратом
+		expression->backtracking = (flag != 0);
+		/**
+		 * Если чтение признаков выражения не выполнено
+		 */
+		if(!read8(payload, offset, flag)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Устанавливаем признак готовности выражения
+		expression->ready = (flag != 0);
+		/**
+		 * Если чтение признаков выражения не выполнено
+		 */
+		if(!read8(payload, offset, flag)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Устанавливаем признак применимости поиска начала совпадения
+		expression->reversible = (flag != 0);
+		/**
+		 * Если восстановление программ выражения не выполнено
+		 */
+		if(!this->load(payload, offset, expression->forward) ||
+		   !this->load(payload, offset, expression->backward))
+			// Восстановление собранных выражений: отказ
+			return false;
+		/**
+		 * Устанавливаем флаг применимости детерминированного исполнения
+		 *
+		 * @details Флаг в записи не хранится: он выводится из восстановленной
+		 *          программы тем же методом, каким его выводит сборка, и записи
+		 *          не доверяется. Флаг, записью несомый, пришлось бы поверять,
+		 *          а подложный пустил бы автомат к программе, ему неподвластной.
+		 *
+		 */
+		expression->automatic = dfa_t::available(expression->forward);
+		/**
+		 * Устанавливаем держател записи хранилища программам выражения
+		 *
+		 * @details Наборы программ обозревают участки записи, собственного
+		 *          содержимого не имея, поэтому держатель продлевает жизнь
+		 *          записи на срок жизни выражения и всех его копий.
+		 *
+		 */
+		expression->forward.blob = holder;
+		// Устанавливаем держател записи программе обратного направления
+		expression->backward.blob = holder;
+		// Количество именованных групп выражения
+		uint32_t names = 0;
+		/**
+		 * Если чтение количества именованных групп не выполнено
+		 */
+		if(!readVar(payload, offset, names)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Если количество именованных групп превышает размер оставшейся записи
+		 */
+		if((static_cast <size_t> (names) * 3) > (payload.size() - offset)){
+			// Устанавливаем ошибку несообразного содержимого записи
+			this->_error = storage_error_t::BAD_CONTENT;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		/**
+		 * Восстанавливаем соответствие имён именованных групп
+		 */
+		for(uint32_t j = 0; j < names; j++){
+			// Имя именованной группы выражения
+			string name;
+			// Количество номеров именованной группы
+			uint32_t numbers = 0;
+			/**
+			 * Если чтение имени именованной группы не выполнено
+			 */
+			if(!readText(payload, offset, name) || !readVar(payload, offset, numbers)){
+				// Устанавливаем ошибку обрыва записи
+				this->_error = storage_error_t::TRUNCATED;
+				// Восстановление собранных выражений: отказ
+				return false;
+			}
+			/**
+			 * Если количество номеров превышает размер оставшейся записи
+			 */
+			if(static_cast <size_t> (numbers) > (payload.size() - offset)){
+				// Устанавливаем ошибку несообразного содержимого записи
+				this->_error = storage_error_t::BAD_CONTENT;
+				// Восстановление собранных выражений: отказ
+				return false;
+			}
+			// Создаём набор номеров именованной группы
+			vector <uint32_t> records(static_cast <size_t> (numbers));
+			/**
+			 * Перебираем набор номеров именованной группы
+			 */
+			for(auto & number : records){
+				/**
+				 * Если чтение номера именованной группы не выполнено
+				 */
+				if(!readVar(payload, offset, number)){
+					// Устанавливаем ошибку обрыва записи
+					this->_error = storage_error_t::TRUNCATED;
+					// Восстановление собранных выражений: отказ
+					return false;
+				}
+				/**
+				 * Если номер именованной группы выражению не принадлежит
+				 */
+				if(number > expression->forward.captures){
+					// Устанавливаем ошибку несообразного содержимого записи
+					this->_error = storage_error_t::BAD_CONTENT;
+					// Восстановление собранных выражений: отказ
+					return false;
+				}
+			}
+			// Добавляем именованной группы в соответствие
+			expression->names.emplace(::move(name), ::move(records));
+		}
+		// Признак наличия порождённого сопоставителя в записи
+		uint8_t machined = 0;
+		/**
+		 * Если чтение признака наличия порождённого сопоставителя не выполнено
+		 */
+		if(!read8(payload, offset, machined)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Восстановление собранных выражений: отказ
+			return false;
+		}
+		// Запись порождённого сопоставителя выражения
+		string_view machine;
+		/**
+		 * Если запись несёт порождённый сопоставитель выражения
+		 */
+		if(machined != 0){
+			// Размер порождённого сопоставителя выражения
+			uint32_t length = 0;
+			/**
+			 * Если чтение размера порождённого сопоставителя не выполнено
+			 */
+			if(!readVar(payload, offset, length)){
+				// Устанавливаем ошибку обрыва записи
+				this->_error = storage_error_t::TRUNCATED;
+				// Восстановление собранных выражений: отказ
+				return false;
+			}
+			/**
+			 * Если порождённый сопоставитель за пределы записи выходит
+			 */
+			if(static_cast <size_t> (length) > (payload.size() - offset)){
+				// Устанавливаем ошибку несообразного содержимого записи
+				this->_error = storage_error_t::BAD_CONTENT;
+				// Восстановление собранных выражений: отказ
+				return false;
+			}
+			// Устанавливаем обзор порождённого сопоставителя
+			machine = payload.substr(offset, static_cast <size_t> (length));
+			// Переходим за запись порождённого сопоставителя
+			offset += static_cast <size_t> (length);
+		}
+		/**
+		 * Если выражение собрано с режимом порождения машинного кода
+		 *
+		 * @details Порождённый код восстанавливается из записи, а при её
+		 *          отсутствии либо при несовпадении набора команд порождается
+		 *          заново. Отказ порождения отказом восстановления не является:
+		 *          выражение сопоставляется исполнением программы, как и без
+		 *          режима.
+		 *
+		 *          Выражение, исполняемое с возвратом, порождения не лишается:
+		 *          подмножество принимаемых порождением выражений с подмножеством
+		 *          выражений регулярных не совпадает, и рекурсивный вызов
+		 *          подвыражения порождением принимается. Условие это обязано
+		 *          совпадать с условием сборки: расхождение оставило бы
+		 *          восстановленное выражение без сопоставителя, сборкой
+		 *          полученного.
+		 *
+		 */
+		if(((expression->forward.flags & static_cast <uint32_t> (flag_t::JIT)) != 0) &&
+		   ((expression->forward.flags & (static_cast <uint32_t> (flag_t::ANCHORED) |
+		     static_cast <uint32_t> (flag_t::NOTEMPTY) | static_cast <uint32_t> (flag_t::ATSTART))) == 0) &&
+			 !expression->forward.plain) {
+			// Создаём сопоставитель выражения в виде порождённого машинного кода
+			expression->machine = make_shared <codegen_t> ();
+			// Позиция чтения записи порождённого сопоставителя
+			size_t position = 0;
+			// Признак восстановления порождённого сопоставителя из записи
+			bool restored = false;
+			/**
+			 * Если запись несёт порождённый сопоставитель выражения и записи доверено
+			 *
+			 * @details Порождённый код записи исполняется, а не разбирается,
+			 *          отчего проверкой он не оберегаем вовсе: проверить можно
+			 *          данные, но не команды. Контрольная сумма ловит порчу
+			 *          случайную, но подделыватель считает её заново, и запись
+			 *          подделанная исполнилась бы как есть - выход за пределы
+			 *          и падение внутри восстановленного кода получены опытом.
+			 *          Поэтому код записи берётся лишь при установленном
+			 *          признаке доверия, а без него порождается заново: это
+			 *          обходится в десять микросекунд на выражение и снимает
+			 *          исполнение чужих команд вовсе.
+			 *
+			 */
+			if(this->_trusted && !machine.empty())
+				// Восстанавливаем порождённого сопоставителя из записи
+				restored = expression->machine->restore(machine, position, expression->forward);
+			/**
+			 * Если порождение сопоставителя выражения не выполнено
+			 */
+			if(!restored && !expression->machine->compile(expression->forward))
+				// Сбрасываем сопоставител выражения
+				expression->machine.reset();
+		}
+		// Добавляем восстановленного выражения в набор
+		result.push_back(::move(expression));
+	}
+	/**
+	 * Если запись хранилища прочитана не до конца
+	 */
+	if(offset != payload.size()){
+		// Устанавливаем ошибку несообразного содержимого записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Очищаем набор восстановленных выражений
+		result.clear();
+		// Восстановление собранных выражений: отказ
+		return false;
+	}
+	// Восстановление собранных выражений: успех
+	return true;
+}
+/**
+ * @brief Метод установки доверия порождённому коду записи
+ *
+ * @param mode признак доверия порождённому коду записи
+ *
+ */
+void awh::regex::Storage::trusted(const bool mode) noexcept {
+	// Устанавливаем признак доверия порождённому коду записи
+	this->_trusted = mode;
+}
+/**
+ * @brief Метод установки сжатия записи хранилища
+ *
+ * @param method метод сжатия записи хранилища
+ * @param pack   обработчик сжатия записи хранилища
+ * @param unpack обработчик разжатия записи хранилища
+ *
+ */
+void awh::regex::Storage::packer(const compressor::method_t method, packer_t pack, packer_t unpack) noexcept {
+	// Устанавливаем метод сжатия записи хранилища
+	this->_method = method;
+	// Устанавливаем обработчик сжатия записи хранилища
+	this->_pack = ::move(pack);
+	// Устанавливаем обработчик разжатия записи хранилища
+	this->_unpack = ::move(unpack);
+}
+/**
+ * @brief Метод установки шифрования записи хранилища
+ *
+ * @param encrypt обработчик зашифрования записи хранилища
+ * @param decrypt обработчик расшифрования записи хранилища
+ *
+ */
+void awh::regex::Storage::cipher(cipher_t encrypt, cipher_t decrypt) noexcept {
+	// Устанавливаем обработчик зашифрования записи хранилища
+	this->_encrypt = ::move(encrypt);
+	// Устанавливаем обработчик расшифрования записи хранилища
+	this->_decrypt = ::move(decrypt);
+	// Устанавливаем признак шифрования записи хранилища
+	this->_ciphered = (static_cast <bool> (this->_encrypt) || static_cast <bool> (this->_decrypt));
+}
+/**
+ * @brief Метод установки срока годности записи
+ *
+ * @param seconds срок годности записи в секундах
+ *
+ */
+void awh::regex::Storage::lifetime(const uint64_t seconds) noexcept {
+	// Устанавливаем срок годности записи
+	this->_lifetime = seconds;
+}
+/**
+ * @brief Метод извлечения кода ошибки хранилища
+ *
+ * @return код ошибки хранилища собранных выражений
+ *
+ */
+awh::regex::storage_error_t awh::regex::Storage::error() const noexcept {
+	// Выводим код ошибки хранилища собранных выражений
+	return this->_error;
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Storage::Storage() noexcept :
+ _trusted(false), _ciphered(false), _lifetime(0),
+ _method(compressor::method_t::NONE),
+ _error(storage_error_t::NONE) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::regex::Storage::~Storage() noexcept = default;
