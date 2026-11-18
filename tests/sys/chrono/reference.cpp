@@ -304,6 +304,13 @@ TEST_F(ReferenceFixture, ExecutionReferenceParseChronoTest){
 /**
  * @brief Сводные временные зоны Северной Америки и их системные соответствия
  *
+ * @note Правила несут даты перехода - второе воскресенье марта и первое воскресенье
+ *       ноября, час перехода по POSIX умолчания 02:00 местного. Голое правило без
+ *       дат базу не воспроизводит: musl читает его как летнее смещение круглый год,
+ *       а NetBSD на получасовой NST3:30NDT выдаёт летнее смещение там, где база
+ *       даёт зимнее. Замерено зондом 13.11.2026 на alpine и NetBSD: с датами
+ *       правило совпадает с базой на миге сличения, без дат - расходится
+ *
  */
 static const struct ReferenceZone {
 	// Сводная временная зона модуля
@@ -315,17 +322,17 @@ static const struct ReferenceZone {
 	// Год, с которого зона следует общему правилу перехода
 	uint16_t since;
 } REFERENCE_ZONES[] = {
-	{awh::chrono_t::zone_t::ET, "America/New_York",    "EST5EDT",    2007},
-	{awh::chrono_t::zone_t::CT, "America/Chicago",     "CST6CDT",    2007},
-	{awh::chrono_t::zone_t::MT, "America/Denver",      "MST7MDT",    2007},
-	{awh::chrono_t::zone_t::PT, "America/Los_Angeles", "PST8PDT",    2007},
-	{awh::chrono_t::zone_t::AT, "America/Halifax",     "AST4ADT",    2007},
+	{awh::chrono_t::zone_t::ET, "America/New_York",    "EST5EDT,M3.2.0,M11.1.0",    2007},
+	{awh::chrono_t::zone_t::CT, "America/Chicago",     "CST6CDT,M3.2.0,M11.1.0",    2007},
+	{awh::chrono_t::zone_t::MT, "America/Denver",      "MST7MDT,M3.2.0,M11.1.0",    2007},
+	{awh::chrono_t::zone_t::PT, "America/Los_Angeles", "PST8PDT,M3.2.0,M11.1.0",    2007},
+	{awh::chrono_t::zone_t::AT, "America/Halifax",     "AST4ADT,M3.2.0,M11.1.0",    2007},
 	/**
 	 * Ньюфаундленд до 2012 года переходил на летнее время в 00:01 местного, а не в
 	 * 02:00 общего правила, которому следует модуль: 18 переходов 2007-2011 годов
 	 * расходятся с базой временных зон системы намеренно
 	 */
-	{awh::chrono_t::zone_t::NT, "America/St_Johns",    "NST3:30NDT", 2012}
+	{awh::chrono_t::zone_t::NT, "America/St_Johns",    "NST3:30NDT,M3.2.0,M11.1.0", 2012}
 };
 
 /**

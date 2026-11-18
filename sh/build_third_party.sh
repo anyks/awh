@@ -310,15 +310,25 @@ clean_submodule(){
 
 ##
  # Функция применения патча
+ #
+ # Применённость и наложение проверяем git, затем patch: снимок без .git не даёт git apply
+ #
+ # Патч подаётся ключом -i, а не через stdin, и с -f либо -N. Без этого BSD-версия
+ # patch (macOS) на каждый файл задаёт вопрос "Reversed (or previously applied) patch
+ # detected!  Assume -R? [y]" и читает ответ из того же stdin, куда положен сам патч,
+ # - сборка виснет на ровном месте. Тот же вопрос без -f врёт и в проверке: замерено
+ # на lizard, на чистом дереве "patch -R --dry-run" отвечает нуль, то есть "уже
+ # применён", патч молча пропускается, а непереименованные символы вылезают часами
+ # спустя дублями на линковке. С -f та же проверка честно отказывает (нуль только
+ # когда патч и впрямь наложен), а -N не даёт патчу сняться в обратную сторону
  ##
 apply_patch(){
 	PATCH="$ROOT/patches/$1/$2"
-	# Применённость и наложение проверяем git, затем patch: снимок без .git не даёт git apply
-	if git apply --reverse --check "$PATCH" 2> /dev/null || patch -p1 -R --dry-run < "$PATCH" > /dev/null 2>&1; then
+	if git apply --reverse --check "$PATCH" 2> /dev/null || patch -p1 -R -f --dry-run -i "$PATCH" < /dev/null > /dev/null 2>&1; then
 		echo "patch $PATCH already applied"
 	else
 		echo "applying patch $PATCH"
-		git apply "$PATCH" 2> /dev/null || patch -p1 < "$PATCH" || exit 1
+		git apply "$PATCH" 2> /dev/null || patch -p1 -N -f -i "$PATCH" < /dev/null || exit 1
 	fi
 }
 

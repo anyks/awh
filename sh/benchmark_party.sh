@@ -195,6 +195,10 @@ $ROOT/submodule.sh add gperftools https://github.com/gperftools/gperftools.git
 $ROOT/submodule.sh remove openssl
 $ROOT/submodule.sh add openssl https://github.com/openssl/openssl.git
 
+# Выполняем пересборку сабмодуля NSS
+$ROOT/submodule.sh remove nss
+$ROOT/submodule.sh add nss https://github.com/mozilla/nss.git
+
 # Выполняем пересборку сабмодуля uServer
 $ROOT/submodule.sh remove userver
 $ROOT/submodule.sh add userver https://github.com/userver-framework/userver.git

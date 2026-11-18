@@ -209,24 +209,6 @@ bool awh::eth::sctp::initMessages(const net::socket_t sock, const net::sctp::ini
  *
  */
 bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) noexcept {
-	// Если список событий для подписки пустой
-	if(events.empty()){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, log::flag_t::WARNING, "SCTP events list is empty");
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("%s", log::flag_t::WARNING, "SCTP events list is empty");
-		#endif
-		// Выходим из функции
-		return false;
-	}
 	// Результат подписки через устаревший API SCTP_EVENTS
 	bool resultLegacy = true;
 	// Результат подписки через современный API SCTP_EVENT

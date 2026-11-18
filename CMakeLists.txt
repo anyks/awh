@@ -909,7 +909,7 @@ find_package(Dependence REQUIRED)
 # Провекра Dependence
 if (Dependence_FOUND)
     message(STATUS "Dependence lib found: " ${DEPEND_LIBRARY})
-    message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
+    message(STATUS "Dependence include root found: " ${DEPEND_INCLUDE_ROOT})
     message(STATUS "LZ4 include dir found: " ${LZ4_INCLUDE_DIR})
     message(STATUS "BZ2 include dir found: " ${BZ2_INCLUDE_DIR})
     message(STATUS "ZSTD include dir found: " ${ZSTD_INCLUDE_DIR})
@@ -924,6 +924,14 @@ else (Dependence_FOUND)
     # Выводим сообщение об отсутствии библиотеки зависимостей
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
+
+# Подключаем A-NTS: криптография и TLS переехали с BoringSSL на собственную библиотеку.
+# Пакет ставит оснастка third_party (sh/third_party/000_a-nts.sh); цель anyks::nts несёт
+# заголовки include/anyks/nts, определение NTS_STATICLIB и потоки. Линкуем глобально:
+# зависимость сквозная - библиотека, семплы, тесты и бенчмарки берут её одной целью.
+list(APPEND CMAKE_PREFIX_PATH "${AWH_THIRD_PARTY}")
+find_package(nts 1.0 CONFIG REQUIRED)
+link_libraries(anyks::nts)
 
 # Если Doxygen найден
 if(Doxygen_FOUND)

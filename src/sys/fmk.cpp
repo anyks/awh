@@ -55,12 +55,13 @@
 #include <sys/types.h>
 
 /**
- * Заголовок запросов к ядру
+ * @brief Заголовок запросов к ядру
  *
- * FreeBSD отдаёт частоту системного таймера запросом kern.hz через sysctlbyname,
- * а без своего заголовка имя это не объявлено вовсе - сборка отказывает
- * «no member named 'sysctlbyname' in the global namespace». Под macOS то же имя
- * приходит с прочими заголовками, потому беда видна только на FreeBSD
+ * @details FreeBSD отдаёт частоту системного таймера запросом kern.hz через sysctlbyname,
+ *          а без своего заголовка имя это не объявлено вовсе - сборка отказывает
+ *          «no member named 'sysctlbyname' in the global namespace». Под macOS то же имя
+ *          приходит с прочими заголовками, потому беда видна только на FreeBSD.
+ *
  */
 #if defined(__FreeBSD__)
 	/**
@@ -70,7 +71,7 @@
 #endif
 
 /**
- * Если включён режим отладки
+ * @brief Если включён режим отладки
  *
  * @note Заголовок пределов нужен ради подъёма предела дампа ядра. У MS Windows его нет
  *       вовсе, а дампы там заводятся иначе - средствами самой системы
@@ -81,6 +82,23 @@
 	 * Системный заголовочный файл
 	 */
 	#include <sys/resource.h>
+#endif
+
+/**
+ * @brief Системный заголовочный файл числовых местностей POSIX
+ *
+ * @note Объявления newlocale и uselocale живут именно в locale.h: отдельного
+ *       xlocale.h у Solaris нет вовсе, а у прочих систем он лишь включает
+ *       locale.h. Заголовка clocale, подключаемого выше, для них недостаточно.
+ *       У NetBSD uselocale в libc нет, там обёртки чисел обходятся действующей
+ *       местностью
+ *
+ */
+#if !(defined(_WIN32) || defined(_WIN64))
+	/**
+	 * Подключаем системную локаль
+	 */
+	#include <clocale>
 #endif
 
 /**
@@ -106,7 +124,7 @@
 using namespace std;
 
 /**
- * Сокращаем пространство имён проверок символов таблицы ASCII
+ * @brief Сокращаем пространство имён проверок символов таблицы ASCII
  *
  * @details Протокольные данные определены стандартами в таблице ASCII и только
  *          в ней, а библиотечные проверки символов смотрят на текущую локаль,
@@ -150,7 +168,7 @@ namespace {
 	 * @return       символ, переведённый в верхний регистр
 	 *
 	 */
-	static __AWH_INLINE__ wint_t wideUpper(const wint_t letter) noexcept {
+	static __AWH_INLINE__ wint_t __awh_wide_upper__(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -183,10 +201,10 @@ namespace {
 	 * @param letter переводимый символ
 	 * @return       символ, переведённый в нижний регистр
 	 *
-	 * @details Пояснение к работе средства смотрите у wideUpper
+	 * @details Пояснение к работе средства смотрите у __awh_wide_upper__
 	 *
 	 */
-	static __AWH_INLINE__ wint_t wideLower(const wint_t letter) noexcept {
+	static __AWH_INLINE__ wint_t __awh_wide_lower__(const wint_t letter) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -221,7 +239,7 @@ namespace {
 	 * @return     результирующая широкая строка (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
 	 *
 	 */
-	static __AWH_INLINE__ wstring utf8ToWide(const char * data, const size_t size) noexcept {
+	static __AWH_INLINE__ wstring __awh_utf8_to_wide__(const char * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -376,7 +394,7 @@ namespace {
 	 * @return     результирующая строка в кодировке UTF-8
 	 *
 	 */
-	static __AWH_INLINE__ string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
+	static __AWH_INLINE__ string __awh_wide_to_utf8__(const wchar_t * data, const size_t size) noexcept {
 		// Если данные не переданы
 		if((data == nullptr) || (size == 0))
 			// Возвращаем пустой результат
@@ -480,6 +498,198 @@ namespace {
 		#endif
 	}
 	/**
+	 * @brief Тип объекта числовой местности
+	 *
+	 * @note MS Windows и POSIX заводят и применяют числовую местность разными
+	 *       средствами, и объект её у них разного типа
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Тип объекта числовой местности MS Windows
+		using numeric_locale_t = _locale_t;
+	/**
+	 * Иначе система POSIX
+	 */
+	#else
+		// Тип объекта числовой местности POSIX
+		using numeric_locale_t = locale_t;
+	#endif
+	/**
+	 * @brief Функция получения числовой местности C, единой на весь процесс
+	 *
+	 * @details Местность заводится однажды при первом обращении и живёт до
+	 *          завершения процесса. Отказ её заведения возвращается нулём,
+	 *          и зовущие тогда пишут и читают числа действующей местностью.
+	 *
+	 * @return объект числовой местности C либо ноль при отказе заведения
+	 *
+	 */
+	static numeric_locale_t __awh_numeric_locale__() noexcept {
+		/**
+		 * Числовая местность C, единая на весь процесс
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Заводим числовую местность C средствами MS Windows
+			static const numeric_locale_t locale = ::_create_locale(LC_NUMERIC, "C");
+		/**
+		 * Иначе система POSIX
+		 */
+		#else
+			/**
+			 * @brief Если система NetBSD
+			 *
+			 * @note В её libc нет uselocale вовсе, проверено по символам
+			 *       18.11.2026. Круговорот записи у неё замкнут и под чужой
+			 *       местностью: snprintf и strtod пишут и читают разделитель
+			 *       одинаково, замерено щупом под «de_DE.UTF-8». Точку в запись
+			 *       ставит замена разделителя ниже по коду
+			 *
+			 */
+			#if defined(__NetBSD__)
+				// Местность не заводим, числа пишутся и читаются действующей местностью
+				static const numeric_locale_t locale = (locale_t)0;
+			/**
+			 * Иначе система POSIX с uselocale
+			 */
+			#else
+				// Заводим числовую местность C средствами POSIX
+				static const numeric_locale_t locale = ::newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
+			#endif
+		#endif
+		// Возвращаем объект числовой местности
+		return locale;
+	}
+	/**
+	 * @brief Функция записи числа в буфер под числовой местностью C
+	 *
+	 * @details Запись и чтение обратно обязаны идти под одной и той же местностью:
+	 *          под местностями «fa_IR», «ar_SA» и «ps_AF» snprintf пишет разделителем
+	 *          «٫» (U+066B), а strtod у illumos читает лишь первый его байт и
+	 *          останавливается, отчего круговорот записи не замыкается вовсе.
+	 *          Замерено щупом 18.11.2026 на OpenIndiana. Местность C ставится на
+	 *          время каждого вызова и возвращается по его завершении, прочих
+	 *          потоков и прочего кода это не касается. Исключение составляет
+	 *          NetBSD: uselocale в её libc нет, но круговорот записи у неё
+	 *          замкнут и под чужой местностью, точку в запись ставит замена
+	 *          разделителя в __awh_noexp_fixed__.
+	 *
+	 * @param buffer буфер записи числа
+	 * @param size   размер буфера записи
+	 * @param format формат записи числа
+	 * @return       длина выполненной записи либо отрицательное число при отказе
+	 *
+	 */
+	static int32_t __awh_snprintf_numeric__(char * buffer, const size_t size, const char * format, ...) noexcept {
+		// Создаём список аргументов
+		va_list args;
+		// Запускаем инициализацию списка аргументов
+		va_start(args, format);
+		// Получаем числовую местность C, единую на весь процесс
+		[[maybe_unused]] const numeric_locale_t locale = __awh_numeric_locale__();
+		// Длина выполненной записи числа
+		int32_t length = 0;
+		/**
+		 * Если система MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если числовая местность C заведена
+			if(locale != nullptr)
+				// Записываем число в буфер под числовой местностью C
+				length = ::_vsnprintf_l(buffer, size, format, locale, args);
+			// Если локаль передана
+			else
+				// Записываем число в буфер действующей местностью
+				length = ::vsnprintf(buffer, size, format, args);
+		/**
+		 * Иначе система POSIX
+		 */
+		#else
+			/**
+			 * Если система NetBSD, где uselocale в libc нет
+			 */
+			#if defined(__NetBSD__)
+				// Записываем число в буфер действующей местностью
+				length = ::vsnprintf(buffer, size, format, args);
+			/**
+			 * Иначе система POSIX с uselocale
+			 */
+			#else
+				// Действующая местность зовущего потока
+				locale_t saved = (locale_t)0;
+				// Если числовая местность C заведена
+				if(locale != nullptr)
+					// Ставим числовую местность C зовущему потоку
+					saved = ::uselocale(locale);
+				// Записываем число в буфер под установленной местностью
+				length = ::vsnprintf(buffer, size, format, args);
+				// Если числовая местность C была установлена
+				if(locale != nullptr)
+					// Возвращаем местность зовущего потока
+					::uselocale(saved);
+			#endif
+		#endif
+		// Завершаем список аргументов
+		va_end(args);
+		// Возвращаем длину выполненной записи
+		return length;
+	}
+	/**
+	 * @brief Функция чтения числа из записи под числовой местностью C
+	 *
+	 * @details Чтение числа выполняется под той же местностью C, что и запись
+	 *          числа функцией __awh_snprintf_numeric__: круговорот записи
+	 *          замыкается лишь при их согласии.
+	 *
+	 * @param text запись числа
+	 * @param end  адрес остатка записи после числа либо ноль
+	 * @return     прочитанное число
+	 *
+	 */
+	static double __awh_strtod_numeric__(const char * text, char ** end) noexcept {
+		// Получаем числовую местность C, единую на весь процесс
+		[[maybe_unused]] const numeric_locale_t locale = __awh_numeric_locale__();
+		/**
+		 * Если система MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если числовая местность C заведена
+			if(locale != nullptr)
+				// Читаем число из записи под числовой местностью C
+				return ::_strtod_l(text, end, locale);
+			// Если локаль передана
+			else
+				// Читаем число из записи действующей местностью
+				return ::strtod(text, end);
+		/**
+		 * Иначе система POSIX
+		 */
+		#else
+			/**
+			 * Если система NetBSD, где uselocale в libc нет
+			 */
+			#if defined(__NetBSD__)
+				// Читаем число из записи действующей местностью
+				return ::strtod(text, end);
+			/**
+			 * Иначе система POSIX с uselocale
+			 */
+			#else
+				// Если числовая местность C не заведена
+				if(locale == nullptr)
+					// Читаем число из записи действующей местностью
+					return ::strtod(text, end);
+				// Ставим числовую местность C зовущему потоку
+				const locale_t saved = ::uselocale(locale);
+				// Читаем число из записи под числовой местностью C
+				const double result = ::strtod(text, end);
+				// Возвращаем местность зовущего потока
+				::uselocale(saved);
+				// Возвращаем прочитанное число
+				return result;
+			#endif
+		#endif
+	}
+	/**
 	 * @brief Функция записи числа с плавающей точкой в безэкспоненциальной форме
 	 *
 	 * @details Разделителем дробной части в записи всегда служит точка, разделителей
@@ -499,12 +709,19 @@ namespace {
 	 *          Вдобавок в libc++ запись эта помечена доступной лишь начиная с macOS
 	 *          13.3, и сборка под ранние выпуски системы прерывается ошибкой.
 	 *
+	 * @details Запись и чтение обратно выполняются обёртками __awh_snprintf_numeric__ и
+	 *          __awh_strtod_numeric__ под числовой местностью C: под чужой местностью
+	 *          snprintf пишет разделителем «٫» (U+066B), а strtod у illumos читает
+	 *          лишь первый его байт, круговорот записи не замыкается ни на одном
+	 *          количестве разрядов, и запись выходит семнадцатиразрядной. Замерено
+	 *          щупом 18.11.2026 на OpenIndiana под местностью «ar_SA.UTF-8»
+	 *
 	 * @param number    число для записи
 	 * @param precision количество знаков после запятой, отрицательное для подбора
 	 * @return          число в безэкспоненциальной форме
 	 *
 	 */
-	static __AWH_INLINE__ string noexpFixed(const double number, const int32_t precision) noexcept {
+	static __AWH_INLINE__ string __awh_noexp_fixed__(const double number, const int32_t precision) noexcept {
 		// Если число не является конечным, записывать нечего
 		if(!::isfinite(number))
 			// Выводим нулевой результат
@@ -535,9 +752,9 @@ namespace {
 			 */
 			for(int32_t i = 15; i < 17; i++){
 				// Выполняем запись числа с показателем степени
-				::snprintf(probe, sizeof(probe), "%.*e", (i - 1), number);
+				__awh_snprintf_numeric__(probe, sizeof(probe), "%.*e", (i - 1), number);
 				// Если запись читается обратно ровно тем же числом
-				if(::strtod(probe, nullptr) == number){
+				if(__awh_strtod_numeric__(probe, nullptr) == number){
 					// Запоминаем подобранное количество значащих разрядов
 					digits = i;
 					// Выходим из цикла подбора
@@ -559,9 +776,9 @@ namespace {
 				 */
 				while(digits > 1){
 					// Выполняем запись числа на один значащий разряд короче
-					::snprintf(probe, sizeof(probe), "%.*e", (digits - 2), number);
+					__awh_snprintf_numeric__(probe, sizeof(probe), "%.*e", (digits - 2), number);
 					// Если укороченная запись читается обратно уже иным числом
-					if(::strtod(probe, nullptr) != number)
+					if(__awh_strtod_numeric__(probe, nullptr) != number)
 						// Выходим из цикла подбора
 						break;
 					// Принимаем укороченную запись
@@ -579,7 +796,7 @@ namespace {
 				 * подбор убыванием заканчивается заведомо укороченной записью, а подбор
 				 * возрастанием при неудаче - записью на разряд короче требуемой
 				 */
-				::snprintf(probe, sizeof(probe), "%.*e", (digits - 1), number);
+				__awh_snprintf_numeric__(probe, sizeof(probe), "%.*e", (digits - 1), number);
 			// Выполняем поиск показателя степени в записи числа
 			const char * pos = ::strchr(probe, 'e');
 			// Получаем показатель степени записанного числа
@@ -602,7 +819,7 @@ namespace {
 		 */
 		char buffer[512];
 		// Выполняем запись числа в буфер
-		int32_t length = ::snprintf(buffer, sizeof(buffer), "%.*f", fraction, number);
+		int32_t length = __awh_snprintf_numeric__(buffer, sizeof(buffer), "%.*f", fraction, number);
 		// Если запись выполнена
 		if(length < 0)
 			// Выводим нулевой результат
@@ -618,7 +835,7 @@ namespace {
 			// Выделяем буфер размера, которого запись потребовала
 			unique_ptr <char []> scratch(new char[static_cast <size_t> (length) + 1]);
 			// Выполняем запись числа в выделенный буфер
-			length = ::snprintf(scratch.get(), (static_cast <size_t> (length) + 1), "%.*f", fraction, number);
+			length = __awh_snprintf_numeric__(scratch.get(), (static_cast <size_t> (length) + 1), "%.*f", fraction, number);
 			// Если запись выполнить не удалось
 			if(length < 0)
 				// Выводим нулевой результат
@@ -627,8 +844,14 @@ namespace {
 			result.assign(scratch.get(), static_cast <size_t> (length));
 		}
 		/**
-		 * Разделителем дробной части во многих местностях служит не точка, а запись
-		 * числа обязана оставаться одинаковой в любой из них
+		 * @brief Разделителем дробной части во многих местностях служит не точка, а запись
+		 *        числа обязана оставаться одинаковой в любой из них
+		 *
+		 * @note Под числовой местностью C, под которой пишут и читают числа обёртки
+		 *       __awh_snprintf_numeric__ и __awh_strtod_numeric__, разделителем всегда
+		 *       служит точка, и замена эта не выполняется. Страховкой она остаётся
+		 *       на случай отказа заведения числовой местности C: тогда обёртки пишут
+		 *       действующей местностью, и разделитель приходится менять здесь
 		 *
 		 * @warning Знак этот однобайтовым быть не обязан: местности «fa_IR», «ar_SA» и
 		 *          «ps_AF» несут разделителем «٫» (U+066B), занимающий в UTF-8 два
@@ -703,7 +926,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	static __AWH_INLINE__ T & split(string_view str, string_view delim, T & container) noexcept {
+	static __AWH_INLINE__ T & __awh_split__(string_view str, string_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -821,7 +1044,7 @@ namespace {
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	static __AWH_INLINE__ T & split(wstring_view str, wstring_view delim, T & container) noexcept {
+	static __AWH_INLINE__ T & __awh_split__(wstring_view str, wstring_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -938,6 +1161,7 @@ namespace {
 		// Таблица римских цифр сотен
 		static constexpr wstring_view c[10] = {L"", L"C", L"CC", L"CCC", L"CD", L"D", L"DC", L"DCC", L"DCCC", L"CM"};
 	} romanNumerals;
+
 	/**
 	 * @brief Класс основных символов
 	 *
@@ -979,7 +1203,7 @@ namespace {
 			 */
 			bool isRome(const wchar_t num) noexcept {
 				// Выполняем проверку сущестования цифры
-				return (this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num)))) != this->_wideRomes.end());
+				return (this->_wideRomes.find(static_cast <wchar_t> (__awh_wide_upper__(static_cast <wint_t> (num)))) != this->_wideRomes.end());
 			}
 		public:
 			/**
@@ -1025,7 +1249,7 @@ namespace {
 			 */
 			bool isLetter(const wchar_t letter) noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)))) != this->_wideLetters.end());
+				return (this->_wideLetters.find(static_cast <wchar_t> (__awh_wide_lower__(static_cast <wint_t> (letter)))) != this->_wideLetters.end());
 			}
 		public:
 			/**
@@ -1058,7 +1282,7 @@ namespace {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num))));
+				auto i = this->_wideRomes.find(static_cast <wchar_t> (__awh_wide_upper__(static_cast <wint_t> (num))));
 				// Если римское число найдено
 				if(i != this->_wideRomes.end())
 					// Получаем римское число в чистом виде
@@ -1136,7 +1360,7 @@ namespace {
 				// Переменная результата
 				char result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter))));
+				auto i = this->_wideLetters.find(static_cast <wchar_t> (__awh_wide_lower__(static_cast <wint_t> (letter))));
 				// Если латинская буква найдена
 				if(i != this->_wideLetters.end())
 					// Получаем латинскую букву в чистом виде
@@ -1226,6 +1450,7 @@ namespace {
 				};
 			}
 	} symbols;
+
 	/**
 	 * @brief Шаблон функции потокового разбора текста на записи ключ-значение
 	 *
@@ -1248,7 +1473,7 @@ namespace {
 	 * @param callback  функция обратного вызова для каждой найденной записи
 	 *
 	 */
-	static __AWH_INLINE__ void parseKeyValue(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
+	static __AWH_INLINE__ void __awh_parse_key_value__(const basic_string_view <T> text, const basic_string_view <T> delim, const basic_string_view <T> separator, const vector <basic_string <T>> & escaping, F && callback) noexcept {
 		// Тип текстового представления обрабатываемых данных
 		using view_t = basic_string_view <T>;
 		// Получаем размер обрабатываемого текста
@@ -1464,7 +1689,7 @@ namespace {
 		 *       Передай мы умолчания, заданное им пропало бы
 		 *
 		 */
-		void seize() noexcept {
+		void __awh_seize__() noexcept {
 			// Заводим захват выдачи памяти процесса, оставив настройки как есть
 			alloc::allocator::capture(alloc::allocator::options());
 		}
@@ -1484,7 +1709,7 @@ namespace {
 	 *       оставляет
 	 *
 	 */
-	static __AWH_INLINE__ void raiseCoreLimit() noexcept {
+	static __AWH_INLINE__ void __awh_raise_core_limit__() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1512,13 +1737,13 @@ namespace {
 	 */
 	static __AWH_INLINE__ void startup() noexcept {
 		// Поднимаем предел дампа ядра: в выпускной сборке это пусто
-		::raiseCoreLimit();
+		::__awh_raise_core_limit__();
 		/**
 		 * Если распределитель не снят ключом сборки
 		 */
 		#if !defined(AWH_ALLOC_DISABLED)
 			// Заводим захват выдачи памяти процесса
-			::seize();
+			::__awh_seize__();
 		#endif
 	}
 	/**
@@ -1533,7 +1758,7 @@ namespace {
 	 *       заведение это - одно на процесс
 	 *
 	 */
-	static __AWH_INLINE__ void seizeAllocator() noexcept {
+	static __AWH_INLINE__ void __awh_seize_allocator__() noexcept {
 		// Выполняем заведение один раз на весь процесс
 		std::call_once(::__awh_startup_once__, &::startup);
 	}
@@ -1568,7 +1793,7 @@ namespace {
 			 */
 			explicit State() noexcept {
 				// Заводим распределитель памяти и дамп ядра один раз на весь процесс
-				::seizeAllocator();
+				::__awh_seize_allocator__();
 				// Устанавливаем локализацию системы
 				fmk::setLocale();
 			}
@@ -2196,12 +2421,12 @@ bool awh::fmk::is(const wchar_t letter, const check_t flag) noexcept {
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <wint_t> (letter) == wideUpper(static_cast <wint_t> (letter)));
+					result = (static_cast <wint_t> (letter) == ::__awh_wide_upper__(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на нижний регистр
 				case static_cast <uint8_t> (check_t::LOWER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <wint_t> (letter) == wideLower(static_cast <wint_t> (letter)));
+					result = (static_cast <wint_t> (letter) == ::__awh_wide_lower__(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на пробел
 				case static_cast <uint8_t> (check_t::SPACE):
@@ -2648,7 +2873,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <wint_t> (letter) == wideUpper(static_cast <wint_t> (letter)));
+						result = (static_cast <wint_t> (letter) == ::__awh_wide_upper__(static_cast <wint_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выполняем выход из цикла
@@ -2662,7 +2887,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <wint_t> (letter) == wideLower(static_cast <wint_t> (letter)));
+						result = (static_cast <wint_t> (letter) == ::__awh_wide_lower__(static_cast <wint_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выполняем выход из цикла
@@ -2974,7 +3199,7 @@ bool awh::fmk::compare(wstring_view first, wstring_view second) noexcept {
 		// Выполняем перебор обоих строк
 		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
 			// Выполняем сравнение каждого символа (при полном совпадении символов приведение регистра не требуется)
-			return ((first == second) || (wideLower(static_cast <wint_t> (first)) == wideLower(static_cast <wint_t> (second))));
+			return ((first == second) || (::__awh_wide_lower__(static_cast <wint_t> (first)) == ::__awh_wide_lower__(static_cast <wint_t> (second))));
 		}) : false);
 	}
 	// Возвращаем значение по умолчанию
@@ -3473,11 +3698,11 @@ wchar_t awh::fmk::transform(const wchar_t letter, const transform_t flag) noexce
 		// Если передан флаг перевода строки в верхний регистр
 		case static_cast <uint8_t> (transform_t::UPPER_CASE):
 			// Выполняем перевод символа в верхний регистр
-			return static_cast <wchar_t> (wideUpper(static_cast <wint_t> (letter)));
+			return static_cast <wchar_t> (::__awh_wide_upper__(static_cast <wint_t> (letter)));
 		// Если передан флаг перевода строки в нижний регистр
 		case static_cast <uint8_t> (transform_t::LOWER_CASE):
 			// Выполняем перевод символа в нижний регистр
-			return static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)));
+			return static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (letter)));
 	}
 	// Возвращаем результат
 	return letter;
@@ -3612,7 +3837,7 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 					// Выполняем приведение к верхнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](const wchar_t letter) -> wchar_t {
 						// Приводим к верхнему регистру каждую букву
-						return static_cast <wchar_t> (wideUpper(static_cast <wint_t> (letter)));
+						return static_cast <wchar_t> (::__awh_wide_upper__(static_cast <wint_t> (letter)));
 					});
 				} break;
 				// Если передан флаг перевода строки в нижний регистр
@@ -3620,7 +3845,7 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 					// Выполняем приведение к нижнему регистру
 					::transform(text.begin(), text.end(), text.begin(), [](const wchar_t letter) -> wchar_t {
 						// Приводим к нижнему регистру каждую букву
-						return static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)));
+						return static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (letter)));
 					});
 				} break;
 				// Если передан флаг умного перевода начальных символов в верхний регистр
@@ -3638,9 +3863,9 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
 							// Переводим символ в верхний режим
-							text[i] = static_cast <wchar_t> (wideUpper(static_cast <wint_t> (letter)));
+							text[i] = static_cast <wchar_t> (::__awh_wide_upper__(static_cast <wint_t> (letter)));
 						// Переводим остальные символы в нижний регистр
-						else text[i] = static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)));
+						else text[i] = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (letter)));
 						// Если найден спецсимвол, устанавливаем флаг детекции
 						mode = ((letter == L'-') || (letter == L'_') || static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 					}
@@ -3782,7 +4007,7 @@ wstring awh::fmk::join(const vector <wstring> & items, wstring_view delim) noexc
  */
 vector <string> & awh::fmk::split(string_view text, string_view delim, vector <string> & container) noexcept {
 	// Выполняем сплит текста
-	return ::split(text, delim, container);
+	return ::__awh_split__(text, delim, container);
 }
 /**
  * @brief Функция разделения строк на токены
@@ -3794,7 +4019,7 @@ vector <string> & awh::fmk::split(string_view text, string_view delim, vector <s
  */
 vector <wstring> & awh::fmk::split(wstring_view text, wstring_view delim, vector <wstring> & container) noexcept {
 	// Выполняем сплит текста
-	return ::split(text, delim, container);
+	return ::__awh_split__(text, delim, container);
 }
 /**
  * @brief Функция конвертирования строки в строку utf-8
@@ -3825,7 +4050,7 @@ wstring awh::fmk::convert(string_view str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
-				result = ::utf8ToWide(str.data(), str.size());
+				result = ::__awh_utf8_to_wide__(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -3895,7 +4120,7 @@ string awh::fmk::convert(wstring_view str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
-				result = ::wideToUtf8(str.data(), str.size());
+				result = ::__awh_wide_to_utf8__(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -3965,7 +4190,7 @@ wstring awh::fmk::convert(const char * str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
-				result = ::utf8ToWide(str, ::strlen(str));
+				result = ::__awh_utf8_to_wide__(str, ::strlen(str));
 			#endif
 		}
 	/**
@@ -4035,7 +4260,7 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
-				result = ::wideToUtf8(str, ::wcslen(str));
+				result = ::__awh_wide_to_utf8__(str, ::wcslen(str));
 			#endif
 		}
 	/**
@@ -4105,7 +4330,7 @@ wstring awh::fmk::convert(const string & str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование строки UTF-8 в широкую строку
-				result = ::utf8ToWide(str.data(), str.size());
+				result = ::__awh_utf8_to_wide__(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -4175,7 +4400,7 @@ string awh::fmk::convert(const wstring & str) noexcept {
 			 */
 			#else
 				// Выполняем конвертирование широкой строки в строку UTF-8
-				result = ::wideToUtf8(str.data(), str.size());
+				result = ::__awh_wide_to_utf8__(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -5282,7 +5507,7 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 			 * Целое число записывается без дробной части вовсе, а дробное - с
 			 * количеством знаков после запятой, заданным размером шага
 			 */
-			result = noexpFixed(number, ((::modf(number, &intpart) != .0) ? static_cast <int32_t> (step) : 0));
+			result = ::__awh_noexp_fixed__(number, ((::modf(number, &intpart) != .0) ? static_cast <int32_t> (step) : 0));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -5327,7 +5552,7 @@ string awh::fmk::noexp(const double number, [[maybe_unused]] const bool onlyNum)
 	 */
 	try {
 		// Выполняем запись числа наименьшей точной записью
-		result = noexpFixed(number, -1);
+		result = ::__awh_noexp_fixed__(number, -1);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5440,7 +5665,7 @@ string awh::fmk::grouped(const double number, const int32_t precision, const cha
 	 *       без дробной части - «123,456,789», а не «0»
 	 *
 	 */
-	const string text = noexpFixed(number, precision);
+	const string text = ::__awh_noexp_fixed__(number, precision);
 	// Выводим запись числа с разделёнными разрядами
 	return ::separated(text, separator, size);
 }
@@ -5858,11 +6083,11 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			/**
 			 * Преобразовываем цифру M
 			 */
-			if(static_cast <wchar_t> (wideLower(static_cast <wint_t> (word.front()))) == L'm'){
+			if(static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word.front()))) == L'm'){
 				/**
 				 * Преобразовываем буквы M в начале слова
 				 */
-				for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'm'); n++, i++);
+				for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'm'); n++, i++);
 				// Если букв больше четырёх
 				if(n > 4)
 					// Возвращаем нулевой результат
@@ -5873,7 +6098,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			/**
 			 * Преобразовываем букву D и C
 			 */
-			if((i < length) && (((o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'd') || (o == L'c'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'd') || (o == L'c'))){
 				// Если буква D
 				if(o == L'd'){
 					// Увеличиваем позицию
@@ -5884,9 +6109,9 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "CM", "CD"
 				 */
-				if((i + 1 < length) && (o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'c'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'c'){
 					// Запоминаем найденный символ
-					wchar_t next = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i + 1])));
+					wchar_t next = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация CM
 					if(next == L'm'){
 						// Увеличиваем позицию
@@ -5904,7 +6129,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						/**
 						 * Преобразовываем буквы C
 						 */
-						for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
@@ -5913,11 +6138,11 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						v += (n * 100);
 					}
 				// Иначе это просто буква C
-				} else if(i < length && static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'c') {
+				} else if(i < length && static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'c') {
 					/**
 					 * Преобразовываем буквы C
 					 */
-					for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
@@ -5929,7 +6154,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			/**
 			 * Преобразовываем букву L и X
 			 */
-			if((i < length) && (((o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'l') || (o == L'x'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'l') || (o == L'x'))){
 				// Если буква L
 				if(o == L'l'){
 					// Увеличиваем позицию
@@ -5940,9 +6165,9 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "XC", "XL"
 				 */
-				if((i + 1 < length) && (o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'x'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'x'){
 					// Запоминаем найденный символ
-					wchar_t next = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i + 1])));
+					wchar_t next = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация XC
 					if(next == L'c'){
 						// Увеличиваем позицию
@@ -5960,7 +6185,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						/**
 						 * Преобразовываем буквы X
 						 */
-						for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
@@ -5969,11 +6194,11 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						v += (n * 10);
 					}
 				// Иначе это просто буква X
-				} else if(i < length && static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'x') {
+				} else if(i < length && static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'x') {
 					/**
 					 * Преобразовываем буквы X
 					 */
-					for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
@@ -5985,7 +6210,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			/**
 			 * Преобразовываем букву V и I
 			 */
-			if((i < length) && (((o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'v') || (o == L'i'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'v') || (o == L'i'))){
 				// Если буква V
 				if(o == L'v'){
 					// Увеличиваем позицию
@@ -5996,9 +6221,9 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "IX", "IV"
 				 */
-				if((i + 1 < length) && (o = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i])))) == L'i'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i])))) == L'i'){
 					// Запоминаем найденный символ
-					wchar_t next = static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i + 1])));
+					wchar_t next = static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация IX
 					if(next == L'x'){
 						// Увеличиваем позицию
@@ -6016,7 +6241,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						/**
 						 * Преобразовываем буквы I
 						 */
-						for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
@@ -6025,11 +6250,11 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 						v += n;
 					}
 				// Иначе это просто буква I
-				} else if(i < length && static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'i') {
+				} else if(i < length && static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'i') {
 					/**
 					 * Преобразовываем буквы I
 					 */
-					for(n = 0; (i < length) && (static_cast <wchar_t> (wideLower(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::__awh_wide_lower__(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
@@ -7114,7 +7339,7 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 			// Выполняем регистронезависимый поиск слова в тексте
 			const auto i = ::search(text.begin(), text.end(), word.begin(), word.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
 				// Выполняем сравнение символов без учёта регистра
-				return (wideLower(static_cast <wint_t> (first)) == wideLower(static_cast <wint_t> (second)));
+				return (::__awh_wide_lower__(static_cast <wint_t> (first)) == ::__awh_wide_lower__(static_cast <wint_t> (second)));
 			});
 			// Возвращаем результат проверки
 			return (i != text.end());
@@ -7312,7 +7537,7 @@ unordered_multimap <string, string> awh::fmk::kv(string_view text, string_view d
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			::parseKeyValue <char> (text, delim, separator, escaping, [&result](const string_view key, const string_view value) noexcept -> void {
+			::__awh_parse_key_value__ <char> (text, delim, separator, escaping, [&result](const string_view key, const string_view value) noexcept -> void {
 				// Выполняем формирование записи результата
 				result.emplace(key, value);
 			});
@@ -7358,7 +7583,7 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			::parseKeyValue <wchar_t> (text, delim, separator, escaping, [&result](const wstring_view key, const wstring_view value) noexcept -> void {
+			::__awh_parse_key_value__ <wchar_t> (text, delim, separator, escaping, [&result](const wstring_view key, const wstring_view value) noexcept -> void {
 				// Выполняем формирование записи результата
 				result.emplace(key, value);
 			});
@@ -7403,7 +7628,7 @@ void awh::fmk::kv(const uint64_t sid, string_view text, string_view delim, funct
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			::parseKeyValue <char> (text, delim, separator, escaping, [sid, &callback](const string_view key, const string_view value) noexcept -> void {
+			::__awh_parse_key_value__ <char> (text, delim, separator, escaping, [sid, &callback](const string_view key, const string_view value) noexcept -> void {
 				// Выполняем передачу найденной записи
 				callback(sid, key, value);
 			});
@@ -7446,7 +7671,7 @@ void awh::fmk::kv(const uint64_t sid, wstring_view text, wstring_view delim, fun
 		 */
 		try {
 			// Выполняем разбор текста на записи ключ-значение
-			::parseKeyValue <wchar_t> (text, delim, separator, escaping, [sid, &callback](const wstring_view key, const wstring_view value) noexcept -> void {
+			::__awh_parse_key_value__ <wchar_t> (text, delim, separator, escaping, [sid, &callback](const wstring_view key, const wstring_view value) noexcept -> void {
 				// Выполняем передачу найденной записи
 				callback(sid, key, value);
 			});
