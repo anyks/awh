@@ -194,35 +194,7 @@ namespace awh {
 				unit::client_t client;
 				// Объект юнита клиента QUIC (выбирается при инициализации транспортом protocol_t::QUIC)
 				unit::quic_client_t quic;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Unit() noexcept;
 			} unit_t;
-		protected:
-			// Идентификатор клиента
-			id_t _id;
-		protected:
-			// Объект DNS-резолвера
-			dns_t _dns;
-		protected:
-			// Адрес хоста целевой машины
-			string _host;
-		protected:
-			// Параметры клиента
-			params_t _params;
-		protected:
-			// Функция обратного вызова для обработки клиента
-			callback_t _callback;
-		protected:
-			// Объект юнита клиента
-			unique_ptr <unit_t> _unit;
 		protected:
 			/**
 			 * \~russian
@@ -243,8 +215,23 @@ namespace awh {
 			 */
 			bool _fin;
 		protected:
+			// Идентификатор клиента
+			id_t _id;
+		protected:
 			// Позиция чтения выданного сетевому движку шифротекста TLS
 			size_t _offset;
+		protected:
+			// Объект DNS-резолвера
+			dns_t _dns;
+		protected:
+			// Параметры клиента
+			params_t _params;
+		protected:
+			// Функция обратного вызова для обработки клиента
+			callback_t _callback;
+		protected:
+			// Адрес хоста целевой машины
+			string _host;
 			/**
 			 * \~russian
 			 * @brief Буфер шифротекста TLS, ожидающего отправки
@@ -265,6 +252,9 @@ namespace awh {
 			 * \~
 			 */
 			string _residue;
+		protected:
+			// Объект юнита клиента
+			unique_ptr <unit_t> _unit;
 		protected:
 			/**
 			 * \~russian
@@ -291,41 +281,6 @@ namespace awh {
 		protected:
 			/**
 			 * \~russian
-			 * @brief Методы диспетчеризации к активному юниту транспорта
-			 *
-			 * @note Транспорт выбирается по протоколу клиента: для protocol_t::QUIC
-			 *       работает выделенный юнит клиента QUIC, для остальных транспортов -
-			 *       общий юнит клиента. Событием во всех случаях выступает _id.eid
-			 *
-			 * \~english
-			 * @brief Methods of dispatching to the active transport unit
-			 *
-			 * @note The transport is selected by the client protocol: for protocol_t::QUIC the dedicated
-			 *       QUIC client unit works, for the remaining transports - the common client unit. The
-			 *       event in all cases is _id.eid
-			 *
-			 * \~
-			 */
-			bool commitUnit() noexcept;
-			bool launchUnit() noexcept;
-			void startUnit() noexcept;
-			void stopUnit() noexcept;
-			void destroyUnit() noexcept;
-			bool pauseUnit() noexcept;
-			bool resumeUnit() noexcept;
-			bool connectUnit() noexcept;
-			bool disconnectUnit() noexcept;
-			bool recvUnit() noexcept;
-			size_t sendUnit(const void * buffer, const size_t size) noexcept;
-			event::family_t familyUnit() const noexcept;
-			event::status_t statusUnit() const noexcept;
-			string getTargetUnit() const noexcept;
-			uint16_t getTargetPortUnit() const noexcept;
-			bool setTargetUnit(string_view target) noexcept;
-			bool setTargetUnit(const net::addr_t * target) noexcept;
-		protected:
-			/**
-			 * \~russian
 			 * @brief Метод изменения статуса клиента
 			 *
 			 * @param index  индекс очереди запускаемого события
@@ -341,6 +296,20 @@ namespace awh {
 			 */
 			virtual void status(const uint8_t index, const event::status_t status) noexcept;
 		protected:
+			/**
+			 * \~russian
+			 * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
+			 *
+			 * @param идентификатор события
+			 *
+			 * \~english
+			 * @brief Method processing the readiness to send QUIC early data (RFC 9001 §4.6)
+			 *
+			 * @param event identifier
+			 *
+			 * \~
+			 */
+			virtual void earlyData(const event::id_t) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -373,6 +342,54 @@ namespace awh {
 			 * \~
 			 */
 			virtual void write(const event::id_t, const size_t size) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
+			 *
+			 * @param      идентификатор события
+			 * @param data данные принятой датаграммы
+			 *
+			 * \~english
+			 * @brief Method processing a received QUIC application datagram (RFC 9221)
+			 *
+			 * @param      event identifier
+			 * @param data data of the received datagram
+			 *
+			 * \~
+			 */
+			virtual void message(const event::id_t, const string & data) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
+			 *
+			 * @param     идентификатор события
+			 * @param sid идентификатор потока приложения
+			 *
+			 * \~english
+			 * @brief Method processing the release of the send buffer of a QUIC connection stream (the writable signal)
+			 *
+			 * @param     event identifier
+			 * @param sid application stream identifier
+			 *
+			 * \~
+			 */
+			virtual void writable(const event::id_t, const uint64_t sid) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
+			 *
+			 * @param       идентификатор события
+			 * @param error код ошибки завершения соединения
+			 *
+			 * \~english
+			 * @brief Method processing the termination of a QUIC connection (RFC 9000 §10)
+			 *
+			 * @param       event identifier
+			 * @param error error code of the connection termination
+			 *
+			 * \~
+			 */
+			virtual void closed(const event::id_t, const quic::error_t error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки событий изменения состояния клиента
@@ -439,88 +456,6 @@ namespace awh {
 			 * \~
 			 */
 			virtual void read(const event::id_t, const uint8_t * buffer, const size_t size) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обработки собранных данных потока соединения QUIC
-			 *
-			 * @param      идентификатор события
-			 * @param sid  идентификатор потока приложения
-			 * @param data собранные данные потока
-			 * @param fin  флаг завершения потока удалённым эндпоинтом
-			 *
-			 * \~english
-			 * @brief Method processing the assembled data of a QUIC connection stream
-			 *
-			 * @param      event identifier
-			 * @param sid  application stream identifier
-			 * @param data assembled stream data
-			 * @param fin  flag of the stream completion by the remote endpoint
-			 *
-			 * \~
-			 */
-			virtual void stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
-			 *
-			 * @param     идентификатор события
-			 * @param sid идентификатор потока приложения
-			 *
-			 * \~english
-			 * @brief Method processing the release of the send buffer of a QUIC connection stream (the writable signal)
-			 *
-			 * @param     event identifier
-			 * @param sid application stream identifier
-			 *
-			 * \~
-			 */
-			virtual void writable(const event::id_t, const uint64_t sid) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
-			 *
-			 * @param      идентификатор события
-			 * @param data данные принятой датаграммы
-			 *
-			 * \~english
-			 * @brief Method processing a received QUIC application datagram (RFC 9221)
-			 *
-			 * @param      event identifier
-			 * @param data data of the received datagram
-			 *
-			 * \~
-			 */
-			virtual void message(const event::id_t, const string & data) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
-			 *
-			 * @param идентификатор события
-			 *
-			 * \~english
-			 * @brief Method processing the readiness to send QUIC early data (RFC 9001 §4.6)
-			 *
-			 * @param event identifier
-			 *
-			 * \~
-			 */
-			virtual void earlyData(const event::id_t) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
-			 *
-			 * @param       идентификатор события
-			 * @param error код ошибки завершения соединения
-			 *
-			 * \~english
-			 * @brief Method processing the termination of a QUIC connection (RFC 9000 §10)
-			 *
-			 * @param       event identifier
-			 * @param error error code of the connection termination
-			 *
-			 * \~
-			 */
-			virtual void closed(const event::id_t, const quic::error_t error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки события ошибки
@@ -595,6 +530,26 @@ namespace awh {
 			 * \~
 			 */
 			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обработки собранных данных потока соединения QUIC
+			 *
+			 * @param      идентификатор события
+			 * @param sid  идентификатор потока приложения
+			 * @param data собранные данные потока
+			 * @param fin  флаг завершения потока удалённым эндпоинтом
+			 *
+			 * \~english
+			 * @brief Method processing the assembled data of a QUIC connection stream
+			 *
+			 * @param      event identifier
+			 * @param sid  application stream identifier
+			 * @param data assembled stream data
+			 * @param fin  flag of the stream completion by the remote endpoint
+			 *
+			 * \~
+			 */
+			virtual void stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки неудачного резолвинга доменного имени
@@ -916,18 +871,18 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
+			 * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
 			 *
-			 * @param params локальные транспортные параметры
+			 * @return результат проверки
 			 *
 			 * \~english
-			 * @brief Method setting the local transport parameters of a QUIC connection (RFC 9000 §7.4)
+			 * @brief Method checking the acceptance of early data by the remote QUIC server (RFC 9001 §4.6.2)
 			 *
-			 * @param params local transport parameters
+			 * @return check result
 			 *
 			 * \~
 			 */
-			virtual void params(const quic::params::params_t & params) noexcept;
+			virtual bool early() const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
@@ -942,6 +897,20 @@ namespace awh {
 			 * \~
 			 */
 			virtual void ecn(const bool mode) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
+			 *
+			 * @param params локальные транспортные параметры
+			 *
+			 * \~english
+			 * @brief Method setting the local transport parameters of a QUIC connection (RFC 9000 §7.4)
+			 *
+			 * @param params local transport parameters
+			 *
+			 * \~
+			 */
+			virtual void params(const quic::params::params_t & params) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -971,20 +940,39 @@ namespace awh {
 			 * \~
 			 */
 			virtual void token(string_view token) noexcept;
+		public:
 			/**
 			 * \~russian
-			 * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
+			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
 			 *
-			 * @return результат проверки
+			 * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
 			 *
 			 * \~english
-			 * @brief Method checking the acceptance of early data by the remote QUIC server (RFC 9001 §4.6.2)
+			 * @brief Method obtaining the limiting size of a QUIC datagram being sent (RFC 9221 §3)
 			 *
-			 * @return check result
+			 * @return limiting size of the datagram data in octets (0 - datagrams are not supported)
 			 *
 			 * \~
 			 */
-			virtual bool early() const noexcept;
+			virtual size_t datagrams() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод отправки датаграммы соединению (QUIC DATAGRAM по RFC 9221 либо дейтаграмма UDP)
+			 *
+			 * @param buffer буфер данных датаграммы для отправки
+			 * @param size   размер данных датаграммы для отправки
+			 * @return       результат отправки
+			 *
+			 * \~english
+			 * @brief Method sending a datagram to the connection (a QUIC DATAGRAM per RFC 9221 or a UDP datagram)
+			 *
+			 * @param buffer buffer of the datagram data to send
+			 * @param size   size of the datagram data to send
+			 * @return       sending result
+			 *
+			 * \~
+			 */
+			virtual bool datagram(const void * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -1004,26 +992,21 @@ namespace awh {
 			virtual uint64_t open(const bool mode = false) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод отправки данных в поток соединения (QUIC/HTTP2-поток либо единственный поток потокового транспорта)
+			 * @brief Метод завершения соединения (QUIC CONNECTION_CLOSE по RFC 9000 §10.2 либо уничтожение события для остальных транспортов)
 			 *
-			 * @param sid    идентификатор потока
-			 * @param buffer буфер данных для отправки
-			 * @param size   размер данных для отправки
-			 * @param fin    флаг завершения потока
-			 * @return       количество байт данных, поставленных в очередь отправки
+			 * @param code   код ошибки приложения
+			 * @param reason человекочитаемая причина завершения
 			 *
 			 * \~english
-			 * @brief Method sending data into a connection stream (a QUIC/HTTP2 stream or the only stream of a stream transport)
+			 * @brief Connection termination method (a QUIC CONNECTION_CLOSE per RFC 9000 §10.2 or destruction of the event for the remaining transports)
 			 *
-			 * @param sid    stream identifier
-			 * @param buffer data buffer to send
-			 * @param size   size of the data to send
-			 * @param fin    stream completion flag
-			 * @return       number of data bytes queued for sending
+			 * @param code   application error code
+			 * @param reason human-readable reason of the termination
 			 *
 			 * \~
 			 */
-			virtual size_t send(const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
+			virtual void close(const uint64_t code = 0, string_view reason = "") noexcept;
+		public:
 			/**
 			 * \~russian
 			 * @brief Метод установки водяных меток буфера отправки потоков соединения QUIC (backpressure)
@@ -1072,52 +1055,26 @@ namespace awh {
 			virtual void dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод отправки датаграммы соединению (QUIC DATAGRAM по RFC 9221 либо дейтаграмма UDP)
+			 * @brief Метод отправки данных в поток соединения (QUIC/HTTP2-поток либо единственный поток потокового транспорта)
 			 *
-			 * @param buffer буфер данных датаграммы для отправки
-			 * @param size   размер данных датаграммы для отправки
-			 * @return       результат отправки
+			 * @param sid    идентификатор потока
+			 * @param buffer буфер данных для отправки
+			 * @param size   размер данных для отправки
+			 * @param fin    флаг завершения потока
+			 * @return       количество байт данных, поставленных в очередь отправки
 			 *
 			 * \~english
-			 * @brief Method sending a datagram to the connection (a QUIC DATAGRAM per RFC 9221 or a UDP datagram)
+			 * @brief Method sending data into a connection stream (a QUIC/HTTP2 stream or the only stream of a stream transport)
 			 *
-			 * @param buffer buffer of the datagram data to send
-			 * @param size   size of the datagram data to send
-			 * @return       sending result
+			 * @param sid    stream identifier
+			 * @param buffer data buffer to send
+			 * @param size   size of the data to send
+			 * @param fin    stream completion flag
+			 * @return       number of data bytes queued for sending
 			 *
 			 * \~
 			 */
-			virtual bool datagram(const void * buffer, const size_t size) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
-			 *
-			 * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
-			 *
-			 * \~english
-			 * @brief Method obtaining the limiting size of a QUIC datagram being sent (RFC 9221 §3)
-			 *
-			 * @return limiting size of the datagram data in octets (0 - datagrams are not supported)
-			 *
-			 * \~
-			 */
-			virtual size_t datagrams() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод завершения соединения (QUIC CONNECTION_CLOSE по RFC 9000 §10.2 либо уничтожение события для остальных транспортов)
-			 *
-			 * @param code   код ошибки приложения
-			 * @param reason человекочитаемая причина завершения
-			 *
-			 * \~english
-			 * @brief Connection termination method (a QUIC CONNECTION_CLOSE per RFC 9000 §10.2 or destruction of the event for the remaining transports)
-			 *
-			 * @param code   application error code
-			 * @param reason human-readable reason of the termination
-			 *
-			 * \~
-			 */
-			virtual void close(const uint64_t code = 0, string_view reason = "") noexcept;
+			virtual size_t send(const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
 		public:
 			/**
 			 * \~russian

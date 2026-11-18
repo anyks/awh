@@ -1194,67 +1194,6 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод получения данных от клиента
-			 *
-			 * @param eid идентификатор события клиента
-			 * @return    результат получения данных
-			 *
-			 * \~english
-			 * @brief Method of receiving data from the client
-			 *
-			 * @param eid client event identifier
-			 * @return    data receiving result
-			 *
-			 * \~
-			 */
-			virtual bool recv(const event::id_t eid) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод отправки данных клиенту
-			 *
-			 * @param eid    идентификатор события клиента
-			 * @param buffer буфер данных для отправки
-			 * @param size   размер данных для отправки
-			 * @return       количество байт данных, отправленных клиенту
-			 *
-			 * \~english
-			 * @brief Method of sending data to the client
-			 *
-			 * @param eid    client event identifier
-			 * @param buffer data buffer to send
-			 * @param size   size of the data to send
-			 * @return       number of data bytes sent to the client
-			 *
-			 * \~
-			 */
-			virtual size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод отправки данных в поток приложения соединения QUIC
-			 *
-			 * @param cid    идентификатор сессии соединения
-			 * @param sid    идентификатор потока приложения
-			 * @param buffer буфер данных для отправки
-			 * @param size   размер данных для отправки
-			 * @param fin    флаг завершения потока
-			 * @return       количество байт данных, поставленных в очередь отправки
-			 *
-			 * \~english
-			 * @brief Method sending data into an application stream of a QUIC connection
-			 *
-			 * @param cid    connection session identifier
-			 * @param sid    application stream identifier
-			 * @param buffer data buffer to send
-			 * @param size   size of the data to send
-			 * @param fin    stream completion flag
-			 * @return       number of data bytes queued for sending
-			 *
-			 * \~
-			 */
-			virtual size_t send(const event::id_t cid, const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
-		public:
-			/**
-			 * \~russian
 			 * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
 			 *
 			 * @note Применяется только к транспорту QUIC. Задаётся до запуска сервера
@@ -1310,25 +1249,6 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод открытия потока приложения соединения QUIC
-			 *
-			 * @param cid  идентификатор сессии соединения
-			 * @param mode режим однонаправленного потока
-			 * @return     идентификатор открытого потока
-			 *
-			 * \~english
-			 * @brief Method opening an application stream of a QUIC connection
-			 *
-			 * @param cid  connection session identifier
-			 * @param mode unidirectional stream mode
-			 * @return     identifier of the opened stream
-			 *
-			 * \~
-			 */
-			virtual uint64_t open(const event::id_t cid, const bool mode = false) noexcept;
-		public:
-			/**
-			 * \~russian
 			 * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
 			 *
 			 * @param cid идентификатор сессии соединения
@@ -1366,6 +1286,24 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
+			 * @brief Метод открытия потока приложения соединения QUIC
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param mode режим однонаправленного потока
+			 * @return     идентификатор открытого потока
+			 *
+			 * \~english
+			 * @brief Method opening an application stream of a QUIC connection
+			 *
+			 * @param cid  connection session identifier
+			 * @param mode unidirectional stream mode
+			 * @return     identifier of the opened stream
+			 *
+			 * \~
+			 */
+			virtual uint64_t open(const event::id_t cid, const bool mode = false) noexcept;
+			/**
+			 * \~russian
 			 * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
 			 *
 			 * @param cid    идентификатор сессии соединения
@@ -1382,6 +1320,23 @@ namespace awh {
 			 * \~
 			 */
 			virtual void close(const event::id_t cid, const uint64_t code = 0, string_view reason = "") noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения данных от клиента
+			 *
+			 * @param eid идентификатор события клиента
+			 * @return    результат получения данных
+			 *
+			 * \~english
+			 * @brief Method of receiving data from the client
+			 *
+			 * @param eid client event identifier
+			 * @return    data receiving result
+			 *
+			 * \~
+			 */
+			virtual bool recv(const event::id_t eid) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -1407,7 +1362,6 @@ namespace awh {
 			 * \~
 			 */
 			virtual void sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept;
-		public:
 			/**
 			 * \~russian
 			 * @brief Метод назначения pull-источника данных потока сессии соединения QUIC (RFC 9000 §2.2)
@@ -1432,6 +1386,51 @@ namespace awh {
 			 * \~
 			 */
 			virtual void dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод отправки данных клиенту
+			 *
+			 * @param eid    идентификатор события клиента
+			 * @param buffer буфер данных для отправки
+			 * @param size   размер данных для отправки
+			 * @return       количество байт данных, отправленных клиенту
+			 *
+			 * \~english
+			 * @brief Method of sending data to the client
+			 *
+			 * @param eid    client event identifier
+			 * @param buffer data buffer to send
+			 * @param size   size of the data to send
+			 * @return       number of data bytes sent to the client
+			 *
+			 * \~
+			 */
+			virtual size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод отправки данных в поток приложения соединения QUIC
+			 *
+			 * @param cid    идентификатор сессии соединения
+			 * @param sid    идентификатор потока приложения
+			 * @param buffer буфер данных для отправки
+			 * @param size   размер данных для отправки
+			 * @param fin    флаг завершения потока
+			 * @return       количество байт данных, поставленных в очередь отправки
+			 *
+			 * \~english
+			 * @brief Method sending data into an application stream of a QUIC connection
+			 *
+			 * @param cid    connection session identifier
+			 * @param sid    application stream identifier
+			 * @param buffer data buffer to send
+			 * @param size   size of the data to send
+			 * @param fin    stream completion flag
+			 * @return       number of data bytes queued for sending
+			 *
+			 * \~
+			 */
+			virtual size_t send(const event::id_t cid, const uint64_t sid, const void * buffer, const size_t size, const bool fin = false) noexcept;
 		public:
 			/**
 			 * \~russian

@@ -1673,6 +1673,98 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("cluster_available", callback);
 }
 /**
+ * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
+ *
+ * @param mode режим уведомления о перегрузке пути
+ *
+ */
+void awh::Server::ecn(const bool mode) noexcept {
+	// Устанавливаем режим уведомления о перегрузке пути QUIC
+	this->_unit->quic.ecn(mode);
+}
+/**
+ * @brief Метод установки проверки адреса клиента через пакет Retry QUIC (RFC 9000 §8.1.2)
+ *
+ * @param mode режим проверки адреса клиента
+ *
+ */
+void awh::Server::retry(const bool mode) noexcept {
+	// Устанавливаем режим проверки адреса клиента через пакет Retry QUIC
+	this->_unit->quic.retry(mode);
+}
+/**
+ * @brief Метод установки локальных транспортных параметров соединений QUIC (RFC 9000 §7.4)
+ *
+ * @param params локальные транспортные параметры
+ *
+ */
+void awh::Server::params(const quic::params::params_t & params) noexcept {
+	// Устанавливаем локальные транспортные параметры соединений QUIC
+	this->_unit->quic.params(params);
+}
+/**
+ * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
+ *
+ * @param cid идентификатор сессии соединения
+ * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+ *
+ */
+size_t awh::Server::datagrams(const event::id_t cid) const noexcept {
+	// Если сервер находится в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Выводим предельный размер данных отправляемой датаграммы сессии соединения
+		return this->_unit->quic.datagrams(cid);
+	// Возвращаем значение по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
+ *
+ * @param cid    идентификатор сессии соединения
+ * @param buffer буфер данных датаграммы для отправки
+ * @param size   размер данных датаграммы для отправки
+ * @return       результат отправки
+ *
+ */
+bool awh::Server::datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept {
+	// Если сервер находится в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Выполняем отправку датаграммы приложения соединению
+		return this->_unit->quic.datagram(cid, string_view(reinterpret_cast <const char *> (buffer), size));
+	// Возвращаем значение по умолчанию
+	return false;
+}
+/**
+ * @brief Метод открытия потока приложения соединения QUIC
+ *
+ * @param cid  идентификатор сессии соединения
+ * @param mode режим однонаправленного потока
+ * @return     идентификатор открытого потока
+ *
+ */
+uint64_t awh::Server::open(const event::id_t cid, const bool mode) noexcept {
+	// Если сервер находится в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Выводим идентификатор открытого потока приложения сессии соединения
+		return this->_unit->quic.open(cid, mode);
+	// Для транспортов без мультиплексирования соединение представляет собой единственный поток
+	return 0;
+}
+/**
+ * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
+ *
+ * @param cid    идентификатор сессии соединения
+ * @param code   код ошибки приложения
+ * @param reason человекочитаемая причина завершения
+ *
+ */
+void awh::Server::close(const event::id_t cid, const uint64_t code, string_view reason) noexcept {
+	// Если сервер находится в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Выполняем завершение соединения приложением
+		this->_unit->quic.close(cid, code, reason);
+}
+/**
  * @brief Метод получения данных от клиента
  *
  * @param eid идентификатор события клиента
@@ -1712,6 +1804,34 @@ bool awh::Server::recv(const event::id_t eid) noexcept {
 	}
 	// Возвращаем значение по умолчанию
 	return false;
+}
+/**
+ * @brief Метод установки водяных меток буфера отправки потоков сессии соединения QUIC (backpressure)
+ *
+ * @param cid  идентификатор сессии соединения
+ * @param high верхняя водяная метка (ёмкость буфера отправки потока)
+ * @param low  нижняя водяная метка (порог сигнала "writable")
+ *
+ */
+void awh::Server::sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept {
+	// Если сервер в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Устанавливаем водяные метки буфера отправки потоков сессии соединения
+		this->_unit->quic.sendWaterMarks(cid, high, low);
+}
+/**
+ * @brief Метод назначения pull-источника данных потока сессии соединения QUIC (RFC 9000 §2.2)
+ *
+ * @param cid    идентификатор сессии соединения
+ * @param sid    идентификатор потока приложения
+ * @param source pull-источник данных тела потока
+ *
+ */
+void awh::Server::dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
+	// Если сервер в рабочем состоянии и транспорт является QUIC
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
+		// Назначаем pull-источник данных тела потока сессии соединения
+		this->_unit->quic.dataSource(cid, sid, source);
 }
 /**
  * @brief Метод отправки данных клиенту
@@ -1790,126 +1910,6 @@ size_t awh::Server::send(const event::id_t cid, const uint64_t sid, const void *
 	}
 	// Возвращаем значение по умолчанию
 	return 0;
-}
-/**
- * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
- *
- * @param mode режим уведомления о перегрузке пути
- *
- */
-void awh::Server::ecn(const bool mode) noexcept {
-	// Устанавливаем режим уведомления о перегрузке пути QUIC
-	this->_unit->quic.ecn(mode);
-}
-/**
- * @brief Метод установки проверки адреса клиента через пакет Retry QUIC (RFC 9000 §8.1.2)
- *
- * @param mode режим проверки адреса клиента
- *
- */
-void awh::Server::retry(const bool mode) noexcept {
-	// Устанавливаем режим проверки адреса клиента через пакет Retry QUIC
-	this->_unit->quic.retry(mode);
-}
-/**
- * @brief Метод установки локальных транспортных параметров соединений QUIC (RFC 9000 §7.4)
- *
- * @param params локальные транспортные параметры
- *
- */
-void awh::Server::params(const quic::params::params_t & params) noexcept {
-	// Устанавливаем локальные транспортные параметры соединений QUIC
-	this->_unit->quic.params(params);
-}
-/**
- * @brief Метод открытия потока приложения соединения QUIC
- *
- * @param cid  идентификатор сессии соединения
- * @param mode режим однонаправленного потока
- * @return     идентификатор открытого потока
- *
- */
-uint64_t awh::Server::open(const event::id_t cid, const bool mode) noexcept {
-	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Выводим идентификатор открытого потока приложения сессии соединения
-		return this->_unit->quic.open(cid, mode);
-	// Для транспортов без мультиплексирования соединение представляет собой единственный поток
-	return 0;
-}
-/**
- * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
- *
- * @param cid идентификатор сессии соединения
- * @return    предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
- *
- */
-size_t awh::Server::datagrams(const event::id_t cid) const noexcept {
-	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Выводим предельный размер данных отправляемой датаграммы сессии соединения
-		return this->_unit->quic.datagrams(cid);
-	// Возвращаем значение по умолчанию
-	return 0;
-}
-/**
- * @brief Метод отправки датаграммы приложения соединению QUIC (RFC 9221)
- *
- * @param cid    идентификатор сессии соединения
- * @param buffer буфер данных датаграммы для отправки
- * @param size   размер данных датаграммы для отправки
- * @return       результат отправки
- *
- */
-bool awh::Server::datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept {
-	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Выполняем отправку датаграммы приложения соединению
-		return this->_unit->quic.datagram(cid, string_view(reinterpret_cast <const char *> (buffer), size));
-	// Возвращаем значение по умолчанию
-	return false;
-}
-/**
- * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
- *
- * @param cid    идентификатор сессии соединения
- * @param code   код ошибки приложения
- * @param reason человекочитаемая причина завершения
- *
- */
-void awh::Server::close(const event::id_t cid, const uint64_t code, string_view reason) noexcept {
-	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Выполняем завершение соединения приложением
-		this->_unit->quic.close(cid, code, reason);
-}
-/**
- * @brief Метод установки водяных меток буфера отправки потоков сессии соединения QUIC (backpressure)
- *
- * @param cid  идентификатор сессии соединения
- * @param high верхняя водяная метка (ёмкость буфера отправки потока)
- * @param low  нижняя водяная метка (порог сигнала "writable")
- *
- */
-void awh::Server::sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept {
-	// Если сервер в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Устанавливаем водяные метки буфера отправки потоков сессии соединения
-		this->_unit->quic.sendWaterMarks(cid, high, low);
-}
-/**
- * @brief Метод назначения pull-источника данных потока сессии соединения QUIC (RFC 9000 §2.2)
- *
- * @param cid    идентификатор сессии соединения
- * @param sid    идентификатор потока приложения
- * @param source pull-источник данных тела потока
- *
- */
-void awh::Server::dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
-	// Если сервер в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
-		// Назначаем pull-источник данных тела потока сессии соединения
-		this->_unit->quic.dataSource(cid, sid, source);
 }
 /**
  * @brief Метод объединения данных между сервером и другим событием

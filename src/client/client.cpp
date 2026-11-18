@@ -21,11 +21,11 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <client/client.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <client/client.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -60,13 +60,6 @@ awh::Client::Params::Params() noexcept :
  protocol(event::protocol_t::NONE) {}
 
 /**
- * @brief Конструктор
- *
- */
-awh::Client::Unit::Unit() noexcept :
- addr(), client(), quic() {}
-
-/**
  * @brief Метод проверки рабочего состояния клиента
  *
  * @return результат проверки рабочего состояния
@@ -85,177 +78,12 @@ bool awh::Client::active() const noexcept {
 	 * Рабочее состояние проверяется на активном юните транспорта: для транспорта
 	 * QUIC работает выделенный юнит, для остальных транспортов - общий юнит клиента
 	 */
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.working() : this->_unit->client.working());
+	return (
+		(this->_params.protocol == event::protocol_t::QUIC) ?
+		this->_unit->quic.working() :
+		this->_unit->client.working()
+	);
 }
-/**
- * @brief Метод фиксации настроек события клиента на активном юните транспорта
- *
- * @return результат выполнения фиксации
- *
- */
-bool awh::Client::commitUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid));
-}
-/**
- * @brief Метод запуска работы события клиента на активном юните транспорта
- *
- * @return результат выполнения запуска
- *
- */
-bool awh::Client::launchUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid));
-}
-/**
- * @brief Метод запуска активного юнита транспорта
- *
- */
-void awh::Client::startUnit() noexcept {
-	// Запускаем активный юнит транспорта
-	if(this->_params.protocol == event::protocol_t::QUIC)
-		this->_unit->quic.start();
-	else this->_unit->client.start();
-}
-/**
- * @brief Метод остановки активного юнита транспорта
- *
- */
-void awh::Client::stopUnit() noexcept {
-	// Останавливаем активный юнит транспорта
-	if(this->_params.protocol == event::protocol_t::QUIC)
-		this->_unit->quic.stop();
-	else this->_unit->client.stop();
-}
-/**
- * @brief Метод уничтожения события клиента на активном юните транспорта
- *
- */
-void awh::Client::destroyUnit() noexcept {
-	// Уничтожаем событие клиента на активном юните транспорта
-	if(this->_params.protocol == event::protocol_t::QUIC)
-		this->_unit->quic.destroy(this->_id.eid);
-	else this->_unit->client.destroy(this->_id.eid);
-}
-/**
- * @brief Метод приостановки работы события клиента на активном юните транспорта
- *
- * @return результат выполнения приостановки работы
- *
- */
-bool awh::Client::pauseUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.pause(this->_id.eid) : this->_unit->client.pause(this->_id.eid));
-}
-/**
- * @brief Метод возобновления работы события клиента на активном юните транспорта
- *
- * @return результат выполнения возобновления работы
- *
- */
-bool awh::Client::resumeUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.resume(this->_id.eid) : this->_unit->client.resume(this->_id.eid));
-}
-/**
- * @brief Метод подключения события клиента на активном юните транспорта
- *
- * @return результат выполнения подключения
- *
- */
-bool awh::Client::connectUnit() noexcept {
-	/**
-	 * Копируем идентификатор события в переменную
-	 *
-	 * @note Поле принадлежит упакованной структуре, ссылку на него взять нельзя, а
-	 *       подключение принимает именно ссылку
-	 */
-	const event::id_t eid = this->_id.eid;
-	// Выполняем подключение к удалённому серверу
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(eid) : this->_unit->client.connect(eid));
-}
-/**
- * @brief Метод отключения события клиента на активном юните транспорта
- *
- * @return результат выполнения отключения
- *
- */
-bool awh::Client::disconnectUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.disconnect(this->_id.eid) : this->_unit->client.disconnect(this->_id.eid));
-}
-/**
- * @brief Метод получения данных на активном юните транспорта
- *
- * @return результат получения данных
- *
- */
-bool awh::Client::recvUnit() noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.recv(this->_id.eid) : this->_unit->client.recv(this->_id.eid));
-}
-/**
- * @brief Метод отправки данных на активном юните транспорта
- *
- * @param buffer буфер данных для отправки
- * @param size   размер данных для отправки
- * @return       количество байт, отправленных удалённому серверу
- *
- */
-size_t awh::Client::sendUnit(const void * buffer, const size_t size) noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.send(this->_id.eid, buffer, size) : this->_unit->client.send(this->_id.eid, buffer, size));
-}
-/**
- * @brief Метод получения семейства адресов события клиента на активном юните транспорта
- *
- * @return семейство адресов события клиента
- *
- */
-awh::event::family_t awh::Client::familyUnit() const noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->client.family(this->_id.eid));
-}
-/**
- * @brief Метод получения статуса события клиента на активном юните транспорта
- *
- * @return статус события клиента
- *
- */
-awh::event::status_t awh::Client::statusUnit() const noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->client)->status(this->_id.eid));
-}
-/**
- * @brief Метод получения адреса хоста целевой машины на активном юните транспорта
- *
- * @return адрес хоста целевой машины
- *
- */
-string awh::Client::getTargetUnit() const noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid) : this->_unit->client.getTarget(this->_id.eid));
-}
-/**
- * @brief Метод получения порта удалённого сервера на активном юните транспорта
- *
- * @return порт удалённого сервера
- *
- */
-uint16_t awh::Client::getTargetPortUnit() const noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
-}
-/**
- * @brief Метод установки адреса хоста целевой машины на активном юните транспорта
- *
- * @param target адрес хоста целевой машины
- * @return       результат выполнения установки
- *
- */
-bool awh::Client::setTargetUnit(string_view target) noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
-}
-/**
- * @brief Метод установки адреса хоста целевой машины на активном юните транспорта
- *
- * @param target структура сетевого адреса хоста целевой машины
- * @return       результат выполнения установки
- *
- */
-bool awh::Client::setTargetUnit(const net::addr_t * target) noexcept {
-	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
-}
-
 /**
  * @brief Метод изменения статуса клиента
  *
@@ -275,7 +103,8 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 			// Если работа клиента запущена
 			if(status == event::status_t::LAUNCHED){
 				// Выполняем запуск работы клиента, если клиент не запущен
-				if(!this->launchUnit()){
+				if(!(this->_params.protocol == event::protocol_t::QUIC) ?
+				     this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**
@@ -283,17 +112,32 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
+							log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("This client ID=%u cannot be started", awh::log::flag_t::WARNING, this->_id.eid);
+							log::print("This client ID=%u cannot be started", log::flag_t::WARNING, this->_id.eid);
 						#endif
 					}
-				// Если клиент запущен удачно, выполняем функцию обратного вызова
-				} else this->_callback.call <void (const string &, const uint16_t)> ("launch", this->getTargetUnit(), this->getTargetPortUnit());
+				// Если клиент запущен удачно
+				} else {
+					// Получаем адрес назначения клиента
+					const string & target = (
+						(this->_params.protocol == event::protocol_t::QUIC) ?
+						this->_unit->quic.getTarget(this->_id.eid) :
+						this->_unit->client.getTarget(this->_id.eid)
+					);
+					// Получаем порт назначения клиента
+					const uint16_t port = (
+						(this->_params.protocol == event::protocol_t::QUIC) ?
+						this->_unit->quic.getTargetPort(this->_id.eid) :
+						this->_unit->client.getTargetPort(this->_id.eid)
+					);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
+				}
 			}
 		} break;
 		// Если мы получили статус события DNS-резолвера
@@ -304,6 +148,12 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 			switch(static_cast <uint8_t> (status)){
 				// Если событие DNS-резолвера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					// Извлекаем семейство IP-адресов
+					const event::family_t family = (
+						(this->_params.protocol == event::protocol_t::QUIC) ?
+						this->_unit->quic.family(this->_id.eid) :
+						this->_unit->client.family(this->_id.eid)
+					);
 					/**
 					 * Определяем принадлежит ли хост, к IP-адресу
 					 */
@@ -312,16 +162,34 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Получаем статус юнита клиента
+							const event::status_t status = (
+								(this->_params.protocol == event::protocol_t::QUIC) ?
+								awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) :
+								awh_cast <const unit::unit_t *> (&this->_unit->client)->status(this->_id.eid)
+							);
 							// Если событие клиента не запущено, запускаем его
-							if(this->statusUnit() == event::status_t::NONE){
+							if(status == event::status_t::NONE){
 								// Устанавливаем адрес хоста целевой машины для клиента
-								if(this->setTargetUnit(this->_host)){
+								if((this->_params.protocol == event::protocol_t::QUIC) ?
+								    this->_unit->quic.setTarget(this->_id.eid, this->_host) : this->_unit->client.setTarget(this->_id.eid, this->_host)){
 									// Если событие клиента не запущено, запускаем его
-									if(this->commitUnit()){
+									if((this->_params.protocol == event::protocol_t::QUIC) ?
+									    this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid)){
+										// Получаем адрес назначения клиента
+										const string & target = (
+											(this->_params.protocol == event::protocol_t::QUIC) ?
+											this->_unit->quic.getTarget(this->_id.eid) :
+											this->_unit->client.getTarget(this->_id.eid)
+										);
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", this->familyUnit(), this->_host, this->getTargetUnit());
-										// Запускаем клиента
-										this->startUnit();
+										this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", family, this->_host, target);
+										// Если протокол активирован как QUIC
+										if(this->_params.protocol == event::protocol_t::QUIC)
+											// Запускаем активный юнит транспорта
+											this->_unit->quic.start();
+										// Запускаем активный юнит транспорта
+										else this->_unit->client.start();
 									}
 								}
 							}
@@ -330,9 +198,9 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						}
 					}
 					// Выполняем резолвинг доменного имени
-					if(!this->_dns.client->resolve(this->_dns.id, this->familyUnit(), this->_host, this->_dns.alive.load(std::memory_order_acquire))){
+					if(!this->_dns.client->resolve(this->_dns.id, family, this->_host, this->_dns.alive.load(std::memory_order_acquire))){
 						// Создаём текст ошибки резолвинга доменного имени
-						const string error = awh::fmk::format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
+						const string error = fmk::format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -340,13 +208,13 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+								log::print("%s", log::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
 						} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
@@ -354,12 +222,28 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 				} break;
 				// Если событие DNS-резолвера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Останавливаем клиента
-					this->stopUnit();
+					// Если протокол активирован как QUIC
+					if(this->_params.protocol == event::protocol_t::QUIC)
+						// Останавливаем активный юнит транспорта
+						this->_unit->quic.stop();
+					// Останавливаем активный юнит транспорта
+					else this->_unit->client.stop();
 				break;
 			}
 		} break;
 	}
+}
+/**
+ * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
+ *
+ * @param идентификатор события
+ *
+ */
+void awh::Client::earlyData(const event::id_t) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (void)> ("early");
 }
 /**
  * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -378,6 +262,7 @@ void awh::Client::connect(const event::id_t, const bool ok) noexcept {
 		if(this->_params.protocol == event::protocol_t::QUIC){
 			// При установлении соединения сбрасываем поток по умолчанию (началась новая сессия)
 			if(ok)
+				// Устанавливаем параметры потока
 				this->_params.stream = quic::connection_t::INVALID_STREAM;
 			// Выполняем функцию обратного вызова о подключении к удалённому серверу
 			this->_callback.call <void (const bool)> ("connect", ok);
@@ -397,22 +282,27 @@ void awh::Client::connect(const event::id_t, const bool ok) noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {ok}, awh::log::flag_t::WARNING);
+							log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {ok}, log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("TLS handshake is failed", awh::log::flag_t::WARNING);
+							log::print("TLS handshake is failed", log::flag_t::WARNING);
 						#endif
 					}
 				// Если рукопожатие TLS выполнено успешно, выходим из функции
 				} else return;
 			}
 			// Если подключение успешное
-			if(ok)
-				// Нужно убить клиент, так-как TLS рукопожатие не выполнено
-				this->destroyUnit();
+			if(ok){
+				// Если протокол активирован как QUIC
+				if(this->_params.protocol == event::protocol_t::QUIC)
+					// Уничтожаем событие клиента на активном юните транспорта
+					this->_unit->quic.destroy(this->_id.eid);
+				// Уничтожаем событие клиента на активном юните транспорта
+				else this->_unit->client.destroy(this->_id.eid);
+			}
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const bool)> ("connect", false);
 		// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
@@ -443,6 +333,45 @@ void awh::Client::write(const event::id_t, const size_t size) noexcept {
 	}
 }
 /**
+ * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
+ *
+ * @param      идентификатор события
+ * @param data данные принятой датаграммы
+ *
+ */
+void awh::Client::message(const event::id_t, const string & data) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const string &)> ("datagram", data);
+}
+/**
+ * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
+ *
+ * @param     идентификатор события
+ * @param sid идентификатор потока приложения
+ *
+ */
+void awh::Client::writable(const event::id_t, const uint64_t sid) noexcept {
+	// Если клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова готовности потока принимать данные
+		this->_callback.call <void (const uint64_t)> ("writable", sid);
+}
+/**
+ * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
+ *
+ * @param       идентификатор события
+ * @param error код ошибки завершения соединения
+ *
+ */
+void awh::Client::closed(const event::id_t, const quic::error_t error) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const quic::error_t)> ("disconnect", error);
+}
+/**
  * @brief Метод обработки событий изменения состояния клиента
  *
  * @param        идентификатор клиента
@@ -466,8 +395,15 @@ void awh::Client::state(const event::id_t, const event::status_t status) noexcep
 			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
 				this->_dns.client->stop();
-			// Останавливаем событие клиента
-			else this->stopUnit();
+			// Если объект DNS-резолвера не установлен
+			else {
+				// Если протокол активирован как QUIC
+				if(this->_params.protocol == event::protocol_t::QUIC)
+					// Останавливаем активный юнит транспорта
+					this->_unit->quic.stop();
+				// Останавливаем активный юнит транспорта
+				else this->_unit->client.stop();
+			}
 		}
 	}
 }
@@ -519,13 +455,13 @@ void awh::Client::read(const event::id_t, const uint8_t * buffer, const size_t s
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("TLS decryption data is failed", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
+						log::debug("TLS decryption data is failed", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("TLS decryption data is failed", awh::log::flag_t::WARNING);
+						log::print("TLS decryption data is failed", log::flag_t::WARNING);
 					#endif
 				}
 			}
@@ -598,6 +534,21 @@ void awh::Client::attempts(const unit::dns_t::id_t, const string & domain, const
 		this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
 }
 /**
+ * @brief Метод обработки собранных данных потока соединения QUIC
+ *
+ * @param      идентификатор события
+ * @param sid  идентификатор потока приложения
+ * @param data собранные данные потока
+ * @param fin  флаг завершения потока удалённым эндпоинтом
+ *
+ */
+void awh::Client::stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const uint64_t, const string &, const bool)> ("stream", sid, data, fin);
+}
+/**
  * @brief Метод обработки неудачного резолвинга доменного имени
  *
  * @param        идентификатор DNS-запроса
@@ -609,9 +560,14 @@ void awh::Client::failure(const unit::dns_t::id_t, const unit::dns_t::record_t r
 	// Если DNS-резолвер находится в рабочем состоянии
 	if(this->_dns.client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_id.eid > 0)
-			// Останавливаем событие клиента
-			this->destroyUnit();
+		if(this->_id.eid > 0){
+			// Если протокол активирован как QUIC
+			if(this->_params.protocol == event::protocol_t::QUIC)
+				// Уничтожаем событие клиента на активном юните транспорта
+				this->_unit->quic.destroy(this->_id.eid);
+			// Уничтожаем событие клиента на активном юните транспорта
+			else this->_unit->client.destroy(this->_id.eid);
+		}
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const unit::dns_t::record_t, const string &)> ("failure_dns", record, domain);
 	}
@@ -646,13 +602,25 @@ void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family,
 		// Если событие клиента не запущено, запускаем его
 		if(awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid) == event::status_t::NONE){
 			// Устанавливаем адрес хоста целевой машины для клиента
-			if(this->setTargetUnit(addr)){
+			if((this->_params.protocol == event::protocol_t::QUIC) ?
+			    this->_unit->quic.setTarget(this->_id.eid, addr) : this->_unit->client.setTarget(this->_id.eid, addr)){
 				// Выполняем фиксацию параметров клиента
-				if(this->commitUnit()){
+				if((this->_params.protocol == event::protocol_t::QUIC) ?
+				    this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid)){
+					// Получаем адрес назначения клиента
+					const string & target = (
+						(this->_params.protocol == event::protocol_t::QUIC) ?
+						this->_unit->quic.getTarget(this->_id.eid) :
+						this->_unit->client.getTarget(this->_id.eid)
+					);
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", family, domain, this->getTargetUnit());
-					// Запускаем клиента
-					this->startUnit();
+					this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", family, domain, target);
+					// Если протокол активирован как QUIC
+					if(this->_params.protocol == event::protocol_t::QUIC)
+						// Запускаем активный юнит транспорта
+						this->_unit->quic.start();
+					// Запускаем активный юнит транспорта
+					else this->_unit->client.start();
 				}
 			}
 		}
@@ -762,13 +730,13 @@ void awh::Client::errorTLS(const tls::coder::id_t, const tls::coder::error_t err
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), message}, awh::log::flag_t::CRITICAL, message.c_str());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), message}, log::flag_t::CRITICAL, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, message.c_str());
+				log::print("%s", log::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
 		} else this->_callback.call <void (const tls::coder::error_t, const string &)> ("error_tls", error, message);
@@ -816,8 +784,15 @@ void awh::Client::stop() noexcept {
 			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
 				this->_dns.client->stop();
-			// Останавливаем событие клиента
-			else this->stopUnit();
+			// Если объект DNS-резолвера не установлен
+			else {
+				// Если протокол активирован как QUIC
+				if(this->_params.protocol == event::protocol_t::QUIC)
+					// Останавливаем активный юнит транспорта
+					this->_unit->quic.stop();
+				// Останавливаем активный юнит транспорта
+				else this->_unit->client.stop();
+			}
 		// Если идентификатор клиента не установлен
 		} else {
 			/**
@@ -825,13 +800,13 @@ void awh::Client::stop() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -854,18 +829,33 @@ void awh::Client::start() noexcept {
 				// Если событие клиента не запущено, запускаем его
 				if(awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid) == event::status_t::NONE){
 					// Выполняем фиксацию параметров клиента
-					if(this->commitUnit()){
+					if((this->_params.protocol == event::protocol_t::QUIC) ?
+					    this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid)){
 						// Выполняем получение идентификатора функции обратного вызова
 						const callback_t::id_t fid = this->_callback.id("ready");
 						// Если функция обратного вызова установлена
 						if(this->_callback.is(fid)){
-							// Получаем адрес хоста целевой машины для клиента
-							const string & host = this->getTargetUnit();
+							// Получаем адрес назначения клиента
+							const string & target = (
+								(this->_params.protocol == event::protocol_t::QUIC) ?
+								this->_unit->quic.getTarget(this->_id.eid) :
+								this->_unit->client.getTarget(this->_id.eid)
+							);
+							// Извлекаем семейство IP-адресов
+							const event::family_t family = (
+								(this->_params.protocol == event::protocol_t::QUIC) ?
+								this->_unit->quic.family(this->_id.eid) :
+								this->_unit->client.family(this->_id.eid)
+							);
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::family_t, const string &, const string &)> (fid, this->familyUnit(), host, host);
+							this->_callback.call <void (const event::family_t, const string &, const string &)> (fid, family, target, target);
 						}
-						// Запускаем клиента
-						this->startUnit();
+						// Если протокол активирован как QUIC
+						if(this->_params.protocol == event::protocol_t::QUIC)
+							// Запускаем активный юнит транспорта
+							this->_unit->quic.start();
+						// Запускаем активный юнит транспорта
+						else this->_unit->client.start();
 					}
 				}
 			}
@@ -876,13 +866,13 @@ void awh::Client::start() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -899,7 +889,11 @@ bool awh::Client::pause() noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Приостанавливаем событие клиента
-			return this->pauseUnit();
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.pause(this->_id.eid) :
+				this->_unit->client.pause(this->_id.eid)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -907,13 +901,13 @@ bool awh::Client::pause() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -932,7 +926,11 @@ bool awh::Client::resume() noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Возобновляем событие клиента
-			return this->resumeUnit();
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.resume(this->_id.eid) :
+				this->_unit->client.resume(this->_id.eid)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -940,13 +938,13 @@ bool awh::Client::resume() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -961,23 +959,26 @@ void awh::Client::destroy() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
 	if(this->active()){
 		// Если идентификатор клиента установлен
-		if(this->_id.eid > 0)
-			// Уничтожаем событие клиента
-			return this->destroyUnit();
+		if(this->_id.eid > 0){
+			if(this->_params.protocol == event::protocol_t::QUIC)
+				// Уничтожаем событие клиента на активном юните транспорта
+				this->_unit->quic.destroy(this->_id.eid);
+			// Уничтожаем событие клиента на активном юните транспорта
+			else this->_unit->client.destroy(this->_id.eid);
 		// Если идентификатор клиента не установлен
-		else {
+		} else {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1002,23 +1003,34 @@ bool awh::Client::connect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
 	if(this->active()){
 		// Если идентификатор клиента установлен
-		if(this->_id.eid > 0)
-			// Подключаем клиента к удалённому серверу
-			return this->connectUnit();
+		if(this->_id.eid > 0){
+			/**
+			 * Копируем идентификатор события в переменную
+			 *
+			 * @note Поле принадлежит упакованной структуре, ссылку на него взять нельзя, а
+			 *       подключение принимает именно ссылку
+			 */
+			const event::id_t eid = this->_id.eid;
+			// Выполняем подключение к удалённому серверу
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.connect(eid) :
+				this->_unit->client.connect(eid)
+			);
 		// Если идентификатор клиента не установлен
-		else {
+		} else {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1037,7 +1049,11 @@ bool awh::Client::disconnect() noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Отключаем клиента от удалённого сервера
-			return this->disconnectUnit();
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.disconnect(this->_id.eid) :
+				this->_unit->client.disconnect(this->_id.eid)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1045,13 +1061,13 @@ bool awh::Client::disconnect() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1112,7 +1128,11 @@ bool awh::Client::recv() noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Выполняем получение данных от сервера
-			return this->recvUnit();
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.recv(this->_id.eid) :
+				this->_unit->client.recv(this->_id.eid)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1120,13 +1140,13 @@ bool awh::Client::recv() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1168,7 +1188,11 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 				return 0;
 			}
 			// Выполняем отправку данных серверу
-			return this->sendUnit(buffer, size);
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.send(this->_id.eid, buffer, size) :
+				this->_unit->client.send(this->_id.eid, buffer, size)
+			);
 		// Если идентификатор клиента не установлен
 		} else {
 			/**
@@ -1176,13 +1200,13 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1190,80 +1214,14 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	return 0;
 }
 /**
- * @brief Метод обработки собранных данных потока соединения QUIC
+ * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
  *
- * @param      идентификатор события
- * @param sid  идентификатор потока приложения
- * @param data собранные данные потока
- * @param fin  флаг завершения потока удалённым эндпоинтом
+ * @return результат проверки
  *
  */
-void awh::Client::stream(const event::id_t, const uint64_t sid, const string & data, const bool fin) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const uint64_t, const string &, const bool)> ("stream", sid, data, fin);
-}
-/**
- * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
- *
- * @param     идентификатор события
- * @param sid идентификатор потока приложения
- *
- */
-void awh::Client::writable(const event::id_t, const uint64_t sid) noexcept {
-	// Если клиент находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова готовности потока принимать данные
-		this->_callback.call <void (const uint64_t)> ("writable", sid);
-}
-/**
- * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
- *
- * @param      идентификатор события
- * @param data данные принятой датаграммы
- *
- */
-void awh::Client::message(const event::id_t, const string & data) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const string &)> ("datagram", data);
-}
-/**
- * @brief Метод обработки готовности к отправке ранних данных QUIC (RFC 9001 §4.6)
- *
- * @param идентификатор события
- *
- */
-void awh::Client::earlyData(const event::id_t) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (void)> ("early");
-}
-/**
- * @brief Метод обработки завершения соединения QUIC (RFC 9000 §10)
- *
- * @param       идентификатор события
- * @param error код ошибки завершения соединения
- *
- */
-void awh::Client::closed(const event::id_t, const quic::error_t error) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const quic::error_t)> ("disconnect", error);
-}
-/**
- * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
- *
- * @param params локальные транспортные параметры
- *
- */
-void awh::Client::params(const quic::params::params_t & params) noexcept {
-	// Устанавливаем локальные транспортные параметры соединения QUIC
-	this->_unit->quic.params(params);
+bool awh::Client::early() const noexcept {
+	// Выводим результат принятия ранних данных соединением QUIC
+	return this->_unit->quic.early();
 }
 /**
  * @brief Метод установки уведомления о перегрузке пути QUIC (RFC 9000 §13.4)
@@ -1274,6 +1232,16 @@ void awh::Client::params(const quic::params::params_t & params) noexcept {
 void awh::Client::ecn(const bool mode) noexcept {
 	// Устанавливаем режим уведомления о перегрузке пути QUIC
 	this->_unit->quic.ecn(mode);
+}
+/**
+ * @brief Метод установки локальных транспортных параметров соединения QUIC (RFC 9000 §7.4)
+ *
+ * @param params локальные транспортные параметры
+ *
+ */
+void awh::Client::params(const quic::params::params_t & params) noexcept {
+	// Устанавливаем локальные транспортные параметры соединения QUIC
+	this->_unit->quic.params(params);
 }
 /**
  * @brief Метод извлечения сохранённого токена проверки адреса QUIC (RFC 9000 §8.1.3)
@@ -1296,14 +1264,73 @@ void awh::Client::token(string_view token) noexcept {
 	this->_unit->quic.token(token);
 }
 /**
- * @brief Метод проверки принятия ранних данных удалённым сервером QUIC (RFC 9001 §4.6.2)
+ * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
  *
- * @return результат проверки
+ * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
  *
  */
-bool awh::Client::early() const noexcept {
-	// Выводим результат принятия ранних данных соединением QUIC
-	return this->_unit->quic.early();
+size_t awh::Client::datagrams() const noexcept {
+	/**
+	 * Определяем протокол транспорта клиента: предельный размер датаграммы
+	 * адресуется общим методом, а его источник зависит от протокола
+	 */
+	switch(static_cast <uint8_t> (this->_params.protocol)){
+		// Для транспорта QUIC - предел датаграммы приложения соединения (RFC 9221 §3)
+		case static_cast <uint8_t> (event::protocol_t::QUIC):
+			// Выводим предельный размер данных отправляемой датаграммы QUIC
+			return this->_unit->quic.datagrams();
+	}
+	/**
+	 * Датаграммы доступны только датаграммным транспортам (UDP, SCTP SEQPACKET);
+	 * для них предел оценивается по MTU сетевого интерфейса за вычетом заголовков
+	 * IP и UDP, что позволяет отправлять датаграммы без фрагментации на пути
+	 */
+	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET)){
+		// Извлекаем семейство IP-адресов
+		const event::family_t family = (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.family(this->_id.eid) :
+			this->_unit->client.family(this->_id.eid)
+		);
+		// Извлекаем MTU сетевого интерфейса события клиента
+		const uint32_t mtu = this->_unit->client.getMaximumTransmissionUnit(this->_id.eid);
+		// Накладные расходы заголовков IP и UDP по семейству адресов (IPv4 - 20+8, IPv6 - 40+8)
+		const uint16_t overhead = ((family == event::family_t::IPV6) ? 48 : 28);
+		// Выводим предельный размер данных датаграммы (MTU за вычетом заголовков)
+		return ((mtu > overhead) ? static_cast <size_t> (mtu - overhead) : 0);
+	}
+	// Для потоковых транспортов (TCP, SCTP STREAM) датаграммы не поддерживаются
+	return 0;
+}
+/**
+ * @brief Метод отправки датаграммы приложения серверу QUIC (RFC 9221)
+ *
+ * @param buffer буфер данных датаграммы для отправки
+ * @param size   размер данных датаграммы для отправки
+ * @return       результат отправки
+ *
+ */
+bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
+	/**
+	 * Определяем протокол транспорта клиента: отправка датаграммы адресуется общим
+	 * методом, а её доставка зависит от протокола
+	 */
+	switch(static_cast <uint8_t> (this->_params.protocol)){
+		// Для транспорта QUIC отправляем ненадёжную датаграмму приложения (RFC 9221)
+		case static_cast <uint8_t> (event::protocol_t::QUIC):
+			// Выполняем отправку датаграммы приложения серверу
+			return this->_unit->quic.datagram(string_view(reinterpret_cast <const char *> (buffer), size));
+	}
+	/**
+	 * Датаграммы доступны только датаграммным транспортам (UDP, SCTP SEQPACKET);
+	 * для потоковых транспортов (TCP, SCTP STREAM) отправка датаграмм не поддерживается,
+	 * иначе метод давал бы неоднозначное поведение
+	 */
+	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET))
+		// Отправляем данные одной датаграммой через общий метод отправки
+		return (this->send(buffer, size) > 0);
+	// Для потоковых транспортов отправка датаграмм не поддерживается
+	return false;
 }
 /**
  * @brief Метод открытия потока приложения соединения QUIC
@@ -1330,39 +1357,29 @@ uint64_t awh::Client::open(const bool mode) noexcept {
 	return 0;
 }
 /**
- * @brief Метод отправки данных в поток приложения соединения QUIC
+ * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
  *
- * @param sid    идентификатор потока приложения
- * @param buffer буфер данных для отправки
- * @param size   размер данных для отправки
- * @param fin    флаг завершения потока
- * @return       количество байт данных, поставленных в очередь отправки
+ * @param code   код ошибки приложения
+ * @param reason человекочитаемая причина завершения
  *
  */
-size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t size, const bool fin) noexcept {
+void awh::Client::close(const uint64_t code, string_view reason) noexcept {
 	/**
-	 * Определяем протокол транспорта клиента: отправка адресуется общим методом,
-	 * а адресация потока зависит от протокола
+	 * Определяем протокол транспорта клиента: завершение соединения адресуется общим
+	 * методом, а способ завершения зависит от протокола
 	 */
 	switch(static_cast <uint8_t> (this->_params.protocol)){
-		// Для транспорта QUIC отправляем данные в указанный поток соединения
-		case static_cast <uint8_t> (event::protocol_t::QUIC): {
-			// Если постановка данных потока в очередь отправки выполнена
-			// Возвращаем число поставленных в очередь данных (частичный приём)
-			return this->_unit->quic.send(sid, string_view(reinterpret_cast <const char *> (buffer), size), fin);
-		}
+		// Для транспорта QUIC отправляем фрейм завершения соединения (RFC 9000 §10.2)
+		case static_cast <uint8_t> (event::protocol_t::QUIC):
+			// Выполняем завершение соединения приложением
+			this->_unit->quic.close(code, reason);
+		return;
 	}
 	/**
-	 * Для транспортов без мультиплексирования идентификатор потока не используется,
-	 * данные уходят единственным потоком соединения через общий метод отправки.
-	 * Флаг завершения потока запоминается: по факту записи данных в сокет
-	 * соединение будет завершено (клиент потокового транспорта всегда единственный)
+	 * Для остальных транспортов завершаем соединение уничтожением события клиента
+	 * (для потоковых транспортов завершение эквивалентно destroy)
 	 */
-	if(fin)
-		// Запоминаем завершение отправки данных потоковым транспортом
-		this->_fin = true;
-	// Выполняем отправку данных единственным потоком соединения
-	return this->send(buffer, size);
+	this->destroy();
 }
 /**
  * @brief Метод установки водяных меток буфера отправки потоков соединения QUIC (backpressure)
@@ -1399,92 +1416,37 @@ void awh::Client::dataSource(const uint64_t sid, quic::connection_t::data_source
 	}
 }
 /**
- * @brief Метод отправки датаграммы приложения серверу QUIC (RFC 9221)
+ * @brief Метод отправки данных в поток приложения соединения QUIC
  *
- * @param buffer буфер данных датаграммы для отправки
- * @param size   размер данных датаграммы для отправки
- * @return       результат отправки
- *
- */
-bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
-	/**
-	 * Определяем протокол транспорта клиента: отправка датаграммы адресуется общим
-	 * методом, а её доставка зависит от протокола
-	 */
-	switch(static_cast <uint8_t> (this->_params.protocol)){
-		// Для транспорта QUIC отправляем ненадёжную датаграмму приложения (RFC 9221)
-		case static_cast <uint8_t> (event::protocol_t::QUIC):
-			// Выполняем отправку датаграммы приложения серверу
-			return this->_unit->quic.datagram(string_view(reinterpret_cast <const char *> (buffer), size));
-	}
-	/**
-	 * Датаграммы доступны только датаграммным транспортам (UDP, SCTP SEQPACKET);
-	 * для потоковых транспортов (TCP, SCTP STREAM) отправка датаграмм не поддерживается,
-	 * иначе метод давал бы неоднозначное поведение
-	 */
-	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET))
-		// Отправляем данные одной датаграммой через общий метод отправки
-		return (this->send(buffer, size) > 0);
-	// Для потоковых транспортов отправка датаграмм не поддерживается
-	return false;
-}
-/**
- * @brief Метод получения предельного размера отправляемой датаграммы QUIC (RFC 9221 §3)
- *
- * @return предельный размер данных датаграммы в октетах (0 - датаграммы не поддерживаются)
+ * @param sid    идентификатор потока приложения
+ * @param buffer буфер данных для отправки
+ * @param size   размер данных для отправки
+ * @param fin    флаг завершения потока
+ * @return       количество байт данных, поставленных в очередь отправки
  *
  */
-size_t awh::Client::datagrams() const noexcept {
+size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t size, const bool fin) noexcept {
 	/**
-	 * Определяем протокол транспорта клиента: предельный размер датаграммы
-	 * адресуется общим методом, а его источник зависит от протокола
+	 * Определяем протокол транспорта клиента: отправка адресуется общим методом,
+	 * а адресация потока зависит от протокола
 	 */
 	switch(static_cast <uint8_t> (this->_params.protocol)){
-		// Для транспорта QUIC - предел датаграммы приложения соединения (RFC 9221 §3)
+		// Для транспорта QUIC отправляем данные в указанный поток соединения
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
-			// Выводим предельный размер данных отправляемой датаграммы QUIC
-			return this->_unit->quic.datagrams();
+			// Возвращаем число поставленных в очередь данных (частичный приём)
+			return this->_unit->quic.send(sid, string_view(reinterpret_cast <const char *> (buffer), size), fin);
 	}
 	/**
-	 * Датаграммы доступны только датаграммным транспортам (UDP, SCTP SEQPACKET);
-	 * для них предел оценивается по MTU сетевого интерфейса за вычетом заголовков
-	 * IP и UDP, что позволяет отправлять датаграммы без фрагментации на пути
+	 * Для транспортов без мультиплексирования идентификатор потока не используется,
+	 * данные уходят единственным потоком соединения через общий метод отправки.
+	 * Флаг завершения потока запоминается: по факту записи данных в сокет
+	 * соединение будет завершено (клиент потокового транспорта всегда единственный)
 	 */
-	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET)){
-		// Извлекаем MTU сетевого интерфейса события клиента
-		const uint32_t mtu = this->_unit->client.getMaximumTransmissionUnit(this->_id.eid);
-		// Накладные расходы заголовков IP и UDP по семейству адресов (IPv4 - 20+8, IPv6 - 40+8)
-		const uint16_t overhead = ((this->familyUnit() == event::family_t::IPV6) ? 48 : 28);
-		// Выводим предельный размер данных датаграммы (MTU за вычетом заголовков)
-		return ((mtu > overhead) ? static_cast <size_t> (mtu - overhead) : 0);
-	}
-	// Для потоковых транспортов (TCP, SCTP STREAM) датаграммы не поддерживаются
-	return 0;
-}
-/**
- * @brief Метод завершения соединения QUIC приложением (RFC 9000 §10.2)
- *
- * @param code   код ошибки приложения
- * @param reason человекочитаемая причина завершения
- *
- */
-void awh::Client::close(const uint64_t code, string_view reason) noexcept {
-	/**
-	 * Определяем протокол транспорта клиента: завершение соединения адресуется общим
-	 * методом, а способ завершения зависит от протокола
-	 */
-	switch(static_cast <uint8_t> (this->_params.protocol)){
-		// Для транспорта QUIC отправляем фрейм завершения соединения (RFC 9000 §10.2)
-		case static_cast <uint8_t> (event::protocol_t::QUIC):
-			// Выполняем завершение соединения приложением
-			this->_unit->quic.close(code, reason);
-		return;
-	}
-	/**
-	 * Для остальных транспортов завершаем соединение уничтожением события клиента
-	 * (для потоковых транспортов завершение эквивалентно destroy)
-	 */
-	this->destroy();
+	if(fin)
+		// Запоминаем завершение отправки данных потоковым транспортом
+		this->_fin = true;
+	// Выполняем отправку данных единственным потоком соединения
+	return this->send(buffer, size);
 }
 /**
  * @brief Метод объединения данных между клиентом и другим событием
@@ -1507,11 +1469,19 @@ bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) no
 			// Если направление объединения данных от клиента к событию
 			case static_cast <uint8_t> (event::direct_t::FORWARD):
 				// Выполняем объединение данных между клиентом и другим событием на активном юните транспорта
-				return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(this->_id.eid, eid) : this->_unit->client.splice(this->_id.eid, eid));
+				return (
+					this->_params.protocol == event::protocol_t::QUIC ?
+					this->_unit->quic.splice(this->_id.eid, eid) :
+					this->_unit->client.splice(this->_id.eid, eid)
+				);
 			// Если направление объединения данных от события к клиенту
 			case static_cast <uint8_t> (event::direct_t::REVERSE):
 				// Выполняем объединение данных между другим событием и клиентом на активном юните транспорта
-				return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(eid, this->_id.eid) : this->_unit->client.splice(eid, this->_id.eid));
+				return (
+					this->_params.protocol == event::protocol_t::QUIC ?
+					this->_unit->quic.splice(eid, this->_id.eid) :
+					this->_unit->client.splice(eid, this->_id.eid)
+				);
 		}
 	// Если идентификатор клиента не установлен
 	} else {
@@ -1520,13 +1490,13 @@ bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (direct)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (direct)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1542,7 +1512,11 @@ uint16_t awh::Client::getOptions() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем опции клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getOptions(this->_id.eid) : this->_unit->client.getOptions(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getOptions(this->_id.eid) :
+			this->_unit->client.getOptions(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1550,13 +1524,13 @@ uint16_t awh::Client::getOptions() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1573,7 +1547,11 @@ bool awh::Client::setOptions(const uint16_t options) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем опции клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOptions(this->_id.eid, options) : this->_unit->client.setOptions(this->_id.eid, options));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setOptions(this->_id.eid, options) :
+			this->_unit->client.setOptions(this->_id.eid, options)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1581,13 +1559,13 @@ bool awh::Client::setOptions(const uint16_t options) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {options}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {options}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1605,7 +1583,11 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем опцию клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOption(this->_id.eid, option, mode) : this->_unit->client.setOption(this->_id.eid, option, mode));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setOption(this->_id.eid, option, mode) :
+			this->_unit->client.setOption(this->_id.eid, option, mode)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1613,13 +1595,13 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {option, mode}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {option, mode}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1635,7 +1617,11 @@ awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем метаданные последнего принятого дейтаграммного пакета
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTrafficInfo(this->_id.eid) : this->_unit->client.getTrafficInfo(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getTrafficInfo(this->_id.eid) :
+			this->_unit->client.getTrafficInfo(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1643,13 +1629,13 @@ awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1665,7 +1651,11 @@ uint8_t awh::Client::getCountHops() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем количество хопов последнего принятого пакета
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getCountHops(this->_id.eid) : this->_unit->client.getCountHops(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getCountHops(this->_id.eid) :
+			this->_unit->client.getCountHops(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1673,13 +1663,13 @@ uint8_t awh::Client::getCountHops() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1696,7 +1686,11 @@ bool awh::Client::setCountHops(const uint8_t hops) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем количество хопов последнего принятого пакета
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setCountHops(this->_id.eid, hops) : this->_unit->client.setCountHops(this->_id.eid, hops));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setCountHops(this->_id.eid, hops) :
+			this->_unit->client.setCountHops(this->_id.eid, hops)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1704,13 +1698,13 @@ bool awh::Client::setCountHops(const uint8_t hops) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hops)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hops)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1726,7 +1720,11 @@ awh::event::hops_t awh::Client::getHops() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем максимальное количество хопов
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getHops(this->_id.eid) : this->_unit->client.getHops(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getHops(this->_id.eid) :
+			this->_unit->client.getHops(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1734,13 +1732,13 @@ awh::event::hops_t awh::Client::getHops() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1759,7 +1757,11 @@ bool awh::Client::setHops(const event::hops_t hops) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем максимальное количество хопов
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setHops(this->_id.eid, hops) : this->_unit->client.setHops(this->_id.eid, hops));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setHops(this->_id.eid, hops) :
+				this->_unit->client.setHops(this->_id.eid, hops)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1767,13 +1769,13 @@ bool awh::Client::setHops(const event::hops_t hops) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hops)}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hops)}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1790,7 +1792,11 @@ string awh::Client::getIface() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем сетевой интерфейс клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getIface(this->_id.eid) : this->_unit->client.getIface(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getIface(this->_id.eid) :
+			this->_unit->client.getIface(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1798,13 +1804,13 @@ string awh::Client::getIface() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1823,7 +1829,11 @@ bool awh::Client::setIface(string_view name) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем сетевой интерфейс клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setIface(this->_id.eid, name) : this->_unit->client.setIface(this->_id.eid, name));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setIface(this->_id.eid, name) :
+				this->_unit->client.setIface(this->_id.eid, name)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1831,13 +1841,13 @@ bool awh::Client::setIface(string_view name) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1854,7 +1864,11 @@ uint16_t awh::Client::getSourcePort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем внутренний порт события для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getSourcePort(this->_id.eid) : this->_unit->client.getSourcePort(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getSourcePort(this->_id.eid) :
+			this->_unit->client.getSourcePort(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1862,13 +1876,13 @@ uint16_t awh::Client::getSourcePort() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1887,7 +1901,11 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем внутренний порт события для клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setSourcePort(this->_id.eid, port) : this->_unit->client.setSourcePort(this->_id.eid, port));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setSourcePort(this->_id.eid, port) :
+				this->_unit->client.setSourcePort(this->_id.eid, port)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1895,13 +1913,13 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {port}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1918,7 +1936,11 @@ uint16_t awh::Client::getTargetPort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем порт удаленного сервера для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getTargetPort(this->_id.eid) :
+			this->_unit->client.getTargetPort(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1926,13 +1948,13 @@ uint16_t awh::Client::getTargetPort() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1951,7 +1973,11 @@ bool awh::Client::setTargetPort(const uint16_t port) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем порт удаленного сервера для клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTargetPort(this->_id.eid, port) : this->_unit->client.setTargetPort(this->_id.eid, port));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setTargetPort(this->_id.eid, port) :
+				this->_unit->client.setTargetPort(this->_id.eid, port)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1959,13 +1985,13 @@ bool awh::Client::setTargetPort(const uint16_t port) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {port}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1985,8 +2011,12 @@ string awh::Client::getTarget() const noexcept {
 		return this->_host;
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
-		// Извлекаем адрес хоста целевой машины для клиента
-		return this->getTargetUnit();
+		// Выводим адрес назначения клиента
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getTarget(this->_id.eid) :
+			this->_unit->client.getTarget(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1994,13 +2024,13 @@ string awh::Client::getTarget() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2031,11 +2061,19 @@ bool awh::Client::setTarget(string_view target) noexcept {
 				// Если идентификатор клиента установлен
 				if(this->_id.eid > 0){
 					// Устанавливаем адрес хоста целевой машины для клиента
-					result = this->setTargetUnit(target);
+					result = (
+						(this->_params.protocol == event::protocol_t::QUIC) ?
+						this->_unit->quic.setTarget(this->_id.eid, target) :
+						this->_unit->client.setTarget(this->_id.eid, target)
+					);
 					// Если адрес установлен успешно, сохраняем его
 					if(result)
 						// Сохраняем адрес хоста целевой машины для клиента
-						this->_host = this->getTargetUnit();
+						this->_host = (
+							(this->_params.protocol == event::protocol_t::QUIC) ?
+							this->_unit->quic.getTarget(this->_id.eid) :
+							this->_unit->client.getTarget(this->_id.eid)
+						);
 				// Если идентификатор клиента не установлен
 				} else {
 					/**
@@ -2043,13 +2081,13 @@ bool awh::Client::setTarget(string_view target) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {target}, awh::log::flag_t::WARNING);
+						log::debug("Client is not initialized", __PRETTY_FUNCTION__, {target}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+						log::print("Client is not initialized", log::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -2078,11 +2116,19 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			// Устанавливаем адрес хоста целевой машины для клиента
-			const bool result = this->setTargetUnit(target);
+			const bool result = (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setTarget(this->_id.eid, target) :
+				this->_unit->client.setTarget(this->_id.eid, target)
+			);
 			// Если адрес установлен успешно, сохраняем его
 			if(result)
 				// Сохраняем адрес хоста целевой машины для клиента
-				this->_host = this->getTargetUnit();
+				this->_host = (
+					(this->_params.protocol == event::protocol_t::QUIC) ?
+					this->_unit->quic.getTarget(this->_id.eid) :
+					this->_unit->client.getTarget(this->_id.eid)
+				);
 			// Возвращаем результат установки адреса хоста целевой машины для клиента
 			return result;
 		// Если идентификатор клиента не установлен
@@ -2092,13 +2138,13 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2116,7 +2162,11 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес хоста целевой машины для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid, target) : this->_unit->client.getTarget(this->_id.eid, target));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getTarget(this->_id.eid, target) :
+			this->_unit->client.getTarget(this->_id.eid, target)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2124,13 +2174,13 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2147,7 +2197,11 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->client.getAddress(this->_id.eid, address));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getAddress(this->_id.eid, address) :
+			this->_unit->client.getAddress(this->_id.eid, address)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2155,13 +2209,13 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2181,7 +2235,11 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setAddress(this->_id.eid, address, value) :
+				this->_unit->client.setAddress(this->_id.eid, address, value)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2189,13 +2247,13 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address), value}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address), value}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2216,7 +2274,11 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setAddress(this->_id.eid, address, value) :
+				this->_unit->client.setAddress(this->_id.eid, address, value)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2224,13 +2286,13 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2249,7 +2311,11 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address, value) : this->_unit->client.getAddress(this->_id.eid, address, value));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getAddress(this->_id.eid, address, value) :
+			this->_unit->client.getAddress(this->_id.eid, address, value)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2257,13 +2323,13 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2279,7 +2345,11 @@ awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем режим трансляции пакетов клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDelivery(this->_id.eid) : this->_unit->client.getDelivery(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getDelivery(this->_id.eid) :
+			this->_unit->client.getDelivery(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2287,13 +2357,13 @@ awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2312,7 +2382,11 @@ bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем режим трансляции пакетов клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDelivery(this->_id.eid, delivery) : this->_unit->client.setDelivery(this->_id.eid, delivery));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.setDelivery(this->_id.eid, delivery) :
+				this->_unit->client.setDelivery(this->_id.eid, delivery)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2320,13 +2394,13 @@ bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (delivery)}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (delivery)}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2344,7 +2418,11 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем размер буфера клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getBufferSize(this->_id.eid, action) : this->_unit->client.getBufferSize(this->_id.eid, action));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getBufferSize(this->_id.eid, action) :
+			this->_unit->client.getBufferSize(this->_id.eid, action)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2352,13 +2430,13 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2376,7 +2454,11 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем размер буфера клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setBufferSize(this->_id.eid, action, size) : this->_unit->client.setBufferSize(this->_id.eid, action, size));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setBufferSize(this->_id.eid, action, size) :
+			this->_unit->client.setBufferSize(this->_id.eid, action, size)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2384,13 +2466,13 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action), size}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action), size}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2414,13 +2496,13 @@ uint32_t awh::Client::getAliveDNS() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2446,7 +2528,11 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем режим использования таймаута на чтение события
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getUsageReadTimeout(this->_id.eid) : this->_unit->client.getUsageReadTimeout(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getUsageReadTimeout(this->_id.eid) :
+			this->_unit->client.getUsageReadTimeout(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2454,13 +2540,13 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2476,7 +2562,11 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим использования таймаута на чтение события
-		((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) : this->_unit->client.setUsageReadTimeout(this->_id.eid, usage));
+		(
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) :
+			this->_unit->client.setUsageReadTimeout(this->_id.eid, usage)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2484,13 +2574,13 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (usage)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (usage)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -2505,7 +2595,11 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем таймаут клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTimeout(this->_id.eid, action) : this->_unit->client.getTimeout(this->_id.eid, action));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getTimeout(this->_id.eid, action) :
+			this->_unit->client.getTimeout(this->_id.eid, action)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2513,13 +2607,13 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2536,7 +2630,11 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем таймаут клиента
-		((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTimeout(this->_id.eid, action, timeout) : this->_unit->client.setTimeout(this->_id.eid, action, timeout));
+		(
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setTimeout(this->_id.eid, action, timeout) :
+			this->_unit->client.setTimeout(this->_id.eid, action, timeout)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2544,13 +2642,13 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action), timeout}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 }
@@ -2566,7 +2664,11 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем пропускную способность клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) : this->_unit->client.bandwidth(this->_id.eid, limiting, bandwidth));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) :
+			this->_unit->client.bandwidth(this->_id.eid, limiting, bandwidth)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2574,13 +2676,13 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2599,7 +2701,11 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем параметры keep-alive для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.keepAlive(this->_id.eid, cnt, idle, intvl) : this->_unit->client.keepAlive(this->_id.eid, cnt, idle, intvl));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.keepAlive(this->_id.eid, cnt, idle, intvl) :
+			this->_unit->client.keepAlive(this->_id.eid, cnt, idle, intvl)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2607,13 +2713,13 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {cnt, idle, intvl}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {cnt, idle, intvl}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2629,7 +2735,11 @@ awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexc
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем значение DSCP для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) : this->_unit->client.getDifferentiatedServicesCodePoint(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) :
+			this->_unit->client.getDifferentiatedServicesCodePoint(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2637,13 +2747,13 @@ awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2660,7 +2770,11 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем значение DSCP для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) : this->_unit->client.setDifferentiatedServicesCodePoint(this->_id.eid, dscp));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) :
+			this->_unit->client.setDifferentiatedServicesCodePoint(this->_id.eid, dscp)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2668,13 +2782,13 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (dscp)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (dscp)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2690,7 +2804,11 @@ awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() con
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем режим обнаружения максимального размера пакета (MTU) для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) : this->_unit->client.getMaximumTransmissionUnitDiscover(this->_id.eid));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) :
+			this->_unit->client.getMaximumTransmissionUnitDiscover(this->_id.eid)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2698,13 +2816,13 @@ awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() con
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2721,7 +2839,11 @@ bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим обнаружения максимального размера пакета (MTU) для клиента
-		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) : this->_unit->client.setMaximumTransmissionUnitDiscover(this->_id.eid, mode));
+		return (
+			(this->_params.protocol == event::protocol_t::QUIC) ?
+			this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) :
+			this->_unit->client.setMaximumTransmissionUnitDiscover(this->_id.eid, mode)
+		);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2729,13 +2851,13 @@ bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING);
+			log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+			log::print("Client is not initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2757,7 +2879,11 @@ bool awh::Client::membership(const event::mode_t mode, string_view group, string
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.membership(this->_id.eid, mode, group, source, port) :
+				this->_unit->client.membership(this->_id.eid, mode, group, source, port)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2765,13 +2891,13 @@ bool awh::Client::membership(const event::mode_t mode, string_view group, string
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode), group, source, port}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode), group, source, port}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2794,7 +2920,11 @@ bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
-			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
+			return (
+				(this->_params.protocol == event::protocol_t::QUIC) ?
+				this->_unit->quic.membership(this->_id.eid, mode, group, source, port) :
+				this->_unit->client.membership(this->_id.eid, mode, group, source, port)
+			);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2802,13 +2932,13 @@ bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode), group, source, port}, awh::log::flag_t::WARNING);
+				log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode), group, source, port}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
+				log::print("Client is not initialized", log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -2832,16 +2962,18 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 			// Выдаём новый идентификатор DNS-резолвера для клиента
 			this->_dns.id = this->_dns.client->issue();
 		/**
-		 * Если запрошен транспорт QUIC: рукопожатие TLS 1.3 ведёт само соединение,
-		 * поэтому шаблон контекста безопасности переносится в юнит клиента, а слой
-		 * записей TLS-over-stream в дальнейшем обходится (RFC 9001)
+		 * @brief Запоминаем протокол транспорта клиента
+		 *
+		 * @details Если запрошен транспорт QUIC: рукопожатие TLS 1.3 ведёт само соединение,
+		 *          поэтому шаблон контекста безопасности переносится в юнит клиента, а слой
+		 *          записей TLS-over-stream в дальнейшем обходится (RFC 9001).
+		 *
 		 */
-		// Запоминаем протокол транспорта клиента
 		this->_params.protocol = protocol;
-		// Запоминаем тип сокета транспорта клиента (для QUIC соединение работает поверх дейтаграммного сокета)
-		this->_params.type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
 		// Сбрасываем идентификатор потока по умолчанию
 		this->_params.stream = quic::connection_t::INVALID_STREAM;
+		// Запоминаем тип сокета транспорта клиента (для QUIC соединение работает поверх дейтаграммного сокета)
+		this->_params.type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
 		/**
 		 * Для транспорта QUIC событие создаётся на выделенном юните клиента QUIC:
 		 * ему же переносится шаблон контекста безопасности, а слой записей
@@ -2864,6 +2996,7 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 			 * отправить, поэтому при переполнении очереди они не теряются
 			 */
 			if(this->_id.ctl > 0)
+				// Устанавливаем функцию выдачи шифротекста TLS сетевому движку
 				this->_unit->client.source(this->_id.eid, std::bind(&client_t::source, this, _1, _2, _3));
 		}
 	// Если идентификатор клиента не установлен
@@ -2873,13 +3006,13 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("This client has already been initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, awh::log::flag_t::WARNING);
+			log::debug("This client has already been initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("This client has already been initialized", awh::log::flag_t::WARNING);
+			log::print("This client has already been initialized", log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2917,24 +3050,26 @@ awh::Client::Client() noexcept :
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
-	 * собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
-	 * его колбэки подписываются отдельно от общего юнита клиента
+	 * @brief Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
+	 *          его колбэки подписываются отдельно от общего юнита клиента.
+	 *
 	 */
+	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита клиента QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
-	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
-	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
-	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
-	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
-	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие завершения соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const quic::error_t)> ("close", &client_t::closed, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
+	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
+	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 }
 /**
  * @brief Конструктор
@@ -2970,24 +3105,26 @@ awh::Client::Client(unit::dns_t * dns) noexcept :
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
-	 * собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
-	 * его колбэки подписываются отдельно от общего юнита клиента
+	 * @brief Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
+	 *          его колбэки подписываются отдельно от общего юнита клиента.
+	 *
 	 */
+	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита клиента QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
-	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
-	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
-	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
-	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
-	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие завершения соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const quic::error_t)> ("close", &client_t::closed, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
+	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
+	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем переданный объект DNS-резолвера для клиента
 	this->_dns.client = dns;
 	// Если объект DNS-резолвера установлен
@@ -3009,13 +3146,13 @@ awh::Client::Client(unit::dns_t * dns) noexcept :
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+			log::debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("DNS resolver object is not set", awh::log::flag_t::CRITICAL);
+			log::print("DNS resolver object is not set", log::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
 		::_exit(EXIT_FAILURE);
@@ -3070,24 +3207,26 @@ awh::Client::Client(const tls::coder::id_t ctl) noexcept :
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
-	 * собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
-	 * его колбэки подписываются отдельно от общего юнита клиента
+	 * @brief Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
+	 *          его колбэки подписываются отдельно от общего юнита клиента.
+	 *
 	 */
+	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита клиента QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
-	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
-	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
-	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
-	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
-	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие завершения соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const quic::error_t)> ("close", &client_t::closed, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
+	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
+	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 }
 /**
  * @brief Конструктор
@@ -3139,24 +3278,26 @@ awh::Client::Client(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
-	 * собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
-	 * его колбэки подписываются отдельно от общего юнита клиента
+	 * @brief Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита клиента QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (соединение поверх одного UDP-сокета), поэтому
+	 *          его колбэки подписываются отдельно от общего юнита клиента.
+	 *
 	 */
+	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита клиента QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
-	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
-	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
-	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
-	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие принятой датаграммы приложения QUIC
 	this->_unit->quic.on <void (const event::id_t, const string &)> ("datagram", &client_t::message, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие готовности к отправке ранних данных QUIC
-	this->_unit->quic.on <void (const event::id_t)> ("early", &client_t::earlyData, this, _1);
 	// Устанавливаем функцию обратного вызова на событие завершения соединения QUIC
 	this->_unit->quic.on <void (const event::id_t, const quic::error_t)> ("close", &client_t::closed, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на освобождение буфера отправки потока
+	this->_unit->quic.on <void (const event::id_t, const uint64_t)> ("writable", &client_t::writable, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие собранных данных потока соединения QUIC
+	this->_unit->quic.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", &client_t::stream, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как подключение)
+	this->_unit->quic.on <void (const event::id_t)> ("open", static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, true);
 	// Устанавливаем переданный объект DNS-резолвера для клиента
 	this->_dns.client = dns;
 	// Если объект DNS-резолвера установлен
@@ -3178,13 +3319,13 @@ awh::Client::Client(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
+			log::debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("DNS resolver object is not set", awh::log::flag_t::CRITICAL);
+			log::print("DNS resolver object is not set", log::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
 		::_exit(EXIT_FAILURE);
