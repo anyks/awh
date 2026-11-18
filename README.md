@@ -20,10 +20,8 @@
 - [Brotli](https://brotli.org)
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [PCRE2](https://www.pcre.org)
 - [A-NTS](https://anyks.com/nts)
 - [NgHttp2](https://nghttp2.org/documentation)
-- [GPerfTools](https://github.com/gperftools/gperftools)
 
 ## To build and launch the project
 
@@ -205,7 +203,7 @@ Studio itself and sets up the compiler environment, so this step needs no develo
 ```
 
 That one command builds all ten dependencies: A-NTS, zlib, bzip2, lz4, zstd, lzma, Brotli,
-PCRE2, nghttp2 and the gperftools allocator. Everything lands in `third_party-msvc` — headers
+nghttp2. Everything lands in `third_party-msvc` — headers
 in `include`, archives in `lib`. The version of each dependency is written in its own script
 under `bat\third_party`, and those are the same versions the MinGW build takes from
 `build_third_party.sh`.

@@ -19,7 +19,7 @@ endif()
  #
  # Модуль поиска вызывается из общего дерева, и сужение правил ниже осталось бы
  # действовать на ВСЕ последующие поиски проекта: суженный до «.lib» перечень
- # расширений однажды уже спрятал архив с именем «libpcre2-8.a», и шесть проверок
+ # расширений однажды уже спрятал архив с именем «liblzma.a», и шесть проверок
  # сравнения выражений на Windows молча перестали собираться
  ##
 SET(AWH_FIND_LIBRARY_PREFIXES_KEPT ${CMAKE_FIND_LIBRARY_PREFIXES})
@@ -72,11 +72,10 @@ find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${AWH_THIRD_PARTY}/i
  # <nts/digest/hash.hpp>, а внутренние включения самой A-NTS идут без префикса
  # nts/ (например, <sys/global.hpp>) и требуют каталога include/anyks/nts.
  # Родитель include/anyks ставится на путь отдельно (${AWH_THIRD_PARTY}/include):
- # с префиксом имени библиотеки включаются чужие заголовки - <pcre2/pcre2posix.h>,
+ # с префиксом имени библиотеки включаются чужие заголовки - <nghttp2/nghttp2.h>,
  # <nghttp2/nghttp2.h>
  ##
 SET(NTS_INTERNAL_DIR "${NTS_INCLUDE_DIR}/nts")
-find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${AWH_THIRD_PARTY}/include/pcre2 NO_DEFAULT_PATH)
 find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${AWH_THIRD_PARTY}/include/nghttp2 NO_DEFAULT_PATH)
 
 # Поиск библиотеки Dependence
@@ -98,7 +97,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         BROTLI_INCLUDE_ENCODE_DIR
         BROTLI_INCLUDE_DECODE_DIR
         NTS_INCLUDE_DIR
-        PCRE_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
 
         FAIL_MESSAGE "Missing Dependence. Run ${AWH_BUILD_HINT} first"
@@ -114,7 +112,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${NTS_INCLUDE_DIR}
         ${NTS_INTERNAL_DIR}
         ${AWH_THIRD_PARTY}/include
-        ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
 # Если операцинная система относится к Nix-подобной
@@ -130,7 +127,6 @@ else()
         BROTLI_INCLUDE_ENCODE_DIR
         BROTLI_INCLUDE_DECODE_DIR
         NTS_INCLUDE_DIR
-        PCRE_INCLUDE_DIR
         NGHTTP2_INCLUDE_DIR
 
         FAIL_MESSAGE "Missing Dependence. Run ${AWH_BUILD_HINT} first"
@@ -146,7 +142,6 @@ else()
         ${NTS_INCLUDE_DIR}
         ${NTS_INTERNAL_DIR}
         ${AWH_THIRD_PARTY}/include
-        ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
 endif()
@@ -157,7 +152,6 @@ install(DIRECTORY "${BZ2_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATT
 install(DIRECTORY "${ZSTD_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${LZMA_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${NTS_INCLUDE_DIR}/nts" DESTINATION "include" FILES_MATCHING PATTERN "*.hpp")

@@ -632,6 +632,77 @@ namespace awh {
 			 */
 			~Log() noexcept;
 	} log_t;
+	/**
+	 * @brief Пространство имён журнала модулей, перенесённых из AWH v5
+	 *
+	 * Модули, перенесённые из v5 (regex), зовут журнал свободными функциями
+	 * пространства имён. Своего журнала у них нет, и строки уходят в stderr -
+	 * тем же порядком, каким v4 пишет отказы без объекта журнала
+	 */
+	namespace log {
+		/**
+		 * Флаги сообщений: значения совпадают с awh::log::flag_t v5
+		 */
+		enum class flag_t : uint8_t {
+			NONE     = 0x00, // Флаг не установлен
+			INFO     = 0x01, // Информационное сообщение
+			WARNING  = 0x02, // Предупреждающее сообщение
+			CRITICAL = 0x03  // Критическое сообщение
+		};
+		/**
+		 * @brief Значение дополнительных данных сообщения
+		 *
+		 * Данные эти движок регулярных выражений передаёт ради отладочного
+		 * вывода; украшения строки журнала v5 здесь не воспроизводятся и
+		 * значения остаются неиспользованными
+		 */
+		struct arg_t {
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param value значение данных сообщения
+			 */
+			template <typename T>
+			arg_t([[maybe_unused]] const T & value) noexcept {}
+		};
+		/**
+		 * @brief Метод вывода сообщения журнала
+		 *
+		 * @param format формат сообщения
+		 * @param flag   флаг сообщения
+		 */
+		inline void print(const string & format, flag_t flag, ...) noexcept {
+			// Начинаем разбор переменных доводов
+			va_list args;
+			va_start(args, flag);
+			// Выводим сообщение в стандартный поток ошибок
+			::vfprintf(stderr, format.c_str(), args);
+			// Завершаем разбор переменных доводов
+			va_end(args);
+			// Отделяем сообщение переводом строки
+			::fputc('\n', stderr);
+		}
+		/**
+		 * @brief Метод вывода отладочного сообщения журнала
+		 *
+		 * @param format формат сообщения
+		 * @param method имя метода, из которого выводится сообщение
+		 * @param params дополнительные данные сообщения
+		 * @param flag   флаг сообщения
+		 */
+		inline void debug(const string & format, const string & method, [[maybe_unused]] initializer_list <arg_t> params, flag_t flag, ...) noexcept {
+			// Начинаем разбор переменных доводов
+			va_list args;
+			va_start(args, flag);
+			// Выводим имя метода и сообщение в стандартный поток ошибок
+			::fprintf(stderr, "%s: ", method.c_str());
+			::vfprintf(stderr, format.c_str(), args);
+			// Завершаем разбор переменных доводов
+			va_end(args);
+			// Отделяем сообщение переводом строки
+			::fputc('\n', stderr);
+		}
+	}
 };
 
 #endif // __AWH_LOG__

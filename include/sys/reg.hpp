@@ -27,7 +27,7 @@
 #include <cstdint>
 #include <iostream>
 #include <sys/types.h>
-#include <pcre2/pcre2posix.h>
+#include <regex/engine.hpp>
 
 /**
  * Разрешаем сборку под Windows
@@ -80,12 +80,15 @@ namespace awh {
 			 *
 			 */
 			class AWH_SHARED_EXPORT Expression {
+				friend class RegExp;
 				private:
 					// Флаг инициализации
 					bool _mode;
-				public:
-					// Объект контекста регулярного выражения
-					regex_t reg;
+				private:
+					// Исполнение регулярного выражения
+					shared_ptr <regex::Engine> _engine;
+					// Замок исполнения: движок ведёт состояние от шага к шагу
+					mutable mutex _locker;
 				public:
 					/**
 					 * @brief Оператор проверки на инициализацию регулярного выражения

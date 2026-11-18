@@ -17,6 +17,7 @@
  */
 #include <sys/fmk.hpp>
 #include <encoding/charset/charset.hpp>
+#include <alloc/alloc.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -5299,10 +5300,36 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	return result;
 }
 /**
+ * @brief Признак единожды выполненного заведения распределителя
+ *
+ */
+static std::once_flag __awh_alloc_once__;
+/**
+ * @brief Заведение распределителя памяти на весь процесс
+ *
+ * Зовётся из конструктора фреймворка, а не из точки входа: своей точки входа
+ * у библиотеки нет, а фреймворк заводится в приложении первым и ДО порождения
+ * потоков - ровно того захват и требует
+ */
+static void __awh_seize_allocator__() noexcept {
+	// Выполняем заведение один раз на весь процесс
+	std::call_once(__awh_alloc_once__, []() noexcept {
+		/**
+		 * Если распределитель не снят ключом сборки
+		 */
+		#if !defined(AWH_ALLOC_DISABLED)
+			// Заводим захват выдачи памяти процесса, оставив настройки как есть
+			awh::alloc::allocator::capture(awh::alloc::allocator::options());
+		#endif
+	});
+}
+/**
  * @brief Конструктор
  *
  */
 awh::Framework::Framework() noexcept {
+	// Заводим распределитель памяти на весь процесс
+	::__awh_seize_allocator__();
 	// Устанавливаем локализацию системы
 	this->setLocale();
 	// Устанавливаем регулярное выражение для парсинга буферов данных
@@ -5316,6 +5343,8 @@ awh::Framework::Framework() noexcept {
  * @param locale локализация приложения
  */
 awh::Framework::Framework(const string & locale) noexcept {
+	// Заводим распределитель памяти на весь процесс
+	::__awh_seize_allocator__();
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
 	// Устанавливаем регулярное выражение для парсинга буферов данных

@@ -20,10 +20,8 @@
 - [Brotli](https://brotli.org)
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [PCRE2](https://www.pcre.org)
 - [A-NTS](https://anyks.com/nts)
 - [NgHttp2](https://nghttp2.org/documentation)
-- [GPerfTools](https://github.com/gperftools/gperftools)
 
 ## Сборка и запуск проекта
 
@@ -205,7 +203,7 @@ Studio и поднимает окружение компилятора, поэт
 ```
 
 Эта одна команда собирает все десять зависимостей: A-NTS, zlib, bzip2, lz4, zstd, lzma,
-Brotli, PCRE2, nghttp2 и аллокатор gperftools. Всё ложится в `third_party-msvc`: заголовки в
+Brotli, nghttp2. Всё ложится в `third_party-msvc`: заголовки в
 `include`, архивы в `lib`. Версия каждой зависимости названа в её собственном сценарии под
 `bat\third_party` - это те же версии, что сборка MinGW берёт из
 `build_third_party.sh`.

@@ -27,10 +27,6 @@ $ROOT/submodule.sh add zlib https://gitflic.ru/project/third_party/zlib.git
 $ROOT/submodule.sh remove brotli
 $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 
-# Выполняем пересборку сабмодуля pcre2
-$ROOT/submodule.sh remove pcre2
-$ROOT/submodule.sh add pcre2 https://gitflic.ru/project/third_party/pcre2.git
-
 # Выполняем пересборку сабмодуля A-NTS
 $ROOT/submodule.sh remove a-nts
 $ROOT/submodule.sh add a-nts https://gitflic.ru/project/anyks/nts.git
@@ -38,10 +34,6 @@ $ROOT/submodule.sh add a-nts https://gitflic.ru/project/anyks/nts.git
 # Выполняем пересборку сабмодуля nghttp2
 $ROOT/submodule.sh remove nghttp2
 $ROOT/submodule.sh add nghttp2 https://gitflic.ru/project/third_party/nghttp2.git
-
-# Выполняем пересборку сабмодуля gperftools
-$ROOT/submodule.sh remove gperftools
-$ROOT/submodule.sh add gperftools https://gitflic.ru/project/third_party/gperftools.git
 
 # Выводим список добавленных модулей
 cat $ROOT/.gitmodules

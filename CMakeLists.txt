@@ -79,24 +79,6 @@ endif()
 
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
-##
- # Подменяемый распределитель памяти gperftools на Windows правит начала функций времени
- # исполнения (malloc, free, new) при запуске образа. Разборщик начал у него только для
- # x86/x64 (ia32_modrm_map, mini_disassembler), и на ARM64 правка возвращает отказ -
- # процесс падает с кодом 0xC0000409 ещё до main. На ARM64 Windows распределитель потому
- # не подключаем вовсе: памятью заведёт системный malloc, как уже сделано для OpenBSD,
- # где аллокатор не собирается. Признак один на все места: и перечень архивов, и ключ
- # принудительного втягивания символа /INCLUDE:__tcmalloc. Условие нарочно под MSVC:
- # на Linux aarch64 распределитель вступает обычным слабым символом и работает
- ##
-if (MSVC AND (ARCHITECTURE MATCHES "aarch64" OR ARCHITECTURE MATCHES "arm*"))
-    # Снимаем распределитель памяти на ARM64 Windows
-    SET(AWH_TCMALLOC_OFF TRUE)
-else()
-    # Оставляем распределитель памяти на прочих платформах
-    SET(AWH_TCMALLOC_OFF FALSE)
-endif()
-
 # Если операционной системой является Linux
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "Detected OS: Linux")
@@ -331,28 +313,6 @@ if (MSVC)
      # лексеме справа от «::» в sys/fmk.cpp и sys/chrono.cpp
      ##
     add_compile_definitions(NOMINMAX)
-    ##
-     # Подменяемый распределитель памяти вступает в дело лишь тогда, когда его символ
-     # принудительно втянут в образ
-     #
-     # Сам по себе он никем не зовётся: gperftools перехватывает вызовы Windows правкой
-     # их начал, и делает это при запуске образа. Не втяни связыватель модуль с этим
-     # символом - архив распределителя был бы выброшен целиком, и подмены бы не было.
-     # Ключ этот gperftools задаёт свойством ЦЕЛИ своей сборки, а мы подключаем его
-     # архивы путём к файлу - свойство до нас не доходит, оттого ключ ставим сами.
-     #
-     # Пишется он в параметры связывания, а не в перечень библиотек: флагом CMake
-     # признаёт лишь имя с «-» в начале, а «/INCLUDE:» принял бы за имя библиотеки
-     #
-     # В динамической конфигурации ключ ставится ТОЛЬКО самой библиотеке: распределитель
-     # живёт внутри awh.dll, и второй его копии в образе программы быть не должно.
-     # Правку начал функций Windows каждый экземпляр делает при своём запуске, и второй
-     # заход по тем же адресам кончается отказом gperftools ещё до main - программа
-     # падает с кодом 0xC0000409, не напечатав ничего
-     ##
-    if(NOT CMAKE_SHARED_BUILD_LIB AND NOT AWH_TCMALLOC_OFF)
-        add_link_options(/INCLUDE:__tcmalloc)
-    endif()
 # Если процессор архитектуры ARM
 elseif (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
@@ -432,7 +392,6 @@ if (Dependence_FOUND)
     message(STATUS "ZSTD include dir found: " ${ZSTD_INCLUDE_DIR})
     message(STATUS "LZMA include dir found: " ${LZMA_INCLUDE_DIR})
     message(STATUS "ZLib include dir found: " ${ZLIB_INCLUDE_DIR})
-    message(STATUS "PCRE2 include dir found: " ${PCRE_INCLUDE_DIR})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "A-NTS include dir found: " ${NTS_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
@@ -440,40 +399,44 @@ else (Dependence_FOUND)
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
 
-##
- # Выполняем поиск библиотеки TcMalloc
- # Поиск оставляем необязательным: на OpenBSD аллокатор не собирается (см. build_third_party.sh),
- # и отказывать всей конфигурации из-за этого проект права не имеет. Для остальных систем
- # проверку делает ветка ниже
- ##
-find_package(TcMalloc)
-
-# Провекра TcMalloc
-if (TcMalloc_FOUND)
-    message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
-# Если операционной системой является OpenBSD
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-    # Удаляем библиотеку TCMalloc: распределением памяти заведёт системный malloc
-    SET(TCMALLOC_LIBRARIES "")
-else (TcMalloc_FOUND)
-    message(FATAL_ERROR "TcMalloc not found")
-endif (TcMalloc_FOUND)
-
-##
- # На ARM64 Windows распределитель памяти не подключаем: его правка начал функций
- # Windows на этой архитектуре отказывает (см. AWH_TCMALLOC_OFF выше). Перечень
- # архивов очищаем одним местом - он идёт и в приложения, и в awh.dll, и в установку
- ##
-if (AWH_TCMALLOC_OFF)
-    # Удаляем библиотеку TCMalloc: памятью заведёт системный malloc
-    SET(TCMALLOC_LIBRARIES "")
-endif()
-
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+
+##
+ # Захват выдачи памяти зависит от оснастки системы: PE переписывает вход функций
+ # времени исполнения, macOS отдаёт зону, ELF и BSD подменяют имена. Порядок и
+ # пояснения взяты из сборки AWH v5
+ ##
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Захват переписыванием входа функций
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/pe.cpp"
+    )
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    # Захват зоной
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/mach.cpp"
+    )
+else()
+    # Захват подменой имён
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/elf.cpp"
+    )
+    # Если сборка производится под операционную систему OpenBSD
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+        # Внутренние имена распределителя libc
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/alloc/capture/obsd.cpp"
+        )
+    endif()
+endif()
 
 # Выполняем подключение исходников
 SET(SOURCE_FILES
@@ -498,6 +461,39 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/encoding/unicode/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/unicode/unicode.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/unicode/utf8.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/assembly.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/backtrack.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/codegen.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/dfa.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/emitter.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/emittere2k.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/emitterx64.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/engine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/pike.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/prefilter.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/probe.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/program.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/regex.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/storage.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/alloc.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/source.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/pages.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/classes.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/spin.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/link.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/central.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/cache.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/huge.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/guard.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/trace.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/profile.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/vessel.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/prompt.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/scatter.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
@@ -704,12 +700,6 @@ else()
     add_executable(${INVESTIGATOR_APP_NAME} sample/investigator.cpp)
 endif()
 
-# Если активирован режим отладки
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    # Удаляем библиотеку TCMalloc
-    SET(TCMALLOC_LIBRARIES "")
-endif()
-
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     # Если операционной системой является Windows
@@ -720,15 +710,8 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
-
-        # Втягиваем распределитель памяти в саму библиотеку: программы ниже получают
-        # его уже готовым внутри awh.dll и своего не несут
-        if(NOT AWH_TCMALLOC_OFF)
-            target_link_options(${AWH_LIB_NAME} PRIVATE /INCLUDE:__tcmalloc)
-        endif()
 
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
@@ -843,119 +826,102 @@ if (CMAKE_SHARED_BUILD_LIB)
             ${AWH_LIB_NAME}
             PRIVATE
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения работы с IP-адресами
         target_link_libraries(
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
         target_link_libraries(
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
         target_link_libraries(
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения DNS-резолвер
         target_link_libraries(
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения NTP-клиента
         target_link_libraries(
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Proxy-сервера
         target_link_libraries(
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Socks5-сервера
         target_link_libraries(
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Ping-клиента
         target_link_libraries(
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения даты и времени
         target_link_libraries(
             ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения таймера
         target_link_libraries(
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения клиента
         target_link_libraries(
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения сервера
         target_link_libraries(
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения кластера
         target_link_libraries(
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-клиента
         target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-сервера
         target_link_libraries(
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения дознавателя
         target_link_libraries(
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
-            ${TCMALLOC_LIBRARIES}
         )
 
     endif()
@@ -969,7 +935,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -978,7 +943,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -987,7 +951,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -996,7 +959,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1005,7 +967,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1014,7 +975,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1023,7 +983,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1032,7 +991,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1041,7 +999,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1050,7 +1007,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1059,7 +1015,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1068,7 +1023,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1077,7 +1031,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1086,7 +1039,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1095,7 +1047,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
             ${WINFLAGS}
         )
 
@@ -1107,7 +1058,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${IP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-клиент
@@ -1115,7 +1065,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения WebSocket-сервер
@@ -1123,7 +1072,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WS_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения DNS-резолвер
@@ -1131,7 +1079,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DNS_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения NTP-клиента
@@ -1139,7 +1086,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${NTP_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Proxy-сервера
@@ -1147,7 +1093,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PROXY_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Socks5-сервера
@@ -1155,7 +1100,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SOCKS5_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения Ping-клиента
@@ -1163,7 +1107,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${PING_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения даты и времени
@@ -1171,7 +1114,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${DATE_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения таймера
@@ -1179,7 +1121,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${TIMER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения клиента
@@ -1187,7 +1128,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения сервера
@@ -1195,7 +1135,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения кластера
@@ -1203,7 +1142,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${CLUSTER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-клиента
@@ -1211,7 +1149,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_CLIENT_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения HTTP-сервера
@@ -1219,7 +1156,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${WEB_SERVER_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
         # Выполняем сборку приложения дознавателя
@@ -1227,7 +1163,6 @@ else (CMAKE_SHARED_BUILD_LIB)
             ${INVESTIGATOR_APP_NAME}
             ${AWH_LIB_NAME}
             ${DEPEND_LIBRARY}
-            ${TCMALLOC_LIBRARIES}
         )
 
     endif()
@@ -1441,9 +1376,6 @@ else()
     # Устанавливаем статическую библиотеку AWH
     install(TARGETS ${AWH_LIB_NAME} DESTINATION "lib")
 endif()
-
-# Устанавливаем статическую библиотеку TcMalloc
-install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "lib")
 
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "bin/${CMAKE_PROJECT_NAME}")

@@ -30,7 +30,6 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
-#include <pcre2/pcre2posix.h>
 
 /**
  * Наши модули
