@@ -64,24 +64,29 @@ rem ----------------------------------------------------------------------------
 set "PARTS="
 set "COUNT=0"
 
-for %%L in ("%PREFIX%\lib\*.lib") do (
-	if exist "%%~fL" (
-		set "SKIP=0"
-		set "STEM=%%~nL"
-		set "BARE=%%~nL"
-		if /i "!BARE:~0,3!"=="lib" set "BARE=!BARE:~3!"
-		for %%E in (%EXCLUDES%) do (
-			if /i "!STEM!"=="%%E" set "SKIP=1"
-			if /i "!BARE!"=="%%E" set "SKIP=1"
-		)
-		if exist "%PREFIX%\lib\%%~nL.dll" set "SKIP=1"
-		if exist "%PREFIX%\bin\%%~nL.dll" set "SKIP=1"
-		if "!SKIP!"=="0" (
-			set "PARTS=!PARTS! "%%~fL""
-			set /a COUNT+=1
-			echo [AWH] static: merge %%~nxL
-		) else (
-			echo [AWH] static: skip %%~nxL
+rem  Просматриваются два каталога: верхний каталог библиотек и экосистемный
+rem  подкаталог anyks. A-NTS ставит свою библиотеку именно туда (lib\anyks\nts.lib),
+rem  и перебор одного верхнего каталога оставлял бы её вне объединения молча.
+for %%D in ("%PREFIX%\lib" "%PREFIX%\lib\anyks") do (
+	for %%L in ("%%~fD\*.lib") do (
+		if exist "%%~fL" (
+			set "SKIP=0"
+			set "STEM=%%~nL"
+			set "BARE=%%~nL"
+			if /i "!BARE:~0,3!"=="lib" set "BARE=!BARE:~3!"
+			for %%E in (%EXCLUDES%) do (
+				if /i "!STEM!"=="%%E" set "SKIP=1"
+				if /i "!BARE!"=="%%E" set "SKIP=1"
+			)
+			if exist "%PREFIX%\lib\%%~nL.dll" set "SKIP=1"
+			if exist "%PREFIX%\bin\%%~nL.dll" set "SKIP=1"
+			if "!SKIP!"=="0" (
+				set "PARTS=!PARTS! "%%~fL""
+				set /a COUNT+=1
+				echo [AWH] static: merge %%~nxL
+			) else (
+				echo [AWH] static: skip %%~nxL
+			)
 		)
 	)
 )

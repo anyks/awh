@@ -626,9 +626,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      # Заголовки A-NTS по умолчанию объявляют методы как __declspec(dllimport), и тогда
      # линковка статичного libnts ищет символы с приставкой __imp_ и отказывает. Сборка
      # зависимостей делает A-NTS именно статической, поэтому на Windows объявляем это библиотеке:
-     # её global.hpp при ANTS_STATICLIB оставляет объявления без атрибута импорта
+     # её global.hpp при NTS_STATICLIB оставляет объявления без атрибута импорта
      ##
-    add_compile_definitions(ANTS_STATICLIB)
+    add_compile_definitions(NTS_STATICLIB)
     ##
      # Заголовки nghttp2 на Windows тоже объявляют имена берущимися из динамической
      # библиотеки, пока не сказано обратное. Признак этот nghttp2 ставит СВОЕЙ цели

@@ -34,7 +34,9 @@ if errorlevel 1 exit /b 1
 rem Снос собранного
 if /i "%~1"=="--clean" (
 	call "%~dp0_common.bat" :clean "%NAME%"
+	if exist "%PREFIX%\include\nts" rd /s /q "%PREFIX%\include\nts" > nul 2>&1
 	if exist "%PREFIX%\lib\nts.lib" del /f /q "%PREFIX%\lib\nts.lib" > nul 2>&1
+	if exist "%PREFIX%\lib\anyks\nts.lib" del /f /q "%PREFIX%\lib\anyks\nts.lib" > nul 2>&1
 	exit /b 0
 )
 
@@ -54,16 +56,29 @@ if not "%AWH_HASH%"=="" (
 )
 
 rem ----------------------------------------------------------------------------
+rem  Снимаем остатки прежней раскладки A-NTS
+rem
+rem  Новый выпуск ставит заголовки в include\anyks\nts и библиотеку в
+rem  lib\anyks, а прежние include\nts и lib\nts.lib установка не трогает:
+rem  оставшись, старая библиотека вошла бы в объединение наравне с новой,
+rem  и связывание взяло бы модули первой из них молча
+rem ----------------------------------------------------------------------------
+if exist "%PREFIX%\include\nts" rd /s /q "%PREFIX%\include\nts" > nul 2>&1
+if exist "%PREFIX%\lib\nts.lib" del /f /q "%PREFIX%\lib\nts.lib" > nul 2>&1
+
+rem ----------------------------------------------------------------------------
 rem  Выполняем сборку
 rem
 rem  Проверки, замеры, образцы и размытие сборщиком здесь ни к чему: AWH берёт от
 rem  A-NTS одну статическую библиотеку. Разделяемая сборка запрещена общей частью,
-rem  и признак ANTS_STATICLIB она ставит себе сама - без него заголовки объявляют
-rem  символы импортом из DLL, и связывание отвечает сворой __imp_
+rem  а признак NTS_STATICLIB ставит себе сам AWH: своей цели сборки A-NTS ставит
+rem  его открыто, но до потребителя, взявшего заголовки путём, он не доходит -
+rem  без него заголовки объявляют символы импортом из DLL, и связывание
+rem  отвечает сворой __imp_
 rem ----------------------------------------------------------------------------
 call "%~dp0_common.bat" :build "%NAME%" "%VERSION%" "-DCMAKE_BUILD_TESTS=OFF -DCMAKE_BUILD_SANITIZE=OFF -DCMAKE_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_SAMPLES=OFF -DCMAKE_BUILD_LIBFUZZER=OFF"
 if errorlevel 1 exit /b 1
 
-rem Заголовки установка кладёт в include\nts сама, раскладка им не нужна
+rem Заголовки установка кладёт в include\anyks\nts сама, раскладка им не нужна
 
 exit /b 0

@@ -61,12 +61,16 @@ find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${AWH_THIRD_PARTY}/include/lzma NO
 find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${AWH_THIRD_PARTY}/include/zlib NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${AWH_THIRD_PARTY}/include/brotli NO_DEFAULT_PATH)
 find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AWH_THIRD_PARTY}/include/brotli NO_DEFAULT_PATH)
-find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${AWH_THIRD_PARTY}/include NO_DEFAULT_PATH)
+find_path(NTS_INCLUDE_DIR NAMES nts/client/client.hpp PATHS ${AWH_THIRD_PARTY}/include/anyks NO_DEFAULT_PATH)
 
 ##
- # Внутренние включения самой A-NTS идут без префикса nts/ (например, <sys/global.hpp>),
- # поэтому на путь ставится и каталог заголовков библиотеки, и его родитель:
- # модули AWH обращаются к библиотеке в форме <nts/digest/hash.hpp>
+ # A-NTS ставит заголовки в экосистемный каталог include/anyks/nts, поэтому
+ # найденный каталог - include/anyks: модули AWH обращаются к библиотеке в форме
+ # <nts/digest/hash.hpp>, а внутренние включения самой A-NTS идут без префикса
+ # nts/ (например, <sys/global.hpp>) и требуют каталога include/anyks/nts.
+ # Родитель include/anyks ставится на путь отдельно (${AWH_THIRD_PARTY}/include):
+ # с префиксом имени библиотеки включаются чужие заголовки - <pcre2/pcre2posix.h>,
+ # <nghttp2/nghttp2.h>
  ##
 SET(NTS_INTERNAL_DIR "${NTS_INCLUDE_DIR}/nts")
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${AWH_THIRD_PARTY}/include/pcre2 NO_DEFAULT_PATH)
@@ -114,6 +118,7 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${NTS_INCLUDE_DIR}
         ${NTS_INTERNAL_DIR}
+        ${AWH_THIRD_PARTY}/include
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
@@ -150,6 +155,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${NTS_INCLUDE_DIR}
         ${NTS_INTERNAL_DIR}
+        ${AWH_THIRD_PARTY}/include
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
@@ -181,6 +187,7 @@ else()
         ${BROTLI_INCLUDE_ENCODE_DIR}
         ${NTS_INCLUDE_DIR}
         ${NTS_INTERNAL_DIR}
+        ${AWH_THIRD_PARTY}/include
         ${PCRE_INCLUDE_DIR}
         ${NGHTTP2_INCLUDE_DIR}
     )
