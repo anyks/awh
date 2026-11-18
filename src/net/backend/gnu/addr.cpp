@@ -100,12 +100,6 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Генератор случайных чисел для рандомизации DNS-серверов
-	 *
-	 */
-	random_device __awh_randev__;
-
-	/**
 	 * @brief Нулевой MAC-адрес для сравнения
 	 *
 	 */

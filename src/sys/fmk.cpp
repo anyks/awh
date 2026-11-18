@@ -1259,7 +1259,7 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint16_t getRome(const char num) noexcept {
+			[[maybe_unused]] uint16_t getRome(const char num) noexcept {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
@@ -1278,7 +1278,7 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint16_t getRome(const wchar_t num) noexcept {
+			[[maybe_unused]] uint16_t getRome(const wchar_t num) noexcept {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
@@ -1298,7 +1298,7 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint8_t getArabic(const char num) noexcept {
+			[[maybe_unused]] uint8_t getArabic(const char num) noexcept {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
@@ -1317,7 +1317,7 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint8_t getArabic(const wchar_t num) noexcept {
+			[[maybe_unused]] uint8_t getArabic(const wchar_t num) noexcept {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
@@ -1337,7 +1337,7 @@ namespace {
 			 * @return       латинская буква в виде символа
 			 *
 			 */
-			wchar_t getLetter(const char letter) noexcept {
+			[[maybe_unused]] wchar_t getLetter(const char letter) noexcept {
 				// Переменная результата
 				wchar_t result = 0;
 				// Выполняем поиск латинской буквы
@@ -1356,7 +1356,7 @@ namespace {
 			 * @return       латинская буква в виде символа
 			 *
 			 */
-			char getLetter(const wchar_t letter) noexcept {
+			[[maybe_unused]] char getLetter(const wchar_t letter) noexcept {
 				// Переменная результата
 				char result = 0;
 				// Выполняем поиск латинской буквы

@@ -3352,7 +3352,7 @@ namespace {
 	 * @brief Метод очистки хранилища
 	 *
 	 */
-	void Storage_Transport_Layer_Nodes::clear() noexcept {
+	[[maybe_unused]] void Storage_Transport_Layer_Nodes::clear() noexcept {
 		// Сбрасываем номер первого обслуживаемого чанка
 		this->_base = 0;
 		// Сбрасываем количество узлов
@@ -12912,7 +12912,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -12940,7 +12940,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -12971,7 +12971,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -13005,7 +13005,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14664,7 +14664,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14692,7 +14692,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14723,7 +14723,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14757,7 +14757,7 @@ namespace timer {
 		 * @param rate режим ограничения скорости события
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -34673,6 +34673,8 @@ namespace io {
 						// Выходим из цикла вытягивания
 						break;
 				}
+				// Фиксируем признак вытягивания по возврату источника
+				pulling = proceed;
 				/**
 				 * Если источнику больше нечего отдавать
 				 *
@@ -34681,7 +34683,7 @@ namespace io {
 				 *       вызовом send(id, nullptr, 0)
 				 *
 				 */
-				if(!(pulling = proceed))
+				if(!pulling)
 					// Выходим из цикла вытягивания
 					break;
 				/**

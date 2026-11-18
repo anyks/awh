@@ -3082,14 +3082,14 @@ awh::tls::coder::ALPN::ALPN(const uint8_t id, const string & protocol) noexcept 
  id(id), protocol(protocol) {}
 
 /**
- * @brief Функция получения версии OpenSSL
+ * @brief Функция получения версии A-NTS
  *
- * @return версия OpenSSL
+ * @return версия A-NTS
  *
  */
 string awh::tls::coder::version() noexcept {
-	// Возвращаем версию OpenSSL
-	return ::OpenSSL_version(OPENSSL_VERSION);
+	// Возвращаем версию A-NTS
+	return NTS_VERSION;
 }
 /**
  * @brief Функция установки безопасности работы потоков

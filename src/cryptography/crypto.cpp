@@ -43,15 +43,11 @@
 #include <sign/gost.hpp>
 #include <sign/ecdsa.hpp>
 #include <sign/ed25519.hpp>
+#include <curve/parameters.hpp>
 #include <agreement/vko.hpp>
 #include <agreement/ecdhe.hpp>
 #include <agreement/x25519.hpp>
 #include <entropy/entropy.hpp>
-
-/**
- * Подключаем заголовочный файл распределителя укрытой памяти
- */
-#include <alloc/keeper.hpp>
 
 /**
  * Для операционной системы отличной от MS Windows
@@ -401,7 +397,7 @@ namespace secret {
 		// Наращиваем длину буфера до его ёмкости
 		buffer.resize(buffer.capacity(), typename T::value_type());
 		// Выполняем затирание всего отведённого буфером
-		::OPENSSL_cleanse(buffer.data(), buffer.size());
+		nts::sys::wipe(buffer.data(), buffer.size());
 		// Возвращаем буферу прежнюю длину
 		buffer.resize(length, typename T::value_type());
 	}
@@ -568,2801 +564,11 @@ namespace entropy {
 		 * список в памяти работе ни к чему
 		 */
 		// Выполняем затирание выданного из запаса
-		::OPENSSL_cleanse(store.data() + offset, size);
+		nts::sys::wipe(store.data() + offset, size);
 		// Смещаем положение выдачи на размер выданного
 		offset += size;
 		// Выводим признак успешного получения случайных данных
 		return true;
-	}
-};
-
-/**
- * @brief Пространство имён вычислений по ГОСТ Р 34.10-2012 и ГОСТ Р 34.11-2012
- *
- * @details Вычисления ведутся своими силами, а не средствами библиотеки криптографии:
- *          BoringSSL объявляет OPENSSL_NO_GOST и переходника к сторонним движкам не
- *          имеет, а системные библиотеки стендов поставщика ГОСТ не несут ни одна.
- *          Вид подписи, доступный лишь при иной сборке, был бы худшим из договоров,
- *          поэтому реализация внесена в модуль и от связки не зависит вовсе
- *
- */
-namespace gost {
-	/**
-	 * Подписываемся на пространства имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Количество известных работе наборов свойств кривых
-	 *
-	 */
-	static constexpr size_t COUNT = 5;
-	/**
-	 * @brief Наибольший размер числа подписи и координаты точки в октетах
-	 *
-	 */
-	static constexpr size_t DIGIT = 64;
-	/**
-	 * @brief Размер блока хэш-функции в октетах
-	 *
-	 */
-	static constexpr size_t BLOCK = 64;
-	/**
-	 * @brief Количество слов блока хэш-функции
-	 *
-	 * @details Состояние счёта держится словами по 64 разряда, а не набором октетов:
-	 *          преобразование LPS и наложение по модулю два идут словами целиком, и
-	 *          раскладка итога обратно в октеты - шестьдесят четыре записи на всякое
-	 *          преобразование - отпадает вовсе. Замерено щупом: выигрыш 1,4 раза на
-	 *          горячей паре действий.
-	 */
-	static constexpr size_t WORDS = 8;
-	/**
-	 * @brief Наибольшая рабочая ширина числа в октетах
-	 *
-	 * @details Произведение двух чисел занимает вдвое больше разрядов, чем множители,
-	 *          и в буфер такой ширины входит без потери старших разрядов, поэтому всё
-	 *          поле считается на удвоенной ширине числа; умножение awh::bignum усекает
-	 *          итог до поданной ширины и на меньшей ширине молча портило бы результат.
-	 *          Величина здесь наибольшая из применяемых - под схему на 512 разрядов;
-	 *          сама же ширина счёта берётся у кривой и подаётся всякому действию поля,
-	 *          иначе схема на 256 разрядов считалась бы вчетверо дороже нужного.
-	 */
-	static constexpr size_t WIDTH = 128;
-	
-	/**
-	 * @brief Подстановка Pi хэш-функции
-	 *
-	 */
-	static constexpr uint8_t PI[256] = {
-		252,238,221, 17,207,110, 49, 22,251,196,250,218, 35,197,  4, 77,
-		233,119,240,219,147, 46,153,186, 23, 54,241,187, 20,205, 95,193,
-		249, 24,101, 90,226, 92,239, 33,129, 28, 60, 66,139,  1,142, 79,
-		  5,132,  2,174,227,106,143,160,  6, 11,237,152,127,212,211, 31,
-		235, 52, 44, 81,234,200, 72,171,242, 42,104,162,253, 58,206,204,
-		181,112, 14, 86,  8, 12,118, 18,191,114, 19, 71,156,183, 93,135,
-		 21,161,150, 41, 16,123,154,199,243,145,120,111,157,158,178,177,
-		 50,117, 25, 61,255, 53,138,126,109, 84,198,128,195,189, 13, 87,
-		223,245, 36,169, 62,168, 67,201,215,121,214,246,124, 34,185,  3,
-		224, 15,236,222,122,148,176,188,220,232, 40, 80, 78, 51, 10, 74,
-		167,151, 96,115, 30,  0, 98, 68, 26,184, 56,130,100,159, 38, 65,
-		173, 69, 70,146, 39, 94, 85, 47,140,163,165,125,105,213,149, 59,
-		  7, 88,179, 64,134,172, 29,247, 48, 55,107,228,136,217,231,137,
-		225, 27,131, 73, 76, 63,248,254,141, 83,170,144,202,216,133, 97,
-		 32,113,103,164, 45, 43,  9, 91,203,155, 37,208,190,229,108, 82,
-		 89,166,116,210,230,244,180,192,209,102,175,194, 57, 75, 99,182
-	};
-	/**
-	 * @brief Матрица A линейного преобразования хэш-функции
-	 *
-	 */
-	static constexpr uint64_t AM[64] = {
-		0x8e20faa72ba0b470ULL, 0x47107ddd9b505a38ULL, 0xad08b0e0c3282d1cULL, 0xd8045870ef14980eULL,
-		0x6c022c38f90a4c07ULL, 0x3601161cf205268dULL, 0x1b8e0b0e798c13c8ULL, 0x83478b07b2468764ULL,
-		0xa011d380818e8f40ULL, 0x5086e740ce47c920ULL, 0x2843fd2067adea10ULL, 0x14aff010bdd87508ULL,
-		0x0ad97808d06cb404ULL, 0x05e23c0468365a02ULL, 0x8c711e02341b2d01ULL, 0x46b60f011a83988eULL,
-		0x90dab52a387ae76fULL, 0x486dd4151c3dfdb9ULL, 0x24b86a840e90f0d2ULL, 0x125c354207487869ULL,
-		0x092e94218d243cbaULL, 0x8a174a9ec8121e5dULL, 0x4585254f64090fa0ULL, 0xaccc9ca9328a8950ULL,
-		0x9d4df05d5f661451ULL, 0xc0a878a0a1330aa6ULL, 0x60543c50de970553ULL, 0x302a1e286fc58ca7ULL,
-		0x18150f14b9ec46ddULL, 0x0c84890ad27623e0ULL, 0x0642ca05693b9f70ULL, 0x0321658cba93c138ULL,
-		0x86275df09ce8aaa8ULL, 0x439da0784e745554ULL, 0xafc0503c273aa42aULL, 0xd960281e9d1d5215ULL,
-		0xe230140fc0802984ULL, 0x71180a8960409a42ULL, 0xb60c05ca30204d21ULL, 0x5b068c651810a89eULL,
-		0x456c34887a3805b9ULL, 0xac361a443d1c8cd2ULL, 0x561b0d22900e4669ULL, 0x2b838811480723baULL,
-		0x9bcf4486248d9f5dULL, 0xc3e9224312c8c1a0ULL, 0xeffa11af0964ee50ULL, 0xf97d86d98a327728ULL,
-		0xe4fa2054a80b329cULL, 0x727d102a548b194eULL, 0x39b008152acb8227ULL, 0x9258048415eb419dULL,
-		0x492c024284fbaec0ULL, 0xaa16012142f35760ULL, 0x550b8e9e21f7a530ULL, 0xa48b474f9ef5dc18ULL,
-		0x70a6a56e2440598eULL, 0x3853dc371220a247ULL, 0x1ca76e95091051adULL, 0x0edd37c48a08a6d8ULL,
-		0x07e095624504536cULL, 0x8d70c431ac02a736ULL, 0xc83862965601dd1bULL, 0x641c314b2b8ee083ULL
-	};
-	/**
-	 * @brief Постоянные величины кругов шифрования хэш-функции
-	 *
-	 * @details Величины хранятся числовым видом стандарта, старшим октетом вперёд, как
-	 *          и всё состояние хэш-функции.
-	 *
-	 */
-	static constexpr uint8_t CS[12][BLOCK] = {
-		{0xb1,0x08,0x5b,0xda,0x1e,0xca,0xda,0xe9,0xeb,0xcb,0x2f,0x81,0xc0,0x65,0x7c,0x1f,0x2f,0x6a,0x76,0x43,0x2e,0x45,0xd0,0x16,0x71,0x4e,0xb8,0x8d,0x75,0x85,0xc4,0xfc,0x4b,0x7c,0xe0,0x91,0x92,0x67,0x69,0x01,0xa2,0x42,0x2a,0x08,0xa4,0x60,0xd3,0x15,0x05,0x76,0x74,0x36,0xcc,0x74,0x4d,0x23,0xdd,0x80,0x65,0x59,0xf2,0xa6,0x45,0x07},
-		{0x6f,0xa3,0xb5,0x8a,0xa9,0x9d,0x2f,0x1a,0x4f,0xe3,0x9d,0x46,0x0f,0x70,0xb5,0xd7,0xf3,0xfe,0xea,0x72,0x0a,0x23,0x2b,0x98,0x61,0xd5,0x5e,0x0f,0x16,0xb5,0x01,0x31,0x9a,0xb5,0x17,0x6b,0x12,0xd6,0x99,0x58,0x5c,0xb5,0x61,0xc2,0xdb,0x0a,0xa7,0xca,0x55,0xdd,0xa2,0x1b,0xd7,0xcb,0xcd,0x56,0xe6,0x79,0x04,0x70,0x21,0xb1,0x9b,0xb7},
-		{0xf5,0x74,0xdc,0xac,0x2b,0xce,0x2f,0xc7,0x0a,0x39,0xfc,0x28,0x6a,0x3d,0x84,0x35,0x06,0xf1,0x5e,0x5f,0x52,0x9c,0x1f,0x8b,0xf2,0xea,0x75,0x14,0xb1,0x29,0x7b,0x7b,0xd3,0xe2,0x0f,0xe4,0x90,0x35,0x9e,0xb1,0xc1,0xc9,0x3a,0x37,0x60,0x62,0xdb,0x09,0xc2,0xb6,0xf4,0x43,0x86,0x7a,0xdb,0x31,0x99,0x1e,0x96,0xf5,0x0a,0xba,0x0a,0xb2},
-		{0xef,0x1f,0xdf,0xb3,0xe8,0x15,0x66,0xd2,0xf9,0x48,0xe1,0xa0,0x5d,0x71,0xe4,0xdd,0x48,0x8e,0x85,0x7e,0x33,0x5c,0x3c,0x7d,0x9d,0x72,0x1c,0xad,0x68,0x5e,0x35,0x3f,0xa9,0xd7,0x2c,0x82,0xed,0x03,0xd6,0x75,0xd8,0xb7,0x13,0x33,0x93,0x52,0x03,0xbe,0x34,0x53,0xea,0xa1,0x93,0xe8,0x37,0xf1,0x22,0x0c,0xbe,0xbc,0x84,0xe3,0xd1,0x2e},
-		{0x4b,0xea,0x6b,0xac,0xad,0x47,0x47,0x99,0x9a,0x3f,0x41,0x0c,0x6c,0xa9,0x23,0x63,0x7f,0x15,0x1c,0x1f,0x16,0x86,0x10,0x4a,0x35,0x9e,0x35,0xd7,0x80,0x0f,0xff,0xbd,0xbf,0xcd,0x17,0x47,0x25,0x3a,0xf5,0xa3,0xdf,0xff,0x00,0xb7,0x23,0x27,0x1a,0x16,0x7a,0x56,0xa2,0x7e,0xa9,0xea,0x63,0xf5,0x60,0x17,0x58,0xfd,0x7c,0x6c,0xfe,0x57},
-		{0xae,0x4f,0xae,0xae,0x1d,0x3a,0xd3,0xd9,0x6f,0xa4,0xc3,0x3b,0x7a,0x30,0x39,0xc0,0x2d,0x66,0xc4,0xf9,0x51,0x42,0xa4,0x6c,0x18,0x7f,0x9a,0xb4,0x9a,0xf0,0x8e,0xc6,0xcf,0xfa,0xa6,0xb7,0x1c,0x9a,0xb7,0xb4,0x0a,0xf2,0x1f,0x66,0xc2,0xbe,0xc6,0xb6,0xbf,0x71,0xc5,0x72,0x36,0x90,0x4f,0x35,0xfa,0x68,0x40,0x7a,0x46,0x64,0x7d,0x6e},
-		{0xf4,0xc7,0x0e,0x16,0xee,0xaa,0xc5,0xec,0x51,0xac,0x86,0xfe,0xbf,0x24,0x09,0x54,0x39,0x9e,0xc6,0xc7,0xe6,0xbf,0x87,0xc9,0xd3,0x47,0x3e,0x33,0x19,0x7a,0x93,0xc9,0x09,0x92,0xab,0xc5,0x2d,0x82,0x2c,0x37,0x06,0x47,0x69,0x83,0x28,0x4a,0x05,0x04,0x35,0x17,0x45,0x4c,0xa2,0x3c,0x4a,0xf3,0x88,0x86,0x56,0x4d,0x3a,0x14,0xd4,0x93},
-		{0x9b,0x1f,0x5b,0x42,0x4d,0x93,0xc9,0xa7,0x03,0xe7,0xaa,0x02,0x0c,0x6e,0x41,0x41,0x4e,0xb7,0xf8,0x71,0x9c,0x36,0xde,0x1e,0x89,0xb4,0x44,0x3b,0x4d,0xdb,0xc4,0x9a,0xf4,0x89,0x2b,0xcb,0x92,0x9b,0x06,0x90,0x69,0xd1,0x8d,0x2b,0xd1,0xa5,0xc4,0x2f,0x36,0xac,0xc2,0x35,0x59,0x51,0xa8,0xd9,0xa4,0x7f,0x0d,0xd4,0xbf,0x02,0xe7,0x1e},
-		{0x37,0x8f,0x5a,0x54,0x16,0x31,0x22,0x9b,0x94,0x4c,0x9a,0xd8,0xec,0x16,0x5f,0xde,0x3a,0x7d,0x3a,0x1b,0x25,0x89,0x42,0x24,0x3c,0xd9,0x55,0xb7,0xe0,0x0d,0x09,0x84,0x80,0x0a,0x44,0x0b,0xdb,0xb2,0xce,0xb1,0x7b,0x2b,0x8a,0x9a,0xa6,0x07,0x9c,0x54,0x0e,0x38,0xdc,0x92,0xcb,0x1f,0x2a,0x60,0x72,0x61,0x44,0x51,0x83,0x23,0x5a,0xdb},
-		{0xab,0xbe,0xde,0xa6,0x80,0x05,0x6f,0x52,0x38,0x2a,0xe5,0x48,0xb2,0xe4,0xf3,0xf3,0x89,0x41,0xe7,0x1c,0xff,0x8a,0x78,0xdb,0x1f,0xff,0xe1,0x8a,0x1b,0x33,0x61,0x03,0x9f,0xe7,0x67,0x02,0xaf,0x69,0x33,0x4b,0x7a,0x1e,0x6c,0x30,0x3b,0x76,0x52,0xf4,0x36,0x98,0xfa,0xd1,0x15,0x3b,0xb6,0xc3,0x74,0xb4,0xc7,0xfb,0x98,0x45,0x9c,0xed},
-		{0x7b,0xcd,0x9e,0xd0,0xef,0xc8,0x89,0xfb,0x30,0x02,0xc6,0xcd,0x63,0x5a,0xfe,0x94,0xd8,0xfa,0x6b,0xbb,0xeb,0xab,0x07,0x61,0x20,0x01,0x80,0x21,0x14,0x84,0x66,0x79,0x8a,0x1d,0x71,0xef,0xea,0x48,0xb9,0xca,0xef,0xba,0xcd,0x1d,0x7d,0x47,0x6e,0x98,0xde,0xa2,0x59,0x4a,0xc0,0x6f,0xd8,0x5d,0x6b,0xca,0xa4,0xcd,0x81,0xf3,0x2d,0x1b},
-		{0x37,0x8e,0xe7,0x67,0xf1,0x16,0x31,0xba,0xd2,0x13,0x80,0xb0,0x04,0x49,0xb1,0x7a,0xcd,0xa4,0x3c,0x32,0xbc,0xdf,0x1d,0x77,0xf8,0x20,0x12,0xd4,0x30,0x21,0x9f,0x9b,0x5d,0x80,0xef,0x9d,0x18,0x91,0xcc,0x86,0xe7,0x1d,0xa4,0xaa,0x88,0xe1,0x28,0x52,0xfa,0xf4,0x17,0xd5,0xd9,0xb2,0x1b,0x99,0x48,0xbc,0x92,0x4a,0xf1,0x1b,0xd7,0x20}
-	};
-
-	/**
-	 * @brief Структура состояния поточного счёта хэш-суммы
-	 *
-	 * @details Состояние держится числовым видом стандарта - старшим октетом вперёд.
-	 *          Поток октетов подаётся с начала, а всякий полный блок переворачивается
-	 *          перед подачей счётному ядру, см. описание метода update.
-	 *
-	 */
-	struct digest_t {
-		// Разрядность вырабатываемой хэш-суммы
-		size_t bits;
-		// Заполненность накопителя неполного блока
-		size_t filled;
-		// Накопитель неполного блока
-		uint8_t tail[BLOCK];
-		// Промежуточное значение хэш-суммы
-		uint64_t hash[WORDS];
-		// Контрольная сумма обработанных блоков
-		uint64_t sigma[WORDS];
-		// Счётчик обработанных разрядов
-		uint64_t counter[WORDS];
-	};
-	/**
-	 * @brief Структура свойств кривой подписи
-	 *
-	 */
-	struct curve_t {
-		// Размер числа подписи и координаты точки в октетах
-		size_t digit;
-		// Модуль простого поля
-		const char * p;
-		// Коэффициент кривой
-		const char * a;
-		// Порядок точки основания
-		const char * q;
-		// Первая ось точки основания
-		const char * x;
-		// Вторая ось точки основания
-		const char * y;
-		// Название набора свойств
-		const char * name;
-	};
-	/**
-	 * @brief Наборы свойств кривых
-	 *
-	 * @details Значения взяты из свода свойств самого gost-engine, а не из памяти:
-	 *          приведение их по памяти дало три ошибки из пяти чисел и было поймано
-	 *          проверкой порядка точки основания.
-	 *
-	 */
-	static constexpr const curve_t CURVES[5] = {
-		{
-			32,
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97",
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94",
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6C611070995AD10045841B09B761B893",
-			"0000000000000000000000000000000000000000000000000000000000000001",
-			"8D91E471E0989CDA27DF505A453F2B7635294F2DDF23E3B122ACC99C9E9F1E14",
-			"id-GostR3410-2001-CryptoPro-A-ParamSet"
-		},
-		{
-			32,
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97",
-			"C2173F1513981673AF4892C23035A27CE25E2013BF95AA33B22C656F277E7335",
-			"400000000000000000000000000000000FD8CDDFC87B6635C115AF556C360C67",
-			"91E38443A5E82C0D880923425712B2BB658B9196932E02C78B2582FE742DAA28",
-			"32879423AB1A0375895786C4BB46E9565FDE0B5344766740AF268ADB32322E5C",
-			"id-tc26-gost-3410-2012-256-paramSetA"
-		},
-		{
-			64,
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7",
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC4",
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF27E69532F48D89116FF22B8D4E0560609B4B38ABFAD2B85DCACDB1411F10B275",
-			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003",
-			"7503CFE87A836AE3A61B8816E25450E6CE5E1C93ACF1ABC1778064FDCBEFA921DF1626BE4FD036E93D75E6A50E3A41E98028FE5FC235F5B889A589CB5215F2A4",
-			"id-tc26-gost-3410-2012-512-paramSetA"
-		},
-		{
-			64,
-			"8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006F",
-			"8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006C",
-			"800000000000000000000000000000000000000000000000000000000000000149A1EC142565A545ACFDB77BD9D40CFA8B996712101BEA0EC6346C54374F25BD",
-			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002",
-			"1A8F7EDA389B094C2C071E3647A8940F3C123B697578C213BE6DD9E6C8EC7335DCB228FD1EDF4A39152CBCAAF8C0398828041055F94CEEEC7E21340780FE41BD",
-			"id-tc26-gost-3410-2012-512-paramSetB"
-		},
-		{
-			64,
-			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7",
-			"DC9203E514A721875485A529D2C722FB187BC8980EB866644DE41C68E143064546E861C0E2C9EDD92ADE71F46FCF50FF2AD97F951FDA9F2A2EB6546F39689BD3",
-			"3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC98CDBA46506AB004C33A9FF5147502CC8EDA9E7A769A12694623CEF47F023ED",
-			"E2E31EDFC23DE7BDEBE241CE593EF5DE2295B7A9CBAEF021D385F7074CEA043AA27272A7AE602BF2A7B9033DB9ED3610C6FB85487EAE97AAC5BC7928C1950148",
-			"F5CE40D95B5EB899ABBCCFF5911CB8577939804D6527378B8C108C3D2090FF9BE18E2D33E3021ED2EF32D85822423B6304F726AA854BAE07D0396E9A9ADDC40F",
-			"id-tc26-gost-3410-2012-512-paramSetC"
-		}
-	};
-	
-	/**
-	 * @brief Структура ключа подписи по ГОСТ Р 34.10-2012
-	 *
-	 */
-	struct key_t {
-		// Признак наличия закрытой части ключа
-		bool secured;
-		// Указатель набора свойств кривой
-		size_t curve;
-		// Первая ось открытой части ключа
-		uint8_t x[DIGIT];
-		// Вторая ось открытой части ключа
-		uint8_t y[DIGIT];
-		// Закрытая часть ключа, старшим октетом вперёд
-		uint8_t secret[DIGIT];
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit key_t() noexcept : secured(false), curve(0) {
-			// Выполняем обнуление всех частей ключа
-			::memset(this->x, 0, DIGIT);
-			::memset(this->y, 0, DIGIT);
-			::memset(this->secret, 0, DIGIT);
-		}
-		/**
-		 * @brief Деструктор
-		 *
-		 * @details Закрытая часть ключа затирается при разрушении, а не при снятии
-		 *          ключа из связки: ключи RSA и прочие держатся контекстом библиотеки
-		 *          криптографии, и та гасит их сама, а ключ ГОСТ лежит здесь голыми
-		 *          октетами - снятие его из связки одним лишь удалением записи
-		 *          оставляло бы закрытую часть лежать в отпущенной памяти. Затирание
-		 *          деструктором накрывает все пути разом: и снятие ключа, и разрушение
-		 *          связки, и всякий список записи, отданный по значению.
-		 *
-		 */
-		~key_t() noexcept {
-			// Выполняем затирание закрытой части ключа
-			::OPENSSL_cleanse(this->secret, DIGIT);
-		}
-	};
-
-	/**
-	 * @brief Функция переворота порядка октетов
-	 *
-	 * @param result буфер для записи итога
-	 * @param value  исходный буфер
-	 * @param size   размер буферов в октетах
-	 */
-	static void reverse(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
-		// Выполняем перебор всех октетов буфера
-		for(size_t i = 0; i < size; i++)
-			// Выполняем перенос октета с обратного конца
-			result[i] = value[size - 1 - i];
-	}
-	/**
-	 * @brief Функция чтения слова блока старшим октетом вперёд
-	 *
-	 * @details Слово собирается из октетов вручную: приведение указателя к типу шире
-	 *          октета опиралось бы на порядок октетов машины и на выравнивание буфера.
-	 *
-	 * @param value буфер октетов
-	 * @return      прочитанное слово
-	 *
-	 */
-	static __AWH_INLINE__ uint64_t word(const uint8_t * value) noexcept {
-		// Выводим собранное слово
-		return (
-			(static_cast <uint64_t> (value[0]) << 56) | (static_cast <uint64_t> (value[1]) << 48) |
-			(static_cast <uint64_t> (value[2]) << 40) | (static_cast <uint64_t> (value[3]) << 32) |
-			(static_cast <uint64_t> (value[4]) << 24) | (static_cast <uint64_t> (value[5]) << 16) |
-			(static_cast <uint64_t> (value[6]) << 8) | static_cast <uint64_t> (value[7])
-		);
-	}
-	/**
-	 * @brief Функция записи слова блока старшим октетом вперёд
-	 *
-	 * @param result буфер октетов для записи
-	 * @param value  записываемое слово
-	 */
-	static __AWH_INLINE__ void word(uint8_t * result, const uint64_t value) noexcept {
-		// Выполняем перебор всех октетов слова
-		for(size_t i = 0; i < 8; i++)
-			// Выполняем запись очередного октета слова
-			result[i] = static_cast <uint8_t> ((value >> (56 - (i * 8))) & 0xFF);
-	}
-	/**
-	 * @brief Функция чтения блока потока словами
-	 *
-	 * @details Счётное ядро работает числовым видом стандарта, где старший октет стоит
-	 *          первым, а поток октетов идёт обратным порядком. Переворот блока при
-	 *          словном виде состояния отдельного прохода не требует: слово берётся с
-	 *          обратного конца блока и собирается младшим октетом вперёд.
-	 *
-	 * @param result набор слов для записи
-	 * @param data   буфер блока в порядке потока
-	 *
-	 */
-	static __AWH_INLINE__ void gather(uint64_t * result, const uint8_t * data) noexcept {
-		/**
-		 * Выполняем перебор всех слов блока
-		 */
-		for(size_t i = 0; i < WORDS; i++){
-			// Начало очередного слова с обратного конца блока
-			const uint8_t * source = (data + ((WORDS - 1 - i) * 8));
-			// Выполняем сборку слова обратным порядком октетов
-			result[i] = (
-				(static_cast <uint64_t> (source[7]) << 56) | (static_cast <uint64_t> (source[6]) << 48) |
-				(static_cast <uint64_t> (source[5]) << 40) | (static_cast <uint64_t> (source[4]) << 32) |
-				(static_cast <uint64_t> (source[3]) << 24) | (static_cast <uint64_t> (source[2]) << 16) |
-				(static_cast <uint64_t> (source[1]) << 8) | static_cast <uint64_t> (source[0])
-			);
-		}
-	}
-	/**
-	 * @brief Функция сложения по модулю два в степени 512
-	 *
-	 * @param result набор слагаемого и итога
-	 * @param value  набор второго слагаемого
-	 */
-	static __AWH_INLINE__ void add512(uint64_t * result, const uint64_t * value) noexcept {
-		// Переносимый в старшее слово остаток
-		uint64_t carry = 0;
-		/**
-		 * Выполняем сложение от младшего слова к старшему
-		 */
-		for(size_t i = WORDS; i-- > 0;){
-			// Выполняем сложение очередных слов
-			const uint64_t sum = (result[i] + value[i] + carry);
-			/**
-			 * @brief Выполняем счёт переноса в старшее слово
-			 *
-			 * @note Перенос ловится сличением суммы со слагаемым: сумма меньше
-			 *       слагаемого означает переполнение, а равенство при переносе значит,
-			 *       что второе слагаемое было наибольшим
-			 *
-			 */
-			carry = (((sum < result[i]) || ((carry != 0) && (sum == result[i]))) ? 1 : 0);
-			// Выполняем запись суммы
-			result[i] = sum;
-		}
-	}
-	/**
-	 * @brief Функция сложения по модулю два
-	 *
-	 * @param result набор слагаемого и итога
-	 * @param value  набор второго слагаемого
-	 */
-	static __AWH_INLINE__ void bxor(uint64_t * result, const uint64_t * value) noexcept {
-		// Выполняем перебор всех слов блока
-		for(size_t i = 0; i < WORDS; i++)
-			// Выполняем сложение очередных слов по модулю два
-			result[i] ^= value[i];
-	}
-
-	/**
-	 * @brief Структура свода преобразования LPS, считаемый однажды
-	 *
-	 * @details Преобразование L линейно над полем из двух элементов, оттого вклад
-	 *          всякого октета в итог не зависит от прочих и может быть посчитан
-	 *          наперёд. Поразрядный счёт стоил 512 проверок разряда на всякое
-	 *          преобразование, а их в блоке двадцать пять; свод обращает это в 64
-	 *          обращения к памяти. Занимает свод 16 КБ и считается однажды за работу
-	 *
-	 */
-	typedef struct Table {
-		/**
-		 * @brief Свод вкладов октета в итог преобразования
-		 *
-		 * @details Свод собран с уже вложенной подстановкой Pi: указателем служит сам
-		 *          октет состояния, а не подставленный. Отдельная подстановка стоила
-		 *          бы шестидесяти четырёх зависимых чтений памяти на всякое
-		 *          преобразование, и замер щупом дал за неё 1,68 раза на ARM64.
-		 *
-		 */
-		uint64_t value[8][256];
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Table() noexcept {
-			/**
-			 * Выполняем перебор всех положений октета в слове
-			 */
-			for(size_t position = 0; position < 8; position++){
-				/**
-				 * Выполняем перебор всех значений октета
-				 */
-				for(size_t octet = 0; octet < 256; octet++){
-					// Вклад октета в итог преобразования
-					uint64_t outcome = 0;
-					// Выполняем подстановку октета
-					const uint8_t substituted = PI[octet];
-					/**
-					 * Выполняем перебор всех разрядов подставленного октета
-					 */
-					for(size_t bit = 0; bit < 8; bit++){
-						// Если очередной разряд подставленного октета установлен
-						if(substituted & (1U << (7 - bit)))
-							// Выполняем сложение строки матрицы по модулю два
-							outcome ^= AM[(position * 8) + bit];
-					}
-					// Выполняем запись вклада октета в свод
-					this->value[position][octet] = outcome;
-				}
-			}
-		}
-	} table_t;
-
-	/**
-	 * @brief Функция получения свода преобразования LPS
-	 *
-	 * @details Свод заводится при первом обращении и живёт до конца работы. Заведение
-	 *          местной неизменяемой величины потокобезопасно по своду языка, оттого
-	 *          сторожа здесь не нужно.
-	 *
-	 * @return свод преобразования
-	 *
-	 */
-	static __AWH_INLINE__ const table_t & table() noexcept {
-		// Свод преобразования, заводимый однажды
-		static const table_t result;
-		// Выводим свод преобразования
-		return result;
-	}
-
-	/**
-	 * @brief Свод постоянных величин кругов шифрования словами
-	 *
-	 * @details Величины стандарта записаны октетами, а счёт идёт словами: свод этот
-	 *          собирается из записи стандарта единожды. Держать их записанными словами
-	 *          прямо было бы короче, но сличать с текстом стандарта - труднее.
-	 *
-	 */
-	typedef struct Rounds {
-		// Постоянные величины кругов шифрования словами
-		uint64_t value[12][WORDS];
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Rounds() noexcept {
-			// Выполняем перебор всех кругов шифрования
-			for(size_t i = 0; i < 12; i++){
-				// Выполняем перебор всех слов круга
-				for(size_t k = 0; k < WORDS; k++)
-					// Выполняем сборку очередного слова круга
-					this->value[i][k] = word(CS[i] + (k * 8));
-			}
-		}
-	} rounds_t;
-	
-	/**
-	 * @brief Функция получения свода постоянных величин кругов шифрования
-	 *
-	 * @return свод постоянных величин
-	 */
-	static __AWH_INLINE__ const rounds_t & rounds() noexcept {
-		// Свод постоянных величин, заводимый однажды
-		static const rounds_t result;
-		// Выводим свод постоянных величин
-		return result;
-	}
-	/**
-	 * @brief Функция преобразования LPS хэш-функции
-	 *
-	 * @param value набор слов преобразуемого блока
-	 *
-	 */
-	static __AWH_INLINE__ void lps(uint64_t * value) noexcept {
-		// Получаем свод преобразования
-		const table_t & lookup = table();
-		// Итог преобразования по словам
-		uint64_t words[WORDS];
-		/**
-		 * @brief Если собиратель даёт набор команд SSE2
-		 *
-		 * @details Ветвь эта складывает вклады октетов сразу для пары слов итога, чем
-		 *          вдвое сокращает число сложений по модулю два. Выигрыш замерен щупом
-		 *          и равен 1,10 раза на x86-64; на ARM64 та же самая перестройка
-		 *          замедляет счёт (0,96 раза) - там перекладывание половин вектора
-		 *          стоит дороже сложений, - оттого ветвь заведена под одну архитектуру,
-		 *          а не под все, у кого есть векторные команды.
-		 *
-		 */
-		#if defined(__SSE2__)
-			/**
-			 * Выполняем перебор пар слов блока
-			 */
-			for(size_t j = 0; j < WORDS; j += 2){
-				// Накопитель вкладов пары слов
-				__m128i outcome = _mm_setzero_si128();
-				/**
-				 * Выполняем перебор всех положений октета в слове
-				 */
-				for(size_t k = 0; k < WORDS; k++){
-					// Очередное слово состояния
-					const uint64_t current = value[k];
-					// Выполняем сложение вкладов пары октетов по модулю два
-					outcome = _mm_xor_si128(outcome, _mm_set_epi64x(
-					 static_cast <long long> (lookup.value[k][(current >> (56 - ((j + 1) * 8))) & 0xFF]),
-					 static_cast <long long> (lookup.value[k][(current >> (56 - (j * 8))) & 0xFF])));
-				}
-				// Выполняем запись итога преобразования младшего слова пары
-				words[j] = static_cast <uint64_t> (_mm_cvtsi128_si64(outcome));
-				// Выполняем запись итога преобразования старшего слова пары
-				words[j + 1] = static_cast <uint64_t> (_mm_cvtsi128_si64(_mm_unpackhi_epi64(outcome, outcome)));
-			}
-		/**
-		 * Если набора команд SSE2 собиратель не даёт
-		 */
-		#else
-			/**
-			 * @brief Выполняем перебор всех слов блока
-			 *
-			 * @note Перестановка Tau переносит октет с указателем (k * 8 + j), где j -
-			 *       указатель слова итога, а k - положение октета в слове; при словном
-			 *       виде состояния октет этот берётся сдвигом слова, а не чтением памяти
-			 *
-			 */
-			for(size_t j = 0; j < WORDS; j++){
-				// Итог преобразования очередного слова
-				uint64_t outcome = 0;
-				// Выполняем перебор всех положений октета в слове
-				for(size_t k = 0; k < WORDS; k++)
-					// Выполняем сложение вклада очередного октета по модулю два
-					outcome ^= lookup.value[k][(value[k] >> (56 - (j * 8))) & 0xFF];
-				// Выполняем запись итога преобразования слова
-				words[j] = outcome;
-			}
-		#endif
-		// Выполняем перенос итога преобразования
-		::memcpy(value, words, sizeof(words));
-	}
-	/**
-	 * @brief Функция сжимающего преобразования хэш-функции
-	 *
-	 * @param hash    набор промежуточного значения хэш-суммы
-	 * @param counter набор счётчика разрядов
-	 * @param message набор обрабатываемого блока
-	 */
-	static __AWH_INLINE__ void compress(uint64_t * hash, const uint64_t * counter, const uint64_t * message) noexcept {
-		// Свод постоянных величин кругов шифрования словами
-		const rounds_t & constants = rounds();
-		// Ключ шифрования блока
-		uint64_t key[WORDS];
-		// Выполняем копирование промежуточного значения хэш-суммы
-		::memcpy(key, hash, sizeof(key));
-		// Выполняем наложение счётчика разрядов
-		bxor(key, counter);
-		// Выполняем преобразование ключа
-		lps(key);
-		// Ключ очередного круга шифрования
-		uint64_t round[WORDS];
-		// Выполняем копирование ключа шифрования
-		::memcpy(round, key, sizeof(round));
-		// Итог шифрования блока
-		uint64_t result[WORDS];
-		// Выполняем копирование обрабатываемого блока
-		::memcpy(result, message, sizeof(result));
-		// Выполняем первое наложение ключа
-		bxor(result, round);
-		/**
-		 * Выполняем двенадцать кругов шифрования
-		 */
-		for(size_t i = 0; i < 12; i++){
-			// Выполняем преобразование состояния
-			lps(result);
-			// Выполняем наложение постоянной величины круга
-			bxor(round, constants.value[i]);
-			// Выполняем преобразование ключа круга
-			lps(round);
-			// Выполняем наложение ключа круга
-			bxor(result, round);
-		}
-		// Выполняем наложение промежуточного значения хэш-суммы
-		bxor(result, hash);
-		// Выполняем наложение обрабатываемого блока
-		bxor(result, message);
-		// Выполняем запись нового промежуточного значения хэш-суммы
-		::memcpy(hash, result, sizeof(result));
-	}
-	/**
-	 * @brief Функция заведения состояния счёта хэш-суммы
-	 *
-	 * @param state состояние счёта хэш-суммы
-	 * @param bits  разрядность вырабатываемой хэш-суммы
-	 */
-	static __AWH_INLINE__ void initialize(digest_t & state, const size_t bits) noexcept {
-		/**
-		 * @briefВыполняем заполнение промежуточного значения хэш-суммы
-		 *
-		 * @note Хэш-функция на 256 разрядов отличается от хэш-функции на 512 разрядов
-		 *       только начальным значением и усечением итога
-		 *
-		 */
-		::memset(state.hash, ((bits == 256) ? 0x01 : 0x00), sizeof(state.hash));
-		// Выполняем обнуление счётчика разрядов
-		::memset(state.counter, 0, sizeof(state.counter));
-		// Выполняем обнуление контрольной суммы блоков
-		::memset(state.sigma, 0, sizeof(state.sigma));
-		// Выполняем обнуление накопителя неполного блока
-		::memset(state.tail, 0, BLOCK);
-		// Выполняем сброс заполненности накопителя
-		state.filled = 0;
-		// Выполняем установку разрядности хэш-суммы
-		state.bits = bits;
-	}
-	/**
-	 * @brief Функция обработки полного блока потока
-	 *
-	 * @param state состояние счёта хэш-суммы
-	 * @param data  буфер блока в порядке потока
-	 */
-	static __AWH_INLINE__ void consume(digest_t & state, const uint8_t * data) noexcept {
-		/**
-		 * Выполняем переворот блока
-		 *
-		 * @details Счётное ядро работает числовым видом стандарта, где старший октет
-		 *          стоит первым, а поток октетов идёт обратным порядком; без переворота
-		 *          хэш-сумма вышла бы верной по стандарту, но не принимаемой ни одной
-		 *          чужой работой
-		 */
-		uint64_t block[WORDS];
-		// Выполняем чтение блока словами с переворотом порядка октетов
-		gather(block, data);
-		// Выполняем сжимающее преобразование
-		compress(state.hash, state.counter, block);
-		// Прибавка счётчика разрядов на один блок
-		uint64_t length[WORDS];
-		// Выполняем обнуление прибавки
-		::memset(length, 0, sizeof(length));
-		// Выполняем установку разрядности блока
-		length[WORDS - 1] = 512;
-		// Выполняем прибавку разрядности блока к счётчику
-		add512(state.counter, length);
-		// Выполняем прибавку блока к контрольной сумме
-		add512(state.sigma, block);
-	}
-	/**
-	 * @brief Функция подачи данных в счёт хэш-суммы
-	 *
-	 * @param state состояние счёта хэш-суммы
-	 * @param data  буфер подаваемых данных
-	 * @param size  размер подаваемых данных в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void update(digest_t & state, const uint8_t * data, size_t size) noexcept {
-		// Смещение в буфере подаваемых данных
-		size_t offset = 0;
-		/**
-		 * Если накопитель неполного блока не пуст
-		 */
-		if(state.filled > 0){
-			// Определяем количество октетов до полного блока
-			const size_t need = (BLOCK - state.filled);
-			// Определяем количество переносимых октетов
-			const size_t count = ((size < need) ? size : need);
-			// Выполняем перенос октетов в накопитель
-			::memcpy(state.tail + state.filled, data, count);
-			// Выполняем увеличение заполненности накопителя
-			state.filled += count;
-			// Выполняем смещение в буфере подаваемых данных
-			offset += count;
-			// Если накопитель заполнен целиком
-			if(state.filled == BLOCK){
-				// Выполняем обработку накопленного блока
-				consume(state, state.tail);
-				// Выполняем сброс заполненности накопителя
-				state.filled = 0;
-			}
-		}
-		/**
-		 * Выполняем обработку полных блоков подаваемых данных
-		 */
-		while((size - offset) >= BLOCK){
-			// Выполняем обработку очередного блока
-			consume(state, data + offset);
-			// Выполняем смещение в буфере подаваемых данных
-			offset += BLOCK;
-		}
-		/**
-		 * Если в буфере подаваемых данных остался неполный блок
-		 */
-		if(offset < size){
-			// Определяем размер остатка
-			const size_t count = (size - offset);
-			// Выполняем перенос остатка в накопитель
-			::memcpy(state.tail + state.filled, data + offset, count);
-			// Выполняем увеличение заполненности накопителя
-			state.filled += count;
-		}
-	}
-	/**
-	 * @brief Функция завершения счёта хэш-суммы
-	 *
-	 * @param state  состояние счёта хэш-суммы
-	 * @param digest буфер для записи хэш-суммы в порядке потока
-	 *
-	 */
-	static __AWH_INLINE__ void finalize(digest_t & state, uint8_t * digest) noexcept {
-		// Дополняемый блок
-		uint8_t block[BLOCK];
-		// Выполняем обнуление дополняемого блока
-		::memset(block, 0, BLOCK);
-		/**
-		 * Выполняем перенос остатка потока с переворотом
-		 */
-		for(size_t i = 0; i < state.filled; i++)
-			// Выполняем перенос очередного октета остатка
-			block[BLOCK - state.filled + i] = state.tail[state.filled - 1 - i];
-		// Выполняем установку признака дополнения
-		block[BLOCK - state.filled - 1] = 0x01;
-		// Набор слов дополненного блока
-		uint64_t words[WORDS];
-		// Выполняем сборку слов дополненного блока
-		for(size_t i = 0; i < WORDS; i++)
-			// Выполняем сборку очередного слова блока
-			words[i] = word(block + (i * 8));
-		// Выполняем сжимающее преобразование дополненного блока
-		compress(state.hash, state.counter, words);
-		// Прибавка счётчика разрядов на остаток
-		uint64_t length[WORDS];
-		// Выполняем обнуление прибавки
-		::memset(length, 0, sizeof(length));
-		// Выполняем установку разрядности остатка
-		length[WORDS - 1] = static_cast <uint64_t> (state.filled * 8);
-		// Выполняем прибавку разрядности остатка к счётчику
-		add512(state.counter, length);
-		// Выполняем прибавку дополненного блока к контрольной сумме
-		add512(state.sigma, words);
-		// Нулевой счётчик завершающих преобразований
-		uint64_t zero[WORDS];
-		// Выполняем обнуление счётчика завершающих преобразований
-		::memset(zero, 0, sizeof(zero));
-		// Выполняем завершающее преобразование над счётчиком разрядов
-		compress(state.hash, zero, state.counter);
-		// Выполняем завершающее преобразование над контрольной суммой
-		compress(state.hash, zero, state.sigma);
-		// Промежуточное значение хэш-суммы октетами
-		uint8_t outcome[BLOCK];
-		// Выполняем раскладку промежуточного значения хэш-суммы в октеты
-		for(size_t i = 0; i < WORDS; i++)
-			// Выполняем раскладку очередного слова хэш-суммы
-			word(outcome + (i * 8), state.hash[i]);
-		// Определяем ширину вырабатываемой хэш-суммы
-		const size_t width = (state.bits / 8);
-		// Выполняем переворот хэш-суммы в порядок потока
-		reverse(digest, outcome, width);
-	}
-	/**
-	 * @brief Функция выработки хэш-суммы разом
-	 *
-	 * @param digest буфер для записи хэш-суммы
-	 * @param data   буфер данных
-	 * @param size   размер данных в октетах
-	 * @param bits   разрядность вырабатываемой хэш-суммы
-	 *
-	 */
-	static __AWH_INLINE__ void digest(uint8_t * digest, const uint8_t * data, const size_t size, const size_t bits) noexcept {
-		// Состояние счёта хэш-суммы
-		digest_t state;
-		// Выполняем заведение состояния счёта
-		initialize(state, bits);
-		// Выполняем подачу данных в счёт
-		update(state, data, size);
-		// Выполняем завершение счёта
-		finalize(state, digest);
-	}
-	/**
-	 * @brief Функция выработки имитовставки HMAC
-	 *
-	 * @details Построение обычное по RFC 2104 при размере блока в 64 октета: своя
-	 *          хэш-функция библиотеке криптографии не известна, и её HMAC негоден.
-	 *
-	 * @param result буфер для записи имитовставки
-	 * @param key    буфер ключа
-	 * @param length размер ключа в октетах
-	 * @param data   буфер данных
-	 * @param size   размер данных в октетах
-	 * @param bits   разрядность вырабатываемой имитовставки
-	 *
-	 */
-	static void hmac(uint8_t * result, const uint8_t * key, const size_t length, const uint8_t * data, const size_t size, const size_t bits) noexcept {
-		// Ширина вырабатываемой хэш-суммы
-		const size_t width = (bits / 8);
-		// Ключ, приведённый к размеру блока
-		uint8_t block[BLOCK];
-		// Выполняем обнуление приведённого ключа
-		::memset(block, 0, BLOCK);
-		/**
-		 * Ключ длиннее блока заменяется своей хэш-суммой, короче - дополняется нулями
-		 */
-		if(length > BLOCK)
-			// Выполняем замену ключа его хэш-суммой
-			digest(block, key, length, bits);
-		// Выполняем перенос ключа целиком
-		else ::memcpy(block, key, length);
-		// Заполнение внутреннего и внешнего проходов
-		uint8_t inner[BLOCK], outer[BLOCK];
-		/**
-		 * Выполняем перебор всех октетов блока
-		 */
-		for(size_t i = 0; i < BLOCK; i++){
-			// Выполняем заполнение внутреннего прохода
-			inner[i] = static_cast <uint8_t> (block[i] ^ 0x36);
-			// Выполняем заполнение внешнего прохода
-			outer[i] = static_cast <uint8_t> (block[i] ^ 0x5C);
-		}
-		// Состояние счёта внутреннего прохода
-		digest_t state;
-		// Выполняем заведение состояния счёта
-		initialize(state, bits);
-		// Выполняем подачу заполнения внутреннего прохода
-		update(state, inner, BLOCK);
-		// Выполняем подачу данных
-		update(state, data, size);
-		// Хэш-сумма внутреннего прохода
-		uint8_t hash[BLOCK];
-		// Выполняем завершение счёта внутреннего прохода
-		finalize(state, hash);
-		// Выполняем заведение состояния счёта внешнего прохода
-		initialize(state, bits);
-		// Выполняем подачу заполнения внешнего прохода
-		update(state, outer, BLOCK);
-		// Выполняем подачу хэш-суммы внутреннего прохода
-		update(state, hash, width);
-		// Выполняем завершение счёта внешнего прохода
-		finalize(state, result);
-		// Выполняем затирание приведённого ключа
-		::OPENSSL_cleanse(block, BLOCK);
-		// Выполняем затирание заполнения внутреннего прохода
-		::OPENSSL_cleanse(inner, BLOCK);
-		// Выполняем затирание заполнения внешнего прохода
-		::OPENSSL_cleanse(outer, BLOCK);
-	}
-	/**
-	 * @brief Функция вывода ключа по PBKDF2
-	 *
-	 * @details Построение обычное по RFC 8018: своя хэш-функция библиотеке криптографии
-	 *          не известна, и её вывод ключа с нею не работает.
-	 *
-	 * @param result   буфер для записи выведенного ключа
-	 * @param width    размер выводимого ключа в октетах
-	 * @param password буфер пароля
-	 * @param length   размер пароля в октетах
-	 * @param salt     буфер соли
-	 * @param count    размер соли в октетах
-	 * @param rounds   количество итераций вывода
-	 * @param bits     разрядность применяемой хэш-функции
-	 *
-	 */
-	static void pbkdf2(uint8_t * result, const size_t width, const uint8_t * password, const size_t length, const uint8_t * salt, const size_t count, const size_t rounds, const size_t bits) noexcept {
-		// Ширина вырабатываемой хэш-суммы
-		const size_t size = (bits / 8);
-		// Записанное количество октетов ключа
-		size_t written = 0;
-		// Номер вырабатываемого куска ключа
-		uint32_t number = 1;
-		/**
-		 * Выполняем выработку кусков ключа до заполнения
-		 */
-		while(written < width){
-			// Подаваемое в первую итерацию
-			vector <uint8_t> seed(salt, salt + count);
-			// Выполняем добавление номера куска старшим октетом вперёд
-			seed.push_back(static_cast <uint8_t> ((number >> 24) & 0xFF));
-			seed.push_back(static_cast <uint8_t> ((number >> 16) & 0xFF));
-			seed.push_back(static_cast <uint8_t> ((number >> 8) & 0xFF));
-			seed.push_back(static_cast <uint8_t> (number & 0xFF));
-			// Итог очередной итерации
-			uint8_t current[BLOCK];
-			// Выполняем первую итерацию вывода
-			hmac(current, password, length, seed.data(), seed.size(), bits);
-			// Накопитель куска ключа
-			uint8_t chunk[BLOCK];
-			// Выполняем перенос итога первой итерации в накопитель
-			::memcpy(chunk, current, size);
-			/**
-			 * Выполняем остальные итерации вывода
-			 */
-			for(size_t i = 1; i < rounds; i++){
-				// Итог очередной итерации
-				uint8_t next[BLOCK];
-				// Выполняем очередную итерацию вывода
-				hmac(next, password, length, current, size, bits);
-				// Выполняем перенос итога итерации
-				::memcpy(current, next, size);
-				// Выполняем перебор всех октетов куска
-				for(size_t k = 0; k < size; k++)
-					// Выполняем накопление куска по модулю два
-					chunk[k] ^= current[k];
-			}
-			// Определяем размер переносимой части куска
-			const size_t part = (((width - written) < size) ? (width - written) : size);
-			// Выполняем перенос части куска в ключ
-			::memcpy(result + written, chunk, part);
-			// Наращиваем количество записанных октетов ключа
-			written += part;
-			// Наращиваем номер вырабатываемого куска
-			number++;
-			// Выполняем затирание итога итерации
-			::OPENSSL_cleanse(current, BLOCK);
-			// Выполняем затирание накопителя куска
-			::OPENSSL_cleanse(chunk, BLOCK);
-		}
-	}
-	/**
-	 * @brief Функция разбора записи числа в буфер вычислений
-	 *
-	 * @param value буфер вычислений для записи
-	 * @param text  запись числа старшим октетом вперёд
-	 *
-	 */
-	static __AWH_INLINE__ void parse(uint8_t * value, const char * text) noexcept {
-		// Выполняем обнуление буфера вычислений
-		::memset(value, 0, WIDTH);
-		// Определяем количество октетов записи
-		const size_t length = (::strlen(text) / 2);
-		/**
-		 * @brief Если запись шире буфера вычислений
-		 *
-		 * @note Записи свойств кривых лежат в своде работы и шире буфера быть не могут,
-		 *       но запись, вписанная туда шире положенного, писала бы за его конец
-		 *       молча - как уже случалось с записями, оказавшимися длиннее прочих
-		 *
-		 */
-		if(length > WIDTH)
-			// Выходим из метода
-			return;
-		/**
-		 * Выполняем перебор всех октетов записи
-		 */
-		for(size_t i = 0; i < length; i++){
-			// Считанное значение октета
-			uint32_t octet = 0;
-			// Выполняем считывание очередного октета записи
-			::sscanf(text + (i * 2), "%2x", &octet);
-			/**
-			 * @brief Выполняем запись октета обратным порядком
-			 *
-			 * @note Движок awh::bignum держит числа младшим октетом вперёд, а записи
-			 *       стандарта идут старшим октетом вперёд
-			 *
-			 */
-			value[length - 1 - i] = static_cast <uint8_t> (octet);
-		}
-	}
-	/**
-	 * @brief Функция переноса числа в буфер вычислений
-	 *
-	 * @param value  буфер вычислений для записи
-	 * @param source буфер числа старшим октетом вперёд
-	 * @param size   размер буфера числа в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void load(uint8_t * value, const uint8_t * source, const size_t size) noexcept {
-		// Выполняем обнуление буфера вычислений
-		::memset(value, 0, WIDTH);
-		// Выполняем перебор всех октетов числа
-		for(size_t i = 0; i < size; i++)
-			// Выполняем перенос октета обратным порядком
-			value[size - 1 - i] = source[i];
-	}
-	/**
-	 * @brief Функция выгрузки числа из буфера вычислений
-	 *
-	 * @param result буфер для записи числа старшим октетом вперёд
-	 * @param value  буфер вычислений
-	 * @param size   размер буфера числа в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void save(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
-		// Выполняем перебор всех октетов числа
-		for(size_t i = 0; i < size; i++)
-			// Выполняем перенос октета обратным порядком
-			result[i] = value[size - 1 - i];
-	}
-	/**
-	 * @brief Функция приведения числа по модулю
-	 *
-	 * @param value буфер приводимого числа и итога
-	 * @param mod   буфер модуля
-	 * @param width ширина счёта в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void reduce(uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
-		// Буфер частного от деления
-		uint8_t quotient[WIDTH];
-		// Выполняем копирование приводимого числа
-		::memcpy(quotient, value, width);
-		// Выполняем деление с остатком, остаток и есть приведённое число
-		bignum::divmod(quotient, mod, value, width);
-	}
-	/**
-	 * @brief Функция сложения по модулю
-	 *
-	 * @param result буфер слагаемого и итога
-	 * @param value  буфер второго слагаемого
-	 * @param mod    буфер модуля
-	 * @param width  ширина счёта в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void addmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
-		// Выполняем сложение чисел
-		bignum::add(result, value, width);
-		/**
-		 * @brief Приведение суммы делать делением не нужно
-		 *
-		 * @note Оба слагаемых меньше модуля, оттого сумма меньше удвоенного модуля, и
-		 *       одного условного вычитания довольно. Деление здесь стоило бы 102
-		 *       наносекунды на сложение при цене самого сложения в единицы
-		 *
-		 */
-		if(bignum::ucompare(result, mod, width) >= 0)
-			// Выполняем вычитание модуля из суммы
-			bignum::sub(result, mod, width);
-	}
-	/**
-	 * @brief Функция вычитания по модулю
-	 *
-	 * @param result буфер уменьшаемого и итога
-	 * @param value  буфер вычитаемого
-	 * @param mod    буфер модуля
-	 * @param width  ширина счёта в октетах
-	 */
-	static __AWH_INLINE__ void submod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
-		/**
-		 * @brief Выполняем добавление модуля, если уменьшаемое меньше вычитаемого
-		 *
-		 * @note Числа держатся беззнаковыми, поэтому отрицательный итог получить нельзя
-		 *       вовсе, и заём берётся у модуля заранее
-		 *
-		 * @warning Одного добавления довольно лишь потому, что оба довода приведены по
-		 *          модулю: всякое действие поля отдаёт приведённый итог, а свойства
-		 *          кривой и оси ключа меньше модуля по своему устройству. Довод, по
-		 *          модулю не приведённый, дал бы здесь молчаливо неверный итог
-		 *
-		 */
-		if(bignum::ucompare(result, value, width) < 0)
-			// Выполняем добавление модуля к уменьшаемому
-			bignum::add(result, mod, width);
-		// Выполняем вычитание чисел
-		bignum::sub(result, value, width);
-	}
-	/**
-	 * @brief Функция умножения по модулю
-	 *
-	 * @param result буфер множимого и итога
-	 * @param value  буфер множителя
-	 * @param mod    буфер модуля
-	 * @param width  ширина счёта в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void mulmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
-		// Выполняем умножение чисел
-		bignum::mul(result, value, width);
-		// Выполняем приведение произведения по модулю
-		reduce(result, mod, width);
-	}
-
-	/**
-	 * @brief Структура свойства приведения Монтгомери
-	 *
-	 * @details Приведение по модулю делением - самое дорогое действие поля: замер на
-	 *          стенде дал 102 наносекунды деления при 143 наносекундах самого умножения,
-	 *          то есть 42% цены умножения по модулю. Приведение Монтгомери убирает
-	 *          деление целиком, заменяя его умножением на постоянную величину, снятую
-	 *          с модуля один разю
-	 *
-	 */
-	typedef struct Mont {
-		// Количество звеньев модуля
-		size_t limbs;
-		// Обратная величина младшего звена модуля со знаком минус
-		uint32_t factor;
-		// Квадрат основания приведения по модулю
-		uint8_t square[WIDTH];
-	} mont_t;
-
-	/**
-	 * @brief Функция чтения звена числа
-	 *
-	 * @details Числа держатся младшим октетом вперёд, и звено собирается из октетов
-	 *          вручную: приведение указателя к типу шире октета опиралось бы на порядок
-	 *          октетов машины и на выравнивание буфера.
-	 *
-	 * @param value буфер числа
-	 * @param index указатель звена
-	 * @return      значение звена
-	 *
-	 */
-	static __AWH_INLINE__ uint32_t limb(const uint8_t * value, const size_t index) noexcept {
-		// Выводим собранное звено числа
-		return (
-			static_cast <uint32_t> (value[index * 4]) |
-			(static_cast <uint32_t> (value[(index * 4) + 1]) << 8) |
-			(static_cast <uint32_t> (value[(index * 4) + 2]) << 16) |
-			(static_cast <uint32_t> (value[(index * 4) + 3]) << 24)
-		);
-	}
-	/**
-	 * @brief Функция записи звена числа
-	 *
-	 * @param value буфер числа
-	 * @param index указатель звена
-	 * @param digit записываемое значение звена
-	 *
-	 */
-	static __AWH_INLINE__ void limb(uint8_t * value, const size_t index, const uint32_t digit) noexcept {
-		// Выполняем запись октетов звена младшим вперёд
-		value[index * 4] = static_cast <uint8_t> (digit & 0xFF);
-		value[(index * 4) + 1] = static_cast <uint8_t> ((digit >> 8) & 0xFF);
-		value[(index * 4) + 2] = static_cast <uint8_t> ((digit >> 16) & 0xFF);
-		value[(index * 4) + 3] = static_cast <uint8_t> ((digit >> 24) & 0xFF);
-	}
-	/**
-	 * @brief Функция заведения свойств приведения Монтгомери
-	 *
-	 * @param mont  свойства приведения для записи
-	 * @param mod   буфер модуля
-	 * @param digit размер модуля в октетах
-	 * @param width ширина счёта в октетах
-	 */
-	static __AWH_INLINE__ void setupMont(mont_t & mont, const uint8_t * mod, const size_t digit, const size_t width) noexcept {
-		// Выполняем установку количества звеньев модуля
-		mont.limbs = (digit / 4);
-		/**
-		 * @brief Выполняем счёт обратной величины младшего звена модуля
-		 *
-		 * @note Обратная берётся приближением Ньютона: всякий оборот удваивает число
-		 *       верных разрядов, и пяти оборотов хватает на все 32 разряда звена.
-		 *       Модуль поля нечётен, оттого обратная величина существует
-		 *
-		 */
-		uint32_t inverse = 1;
-		// Младшее звено модуля
-		const uint32_t lowest = limb(mod, 0);
-		// Выполняем перебор оборотов приближения
-		for(size_t i = 0; i < 5; i++)
-			// Выполняем очередной оборот приближения
-			inverse *= (2 - (lowest * inverse));
-		// Выполняем установку обратной величины со знаком минус
-		mont.factor = (~inverse + 1);
-		/**
-		 * Выполняем счёт квадрата основания приведения
-		 *
-		 * @note Основание равно двойке в степени числа разрядов модуля, и его квадрат
-		 *       снимается удвоением по модулю: возводить двойку в степень напрямую
-		 *       нельзя - она не вошла бы в буфер счёта
-		 */
-		::memset(mont.square, 0, WIDTH);
-		// Выполняем установку основания приведения
-		bignum::bit(mont.square, width, (mont.limbs * 32), true);
-		// Выполняем приведение основания по модулю
-		reduce(mont.square, mod, width);
-		// Выполняем перебор всех разрядов основания
-		for(size_t i = 0; i < (mont.limbs * 32); i++)
-			// Выполняем удвоение основания по модулю
-			addmod(mont.square, mont.square, mod, width);
-	}
-	/**
-	 * @brief Функция умножения по модулю приведением Монтгомери
-	 *
-	 * @details Итогом выходит произведение доводов, делённое на основание приведения,
-	 *          оттого числа держатся домноженными на это основание - в таком виде
-	 *          множитель основания сокращается сам собою и вывода не требует.
-	 *
-	 * @param result буфер множимого и итога
-	 * @param value  буфер множителя
-	 * @param mod    буфер модуля
-	 * @param mont   свойства приведения Монтгомери
-	 *
-	 */
-	static __AWH_INLINE__ void montmul(uint8_t * result, const uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
-		// Количество звеньев модуля
-		const size_t count = mont.limbs;
-		// Накопитель итога с запасом в два звена
-		uint32_t accumulator[(DIGIT / 4) + 2];
-		// Выполняем обнуление накопителя итога
-		::memset(accumulator, 0, sizeof(uint32_t) * (count + 2));
-		/**
-		 * Выполняем перебор всех звеньев множителя
-		 */
-		for(size_t i = 0; i < count; i++){
-			// Очередное звено множителя
-			const uint32_t multiplier = limb(value, i);
-			// Переносимый в старшее звено остаток
-			uint64_t carry = 0;
-			/**
-			 * Выполняем умножение множимого на очередное звено множителя
-			 */
-			for(size_t k = 0; k < count; k++){
-				// Выполняем счёт очередного произведения со сложением
-				const uint64_t sum = (static_cast <uint64_t> (accumulator[k]) +
-				 (static_cast <uint64_t> (limb(result, k)) * multiplier) + carry);
-				// Выполняем запись младшего звена суммы
-				accumulator[k] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
-				// Выполняем перенос старшего звена суммы
-				carry = (sum >> 32);
-			}
-			// Выполняем счёт суммы старшего звена накопителя
-			const uint64_t highest = (static_cast <uint64_t> (accumulator[count]) + carry);
-			// Выполняем запись старшего звена накопителя
-			accumulator[count] = static_cast <uint32_t> (highest & 0xFFFFFFFFULL);
-			// Выполняем запись переноса старшего звена
-			accumulator[count + 1] = static_cast <uint32_t> (highest >> 32);
-			// Множитель приведения очередного оборота
-			const uint32_t reducer = (accumulator[0] * mont.factor);
-			// Выполняем счёт младшего произведения приведения
-			uint64_t sum = (static_cast <uint64_t> (accumulator[0]) +
-			 (static_cast <uint64_t> (reducer) * limb(mod, 0)));
-			// Выполняем перенос старшего звена суммы
-			carry = (sum >> 32);
-			/**
-			 * Выполняем приведение накопителя по модулю со сдвигом на звено
-			 */
-			for(size_t k = 1; k < count; k++){
-				// Выполняем счёт очередного произведения приведения
-				sum = (static_cast <uint64_t> (accumulator[k]) +
-				 (static_cast <uint64_t> (reducer) * limb(mod, k)) + carry);
-				// Выполняем запись младшего звена суммы со сдвигом
-				accumulator[k - 1] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
-				// Выполняем перенос старшего звена суммы
-				carry = (sum >> 32);
-			}
-			// Выполняем счёт суммы старшего звена накопителя
-			sum = (static_cast <uint64_t> (accumulator[count]) + carry);
-			// Выполняем запись старшего звена со сдвигом
-			accumulator[count - 1] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
-			// Выполняем счёт нового старшего звена
-			accumulator[count] = static_cast <uint32_t> (accumulator[count + 1] + (sum >> 32));
-		}
-		// Выполняем обнуление буфера итога
-		::memset(result, 0, WIDTH);
-		// Выполняем перебор всех звеньев накопителя
-		for(size_t i = 0; i < count; i++)
-			// Выполняем запись очередного звена итога
-			limb(result, i, accumulator[i]);
-		/**
-		 * @brief Если итог не меньше модуля либо перенос старшего звена не пуст
-		 *
-		 * @note Итог приведения меньше удвоенного модуля, оттого одного вычитания
-		 *       довольно; перенос старшего звена значит, что итог превысил основание
-		 *
-		 */
-		if((accumulator[count] != 0) || (bignum::ucompare(result, mod, mont.limbs * 4) >= 0))
-			// Выполняем вычитание модуля из итога
-			bignum::sub(result, mod, mont.limbs * 4);
-	}
-	/**
-	 * @brief Функция перевода числа в вид Монтгомери
-	 *
-	 * @param value буфер числа
-	 * @param mod   буфер модуля
-	 * @param mont  свойства приведения Монтгомери
-	 *
-	 */
-	static __AWH_INLINE__ void enter(uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
-		// Выполняем домножение числа на квадрат основания приведения
-		montmul(value, mont.square, mod, mont);
-	}
-	/**
-	 * @brief Функция вывода числа из вида Монтгомери
-	 *
-	 * @param value буфер числа
-	 * @param mod   буфер модуля
-	 * @param mont  свойства приведения Монтгомери
-	 *
-	 */
-	static __AWH_INLINE__ void leave(uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
-		// Единица вида обычного счёта
-		uint8_t one[WIDTH];
-		// Выполняем обнуление единицы
-		::memset(one, 0, WIDTH);
-		// Выполняем установку единицы
-		one[0] = 0x01;
-		// Выполняем деление числа на основание приведения
-		montmul(value, one, mod, mont);
-	}
-	/**
-	 * @brief Функция возведения в степень по модулю видом Монтгомери
-	 *
-	 * @param result   буфер для записи итога
-	 * @param base     буфер основания видом Монтгомери
-	 * @param exponent буфер показателя
-	 * @param mod      буфер модуля
-	 * @param mont     свойства приведения Монтгомери
-	 * @param width    ширина счёта в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void montpow(uint8_t * result, const uint8_t * base, const uint8_t * exponent, const uint8_t * mod, const mont_t & mont, const size_t width) noexcept {
-		// Накопитель итога возведения
-		uint8_t outcome[WIDTH];
-		// Выполняем обнуление накопителя итога
-		::memset(outcome, 0, WIDTH);
-		// Выполняем установку единицы в накопитель итога
-		outcome[0] = 0x01;
-		// Выполняем перевод единицы в вид Монтгомери
-		enter(outcome, mod, mont);
-		// Накопитель квадратов основания
-		uint8_t square[WIDTH];
-		// Выполняем копирование основания
-		::memcpy(square, base, WIDTH);
-		// Определяем количество значащих разрядов показателя
-		const size_t count = bignum::bits(exponent, width);
-		/**
-		 * Выполняем перебор разрядов показателя от младшего к старшему
-		 */
-		for(size_t i = 0; i < count; i++){
-			// Если очередной разряд показателя установлен
-			if(bignum::bit(exponent, width, i))
-				// Выполняем умножение накопителя итога на квадрат основания
-				montmul(outcome, square, mod, mont);
-			// Промежуточное значение квадрата основания
-			uint8_t temp[WIDTH];
-			// Выполняем копирование квадрата основания
-			::memcpy(temp, square, WIDTH);
-			// Выполняем возведение основания в очередной квадрат
-			montmul(square, temp, mod, mont);
-		}
-		// Выполняем запись итога возведения
-		::memcpy(result, outcome, WIDTH);
-	}
-	/**
-	 * @brief Функция получения обратного по модулю видом Монтгомери
-	 *
-	 * @param result буфер для записи итога
-	 * @param value  буфер обращаемого числа видом Монтгомери
-	 * @param mod    буфер модуля
-	 * @param mont   свойства приведения Монтгомери
-	 * @param width  ширина счёта в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void montinv(uint8_t * result, const uint8_t * value, const uint8_t * mod, const mont_t & mont, const size_t width) noexcept {
-		// Показатель степени обращения
-		uint8_t exponent[WIDTH];
-		// Выполняем копирование модуля
-		::memcpy(exponent, mod, WIDTH);
-		// Уменьшаемое показателя степени
-		uint8_t two[WIDTH];
-		// Выполняем обнуление уменьшаемого
-		::memset(two, 0, WIDTH);
-		// Выполняем установку двойки
-		two[0] = 0x02;
-		// Выполняем уменьшение показателя степени на два
-		bignum::sub(exponent, two, width);
-		// Выполняем возведение обращаемого числа в степень
-		montpow(result, value, exponent, mod, mont, width);
-	}
-
-	/**
-	 * @brief Структура точки кривой в проективных координатах Якоби
-	 *
-	 * @details Проективные координаты избавляют от обращения по модулю на всяком
-	 *          сложении точек: обращение берётся одно на всё умножение точки, при
-	 *          переводе итога в плоские координаты.
-	 *
-	 */
-	typedef struct Point {
-		// Первая ось точки
-		uint8_t x[WIDTH];
-		// Вторая ось точки
-		uint8_t y[WIDTH];
-		// Знаменатель проективных координат
-		uint8_t z[WIDTH];
-	} point_t;
-	/**
-	 * @brief Структура свойств кривой в буферах вычислений
-	 *
-	 */
-	typedef struct Field {
-		// Свойства приведения Монтгомери по модулю простого поля
-		mont_t mont;
-		// Свойства приведения Монтгомери по порядку точки основания
-		mont_t order;
-		// Размер числа подписи и координаты точки в октетах
-		size_t digit;
-		// Ширина счёта поля в октетах
-		size_t width;
-		// Точка основания
-		point_t basis;
-		// Модуль простого поля
-		uint8_t p[WIDTH];
-		// Коэффициент кривой
-		uint8_t a[WIDTH];
-		// Порядок точки основания
-		uint8_t q[WIDTH];
-	} field_t;
-	/**
-	 * @brief Функция заведения свойств кривой
-	 *
-	 * @param field свойства кривой в буферах вычислений
-	 * @param index указатель набора свойств кривой
-	 */
-	static __AWH_INLINE__ void setup(field_t & field, const size_t index) noexcept {
-		// Определяем набор свойств кривой
-		const curve_t & curve = CURVES[index];
-		// Выполняем установку размера числа подписи
-		field.digit = curve.digit;
-		// Выполняем установку ширины счёта поля
-		field.width = (curve.digit * 2);
-		// Выполняем разбор модуля простого поля
-		parse(field.p, curve.p);
-		// Выполняем разбор коэффициента кривой
-		parse(field.a, curve.a);
-		// Выполняем разбор порядка точки основания
-		parse(field.q, curve.q);
-		// Выполняем разбор первой оси точки основания
-		parse(field.basis.x, curve.x);
-		// Выполняем разбор второй оси точки основания
-		parse(field.basis.y, curve.y);
-		/**
-		 * @brief Выполняем заведение свойств приведения Монтгомери
-		 *
-		 * @note Свойства снимаются с модуля поля при всяком заведении: счёт их стоит
-		 *       около пяти сотых доли процента от выработки подписи, а удержание их
-		 *       между вызовами потребовало бы состояния, живущего дольше работы
-		 */
-		setupMont(field.mont, field.p, curve.digit, field.width);
-		// Выполняем заведение свойств приведения по порядку точки основания
-		setupMont(field.order, field.q, curve.digit, field.width);
-		// Выполняем перевод коэффициента кривой в вид Монтгомери
-		enter(field.a, field.p, field.mont);
-		// Выполняем перевод первой оси точки основания в вид Монтгомери
-		enter(field.basis.x, field.p, field.mont);
-		// Выполняем перевод второй оси точки основания в вид Монтгомери
-		enter(field.basis.y, field.p, field.mont);
-		// Выполняем обнуление знаменателя точки основания
-		::memset(field.basis.z, 0, WIDTH);
-		// Выполняем установку единицы в знаменатель точки основания
-		field.basis.z[0] = 0x01;
-		// Выполняем перевод знаменателя точки основания в вид Монтгомери
-		enter(field.basis.z, field.p, field.mont);
-	}
-	/**
-	 * @brief Функция получения свойств кривой
-	 *
-	 * @details Свойства снимаются с набора при первом обращении к нему и живут до конца
-	 *          работы: разбор записей свойств, счёт величин приведения Монтгомери и
-	 *          перевод точки основания в его вид зависят от одного лишь набора, и счёт
-	 *          их на всякой подписи отдавал бы пятую часть её времени задаром.
-	 *
-	 * @param index указатель набора свойств кривой
-	 * @return      свойства кривой в буферах вычислений
-	 *
-	 */
-	static __AWH_INLINE__ const field_t & fieldOf(const size_t index) noexcept {
-		// Признаки выполненного заведения свойств по всем наборам
-		static once_flag flags[COUNT];
-		// Свойства кривых по всем наборам
-		static field_t fields[COUNT];
-		// Выполняем заведение свойств кривой единожды
-		call_once(flags[index], [index]() noexcept {
-			// Выполняем заведение свойств кривой
-			setup(fields[index], index);
-		});
-		// Выводим свойства кривой
-		return fields[index];
-	}
-	/**
-	 * @brief Функция проверки точки на бесконечную удалённость
-	 *
-	 * @param point проверяемая точка
-	 * @param width ширина счёта в октетах
-	 * @return      результат проверки
-	 *
-	 */
-	static __AWH_INLINE__ bool infinity(const point_t & point, const size_t width) noexcept {
-		// Выводим результат проверки знаменателя на нуль
-		return bignum::zero(point.z, width);
-	}
-	/**
-	 * @brief Функция удвоения точки
-	 *
-	 * @param result точка для записи итога
-	 * @param point  удваиваемая точка
-	 * @param field  свойства кривой
-	 *
-	 */
-	static __AWH_INLINE__ void twice(point_t & result, const point_t & point, const field_t & field) noexcept {
-		/**
-		 * Если точка бесконечно удалена либо лежит на оси
-		 */
-		if(infinity(point, field.width) || bignum::zero(point.y, field.width)){
-			// Выполняем запись бесконечно удалённой точки
-			::memset(result.z, 0, WIDTH);
-			// Выходим из метода
-			return;
-		}
-		// Промежуточные значения удвоения
-		uint8_t yy[WIDTH], s[WIDTH], m[WIDTH], t[WIDTH], zz[WIDTH];
-		// Выполняем возведение второй оси в квадрат
-		::memcpy(yy, point.y, WIDTH);
-		montmul(yy, point.y, field.p, field.mont);
-		// Выполняем счёт учетверённого произведения первой оси на квадрат второй
-		::memcpy(s, point.x, WIDTH);
-		montmul(s, yy, field.p, field.mont);
-		addmod(s, s, field.p, field.width);
-		addmod(s, s, field.p, field.width);
-		// Выполняем возведение знаменателя в квадрат
-		::memcpy(zz, point.z, WIDTH);
-		montmul(zz, point.z, field.p, field.mont);
-		// Выполняем счёт углового коэффициента касательной
-		::memcpy(m, point.x, WIDTH);
-		montmul(m, point.x, field.p, field.mont);
-		::memcpy(t, m, WIDTH);
-		addmod(m, t, field.p, field.width);
-		addmod(m, t, field.p, field.width);
-		::memcpy(t, zz, WIDTH);
-		montmul(t, zz, field.p, field.mont);
-		montmul(t, field.a, field.p, field.mont);
-		addmod(m, t, field.p, field.width);
-		// Первая ось итога
-		uint8_t nx[WIDTH];
-		// Выполняем счёт первой оси итога
-		::memcpy(nx, m, WIDTH);
-		montmul(nx, m, field.p, field.mont);
-		submod(nx, s, field.p, field.width);
-		submod(nx, s, field.p, field.width);
-		// Вторая ось итога
-		uint8_t ny[WIDTH];
-		// Выполняем счёт второй оси итога
-		::memcpy(ny, s, WIDTH);
-		submod(ny, nx, field.p, field.width);
-		montmul(ny, m, field.p, field.mont);
-		::memcpy(t, yy, WIDTH);
-		montmul(t, yy, field.p, field.mont);
-		// Выполняем восьмикратное увеличение вычитаемого
-		for(size_t i = 0; i < 3; i++)
-			addmod(t, t, field.p, field.width);
-		submod(ny, t, field.p, field.width);
-		// Знаменатель итога
-		uint8_t nz[WIDTH];
-		// Выполняем счёт знаменателя итога
-		::memcpy(nz, point.y, WIDTH);
-		montmul(nz, point.z, field.p, field.mont);
-		addmod(nz, nz, field.p, field.width);
-		// Выполняем запись первой оси итога
-		::memcpy(result.x, nx, WIDTH);
-		// Выполняем запись второй оси итога
-		::memcpy(result.y, ny, WIDTH);
-		// Выполняем запись знаменателя итога
-		::memcpy(result.z, nz, WIDTH);
-	}
-	/**
-	 * @brief Функция сложения точек
-	 *
-	 * @param result точка для записи итога
-	 * @param first  первое слагаемое
-	 * @param second второе слагаемое
-	 * @param field  свойства кривой
-	 *
-	 */
-	static __AWH_INLINE__ void append(point_t & result, const point_t & first, const point_t & second, const field_t & field) noexcept {
-		/**
-		 * Если первое слагаемое бесконечно удалено
-		 */
-		if(infinity(first, field.width)){
-			// Выполняем запись второго слагаемого
-			result = second;
-			// Выходим из метода
-			return;
-		}
-		/**
-		 * Если второе слагаемое бесконечно удалено
-		 */
-		if(infinity(second, field.width)){
-			// Выполняем запись первого слагаемого
-			result = first;
-			// Выходим из метода
-			return;
-		}
-		// Промежуточные значения сложения
-		uint8_t z1[WIDTH], z2[WIDTH], u1[WIDTH], u2[WIDTH], s1[WIDTH], s2[WIDTH], h[WIDTH], r[WIDTH], t[WIDTH];
-		// Выполняем возведение знаменателей в квадрат
-		::memcpy(z1, first.z, WIDTH);
-		montmul(z1, first.z, field.p, field.mont);
-		::memcpy(z2, second.z, WIDTH);
-		montmul(z2, second.z, field.p, field.mont);
-		// Выполняем приведение первых осей к общему знаменателю
-		::memcpy(u1, first.x, WIDTH);
-		montmul(u1, z2, field.p, field.mont);
-		::memcpy(u2, second.x, WIDTH);
-		montmul(u2, z1, field.p, field.mont);
-		// Выполняем приведение вторых осей к общему знаменателю
-		::memcpy(s1, first.y, WIDTH);
-		montmul(s1, z2, field.p, field.mont);
-		montmul(s1, second.z, field.p, field.mont);
-		::memcpy(s2, second.y, WIDTH);
-		montmul(s2, z1, field.p, field.mont);
-		montmul(s2, first.z, field.p, field.mont);
-		/**
-		 * Если первые оси слагаемых совпали
-		 */
-		if(bignum::ucompare(u1, u2, field.width) == 0){
-			/**
-			 * Если совпали и вторые оси, слагаемые являются одной точкой
-			 */
-			if(bignum::ucompare(s1, s2, field.width) == 0){
-				// Выполняем удвоение точки вместо сложения
-				twice(result, first, field);
-				// Выходим из метода
-				return;
-			}
-			// Выполняем запись бесконечно удалённой точки
-			::memset(result.z, 0, WIDTH);
-			// Выходим из метода
-			return;
-		}
-		// Выполняем счёт разностей осей
-		::memcpy(h, u2, WIDTH);
-		submod(h, u1, field.p, field.width);
-		::memcpy(r, s2, WIDTH);
-		submod(r, s1, field.p, field.width);
-		// Степени разности первых осей
-		uint8_t hh[WIDTH], hhh[WIDTH];
-		// Выполняем возведение разности первых осей в квадрат
-		::memcpy(hh, h, WIDTH);
-		montmul(hh, h, field.p, field.mont);
-		// Выполняем возведение разности первых осей в куб
-		::memcpy(hhh, hh, WIDTH);
-		montmul(hhh, h, field.p, field.mont);
-		// Первая ось итога
-		uint8_t nx[WIDTH];
-		// Выполняем счёт первой оси итога
-		::memcpy(nx, r, WIDTH);
-		montmul(nx, r, field.p, field.mont);
-		submod(nx, hhh, field.p, field.width);
-		::memcpy(t, u1, WIDTH);
-		montmul(t, hh, field.p, field.mont);
-		submod(nx, t, field.p, field.width);
-		submod(nx, t, field.p, field.width);
-		// Вторая ось итога
-		uint8_t ny[WIDTH];
-		// Выполняем счёт второй оси итога
-		::memcpy(ny, t, WIDTH);
-		submod(ny, nx, field.p, field.width);
-		montmul(ny, r, field.p, field.mont);
-		::memcpy(t, s1, WIDTH);
-		montmul(t, hhh, field.p, field.mont);
-		submod(ny, t, field.p, field.width);
-		// Знаменатель итога
-		uint8_t nz[WIDTH];
-		// Выполняем счёт знаменателя итога
-		::memcpy(nz, h, WIDTH);
-		montmul(nz, first.z, field.p, field.mont);
-		montmul(nz, second.z, field.p, field.mont);
-		// Выполняем запись первой оси итога
-		::memcpy(result.x, nx, WIDTH);
-		// Выполняем запись второй оси итога
-		::memcpy(result.y, ny, WIDTH);
-		// Выполняем запись знаменателя итога
-		::memcpy(result.z, nz, WIDTH);
-	}
-	/**
-	 * @brief Функция умножения точки на число
-	 *
-	 * @param result точка для записи итога
-	 * @param point  умножаемая точка
-	 * @param factor буфер множителя
-	 * @param field  свойства кривой
-	 *
-	 */
-	static __AWH_INLINE__ void multiply(point_t & result, const point_t & point, const uint8_t * factor, const field_t & field) noexcept {
-		// Размер окна перебора в разрядах
-		static constexpr size_t WINDOW = 4;
-		/**
-		 * @brief Кратные умножаемой точки по всем значениям окна
-		 *
-		 * @details Окно в четыре разряда меняет сложение на всякой единице множителя
-		 *          сложением на всякие четыре разряда: у множителя в 256 разрядов это
-		 *          64 сложения вместо 128 в среднем, ценою пятнадцати сложений счёта
-		 *          самой таблицы.
-		 *
-		 */
-		point_t table[1u << WINDOW];
-		// Выполняем обнуление знаменателя первого кратного
-		::memset(table[0].z, 0, WIDTH);
-		// Выполняем установку умножаемой точки вторым кратным
-		table[1] = point;
-		/**
-		 * Выполняем счёт остальных кратных умножаемой точки
-		 */
-		for(size_t i = 2; i < (1u << WINDOW); i++){
-			/**
-			 * Чётное кратное выходит удвоением половинного, нечётное - сложением
-			 */
-			if((i % 2) == 0)
-				// Выполняем удвоение половинного кратного
-				twice(table[i], table[i / 2], field);
-			// Выполняем сложение предыдущего кратного с умножаемой точкой
-			else append(table[i], table[i - 1], point, field);
-		}
-		// Накопитель итога умножения
-		point_t outcome;
-		// Выполняем обнуление знаменателя накопителя
-		::memset(outcome.z, 0, WIDTH);
-		// Определяем количество значащих разрядов множителя
-		const size_t count = bignum::bits(factor, field.width);
-		// Определяем количество окон перебора
-		const size_t windows = ((count + WINDOW - 1) / WINDOW);
-		/**
-		 * Выполняем перебор окон множителя от старшего к младшему
-		 */
-		for(size_t i = windows; i-- > 0;){
-			/**
-			 * Выполняем удвоение накопителя по разрядам окна
-			 */
-			for(size_t k = 0; k < WINDOW; k++){
-				// Промежуточное значение накопителя
-				const point_t temp = outcome;
-				// Выполняем удвоение накопителя
-				twice(outcome, temp, field);
-			}
-			// Значение очередного окна множителя
-			size_t index = 0;
-			/**
-			 * Выполняем сбор разрядов окна множителя
-			 */
-			for(size_t k = 0; k < WINDOW; k++){
-				// Если очередной разряд окна установлен
-				if(bignum::bit(factor, field.width, (i * WINDOW) + k))
-					// Выполняем установку разряда в значение окна
-					index |= (static_cast <size_t> (1) << k);
-			}
-			/**
-			 * Если значение окна не пусто
-			 */
-			if(index != 0){
-				// Промежуточное значение накопителя
-				const point_t temp = outcome;
-				// Выполняем добавление кратного окна к накопителю
-				append(outcome, temp, table[index], field);
-			}
-		}
-		// Выполняем запись итога умножения
-		result = outcome;
-	}
-	/**
-	 * @brief Структура предвычисленных кратных точек основания
-	 *
-	 * @details Выработка подписи - это умножение одной и той же, неизменной точки
-	 *          основания, и кратные её снимаются один раз на всю работу. Множитель
-	 *          делится на восемь долей, а таблица держит все сочетания их старших
-	 *          кратных: умножение сводится к тридцати двум удвоениям и тридцати двум
-	 *          сложениям вместо двухсот пятидесяти шести и ста двадцати восьми.
-	 *
-	 */
-	typedef struct Comb {
-		// Кратные точки основания по всем сочетаниям долей множителя
-		point_t table[256];
-	} comb_t;
-
-	/**
-	 * @brief Количество долей множителя
-	 *
-	 */
-	static constexpr size_t PARTS = 8;
-
-	/**
-	 * @brief Функция получения предвычисленных кратных точки основания
-	 *
-	 * @details Кратные снимаются при первом обращении к набору свойств кривой и живут
-	 *          до конца работы: счёт их стоит около пятисот действий над точками, то
-	 *          есть полутора выработок подписи, и повторять его на всякой подписи
-	 *          значило бы отдать весь выигрыш обратно.
-	 *
-	 * @param curve указатель набора свойств кривой
-	 * @return      предвычисленные кратные точки основания
-	 *
-	 */
-	static __AWH_INLINE__ const comb_t & comb(const size_t curve) noexcept {
-		/**
-		 * @brief Свойства кривой берутся по её же указателю
-		 *
-		 * @note Прежде свойства подавались доводом рядом с указателем набора, и два
-		 *       эти довода обязаны были отвечать друг другу: несовпадение их отравило
-		 *       бы свод кратных, снимаемый однажды и на всю работу. Довод снят, и
-		 *       несовпадению взяться неоткуда
-		 *
-		 */
-		const field_t & field = fieldOf(curve);
-		// Признаки выполненного счёта кратных по всем наборам свойств кривых
-		static once_flag flags[COUNT];
-		// Кратные точки основания по всем наборам свойств кривых
-		static comb_t combs[COUNT];
-		/**
-		 * Выполняем счёт кратных точки основания единожды
-		 */
-		call_once(flags[curve], [&field, curve]() noexcept {
-			// Размер доли множителя в разрядах
-			const size_t part = ((field.digit * 8) / PARTS);
-			// Старшие кратные долей множителя
-			point_t powers[PARTS];
-			// Выполняем установку точки основания первой долей
-			powers[0] = field.basis;
-			/**
-			 * Выполняем перебор всех долей множителя сверх первой
-			 */
-			for(size_t i = 1; i < PARTS; i++){
-				// Выполняем установку кратного предыдущей доли
-				powers[i] = powers[i - 1];
-				/**
-				 * Выполняем удвоение кратного по разрядам доли
-				 */
-				for(size_t k = 0; k < part; k++){
-					// Промежуточное значение кратного
-					const point_t temp = powers[i];
-					// Выполняем удвоение кратного
-					twice(powers[i], temp, field);
-				}
-			}
-			// Выполняем обнуление знаменателя первого сочетания долей
-			::memset(combs[curve].table[0].z, 0, WIDTH);
-			/**
-			 * Выполняем перебор всех сочетаний долей множителя
-			 */
-			for(size_t i = 1; i < 256; i++){
-				// Указатель младшей установленной доли сочетания
-				size_t index = 0;
-				// Выполняем поиск младшей установленной доли сочетания
-				while(((i >> index) & 0x01) == 0)
-					// Переходим к следующей доле сочетания
-					index++;
-				// Выполняем сложение кратного доли с сочетанием без неё
-				append(combs[curve].table[i], combs[curve].table[i ^ (static_cast <size_t> (1) << index)], powers[index], field);
-			}
-		});
-		// Выводим предвычисленные кратные точки основания
-		return combs[curve];
-	}
-	/**
-	 * @brief Функция умножения точки основания на число
-	 *
-	 * @param result точка для записи итога
-	 * @param factor буфер множителя
-	 * @param field  свойства кривой
-	 * @param curve  указатель набора свойств кривой
-	 *
-	 */
-	static __AWH_INLINE__ void multiplyBase(point_t & result, const uint8_t * factor, const field_t & field, const size_t curve) noexcept {
-		// Предвычисленные кратные точки основания
-		const comb_t & table = comb(curve);
-		// Размер доли множителя в разрядах
-		const size_t part = ((field.digit * 8) / PARTS);
-		// Накопитель итога умножения
-		point_t outcome;
-		// Выполняем обнуление знаменателя накопителя
-		::memset(outcome.z, 0, WIDTH);
-		/**
-		 * Выполняем перебор разрядов доли множителя от старшего к младшему
-		 */
-		for(size_t i = part; i-- > 0;){
-			// Промежуточное значение накопителя
-			point_t temp = outcome;
-			// Выполняем удвоение накопителя
-			twice(outcome, temp, field);
-			// Сочетание долей множителя очередного разряда
-			size_t index = 0;
-			/**
-			 * Выполняем перебор всех долей множителя
-			 */
-			for(size_t k = 0; k < PARTS; k++){
-				// Если очередной разряд доли множителя установлен
-				if(bignum::bit(factor, field.width, (k * part) + i))
-					// Выполняем установку доли в сочетание
-					index |= (static_cast <size_t> (1) << k);
-			}
-			/**
-			 * Если сочетание долей не пусто
-			 */
-			if(index != 0){
-				// Выполняем копирование накопителя
-				temp = outcome;
-				// Выполняем добавление кратного сочетания к накопителю
-				append(outcome, temp, table.table[index], field);
-			}
-		}
-		// Выполняем запись итога умножения
-		result = outcome;
-	}
-	/**
-	 * @brief Функция приведения точки к плоским координатам
-	 *
-	 * @param x     буфер для записи первой оси
-	 * @param y     буфер для записи второй оси
-	 * @param point приводимая точка
-	 * @param field свойства кривой
-	 *
-	 */
-	static __AWH_INLINE__ void affine(uint8_t * x, uint8_t * y, const point_t & point, const field_t & field) noexcept {
-		// Обратное значение знаменателя
-		uint8_t inverse[WIDTH];
-		// Выполняем обращение знаменателя
-		montinv(inverse, point.z, field.p, field.mont, field.width);
-		// Квадрат обратного значения знаменателя
-		uint8_t square[WIDTH];
-		// Выполняем возведение обратного значения в квадрат
-		::memcpy(square, inverse, WIDTH);
-		montmul(square, inverse, field.p, field.mont);
-		// Выполняем счёт первой оси
-		::memcpy(x, point.x, WIDTH);
-		montmul(x, square, field.p, field.mont);
-		// Выполняем счёт второй оси
-		::memcpy(y, point.y, WIDTH);
-		montmul(y, square, field.p, field.mont);
-		montmul(y, inverse, field.p, field.mont);
-		/**
-		 * Выполняем вывод осей из вида Монтгомери
-		 *
-		 * @note Плоские координаты уходят наружу - в запись ключа, в число подписи и в
-		 *       сличение с нею, - и вид Монтгомери там был бы иным числом
-		 */
-		leave(x, field.p, field.mont);
-		leave(y, field.p, field.mont);
-	}
-	/**
-	 * @brief Функция затирания рабочих буферов тайны
-	 *
-	 * @details Затираются буферы, несущие закрытую часть ключа и одноразовое число
-	 *          выработки подписи. Одноразовое число тайна не меньшая, чем сам ключ:
-	 *          зная его и подпись, закрытую часть выводят прямым счётом. Правило
-	 *          затирания тайн у модуля общее (4.8, 4.18), и путь ГОСТ ему следует.
-	 *
-	 * @param first  первый затираемый буфер
-	 * @param second второй затираемый буфер
-	 * @param third  третий затираемый буфер
-	 *
-	 */
-	static __AWH_INLINE__ void purge(uint8_t * first, uint8_t * second = nullptr, uint8_t * third = nullptr) noexcept {
-		// Выполняем затирание первого буфера
-		::OPENSSL_cleanse(first, WIDTH);
-		// Если второй буфер подан
-		if(second != nullptr)
-			// Выполняем затирание второго буфера
-			::OPENSSL_cleanse(second, WIDTH);
-		// Если третий буфер подан
-		if(third != nullptr)
-			// Выполняем затирание третьего буфера
-			::OPENSSL_cleanse(third, WIDTH);
-	}
-	/**
-	 * @brief Функция получения открытой части ключа из закрытой
-	 *
-	 * @param key ключ подписи
-	 * @return    результат получения
-	 *
-	 */
-	static __AWH_INLINE__ bool derive(key_t & key) noexcept {
-		// Свойства кривой
-		const field_t & field = fieldOf(key.curve);
-		// Буфер закрытой части ключа
-		uint8_t secret[WIDTH];
-		// Выполняем перенос закрытой части ключа
-		load(secret, key.secret, field.digit);
-		/**
-		 * Если закрытая часть ключа нулевая либо не меньше порядка точки основания
-		 */
-		if(bignum::zero(secret, field.width) || (bignum::ucompare(secret, field.q, field.width) >= 0)){
-			// Выполняем затирание закрытой части ключа
-			purge(secret);
-			// Выводим результат неудачи
-			return false;
-		}
-		// Открытая часть ключа
-		point_t outcome;
-		// Выполняем умножение точки основания на закрытую часть ключа
-		multiplyBase(outcome, secret, field, key.curve);
-		/**
-		 * Если открытая часть ключа бесконечно удалена
-		 */
-		if(infinity(outcome, field.width)){
-			// Выполняем затирание закрытой части ключа
-			purge(secret);
-			// Выводим результат неудачи
-			return false;
-		}
-		// Оси открытой части ключа
-		uint8_t x[WIDTH], y[WIDTH];
-		// Выполняем приведение открытой части ключа к плоским координатам
-		affine(x, y, outcome, field);
-		// Выполняем выгрузку первой оси открытой части ключа
-		save(key.x, x, field.digit);
-		// Выполняем выгрузку второй оси открытой части ключа
-		save(key.y, y, field.digit);
-		// Выполняем установку признака наличия закрытой части
-		key.secured = true;
-		// Выполняем затирание закрытой части ключа
-		purge(secret);
-		// Выводим результат успеха
-		return true;
-	}
-	/**
-	 * @brief Функция выработки ключа подписи
-	 *
-	 * @param key   ключ подписи для записи
-	 * @param curve указатель набора свойств кривой
-	 * @return      результат выработки
-	 *
-	 */
-	static __AWH_INLINE__ bool generate(key_t & key, const size_t curve) noexcept {
-		// Выполняем установку набора свойств кривой
-		key.curve = curve;
-		/**
-		 * @brief Выполняем выработку закрытой части ключа до годной
-		 *
-		 * @note Случайное число обязано лежать в промежутке от единицы до порядка точки
-		 *       основания, и негодное значение отбрасывается целиком, а не приводится по
-		 *       модулю: приведение исказило бы равномерность распределения
-		 */
-		for(size_t attempt = 0; attempt < 32; attempt++){
-			// Выполняем выработку случайной закрытой части ключа
-			if(!entropy::random(key.secret, CURVES[curve].digit))
-				// Выводим результат неудачи
-				return false;
-			// Если открытая часть ключа получена
-			if(derive(key))
-				// Выводим результат успеха
-				return true;
-		}
-		// Выводим результат неудачи
-		return false;
-	}
-	/**
-	 * @brief Функция выработки подписи
-	 *
-	 * @details Подпись записывается порядком, принятым чужими работами: сначала число s,
-	 *          следом число r, по 32 октета старшим октетом вперёд. Порядок установлен
-	 *          сверкой с gost-engine, а не выбран.
-	 *
-	 * @param key       ключ подписи
-	 * @param digest    буфер хэш-суммы подписываемого
-	 * @param size      размер буфера хэш-суммы в октетах
-	 * @param signature буфер для записи подписи
-	 * @return          результат выработки
-	 *
-	 */
-	static __AWH_INLINE__ bool sign(const key_t & key, const uint8_t * digest, const size_t size, uint8_t * signature) noexcept {
-		/**
-		 * Если закрытой части ключа нет
-		 */
-		if(!key.secured)
-			// Выводим результат неудачи
-			return false;
-		// Свойства кривой
-		const field_t & field = fieldOf(key.curve);
-		// Буферы закрытой части ключа и хэш-суммы
-		uint8_t secret[WIDTH], e[WIDTH];
-		// Выполняем перенос закрытой части ключа
-		load(secret, key.secret, field.digit);
-		/**
-		 * @brief Выполняем перенос хэш-суммы числом
-		 *
-		 * @details Хэш-сумма толкуется числом, то есть обратным порядком октетов
-		 *          относительно потока; порядок установлен сверкой с чужой работой.
-		 *
-		 */
-		::memset(e, 0, WIDTH);
-		// Выполняем перебор всех октетов хэш-суммы
-		for(size_t i = 0; i < size; i++)
-			// Выполняем перенос очередного октета хэш-суммы
-			e[i] = digest[i];
-		// Выполняем приведение хэш-суммы по порядку точки основания
-		reduce(e, field.q, field.width);
-		/**
-		 * @brief Если приведённая хэш-сумма нулевая
-		 *
-		 * @note Стандарт велит брать единицу вместо нуля: нулевая хэш-сумма обратного
-		 *       по модулю не имеет, и проверка такой подписи была бы невозможна
-		 *
-		 */
-		if(bignum::zero(e, field.width))
-			// Выполняем установку единицы вместо нуля
-			e[0] = 0x01;
-		/**
-		 * @brief Случайное число выработки подписи и числа подписи
-		 *
-		 * @note Буферы эти заведены вне перебора попыток нарочно: всякая брошенная
-		 *       попытка оставляла бы одноразовое число лежать в своей ячейке стека, а
-		 *       затирание на всяком выходе из перебора накрывает и её
-		 *
-		 */
-		uint8_t raw[DIGIT], k[WIDTH], s[WIDTH], temp[WIDTH];
-		/**
-		 * Выполняем выработку подписи до годной
-		 */
-		for(size_t attempt = 0; attempt < 32; attempt++){
-			// Выполняем выработку случайного числа
-			if(!entropy::random(raw, field.digit)){
-				// Выполняем затирание закрытой части ключа и одноразового числа
-				purge(secret, k);
-				// Выполняем затирание случайного числа
-				::OPENSSL_cleanse(raw, DIGIT);
-				// Выводим результат неудачи
-				return false;
-			}
-			// Выполняем перенос случайного числа
-			load(k, raw, field.digit);
-			/**
-			 * Если случайное число негодно
-			 */
-			if(bignum::zero(k, field.width) || (bignum::ucompare(k, field.q, field.width) >= 0))
-				// Переходим к следующей попытке
-				continue;
-			// Точка выработки подписи
-			point_t outcome;
-			// Выполняем умножение точки основания на случайное число
-			multiplyBase(outcome, k, field, key.curve);
-			/**
-			 * Если точка выработки подписи бесконечно удалена
-			 */
-			if(infinity(outcome, field.width))
-				// Переходим к следующей попытке
-				continue;
-			// Оси точки выработки подписи
-			uint8_t x[WIDTH], y[WIDTH];
-			// Выполняем приведение точки к плоским координатам
-			affine(x, y, outcome, field);
-			// Первое число подписи
-			uint8_t r[WIDTH];
-			// Выполняем копирование первой оси точки
-			::memcpy(r, x, WIDTH);
-			// Выполняем приведение первого числа подписи
-			reduce(r, field.q, field.width);
-			/**
-			 * Если первое число подписи нулевое
-			 */
-			if(bignum::zero(r, field.width))
-				// Переходим к следующей попытке
-				continue;
-			// Выполняем умножение первого числа подписи на закрытую часть ключа
-			::memcpy(s, r, WIDTH);
-			mulmod(s, secret, field.q, field.width);
-			// Выполняем умножение случайного числа на хэш-сумму
-			::memcpy(temp, k, WIDTH);
-			mulmod(temp, e, field.q, field.width);
-			// Выполняем сложение слагаемых второго числа подписи
-			addmod(s, temp, field.q, field.width);
-			/**
-			 * Если второе число подписи нулевое
-			 */
-			if(bignum::zero(s, field.width))
-				// Переходим к следующей попытке
-				continue;
-			// Выполняем выгрузку второго числа подписи
-			save(signature, s, field.digit);
-			// Выполняем выгрузку первого числа подписи
-			save(signature + field.digit, r, field.digit);
-			// Выполняем затирание закрытой части ключа, одноразового числа и слагаемых
-			purge(secret, k, s);
-			// Выполняем затирание промежуточного значения
-			purge(temp);
-			// Выполняем затирание случайного числа
-			::OPENSSL_cleanse(raw, DIGIT);
-			// Выводим результат успеха
-			return true;
-		}
-		// Выполняем затирание закрытой части ключа, одноразового числа и слагаемых
-		purge(secret, k, s);
-		// Выполняем затирание промежуточного значения
-		purge(temp);
-		// Выполняем затирание случайного числа
-		::OPENSSL_cleanse(raw, DIGIT);
-		// Выводим результат неудачи
-		return false;
-	}
-	/**
-	 * @brief Функция проверки подписи
-	 *
-	 * @param key       ключ подписи
-	 * @param digest    буфер хэш-суммы подписанного
-	 * @param size      размер буфера хэш-суммы в октетах
-	 * @param signature буфер проверяемой подписи
-	 * @return          результат проверки
-	 *
-	 */
-	static __AWH_INLINE__ bool verify(const key_t & key, const uint8_t * digest, const size_t size, const uint8_t * signature) noexcept {
-		// Свойства кривой
-		const field_t & field = fieldOf(key.curve);
-		// Числа подписи
-		uint8_t r[WIDTH], s[WIDTH];
-		// Выполняем перенос второго числа подписи
-		load(s, signature, field.digit);
-		// Выполняем перенос первого числа подписи
-		load(r, signature + field.digit, field.digit);
-		/**
-		 * Если числа подписи вышли за промежуток годных значений
-		 */
-		if(bignum::zero(r, field.width) || bignum::zero(s, field.width) ||
-		   (bignum::ucompare(r, field.q, field.width) >= 0) ||
-		   (bignum::ucompare(s, field.q, field.width) >= 0))
-			// Выводим результат отказа
-			return false;
-		// Буфер хэш-суммы
-		uint8_t e[WIDTH];
-		// Выполняем обнуление буфера хэш-суммы
-		::memset(e, 0, WIDTH);
-		// Выполняем перебор всех октетов хэш-суммы
-		for(size_t i = 0; i < size; i++)
-			// Выполняем перенос очередного октета хэш-суммы
-			e[i] = digest[i];
-		// Выполняем приведение хэш-суммы по порядку точки основания
-		reduce(e, field.q, field.width);
-		// Если приведённая хэш-сумма нулевая
-		if(bignum::zero(e, field.width))
-			// Выполняем установку единицы вместо нуля
-			e[0] = 0x01;
-		// Обратное значение хэш-суммы и множители точек
-		uint8_t v[WIDTH], z1[WIDTH], z2[WIDTH], temp[WIDTH];
-		/**
-		 * @brief Выполняем обращение хэш-суммы видом Монтгомери
-		 *
-		 * @details Обращение берётся малой теоремой Ферма, то есть возведением в степень
-		 *          по порядку точки основания: это около четырёхсот умножений по модулю,
-		 *          и приведение делением обошлось бы здесь в шестую часть всей проверки.
-		 *
-		 */
-		::memcpy(v, e, WIDTH);
-		// Выполняем перевод хэш-суммы в вид Монтгомери
-		enter(v, field.q, field.order);
-		// Выполняем обращение хэш-суммы
-		montinv(v, v, field.q, field.order, field.width);
-		// Выполняем вывод обращённой хэш-суммы из вида Монтгомери
-		leave(v, field.q, field.order);
-		// Выполняем счёт множителя точки основания
-		::memcpy(z1, s, WIDTH);
-		mulmod(z1, v, field.q, field.width);
-		// Выполняем счёт множителя открытой части ключа
-		::memcpy(z2, r, WIDTH);
-		mulmod(z2, v, field.q, field.width);
-		// Выполняем смену знака множителя открытой части ключа
-		::memcpy(temp, field.q, WIDTH);
-		submod(temp, z2, field.q, field.width);
-		::memcpy(z2, temp, WIDTH);
-		// Открытая часть ключа
-		point_t open;
-		// Выполняем перенос первой оси открытой части ключа
-		load(open.x, key.x, field.digit);
-		// Выполняем перевод первой оси в вид Монтгомери
-		enter(open.x, field.p, field.mont);
-		// Выполняем перенос второй оси открытой части ключа
-		load(open.y, key.y, field.digit);
-		// Выполняем перевод второй оси в вид Монтгомери
-		enter(open.y, field.p, field.mont);
-		// Выполняем обнуление знаменателя открытой части ключа
-		::memset(open.z, 0, WIDTH);
-		// Выполняем установку единицы в знаменатель открытой части ключа
-		open.z[0] = 0x01;
-		// Выполняем перевод знаменателя в вид Монтгомери
-		enter(open.z, field.p, field.mont);
-		// Слагаемые и сумма точек проверки
-		point_t first, second, sum;
-		// Выполняем умножение точки основания
-		multiplyBase(first, z1, field, key.curve);
-		// Выполняем умножение открытой части ключа
-		multiply(second, open, z2, field);
-		// Выполняем сложение точек проверки
-		append(sum, first, second, field);
-		/**
-		 * Если сумма точек проверки бесконечно удалена
-		 */
-		if(infinity(sum, field.width))
-			// Выводим результат отказа
-			return false;
-		// Оси суммы точек проверки
-		uint8_t x[WIDTH], y[WIDTH];
-		// Выполняем приведение суммы точек к плоским координатам
-		affine(x, y, sum, field);
-		// Выполняем приведение первой оси по порядку точки основания
-		reduce(x, field.q, field.width);
-		// Выводим результат сличения с первым числом подписи
-		return (bignum::ucompare(x, r, field.width) == 0);
-	}
-	/**
-	 * @brief Опознаватель схемы подписи ГОСТ Р 34.10-2012 на 256 разрядов
-	 *
-	 * @details Опознаватели записаны содержимым записи DER, без метки и длины:
-	 *          1.2.643.7.1.1.1.1.
-	 *
-	 */
-	static const uint8_t OID_SIGN[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x01};
-	// Опознаватель схемы подписи на 512 разрядов: 1.2.643.7.1.1.1.2
-	static const uint8_t OID_SIGN512[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x02};
-	// Опознаватель хэш-функции ГОСТ Р 34.11-2012 на 256 разрядов: 1.2.643.7.1.1.2.2
-	static const uint8_t OID_HASH[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x02};
-	// Опознаватель хэш-функции ГОСТ Р 34.11-2012 на 512 разрядов: 1.2.643.7.1.1.2.3
-	static const uint8_t OID_HASH512[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x03};
-	// Опознаватель набора свойств CryptoPro-A: 1.2.643.2.2.35.1
-	static const uint8_t OID_CURVE_A[7] = {0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01};
-	// Опознаватель набора свойств ТК26 256 A: 1.2.643.7.1.2.1.1.1
-	static const uint8_t OID_CURVE_B[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x01, 0x01};
-	// Опознаватель набора свойств ТК26 512 A: 1.2.643.7.1.2.1.2.1
-	static const uint8_t OID_CURVE_C[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x01};
-	// Опознаватель набора свойств ТК26 512 B: 1.2.643.7.1.2.1.2.2
-	static const uint8_t OID_CURVE_D[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x02};
-	// Опознаватель набора свойств ТК26 512 C: 1.2.643.7.1.2.1.2.3
-	static const uint8_t OID_CURVE_E[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03};
-
-	/**
-	 * @brief Функция записи длины по правилам DER
-	 *
-	 * @param result набор для записи
-	 * @param length записываемая длина
-	 *
-	 */
-	static __AWH_INLINE__ void derLength(vector <uint8_t> & result, const size_t length) noexcept {
-		/**
-		 * @brief Если длина укладывается в один октет
-		 *
-		 * @note Правила DER велят брать самую короткую запись длины из возможных,
-		 *       и длинная форма при длине меньше 128 записью верной не является
-		 *
-		 */
-		if(length < 0x80)
-			// Выполняем запись длины одним октетом
-			result.push_back(static_cast <uint8_t> (length));
-		// Если длина укладывается в два октета
-		else if(length < 0x100) {
-			// Выполняем запись признака одного октета длины
-			result.push_back(0x81);
-			// Выполняем запись самой длины
-			result.push_back(static_cast <uint8_t> (length));
-		// Если длина требует двух октетов записи
-		} else {
-			// Выполняем запись признака двух октетов длины
-			result.push_back(0x82);
-			// Выполняем запись старшего октета длины
-			result.push_back(static_cast <uint8_t> ((length >> 8) & 0xFF));
-			// Выполняем запись младшего октета длины
-			result.push_back(static_cast <uint8_t> (length & 0xFF));
-		}
-	}
-	/**
-	 * @brief Функция записи записи DER
-	 *
-	 * @param result набор для записи
-	 * @param tag    метка записи
-	 * @param value  буфер содержимого записи
-	 * @param size   размер содержимого записи в октетах
-	 *
-	 */
-	static __AWH_INLINE__ void derRecord(vector <uint8_t> & result, const uint8_t tag, const uint8_t * value, const size_t size) noexcept {
-		// Выполняем запись метки записи
-		result.push_back(tag);
-		// Выполняем запись длины содержимого
-		derLength(result, size);
-		// Выполняем запись самого содержимого
-		result.insert(result.end(), value, value + size);
-	}
-	/**
-	 * @brief Функция опознания вида подписи схемой ГОСТ Р 34.10-2012
-	 *
-	 * @details Обе разрядности схемы ходят одним и тем же путём работы и разнятся лишь
-	 *          свойствами кривой, оттого проверок вида в работе много, и каждая обязана
-	 *          принимать обе. Посредник этот избавляет от перечисления видов на месте:
-	 *          пропуск одного из них молча увёл бы схему на 512 разрядов в путь
-	 *          библиотеки криптографии, где ключа её нет вовсе.
-	 *
-	 * @param type вид подписи
-	 * @return     результат опознания
-	 *
-	 */
-	static constexpr bool kindOf(const crypto_t::signature_t type) noexcept {
-		// Выводим признак принадлежности вида подписи схеме ГОСТ
-		return ((type == crypto_t::signature_t::GOST) || (type == crypto_t::signature_t::GOST512));
-	}
-	/**
-	 * @brief Функция получения размера числа подписи ключа
-	 *
-	 * @param key ключ подписи
-	 * @return    размер числа подписи в октетах
-	 *
-	 */
-	static __AWH_INLINE__ size_t digitOf(const key_t & key) noexcept {
-		// Выводим размер числа подписи набора свойств кривой ключа
-		return CURVES[key.curve].digit;
-	}
-	/**
-	 * @brief Функция получения опознавателя набора свойств кривой
-	 *
-	 * @param index указатель набора свойств кривой
-	 * @param size  размер опознавателя в октетах
-	 * @return      буфер опознавателя
-	 *
-	 */
-	static __AWH_INLINE__ const uint8_t * oidCurve(const size_t index, size_t & size) noexcept {
-		// Набор опознавателей известных работе кривых
-		static const uint8_t * OIDS[COUNT] = {OID_CURVE_A, OID_CURVE_B, OID_CURVE_C, OID_CURVE_D, OID_CURVE_E};
-		// Набор размеров опознавателей известных работе кривых
-		static const size_t SIZES[COUNT] = {sizeof(OID_CURVE_A), sizeof(OID_CURVE_B), sizeof(OID_CURVE_C), sizeof(OID_CURVE_D), sizeof(OID_CURVE_E)};
-		// Выполняем установку размера опознавателя набора свойств
-		size = SIZES[index];
-		// Выводим буфер опознавателя набора свойств
-		return OIDS[index];
-	}
-	/**
-	 * @brief Функция записи опознавателя схемы подписи
-	 *
-	 * @param result набор для записи
-	 * @param index  указатель набора свойств кривой
-	 *
-	 */
-	static __AWH_INLINE__ void derAlgorithm(vector <uint8_t> & result, const size_t index) noexcept {
-		// Размер опознавателя набора свойств кривой
-		size_t size = 0;
-		// Получаем опознаватель набора свойств кривой
-		const uint8_t * oid = oidCurve(index, size);
-		// Признак схемы подписи на 512 разрядов
-		const bool wide = (CURVES[index].digit == 64);
-		// Свойства схемы подписи
-		vector <uint8_t> params;
-		// Выполняем запись опознавателя набора свойств кривой
-		derRecord(params, 0x06, oid, size);
-		// Выполняем запись опознавателя хэш-функции
-		derRecord(params, 0x06, (wide ? OID_HASH512 : OID_HASH), (wide ? sizeof(OID_HASH512) : sizeof(OID_HASH)));
-		// Опознаватель схемы подписи целиком
-		vector <uint8_t> algorithm;
-		// Выполняем запись опознавателя схемы подписи
-		derRecord(algorithm, 0x06, (wide ? OID_SIGN512 : OID_SIGN), (wide ? sizeof(OID_SIGN512) : sizeof(OID_SIGN)));
-		// Выполняем запись свойств схемы подписи
-		derRecord(algorithm, 0x30, params.data(), params.size());
-		// Выполняем запись опознавателя схемы подписи целиком
-		derRecord(result, 0x30, algorithm.data(), algorithm.size());
-	}
-	/**
-	 * @brief Функция записи открытой части ключа записью SubjectPublicKeyInfo
-	 *
-	 * @details Оси открытой части ключа записываются младшим октетом вперёд - таков
-	 *          вид, принятый RFC 4491 и чужими работами; порядок этот обратен тому,
-	 *          в каком оси держатся внутри работы.
-	 *
-	 * @param key    ключ подписи
-	 * @param result набор для записи
-	 *
-	 */
-	static __AWH_INLINE__ void spki(const key_t & key, vector <uint8_t> & result) noexcept {
-		// Выполняем очистку набора записи
-		result.clear();
-		// Содержимое записи
-		vector <uint8_t> body;
-		// Выполняем запись опознавателя схемы подписи
-		derAlgorithm(body, key.curve);
-		// Размер числа подписи ключа
-		const size_t digit = digitOf(key);
-		// Оси открытой части ключа
-		uint8_t point[DIGIT * 2];
-		// Выполняем запись первой оси младшим октетом вперёд
-		reverse(point, key.x, digit);
-		// Выполняем запись второй оси младшим октетом вперёд
-		reverse(point + digit, key.y, digit);
-		// Запись осей строкой октетов
-		vector <uint8_t> octets;
-		// Выполняем запись осей строкой октетов
-		derRecord(octets, 0x04, point, (digit * 2));
-		// Запись осей строкой разрядов
-		vector <uint8_t> bits;
-		// Выполняем запись признака отсутствия неполных разрядов
-		bits.push_back(0x00);
-		// Выполняем добавление записи осей
-		bits.insert(bits.end(), octets.begin(), octets.end());
-		// Выполняем запись осей строкой разрядов
-		derRecord(body, 0x03, bits.data(), bits.size());
-		// Выполняем записьSubjectPublicKeyInfo целиком
-		derRecord(result, 0x30, body.data(), body.size());
-	}
-	/**
-	 * @brief Функция записи закрытой части ключа записью PrivateKeyInfo
-	 *
-	 * @param key    ключ подписи
-	 * @param result набор для записи
-	 *
-	 */
-	static __AWH_INLINE__ void pkcs8(const key_t & key, vector <uint8_t> & result) noexcept {
-		// Выполняем очистку набора записи
-		result.clear();
-		// Содержимое записи
-		vector <uint8_t> body;
-		// Номер издания записи
-		const uint8_t version = 0x00;
-		// Выполняем запись номера издания записи
-		derRecord(body, 0x02, &version, sizeof(version));
-		// Выполняем запись опознавателя схемы подписи
-		derAlgorithm(body, key.curve);
-		// Размер числа подписи ключа
-		const size_t digit = digitOf(key);
-		// Закрытая часть ключа младшим октетом вперёд
-		uint8_t secret[DIGIT];
-		// Выполняем переворот закрытой части ключа
-		reverse(secret, key.secret, digit);
-		// Запись закрытой части строкой октетов
-		vector <uint8_t> inner;
-		// Выполняем запись закрытой части строкой октетов
-		derRecord(inner, 0x04, secret, digit);
-		// Выполняем запись закрытой части вложенной строкой октетов
-		derRecord(body, 0x04, inner.data(), inner.size());
-		// Выполняем запись PrivateKeyInfo целиком
-		derRecord(result, 0x30, body.data(), body.size());
-		// Выполняем затирание закрытой части ключа
-		::OPENSSL_cleanse(secret, sizeof(secret));
-		// Выполняем затирание промежуточной записи закрытой части
-		::OPENSSL_cleanse(inner.data(), inner.size());
-	}
-
-	/**
-	 * @brief Структура состояния разбора записи DER
-	 *
-	 */
-	typedef struct Reader {
-		// Размер разбираемой записи в октетах
-		size_t size;
-		// Положение разбора в записи
-		size_t offset;
-		// Буфер разбираемой записи
-		const uint8_t * data;
-	} reader_t;
-
-	/**
-	 * @brief Функция считывания записи DER
-	 *
-	 * @param reader состояние разбора
-	 * @param tag    ожидаемая метка записи
-	 * @param value  указатель для записи содержимого
-	 * @param length размер содержимого в октетах
-	 * @return       результат считывания
-	 *
-	 */
-	static __AWH_INLINE__ bool derRead(reader_t & reader, const uint8_t tag, const uint8_t *& value, size_t & length) noexcept {
-		/**
-		 * Если в записи не осталось места под метку и длину
-		 */
-		if((reader.offset + 2) > reader.size)
-			// Выводим результат неудачи
-			return false;
-		/**
-		 * Если метка записи ожидаемой не отвечает
-		 */
-		if(reader.data[reader.offset] != tag)
-			// Выводим результат неудачи
-			return false;
-		// Смещаем положение разбора за метку записи
-		reader.offset++;
-		// Считанная длина содержимого
-		size_t count = reader.data[reader.offset++];
-		/**
-		 * Если длина записана длинной формой
-		 */
-		if(count & 0x80){
-			// Определяем количество октетов длины
-			const size_t width = (count & 0x7F);
-			/**
-			 * @brief Если октетов длины больше, чем работа разбирает
-			 *
-			 * @note Ключи разбираемых записей длины свыше двух октетов не имеют вовсе,
-			 *       и большая длина означает запись либо порченую, либо чужую
-			 *
-			 */
-			if((width == 0) || (width > 2) || ((reader.offset + width) > reader.size))
-				// Выводим результат неудачи
-				return false;
-			// Выполняем сброс считанной длины
-			count = 0;
-			// Выполняем перебор всех октетов длины
-			for(size_t i = 0; i < width; i++)
-				// Выполняем добавление очередного октета длины
-				count = ((count << 8) | reader.data[reader.offset++]);
-		}
-		/**
-		 * Если содержимое за пределы записи выходит
-		 */
-		if((reader.offset + count) > reader.size)
-			// Выводим результат неудачи
-			return false;
-		// Выполняем установку указателя содержимого
-		value = (reader.data + reader.offset);
-		// Выполняем установку размера содержимого
-		length = count;
-		// Смещаем положение разбора за содержимое
-		reader.offset += count;
-		// Выводим результат успеха
-		return true;
-	}
-	/**
-	 * @brief Функция разбора опознавателя схемы подписи
-	 *
-	 * @param value буфер опознавателя
-	 * @param size  размер опознавателя в октетах
-	 * @param curve указатель набора свойств кривой для записи
-	 * @return      результат разбора
-	 *
-	 */
-	static __AWH_INLINE__ bool readAlgorithm(const uint8_t * value, const size_t size, size_t & curve) noexcept {
-		// Состояние разбора опознавателя
-		reader_t reader = {value, size, 0};
-		// Содержимое считанной записи
-		const uint8_t * body = nullptr;
-		// Размер содержимого считанной записи
-		size_t length = 0;
-		// Если опознаватель схемы подписи считать не удалось
-		if(!derRead(reader, 0x06, body, length))
-			// Выводим результат неудачи
-			return false;
-		/**
-		 * Если схема подписи работе не знакома
-		 */
-		if((length != sizeof(OID_SIGN)) ||
-		   ((::memcmp(body, OID_SIGN, length) != 0) &&
-		   (::memcmp(body, OID_SIGN512, length) != 0)))
-			// Выводим результат неудачи
-			return false;
-		// Если свойства схемы подписи считать не удалось
-		if(!derRead(reader, 0x30, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Состояние разбора свойств схемы подписи
-		reader_t params = {body, length, 0};
-		// Если опознаватель набора свойств кривой считать не удалось
-		if(!derRead(params, 0x06, body, length))
-			// Выводим результат неудачи
-			return false;
-		/**
-		 * Выполняем перебор всех наборов свойств кривых
-		 */
-		for(size_t index = 0; index < COUNT; index++){
-			// Размер опознавателя набора свойств
-			size_t width = 0;
-			// Получаем опознаватель набора свойств
-			const uint8_t * oid = oidCurve(index, width);
-			/**
-			 * Если опознаватель набора свойств совпал
-			 */
-			if((length == width) && (::memcmp(body, oid, width) == 0)){
-				// Выполняем установку указателя набора свойств кривой
-				curve = index;
-				// Выводим результат успеха
-				return true;
-			}
-		}
-		// Выводим результат неудачи
-		return false;
-	}
-	/**
-	 * @brief Функция разбора открытой части ключа из записи SubjectPublicKeyInfo
-	 *
-	 * @param key   ключ подписи для записи
-	 * @param value буфер разбираемой записи
-	 * @param size  размер разбираемой записи в октетах
-	 * @return      результат разбора
-	 *
-	 */
-	static __AWH_INLINE__ bool readSpki(key_t & key, const uint8_t * value, const size_t size) noexcept {
-		// Состояние разбора записи
-		reader_t reader = {value, size, 0};
-		// Содержимое считанной записи
-		const uint8_t * body = nullptr;
-		// Размер содержимого считанной записи
-		size_t length = 0;
-		// Если запись целиком считать не удалось
-		if(!derRead(reader, 0x30, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Состояние разбора содержимого записи
-		reader_t inner = {body, length, 0};
-		// Если опознаватель схемы подписи считать не удалось
-		if(!derRead(inner, 0x30, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Если опознаватель схемы подписи разобрать не удалось
-		if(!readAlgorithm(body, length, key.curve))
-			// Выводим результат неудачи
-			return false;
-		// Если оси открытой части ключа считать не удалось
-		if(!derRead(inner, 0x03, body, length))
-			// Выводим результат неудачи
-			return false;
-		/**
-		 * Если строка разрядов несёт неполные разряды
-		 */
-		if((length < 1) || (body[0] != 0x00))
-			// Выводим результат неудачи
-			return false;
-		// Состояние разбора осей открытой части ключа
-		reader_t point = {body + 1, length - 1, 0};
-		// Если оси открытой части ключа считать не удалось
-		if(!derRead(point, 0x04, body, length))
-			// Выводим результат неудачи
-			return false;
-		/**
-		 * Если размер осей открытой части ключа схеме не отвечает
-		 */
-		if(length != (CURVES[key.curve].digit * 2))
-			// Выводим результат неудачи
-			return false;
-		// Выполняем перенос первой оси старшим октетом вперёд
-		reverse(key.x, body, CURVES[key.curve].digit);
-		// Выполняем перенос второй оси старшим октетом вперёд
-		reverse(key.y, body + CURVES[key.curve].digit, CURVES[key.curve].digit);
-		// Выполняем обнуление закрытой части ключа
-		::memset(key.secret, 0, DIGIT);
-		// Снимаем признак наличия закрытой части ключа
-		key.secured = false;
-		// Выводим результат успеха
-		return true;
-	}
-	/**
-	 * @brief Функция разбора закрытой части ключа из записи PrivateKeyInfo
-	 *
-	 * @param key   ключ подписи для записи
-	 * @param value буфер разбираемой записи
-	 * @param size  размер разбираемой записи в октетах
-	 * @return      результат разбора
-	 *
-	 */
-	static __AWH_INLINE__ bool readPkcs8(key_t & key, const uint8_t * value, const size_t size) noexcept {
-		// Состояние разбора записи
-		reader_t reader = {value, size, 0};
-		// Содержимое считанной записи
-		const uint8_t * body = nullptr;
-		// Размер содержимого считанной записи
-		size_t length = 0;
-		// Если запись целиком считать не удалось
-		if(!derRead(reader, 0x30, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Состояние разбора содержимого записи
-		reader_t inner = {body, length, 0};
-		// Если номер издания записи считать не удалось
-		if(!derRead(inner, 0x02, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Если опознаватель схемы подписи считать не удалось
-		if(!derRead(inner, 0x30, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Если опознаватель схемы подписи разобрать не удалось
-		if(!readAlgorithm(body, length, key.curve))
-			// Выводим результат неудачи
-			return false;
-		// Если закрытую часть ключа считать не удалось
-		if(!derRead(inner, 0x04, body, length))
-			// Выводим результат неудачи
-			return false;
-		// Состояние разбора вложенной записи закрытой части
-		reader_t nested = {body, length, 0};
-		/**
-		 * Закрытая часть ключа бывает записана и вложенной строкой октетов, и прямо:
-		 * обе записи в ходу у чужих работ, и принимаются обе
-		 */
-		if(derRead(nested, 0x04, body, length)){
-			// Если размер закрытой части ключа схеме не отвечает
-			if(length != CURVES[key.curve].digit)
-				// Выводим результат неудачи
-				return false;
-		// Если закрытая часть записана прямо
-		} else {
-			// Выполняем возврат к прямой записи закрытой части
-			body = nested.data;
-			// Выполняем установку размера прямой записи закрытой части
-			length = nested.size;
-			// Если размер закрытой части ключа схеме не отвечает
-			if(length != CURVES[key.curve].digit)
-				// Выводим результат неудачи
-				return false;
-		}
-		// Выполняем перенос закрытой части ключа старшим октетом вперёд
-		reverse(key.secret, body, CURVES[key.curve].digit);
-		// Выводим результат получения открытой части ключа
-		return derive(key);
 	}
 };
 
@@ -3378,8 +584,8 @@ namespace awh {
 	 *
 	 */
 	struct key_rsa_t {
-		// Контекст RSA ключа
-		EVP_PKEY * ctx;
+		// Примитив RSA с установленным ключом
+		nts::sign::rsa_t rsa;
 		// Тип RSA ключа
 		crypto_t::key_type_t type;
 		/**
@@ -3387,24 +593,18 @@ namespace awh {
 		 *
 		 */
 		explicit key_rsa_t() noexcept :
-		 ctx(nullptr), type(crypto_t::key_type_t::NONE) {}
+		 type(crypto_t::key_type_t::NONE) {}
 		/**
 		 * @brief Деструктор
 		 *
-		 * @details Ключ освобождается здесь, а не разрушением объекта работы: владеет
-		 *          им эта структура, и освобождение, вынесенное наружу, держалось на
-		 *          том, что наружное место о нём не забудет. Стейт шифрования свой
-		 *          контекст освобождает сам, ключевые же данные не освобождали
+		 * @details Секретные составляющие ключа затираются здесь: владеет им эта
+		 *          структура, и затирание, вынесенное наружу, держалось бы на том,
+		 *          что наружное место о нём не забудет
 		 *
 		 */
 		~key_rsa_t() noexcept {
-			// Если ключ RSA заведён
-			if(this->ctx != nullptr){
-				// Освобождаем память выделенную под ключ
-				::EVP_PKEY_free(this->ctx);
-				// Снимаем указатель освобождённого ключа
-				this->ctx = nullptr;
-			}
+			// Выполняем затирание секретных составляющих ключа RSA
+			this->rsa.clear();
 		}
 	};
 	/**
@@ -3422,123 +622,94 @@ namespace awh {
 		 *
 		 */
 		struct record_t {
-			// Контекст ключа подписи
-			EVP_PKEY * ctx;
-			/**
-			 * Ключ подписи по ГОСТ Р 34.10-2012
-			 *
-			 * @details Ключ ГОСТ держится отдельным полем, а не в общем контексте:
-			 *          библиотека криптографии вида этого не знает вовсе, и втиснуть
-			 *          его в EVP_PKEY нечем. Занято ровно одно из двух полей, какое
-			 *          именно - показывает вид подписи записи
-			 */
-			gost::key_t gost;
+			// Разобранный ключ подписи
+			nts::keys::key_t key;
+			// Кривая ключа у ECDSA и ГОСТ: в куче, чтобы адрес её был устойчив для модуля
+			unique_ptr <nts::curve::curve_t> curve;
+			// Модуль подписи RSA
+			unique_ptr <nts::sign::rsa_t> rsa;
+			// Модуль подписи ECDSA
+			unique_ptr <nts::sign::ecdsa_t> ecdsa;
+			// Модуль подписи Ed25519
+			unique_ptr <nts::sign::ed25519_t> ed25519;
+			// Модуль подписи ГОСТ
+			unique_ptr <nts::sign::gost_t> gost;
 			// Вид подписи ключа
 			crypto_t::signature_t type;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit record_t() noexcept :
-			 ctx(nullptr), type(crypto_t::signature_t::NONE) {}
+			explicit record_t() noexcept : type(crypto_t::signature_t::NONE) {}
+			/**
+			 * @brief Метод проверки наличия подготовленного ключа
+			 *
+			 * @return результат проверки
+			 *
+			 */
+			bool ready() const noexcept {
+				// Выводим признак наличия подготовленного ключа
+				return ((this->rsa != nullptr) || (this->ecdsa != nullptr) || (this->ed25519 != nullptr) || (this->gost != nullptr));
+			}
 		};
-		// Ключи подписи, заведённые под своими именами
-		std::map <string, record_t> keys;
-		// Контекст потока подписи
-		EVP_MD_CTX * stream;
-		/**
-		 * Состояние поточного счёта хэш-суммы по ГОСТ Р 34.11-2012
-		 *
-		 * @details Схема ГОСТ считается своими силами, и контекст библиотеки
-		 *          криптографии ей негоден; какое из двух состояний потока в деле,
-		 *          показывает признак streaming
-		 */
-		gost::digest_t digest;
-		// Признак потока подписи по ГОСТ Р 34.10-2012
-		bool streaming;
-		/**
-		 * Признак потока проверки подписи
-		 *
-		 * Поток на объекте один, а работы у него две - выработка подписи и её проверка, -
-		 * и контекст их между собой не взаимозаменяем: подача проверяемого в поток
-		 * выработки принята была бы молча, а подпись вышла бы не той, которой ждут
-		 */
-		bool checking;
-		// Имя ключа, которым заведён поток подписи
-		string name;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit keyring_t() noexcept : stream(nullptr), streaming(false), checking(false) {
-			// Выполняем обнуление состояния поточного счёта хэш-суммы
-			::memset(&this->digest, 0, sizeof(this->digest));
-		}
-		/**
-		 * @brief Метод проверки наличия заведённого потока
-		 *
-		 * @return результат проверки
-		 *
-		 * @details Наличие потока нельзя сводить к контексту библиотеки криптографии:
-		 *          у схемы ГОСТ его нет вовсе, а поток при этом заведён, и сверка с
-		 *          пустотой объявляла бы заведённый поток отсутствующим
-		 */
-		bool live() const noexcept {
-			// Выводим признак наличия заведённого потока
-			return ((this->stream != nullptr) || this->streaming);
-		}
-		/**
-		 * @brief Метод сброса потока подписи
-		 *
-		 */
-		void reset() noexcept {
-			// Если поток подписи заведён
-			if(this->stream != nullptr){
-				// Освобождаем контекст потока подписи
-				::EVP_MD_CTX_free(this->stream);
-				// Снимаем указатель освобождённого контекста
-				this->stream = nullptr;
+			// Ключи подписи, заведённые под своими именами
+			std::map <string, record_t> keys;
+			// Хэшер потока подписи
+			nts::digest::hasher_t stream;
+			/**
+			 * Признак потока проверки подписи
+			 *
+			 * Поток на объекте один, а работы у него две - выработка подписи и её проверка, -
+			 * и хэшер их между собой не взаимозаменяем: подача проверяемого в поток выработки
+			 * принята была бы молча, а подпись вышла бы не той, которой ждут
+			 */
+			bool checking;
+			// Имя ключа, которым заведён поток подписи
+			string name;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit keyring_t() noexcept : checking(false) {}
+			/**
+			 * @brief Метод проверки наличия заведённого потока
+			 *
+			 * @return результат проверки
+			 *
+			 * @details Наличие потока сводится к заведённому алгоритму хэшера: у хэшера без
+			 *          алгоритма поток не заведён, а сверка его с пустотой объявляла бы
+			 *          заведённый поток отсутствующим
+			 */
+			bool live() const noexcept {
+					// Выводим признак наличия заведённого потока
+					return (this->stream.type() != nts::digest::hash_t::NONE);
 			}
 			/**
-			 * Состояние поточного счёта ГОСТ гасится целиком: в нём лежит накопитель
-			 * неполного блока с частью подписываемого, и удержание его после сброса
-			 * оставляло бы данные прежней работы в памяти
+			 * @brief Метод сброса потока подписи
+			 *
 			 */
-			// Выполняем затирание состояния поточного счёта хэш-суммы
-			::OPENSSL_cleanse(&this->digest, sizeof(this->digest));
-			// Сбрасываем признак потока подписи по ГОСТ
-			this->streaming = false;
-			// Сбрасываем признак потока проверки подписи
-			this->checking = false;
-			// Выполняем очистку имени ключа потока подписи
-			this->name.clear();
-		}
-		/**
-		 * @brief Деструктор
-		 *
-		 * @details Ключи освобождаются здесь по тому же доводу, что и ключ RSA: владеет
-		 *          ими эта структура, и освобождение, вынесенное наружу, держалось бы на
-		 *          том, что наружное место о нём не забудет
-		 *
-		 */
-		~keyring_t() noexcept {
-			// Выполняем сброс потока подписи
-			this->reset();
-			/**
-			 * Выполняем перебор всех ключей связки
-			 */
-			for(auto & item : this->keys){
-				// Если ключ подписи заведён
-				if(item.second.ctx != nullptr){
-					// Освобождаем память выделенную под ключ подписи
-					::EVP_PKEY_free(item.second.ctx);
-					// Снимаем указатель освобождённого ключа
-					item.second.ctx = nullptr;
-				}
+			void reset() noexcept {
+					// Выполняем сброс хэшера потока подписи
+					this->stream.reset(nts::digest::hash_t::NONE);
+					// Сбрасываем признак потока проверки подписи
+					this->checking = false;
+					// Выполняем очистку имени ключа потока подписи
+					this->name.clear();
 			}
-			// Выполняем очистку связки ключей
-			this->keys.clear();
-		}
+			/**
+			 * @brief Деструктор
+			 *
+			 * @details Ключи освобождаются здесь по тому же доводу, что и ключ RSA: владеет
+			 *          ими эта структура, и освобождение, вынесенное наружу, держалось бы на
+			 *          том, что наружное место о нём не забудет
+			 *
+			 */
+			~keyring_t() noexcept {
+					// Выполняем сброс потока подписи
+					this->reset();
+					// Выполняем очистку связки ключей
+					this->keys.clear();
+			}
 	};
 	/**
 	 * @brief Полное определение непрозрачного контекста стейта AES-шифрования
@@ -3572,35 +743,32 @@ namespace awh {
 		 *
 		 */
 		crypto_t::event_t event;
+		// Ключ шифрования, выводимый из пароля и соли
+		nts::sys::bytes_t key;
 		/**
-		 * Признак ожидания вектора инициализации
+		 * Базовый шифр AES с развёрнутым ключом
 		 *
-		 * @details Вектор инициализации передаётся в начале шифротекста: при
-		 *          шифровании он выписывается первой порцией выхода, при расшифровке
-		 *          вычитывается из первой порции входа, и до этого контекст
-		 *          расшифровки завести нечем
-		 *
+		 * @details Раундовые ключи живут здесь и затираются сбросом: выведенный из
+		 *          пароля ключ не должен оставаться в памяти после освобождения
 		 */
-		bool pending;
-		// Ключ шифрования
-		vector <uint8_t> key;
+		nts::cipher::aes_t aes;
 		/**
-		 * Удерживаемый хвост потока
+		 * Базовый шифр «Кузнечик» с развёрнутым ключом
 		 *
-		 * @details Служит двум надобностям по очереди: сперва накапливает вектор
-		 *          инициализации, покуда он не придёт целиком, затем удерживает
-		 *          последние октеты потока - имитовставка стоит в самом конце
-		 *          шифротекста, а какая порция окажется последней, до завершения
-		 *          работы неизвестно
-		 *
+		 * @details Шифр по ГОСТ Р 34.12-2015 с блоком в 128 разрядов и ключом в 256:
+		 *          договор потока его не различает и принимает наравне с AES
 		 */
-		vector <uint8_t> tail;
-		// Вектор инициализации
-		vector <uint8_t> ivec;
-		// Контекст выбранного шифра
-		const EVP_CIPHER * evp;
-		// Контекст шифрования
-		EVP_CIPHER_CTX * ctx;
+		nts::cipher::kuznyechik_t kuznyechik;
+		/**
+		 * Поточная обёртка шифрования
+		 *
+		 * @details Ведёт вектор инициализации и удерживаемый хвост сама по договору
+		 *          поточного шифрования: при шифровании вектор уходит первым в выход,
+		 *          имитовставка GCM дописывается в хвост на завершении; при расшифровке
+		 *          вектор копится из головы, метка удерживается и сличается лишь на
+		 *          завершении. Ручное накопление хвоста более не нужно
+		 */
+		nts::cipher::Stream stream;
 		/**
 		 * @brief Метод сброса стейта AES-шифрования
 		 *
@@ -3617,13 +785,12 @@ namespace awh {
 		 *
 		 */
 		void reset() noexcept {
-			// Если контекст шифрования заведён
-			if(this->ctx != nullptr){
-				// Освобождаем контекст шифрования
-				::EVP_CIPHER_CTX_free(this->ctx);
-				// Зануляем контекст шифрования
-				this->ctx = nullptr;
-			}
+			// Сбрасываем поточную обёртку шифрования
+			this->stream.clear();
+			// Затираем раундовые ключи базового шифра
+			this->aes.clear();
+			// Затираем раундовые ключи шифра «Кузнечик»
+			this->kuznyechik.clear();
 			/**
 			 * Гасится вся отведённая ёмкость, а не длина: укорочение набора
 			 * содержимое его не трогает, и хвост прежнего значения оставался
@@ -3631,23 +798,8 @@ namespace awh {
 			 */
 			// Выполняем затирание ключа шифрования
 			secret::erase(this->key);
-			// Выполняем затирание вектора инициализации
-			secret::erase(this->ivec);
 			// Освобождаем ключ шифрования
 			this->key.clear();
-			/**
-			 * Хвост потока гасится с освобождением памяти: ёмкость его берётся от
-			 * самой крупной принятой порции, и удержание этой ёмкости обращало бы
-			 * всякое следующее гашение в работу по величине наибольшей порции
-			 */
-			// Выполняем затирание удерживаемого хвоста потока с освобождением памяти
-			secret::release(this->tail);
-			// Освобождаем вектор инициализации
-			this->ivec.clear();
-			// Сбрасываем признак ожидания вектора инициализации
-			this->pending = true;
-			// Сбрасываем контекст выбранного шифра
-			this->evp = nullptr;
 			// Сбрасываем тип хэш-суммы
 			this->hash = crypto_t::hash_t::NONE;
 			// Сбрасываем тип шифрования
@@ -3667,36 +819,28 @@ namespace awh {
 		 *          сотых долей у самого шифрования. Пароль, соль и число итераций
 		 *          своими установками стейт сбрасывают, и уцелевший ключ означает,
 		 *          что выведен он из них же: сбрасывать довольно приметы одного лишь
-		 *          потока - контекст, вектор инициализации, удерживаемый хвост и
-		 *          направление работы
+		 *          потока - поточную обёртку и направление работы
 		 *
 		 */
 		void renew() noexcept {
-			// Если контекст шифрования заведён
-			if(this->ctx != nullptr){
-				// Освобождаем контекст шифрования
-				::EVP_CIPHER_CTX_free(this->ctx);
-				// Зануляем контекст шифрования
-				this->ctx = nullptr;
-			}
-			/**
-			 * Вектор инициализации затирается, но длины своей не теряет: она взята у
-			 * шифра, а шифр здесь тот же самый
-			 */
-			// Выполняем затирание вектора инициализации
-			secret::erase(this->ivec);
-			/**
-			 * Хвост потока гасится с освобождением памяти: ёмкость его берётся от
-			 * самой крупной принятой порции, и удержание этой ёмкости обращало бы
-			 * всякое следующее завершение потока в работу по величине наибольшей
-			 * порции за всю жизнь объекта - сколь бы мал ни был сам поток
-			 */
-			// Выполняем затирание удерживаемого хвоста потока с освобождением памяти
-			secret::release(this->tail);
-			// Сбрасываем признак ожидания вектора инициализации
-			this->pending = true;
+			// Сбрасываем поточную обёртку шифрования, сохраняя выведенный ключ
+			this->stream.clear();
 			// Сбрасываем направление работы потокового шифрования
 			this->event = crypto_t::event_t::NONE;
+		}
+		/**
+		 * @brief Метод получения базового шифра под текущий тип шифрования
+		 *
+		 * @return базовый шифр в обёртке блочного шифра
+		 *
+		 */
+		nts::cipher::block_t block() const noexcept {
+			// Если шифрование ведётся шифром «Кузнечик»
+			if(this->cipher == crypto_t::cipher_t::KUZNECHIK)
+				// Выводим шифр «Кузнечик»
+				return nts::cipher::block_t(this->kuznyechik);
+			// Выводим шифр AES
+			return nts::cipher::block_t(this->aes);
 		}
 		/**
 		 * @brief Конструктор
@@ -3706,8 +850,7 @@ namespace awh {
 		 hash(crypto_t::hash_t::NONE),
 		 cipher(crypto_t::cipher_t::NONE),
 		 mode(crypto_t::mode_t::NONE), rounds(0),
-		 event(crypto_t::event_t::NONE), pending(true),
-		 evp(nullptr), ctx(nullptr) {}
+		 event(crypto_t::event_t::NONE) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -3728,41 +871,6 @@ namespace driver {
 	 * Подписываемся на пространства имён AWH
 	 */
 	using namespace awh;
-
-	/**
-	 * @brief Охранник очереди ошибок библиотеки криптографии
-	 *
-	 * @details Библиотека криптографии складывает причины отказов в очередь,
-	 *          принадлежащую потоку, а не вызову, и сама её не опорожняет. Модуль
-	 *          очередь не читал вовсе, и оставленные им причины доставались
-	 *          соседнему коду: работа с защищённым соединением очередь как раз
-	 *          вычитывает и выдаёт в лог, отчего отказ рукопожатия сопровождался
-	 *          чужими причинами - от шифрования, случившегося до него.
-	 *
-	 *          Очередь снимается и на входе, и на выходе: на входе - чтобы модуль
-	 *          не принял чужую причину за свою, на выходе - чтобы своей не оставил
-	 *          никому. Снятие на выходе идёт разрушением охранника и потому
-	 *          происходит на всяком пути возврата, включая выход по исключению
-	 *
-	 */
-	struct purge_t {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit purge_t() noexcept {
-			// Снимаем очередь ошибок библиотеки криптографии
-			::ERR_clear_error();
-		}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		~purge_t() noexcept {
-			// Снимаем очередь ошибок библиотеки криптографии
-			::ERR_clear_error();
-		}
-	};
 
 	/**
 	 * @brief Шаблон функции затирания и очистки буфера результата
@@ -4073,182 +1181,45 @@ namespace driver {
 			try {
 				// Выполняем очистку блока с результатом
 				result.clear();
-				/**
-				 * Определяем тип хэш-суммы
-				 */
-				switch(static_cast <uint8_t> (hash)){
-					// Если тип хэш-суммы указан как HMAC_MD5
-					case static_cast <uint8_t> (crypto_t::hash_t::MD5): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(16, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные MD5-хэша
-						else driver::emit(digest, 16, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
-					// Если тип хэш-суммы указан как HMAC_SHA1
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA1): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(20, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные SHA1-хэша
-						else driver::emit(digest, 20, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
-					// Если тип хэш-суммы указан как HMAC_SHA224
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA224): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(28, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные SHA224-хэша
-						else driver::emit(digest, 28, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
-					// Если тип хэш-суммы указан как HMAC_SHA256
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA256): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(32, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные SHA256-хэша
-						else driver::emit(digest, 32, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
-					// Если тип хэш-суммы указан как HMAC_SHA384
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA384): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(48, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные SHA384-хэша
-						else driver::emit(digest, 48, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
-					// Если тип хэш-суммы указан как HMAC_SHA512
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA512): {
-						// Выделяем память для буфера данных
-						result.resize(driver::width(64, format), 0);
-						// Буфер для бинарного результата подписи
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						/**
-						 * @brief Выполняем получение подписи
-						 *
-						 * @details Отказ выработки подписи оставлял в буфере нули, и наружу уходила
-						 *          шестнадцатеричная запись нулей, от настоящей подписи неотличимая.
-						 *
-						 */
-						if(::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr) == nullptr)
-							// Выполняем очистку блока с результатом
-							result.clear();
-						// Формируем данные SHA512-хэша
-						else driver::emit(digest, 64, format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
+				// Определяем разрядность имитовставки по виду хэш-суммы: перечень библиотеки един
+				const size_t length = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
+				// Если вид хэш-суммы библиотеке не знаком
+				if(length == 0){
+					// Выполняем очистку блока с результатом
+					result.clear();
 					/**
-					 * Если тип хэш-суммы указан как ГОСТ Р 34.11-2012
-					 *
-					 * @details Имитовставка строится своими силами по RFC 2104: библиотека
-					 *          криптографии хэш-функции этой не знает, и её HMAC негоден
+					 * Если включён режим отладки
 					 */
-					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG256):
-					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG512): {
-						// Определяем разрядность вырабатываемой имитовставки
-						const size_t bits = ((hash == crypto_t::hash_t::STREEBOG256) ? 256 : 512);
-						// Выделяем память для буфера данных
-						result.resize(driver::width((bits / 8), format), 0);
-						// Буфер для двоичного значения имитовставки
-						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
-						// Выполняем выработку имитовставки
-						gost::hmac(digest, reinterpret_cast <const uint8_t *> (key.data()), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), bits);
-						// Формируем данные имитовставки
-						driver::emit(digest, (bits / 8), format, result);
-						// Выполняем затирание буфера промежуточных значений
-						::OPENSSL_cleanse(digest, sizeof(digest));
-					} break;
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {key.size(), buffer.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
 					/**
-					 * @brief Если тип хэш-суммы не установлен либо разбору не знаком
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Unsupported hash type", log::flag_t::CRITICAL);
+					#endif
+				// Если размер хэш-суммы передан правильно
+				} else {
+					// Выделяем память для буфера данных
+					result.resize(driver::width(length, format), 0);
+					// Буфер для бинарного результата подписи
+					vector <uint8_t> digest(length, 0);
+					/**
+					 * @brief Выполняем получение подписи единым вызовом библиотеки
 					 *
-					 * @details Незаданный либо разбору не знакомый тип хэш-суммы отвергается
-					 *          явно: работа выводила пустоту молча, и отличить её от пустого
-					 *          итога было нечем. Подпись ключом тот же случай называет прямо.
+					 * @details Код возврата проверяется: отказ оставлял в буфере нули, и наружу
+					 *          уходила их шестнадцатеричная запись, от настоящей подписи неотличимая.
 					 *
 					 */
-					default: {
+					if(!nts::digest::hmac(static_cast <nts::digest::hash_t> (hash), nts::view_t(reinterpret_cast <const uint8_t *> (key.data()), key.size()), nts::view_t(reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size()), digest.data(), length))
 						// Выполняем очистку блока с результатом
 						result.clear();
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {key.size(), buffer.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Unsupported hash type", log::flag_t::CRITICAL);
-						#endif
-					} break;
+					// Формируем данные имитовставки
+					else driver::emit(digest.data(), length, format, result);
+					// Выполняем затирание буфера промежуточных значений
+					nts::sys::wipe(digest);
 				}
 			/**
 			 * Если возникает ошибка
@@ -4318,16 +1289,6 @@ namespace driver {
 		// Если буфер данных передан
 		if((buffer != nullptr) || (size == 0)){
 			/**
-			 * Объекты библиотеки криптографии заводятся в области работы целиком:
-			 * заведены они внутри перехвата, и сбой отведения памяти после их
-			 * заведения уносил бы работу мимо освобождения - объекты оставались бы
-			 * висеть. Потоковый контекст живёт в стейте и освобождается сбросом
-			 */
-			// Цепочка объектов работы с BASE64
-			BIO * b64 = nullptr;
-			// Контекст разовой работы с симметричным ключом
-			EVP_CIPHER_CTX * ctx = nullptr;
-			/**
 			 * Выполняем отлов ошибок
 			 */
 			try {
@@ -4346,121 +1307,45 @@ namespace driver {
 						 */
 						// Признак успешно выполненной работы
 						bool success = false;
-						// Инициализируем объект BASE64
-						b64 = ::BIO_new(::BIO_f_base64());
-						// Если объект BASE64 инициализирован
-						if(b64 != nullptr){
-							// Инициализируем объект BIO
-							BIO * bio = ::BIO_new(::BIO_s_mem());
-							// Если объект BIO инициализирован
-							if(bio != nullptr){
-								// Размер обработанных данных
-								ssize_t length = 0;
-								// Устанавливаем флаги
-								::BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-								// Записываем параметры
-								::BIO_push(b64, bio);
-								/**
-								 * Определяем событие кодирование или декодирование
-								 */
-								switch(static_cast <uint8_t> (event)){
-									// Если производится кодирование данных
-									case static_cast <uint8_t> (crypto_t::event_t::ENCODE): {
-										// Выполняем кодирование в BASE64
-										length = ::BIO_write(b64, buffer, static_cast <int32_t> (size));
-										// Выполняем очистку объекта
-										BIO_flush(b64);
-										/**
-										 * Записанное сличается с поданным: договор объектов
-										 * ввода-вывода полноты записи не обещает, и запись
-										 * части буфера дала бы запись BASE64 части данных,
-										 * выданную за запись всех
-										 */
-										// Если запись выполнена целиком и не пуста
-										if((size > 0) && (length == static_cast <ssize_t> (size))){
-											// Выделяем память под запрошенный результат
-											result.resize((4 * ((length + 2) / 3)) + 1, 0);
-											// Выполняем чтение полученного результата
-											length = ::BIO_read(bio, result.data(), static_cast <int32_t> (result.size()));
-										/**
-										 * Отказ выражается длиной, а не пропуском чтения: длина
-										 * неполной записи осталась бы положительной, и работа
-										 * сочла бы её длиной выхода - обрезала бы по ней пустой
-										 * буфер и объявила успех
-										 */
-										// Если запись выполнена не целиком
-										} else length = -1;
-									} break;
-									// Если производится декодирование данных
-									case static_cast <uint8_t> (crypto_t::event_t::DECODE): {
-										// Выполняем декодирование из BASE64
-										length = ::BIO_write(bio, buffer, static_cast <int32_t> (size));
-										// Выполняем очистку объекта
-										BIO_flush(bio);
-										/**
-										 * Записанное сличается с поданным по тому же доводу,
-										 * что и при кодировании: разбор части записи выдал бы
-										 * часть данных за все
-										 */
-										// Если запись выполнена целиком и не пуста
-										if((size > 0) && (length == static_cast <ssize_t> (size))){
-											// Выделяем память под запрошенный результат
-											result.resize((3 * length / 4) + 1, 0);
-											// Выполняем чтение полученного результата
-											length = ::BIO_read(b64, result.data(), static_cast <int32_t> (result.size()));
-										/**
-										 * Отказ выражается длиной по тому же доводу, что и при
-										 * кодировании: длина неполной записи осталась бы
-										 * положительной и была бы принята за длину выхода
-										 */
-										// Если запись выполнена не целиком
-										} else length = -1;
-									} break;
-								}
-								/**
-								 * Длина выхода сличается с отведённым: чтение больше буфера
-								 * выдать не может, но обрезка по величине, буфером не покрытой,
-								 * увела бы работу за его конец
-								 */
-								// Если получение хэша произведено успешно
-								if((length > 0) && (static_cast <size_t> (length) <= result.size())){
-									// Удаляем все лишние символы
-									result.erase(result.begin() + length, result.end());
-									// Запоминаем признак успешно выполненной работы
-									success = true;
-								/**
-								 * Сообщение, октетов не имеющее, кодируется в пустоту:
-								 * работы здесь нет вовсе, и отказом это звать нельзя
-								 */
-								// Если сообщение октетов не имеет
-								} else if(size == 0)
-									// Запоминаем признак успешно выполненной работы
-									success = true;
-								/**
-								 * Отказ гасит буфер, а не очищает: разбор мог успеть выписать в
-								 * него часть выхода, а при расшифровке выход этот есть открытый
-								 * текст (3.10). Отказ записывается в лог единожды обёрткой
-								 */
-								// Если получение хэша не удалось
-								else driver::wipe(result);
-							}
-							/**
-							 * Очищаем всю цепочку BIO одним вызовом от головы:
-							 * после BIO_push(b64, bio) объект b64 владеет ссылкой на bio и освобождает его в своём деструкторе.
-							 * Раздельное освобождение bio и b64 приводит к двойному освобождению bio.
-							 */
-							::BIO_free_all(b64);
-							// Снимаем указатель освобождённого объекта
-							b64 = nullptr;
-						}
 						/**
-						 * Отказ здесь в лог не пишется: причины у работы BASE64 своей
-						 * нет - цепочка объектов ввода-вывода отказывает без разбора, -
-						 * и запись эта к записи обёртки ничего не добавляла бы, тогда
-						 * как обёртка называет направление работы и размер поданного
-						 * (4.12). У шифрования AES иначе: там причина есть, и записей
-						 * двое намеренно (7.4)
+						 * Определяем событие кодирование или декодирование
 						 */
+						switch(static_cast <uint8_t> (event)){
+							// Если производится кодирование данных
+							case static_cast <uint8_t> (crypto_t::event_t::ENCODE): {
+								// Буфер текстового представления BASE64
+								string encoded;
+								/**
+								 * Пустое сообщение кодируется в пустоту: работы здесь нет
+								 * вовсе, и отказом это звать нельзя - договор пустого входа
+								 */
+								// Если сообщение пусто либо кодирование выполнено
+								if((size == 0) || nts::codec::encode(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), encoded)){
+									// Переносим запись в буфер результата
+									result.assign(encoded.begin(), encoded.end());
+									// Запоминаем признак успешно выполненной работы
+									success = true;
+								// Отказ гасит буфер, а не очищает: часть выхода могла выписаться (3.10)
+								} else driver::wipe(result);
+							} break;
+							// Если производится декодирование данных
+							case static_cast <uint8_t> (crypto_t::event_t::DECODE): {
+								// Буфер двоичного содержания записи BASE64
+								vector <uint8_t> decoded;
+								/**
+								 * Пустая запись разбирается в пустоту: работы здесь нет
+								 * вовсе, и отказом это звать нельзя - договор пустого входа
+								 */
+								// Если запись пуста либо декодирование выполнено
+								if((size == 0) || nts::codec::decode(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), decoded)){
+									// Переносим содержание в буфер результата
+									result.assign(decoded.begin(), decoded.end());
+									// Запоминаем признак успешно выполненной работы
+									success = true;
+								// Отказ гасит буфер, а не очищает: открытый текст мог выписаться (3.10)
+								} else driver::wipe(result);
+							} break;
+						}
 						// Если работа не выполнена
 						if(!success)
 							// Выходим из функции с признаком отказа
@@ -4470,115 +1355,32 @@ namespace driver {
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES128):
 					// Если производится работы с AES192
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES192):
+					// Если производится работа шифром «Кузнечик»
+					case static_cast <uint16_t> (crypto_t::cipher_t::KUZNECHIK):
 					// Если производится работы с AES256
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES256): {
-						/**
-						 * Устройство шифротекста
-						 *
-						 * @details Вектор инициализации выписывается в начало шифротекста,
-						 *          а в режиме с проверкой подлинности имитовставка - в его
-						 *          конец. Прежде вектор выводился из пароля вместе с ключом,
-						 *          и повторное шифрование теми же паролем и солью давало ту
-						 *          же гамму: два сообщения, сложенные по модулю два, выдавали
-						 *          друг друга без всякого ключа
-						 */
-						// Размер вектора инициализации шифра
-						const size_t ivsize = state.ivec.size();
-						// Размер имитовставки режима с проверкой подлинности
-						const size_t tagsize = ((state.mode == crypto_t::mode_t::GCM) ? AWH_CRYPTO_TAG_SIZE : 0);
-						// Если контекст шифрования не создан
-						if(state.ctx == nullptr){
+						// Режим потока по режиму блочного шифрования
+						const nts::cipher::regime_t regime = ((state.mode == crypto_t::mode_t::GCM) ? nts::cipher::regime_t::GCM : nts::cipher::regime_t::FEEDBACK);
+						// Направление потока по событию
+						const nts::cipher::direction_t direction = ((event == crypto_t::event_t::ENCODE) ? nts::cipher::direction_t::ENCRYPT : nts::cipher::direction_t::DECRYPT);
+						// Признак того, что отказ завершения означает подделку шифротекста
+						const bool tampered = ((event == crypto_t::event_t::DECODE) && (state.mode == crypto_t::mode_t::GCM));
+						// Если поток шифрования не заведён (разовая работа)
+						if(!state.stream.ready()){
+							// Локальная поточная обёртка разовой работы
+							nts::cipher::Stream once;
+							// Буфер выхода разовой работы
+							vector <uint8_t> out;
 							/**
-							 * Если выполняется расшифровка, а данных не хватает даже на
-							 * вектор инициализации с имитовставкой
+							 * Разовая работа заводит локальный поток и прогоняет через него
+							 * весь буфер: вектор инициализации при зашифровании вырабатывается
+							 * из энтропии и уходит первым в выход, при расшифровании копится
+							 * из головы; имитовставку GCM обёртка ведёт сама
 							 */
-							if((event == crypto_t::event_t::DECODE) && (size < (ivsize + tagsize))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Ciphertext is too short to carry the initialization vector", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Ciphertext is too short to carry the initialization vector", log::flag_t::WARNING);
-								#endif
-								// Выходим из функции с признаком отказа
-								return false;
-							}
-							// Получаем буфер обрабатываемых данных
-							const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
-							/**
-							 * Если выполняется шифрование данных
-							 */
-							if(event == crypto_t::event_t::ENCODE){
-								// Выполняем формирование случайного вектора инициализации
-								if(!entropy::random(state.ivec.data(), ivsize)){
-									/**
-									 * Вектор инициализации гасится: выработка могла заполнить
-									 * его наполовину, и половина эта прошла бы в следующее
-									 * сообщение как часть нового вектора. Ключ при этом цел
-									 * и сбрасывать его не за чем - в отличие от заведения
-									 * потока (4.31), где к поре отказа заведён и контекст.
-									 *
-									 * Гасится вся отведённая ёмкость, а не длина вектора: смена
-									 * режима укорачивает вектор, ёмкость же оставляет прежней,
-									 * и хвост вектора от прежнего режима лежал бы за длиной
-									 * (3.10)
-									 */
-									// Выполняем затирание вектора инициализации
-									secret::erase(state.ivec);
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Error during initialization vector generation", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Error during initialization vector generation", log::flag_t::CRITICAL);
-									#endif
-									// Выходим из функции с признаком отказа
-									return false;
-								}
-							/**
-							 * Если выполняется расшифровка данных
-							 */
-							} else ::memcpy(state.ivec.data(), data, ivsize);
-							// Создаем контекст шифрования
-							ctx = ::EVP_CIPHER_CTX_new();
-							// Если контекст не создан
-							if(ctx == nullptr){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Error during AES context creation", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Error during AES context creation", log::flag_t::CRITICAL);
-								#endif
-								// Выходим из функции с признаком отказа
-								return false;
-							}
-							// Признак работы шифрования
-							const int32_t direction = ((event == crypto_t::event_t::ENCODE) ? AES_ENCRYPT : AES_DECRYPT);
-							// Выполняем инициализацию контекста шифрования
-							if(::EVP_CipherInit_ex(ctx, state.evp, nullptr, state.key.data(), state.ivec.data(), direction) != 1){
-								// Освобождаем контекст шифрования
-								::EVP_CIPHER_CTX_free(ctx);
-								// Снимаем указатель освобождённого объекта
-								ctx = nullptr;
+							// Заводим локальный поток разовой работы
+							if(!once.start(direction, state.block(), regime)){
+								// Затираем и очищаем выходной буфер
+								wipe(result);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -4595,38 +1397,10 @@ namespace driver {
 								// Выходим из функции с признаком отказа
 								return false;
 							}
-							// Отключаем padding (обязательно для потоковых режимов)
-							::EVP_CIPHER_CTX_set_padding(ctx, 0);
-							// Начало обрабатываемых данных
-							const uint8_t * source = ((event == crypto_t::event_t::ENCODE) ? data : (data + ivsize));
-							// Размер обрабатываемых данных
-							const size_t count = ((event == crypto_t::event_t::ENCODE) ? size : (size - ivsize - tagsize));
-							// Очищаем выходной буфер
-							result.clear();
-							/**
-							 * Шифрование выписывает вектор в начало результата, расшифровка
-							 * его лишь читает, поэтому размеры результата у них разные
-							 */
-							// Устанавливаем размер выходного буфера
-							result.resize((((event == crypto_t::event_t::ENCODE) ? (ivsize + tagsize) : 0) + count + AES_BLOCK_SIZE), 0);
-							/**
-							 * Если выполняется шифрование данных
-							 */
-							if(event == crypto_t::event_t::ENCODE)
-								// Выписываем вектор инициализации в начало результата
-								::memcpy(result.data(), state.ivec.data(), ivsize);
-							// Смещение записи результата
-							const size_t shift = ((event == crypto_t::event_t::ENCODE) ? ivsize : 0);
-							// Размер обработанных данных
-							int32_t length = 0;
-							// Выполняем обновление шифрования
-							if(::EVP_CipherUpdate(ctx, reinterpret_cast <uint8_t *> (result.data()) + shift, &length, source, static_cast <int32_t> (count)) != 1){
+							// Прогоняем весь буфер через локальный поток
+							if(!once.update(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), out)){
 								// Затираем и очищаем выходной буфер
 								wipe(result);
-								// Освобождаем контекст шифрования
-								::EVP_CIPHER_CTX_free(ctx);
-								// Снимаем указатель освобождённого объекта
-								ctx = nullptr;
 								/**
 								 * Если включён режим отладки
 								 */
@@ -4643,115 +1417,38 @@ namespace driver {
 								// Выходим из функции с признаком отказа
 								return false;
 							}
-							/**
-							 * При расшифровке в режиме с проверкой подлинности имитовставка
-							 * передаётся до завершения работы: именно ею завершение и
-							 * проверяет подлинность данных
-							 */
-							if((event == crypto_t::event_t::DECODE) && (tagsize > 0)){
-								// Выполняем установку имитовставки из хвоста шифротекста
-								if(::EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, static_cast <int32_t> (tagsize), const_cast <uint8_t *> (data + size - tagsize)) != 1){
-									// Затираем и очищаем выходной буфер
-									wipe(result);
-									// Освобождаем контекст шифрования
-									::EVP_CIPHER_CTX_free(ctx);
-									// Снимаем указатель освобождённого объекта
-									ctx = nullptr;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Error during authentication tag setup", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Error during authentication tag setup", log::flag_t::CRITICAL);
-									#endif
-									// Выходим из функции с признаком отказа
-									return false;
-								}
-							}
-							// Размер добавленных завершением данных
-							int32_t offset = 0;
-							// Выполняем завершение работы шифрования
-							if(::EVP_CipherFinal_ex(ctx, reinterpret_cast <uint8_t *> (result.data()) + shift + length, &offset) != 1){
+							// Завершаем локальный поток (сличение/дописывание метки GCM)
+							if(!once.finish(out)){
 								// Затираем и очищаем выходной буфер
 								wipe(result);
-								// Освобождаем контекст шифрования
-								::EVP_CIPHER_CTX_free(ctx);
-								// Снимаем указатель освобождённого объекта
-								ctx = nullptr;
-								/**
-								 * Отказ завершения при расшифровке в режиме с проверкой
-								 * подлинности означает подделку шифротекста, а не сбой
-								 */
 								/**
 								 * Если включён режим отладки
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::WARNING);
+									log::debug((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), log::flag_t::WARNING);
+									log::print((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), log::flag_t::WARNING);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
 							}
-							/**
-							 * При шифровании в режиме с проверкой подлинности имитовставка
-							 * снимается после завершения работы и дописывается в конец
-							 */
-							if((event == crypto_t::event_t::ENCODE) && (tagsize > 0)){
-								// Выполняем снятие имитовставки шифротекста
-								if(::EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, static_cast <int32_t> (tagsize), reinterpret_cast <uint8_t *> (result.data()) + shift + length + offset) != 1){
-									// Затираем и очищаем выходной буфер
-									wipe(result);
-									// Освобождаем контекст шифрования
-									::EVP_CIPHER_CTX_free(ctx);
-									// Снимаем указатель освобождённого объекта
-									ctx = nullptr;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Error during authentication tag retrieval", log::flag_t::CRITICAL);
-									#endif
-									// Выходим из функции с признаком отказа
-									return false;
-								}
-							}
-							// Изменяем размер результата на фактический размер данных
-							result.resize(shift + static_cast <size_t> (length + offset) + ((event == crypto_t::event_t::ENCODE) ? tagsize : 0));
-							// Освобождаем контекст
-							::EVP_CIPHER_CTX_free(ctx);
-							// Снимаем указатель освобождённого объекта
-							ctx = nullptr;
-						// Если контекст шифрования создан
+							// Переносим выход разовой работы в буфер результата
+							result.assign(out.begin(), out.end());
+						// Если поток шифрования заведён (потоковая работа)
 						} else {
 							// Очищаем выходной буфер
 							result.clear();
 							/**
-							 * Направление работы сверяется с тем, на которое заведён
-							 * контекст: контекст, заведённый на шифрование, расшифровать
-							 * не может, а довод направления в потоковом режиме прежде не
-							 * читался вовсе - расшифровка поверх контекста шифрования
-							 * молча шифровала ещё раз, и работа получала мусор
+							 * Направление работы сверяется с тем, на которое заведён поток:
+							 * поток, заведённый на шифрование, расшифровать не может, и
+							 * расшифровка поверх него молча шифровала бы ещё раз
 							 */
-							// Если направление работы не совпадает с направлением контекста
+							// Если направление работы не совпадает с направлением потока
 							if(state.event != event){
 								/**
 								 * Если включён режим отладки
@@ -4769,135 +1466,42 @@ namespace driver {
 								// Выходим из функции с признаком отказа
 								return false;
 							}
-								// Получаем буфер обрабатываемых данных
-								const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
-								// Размер обрабатываемых данных
-								size_t count = size;
-								// Размер выписываемого в начало потока вектора инициализации
-								size_t prefix = 0;
+							// Буфер выхода порции потока
+							vector <uint8_t> out;
+							/**
+							 * Порция подаётся в поточную обёртку: вектор инициализации и
+							 * удерживаемый хвост имитовставки GCM обёртка ведёт сама,
+							 * пустая выдача - законный успех
+							 */
+							// Подаём порцию в поточную обёртку
+							if(!state.stream.update(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), out)){
+								// Затираем и очищаем выходной буфер
+								wipe(result);
 								/**
-								 * Если выполняется шифрование данных, а вектор инициализации
-								 * в поток ещё не выписан
+								 * Стейт сбрасывается: часть потока обёрткой уже поглощена,
+								 * и продолжать работу поверх неё нельзя - поток разошёлся бы
+								 * с шифротекстом безвозвратно
 								 */
-								if((event == crypto_t::event_t::ENCODE) && state.pending)
-									// Запоминаем размер выписываемого вектора инициализации
-									prefix = ivsize;
+								// Выполняем сброс стейта шифрования
+								state.reset();
 								/**
-								 * Если выполняется расшифровка данных, а вектор инициализации
-								 * из потока ещё не вычитан
+								 * Если включён режим отладки
 								 */
-								else if((event == crypto_t::event_t::DECODE) && state.pending) {
-									// Определяем количество недостающих октетов вектора инициализации
-									const size_t need = (ivsize - state.tail.size());
-									// Определяем количество вычитываемых из потока октетов
-									const size_t take = ((count < need) ? count : need);
-									// Выполняем накопление вектора инициализации
-									state.tail.insert(state.tail.end(), data, data + take);
-									// Выполняем смещение в буфере обрабатываемых данных
-									data += take;
-									// Уменьшаем размер обрабатываемых данных
-									count -= take;
-									// Если вектор инициализации пришёл ещё не целиком
-									if(state.tail.size() < ivsize)
-										// Выходим из функции, выхода на этой порции нет
-										return true;
-									// Копируем накопленный вектор инициализации в стейт
-									::memcpy(state.ivec.data(), state.tail.data(), ivsize);
-									// Освобождаем накопитель вектора инициализации
-									state.tail.clear();
-									// Выполняем инициализацию контекста расшифровки
-									if(::EVP_CipherInit_ex(state.ctx, state.evp, nullptr, state.key.data(), state.ivec.data(), AES_DECRYPT) != 1){
-										/**
-										 * Стейт сбрасывается: вектор инициализации из потока
-										 * уже вычитан, и оставь мы поток в прежнем состоянии,
-										 * следующая порция была бы прочитана как вектор ещё раз
-										 */
-										// Выполняем сброс стейта AES-шифрования
-										state.reset();
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Записываем ошибку в лог
-											log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											log::print("Error during AES context initialization", log::flag_t::CRITICAL);
-										#endif
-										// Выходим из функции с признаком отказа
-										return false;
-									}
-									// Отключаем padding (обязательно для потоковых режимов)
-									::EVP_CIPHER_CTX_set_padding(state.ctx, 0);
-									// Снимаем признак ожидания вектора инициализации
-									state.pending = false;
-								}
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("Error cipher update", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
 								/**
-								 * При расшифровке в режиме с проверкой подлинности последние
-								 * октеты потока удерживаются: имитовставка стоит в самом конце
-								 * шифротекста, а какая порция окажется последней, до завершения
-								 * работы неизвестно
+								 * Если режим отладки не включён
 								 */
-								if((event == crypto_t::event_t::DECODE) && (tagsize > 0)){
-									// Выполняем накопление удерживаемого хвоста потока
-									state.tail.insert(state.tail.end(), data, data + count);
-									// Определяем количество октетов, которые можно обработать
-									count = ((state.tail.size() > tagsize) ? (state.tail.size() - tagsize) : 0);
-									// Устанавливаем начало обрабатываемых данных
-									data = state.tail.data();
-								}
-								// Буфер для выходных данных (на 1 блок больше — стандартная практика)
-								result.resize(prefix + count + AES_BLOCK_SIZE, 0);
-								/**
-								 * Если вектор инициализации выписывается в начало потока
-								 */
-								if(prefix > 0){
-									// Выписываем вектор инициализации в начало результата
-									::memcpy(result.data(), state.ivec.data(), ivsize);
-									// Снимаем признак ожидания вектора инициализации
-									state.pending = false;
-								}
-								// Обрабатываем весь входной буфер за один вызов (рекомендуется)
-								int32_t length = 0;
-								// Выполняем обновление шифрования
-								if((count > 0) && (::EVP_CipherUpdate(state.ctx, reinterpret_cast <uint8_t *> (result.data()) + prefix, &length, data, static_cast <int32_t> (count)) != 1)){
-									// Затираем и очищаем выходной буфер
-									wipe(result);
-									/**
-									 * Стейт сбрасывается: часть потока контекстом уже поглощена,
-									 * и продолжать работу поверх него нельзя - поток разошёлся бы
-									 * с шифротекстом безвозвратно
-									 */
-									// Выполняем сброс стейта AES-шифрования
-									state.reset();
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Error cipher update", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Error cipher update", log::flag_t::CRITICAL);
-									#endif
-									// Выходим из функции с признаком отказа
-									return false;
-								}
-								/**
-								 * Обработанные октеты снимаются с удерживаемого хвоста, в нём
-								 * остаются лишь те, что могут оказаться имитовставкой
-								 */
-								if((event == crypto_t::event_t::DECODE) && (tagsize > 0) && (count > 0))
-									// Выполняем снятие обработанных октетов с удерживаемого хвоста
-									state.tail.erase(state.tail.begin(), state.tail.begin() + count);
-								// Изменяем размер результата на фактический размер данных
-								result.resize(prefix + static_cast <size_t> (length));
+								#else
+									// Записываем ошибку в лог
+									log::print("Error cipher update", log::flag_t::CRITICAL);
+								#endif
+								// Выходим из функции с признаком отказа
+								return false;
+							}
+							// Переносим выход порции в буфер результата
+							result.assign(out.begin(), out.end());
 						}
 					} break;
 					// Если тип шифрования не установлен либо разбору не знаком
@@ -4929,14 +1533,6 @@ namespace driver {
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Если цепочка объектов работы с BASE64 заведена
-				if(b64 != nullptr)
-					// Освобождаем цепочку объектов работы с BASE64
-					::BIO_free_all(b64);
-				// Если контекст разовой работы заведён
-				if(ctx != nullptr)
-					// Освобождаем контекст разовой работы
-					::EVP_CIPHER_CTX_free(ctx);
 				/**
 				 * Стейт сбрасывается наравне с прочими отказами потокового пути (4.6):
 				 * сбой отведения памяти мог застать поток посреди работы - с частью
@@ -4957,11 +1553,13 @@ namespace driver {
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES128):
 					// Если производится работы с AES192
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES192):
+					// Если производится работа шифром «Кузнечик»
+					case static_cast <uint16_t> (crypto_t::cipher_t::KUZNECHIK):
 					// Если производится работы с AES256
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES256): {
-						// Если контекст потокового шифрования заведён
-						if(state.ctx != nullptr)
-							// Выполняем сброс стейта AES-шифрования
+						// Если поток шифрования заведён
+						if(state.stream.ready())
+							// Выполняем сброс стейта шифрования
 							state.reset();
 					} break;
 				}
@@ -5027,51 +1625,56 @@ namespace driver {
 	#endif
 
 	/**
-	 * @brief Функция выдачи пароля защиты приватного ключа RSA
+	 * @brief Функция чтения файла целиком в строку
 	 *
-	 * @details Выписка ключа берёт пароль с указанием длины, а вычитывание шло с
-	 *          умолчательным разбором библиотеки криптографии, берущим пароль до
-	 *          первого нулевого октета. Пароль, нулевой октет содержащий, уходил в
-	 *          файл целиком, а обратно подавался обрезанным по первому нулю - и
-	 *          ключ, только что выписанный, тем же объектом не открывался.
-	 *
-	 *          Разбор этот выдаёт ровно столько октетов, сколько в пароле есть,
-	 *          и содержимого их не разбирает
-	 *
-	 * @param buffer   буфер, в который выдаётся пароль
-	 * @param size     размер буфера в октетах
-	 * @param rwflag   направление работы: выписка либо вычитывание
-	 * @param userdata указатель на пароль защиты приватного ключа
-	 * @return         размер выданного пароля в октетах
+	 * @param path путь к читаемому файлу
+	 * @param text строка, в которую помещается содержимое файла
+	 * @return     признак успешности чтения файла
 	 *
 	 */
-	static int32_t password(char * buffer, int32_t size, int32_t rwflag, void * userdata) noexcept {
-		// Снимаем предупреждение о неиспользуемом параметре направления работы
-		(void) rwflag;
-		// Если буфер выдачи не подан либо места в нём нет
-		if((buffer == nullptr) || (size <= 0) || (userdata == nullptr))
-			// Выводим размер выданного пароля
-			return 0;
-		// Получаем ссылку на пароль защиты приватного ключа
-		const string & pass = (* reinterpret_cast <const string *> (userdata));
+	static bool read(const string & path, string & text) noexcept {
+		// Очищаем строку содержимого
+		text.clear();
+		// Файл для чтения
+		FILE * file = nullptr;
 		/**
-		 * Пароль, в буфер выдачи не умещающийся, выдаётся отказом, а не своей частью:
-		 * обрезанный пароль ключа не откроет, а отказ разбора от неверного пароля
-		 * ничем не отличается - вызывающий искал бы причину не там. Установка пароля
-		 * длиннее предела отвергается и сама (5.34), и отказ здесь - оплот на случай,
-		 * если библиотека отведёт буфер меньше собственного своего предела
+		 * Для операционной системы MS Windows
 		 */
-		// Если пароль защиты приватного ключа в буфер выдачи не умещается
-		if(pass.size() > static_cast <size_t> (size))
-			// Выводим размер выданного пароля
-			return 0;
-		// Если пароль защиты приватного ключа задан
-		if(!pass.empty())
-			// Выполняем копирование пароля в буфер выдачи
-			::memcpy(buffer, pass.data(), pass.size());
-		// Выводим размер выданного пароля
-		return static_cast <int32_t> (pass.size());
+		#if defined(_WIN32) || defined(_WIN64)
+			// Открываем файл
+			file = ::_wfopen(awh::fmk::convert(path).c_str(), L"rb");
+		/**
+		 * Для других операционных систем
+		 */
+		#else
+			// Открываем файл
+			file = ::fopen(path.c_str(), "rb");
+		#endif
+		// Если файл открыт удачно
+		if(file != nullptr){
+			// Устанавливаем указатель чтения в конец файла
+			::fseek(file, 0, SEEK_END);
+			// Получаем размер файла
+			const size_t size = static_cast <size_t> (::ftell(file));
+			// Возвращаем указатель чтения в начало файла
+			::fseek(file, 0, SEEK_SET);
+			// Отводим место под содержимое файла
+			text.resize(size);
+			// Читаем файл целиком
+			const size_t length = ::fread(text.data(), 1, size, file);
+			// Закрываем файл
+			::fclose(file);
+			// Если файл прочитан целиком
+			if(length == size)
+				// Выводим признак успешности чтения
+				return true;
+			// Снимаем недописанное содержимое
+			text.clear();
+		}
+		// Выводим признак отказа чтения
+		return false;
 	}
+
 	/**
 	 * @brief Функция оглашения разрядности ввозимого ключа RSA
 	 *
@@ -5086,13 +1689,11 @@ namespace driver {
 	 *          Прежде того ключ вводился молча, и слабость его наружу ничем не
 	 *          выказывалась. Порог оглашения задан меткой сборки и потому переменен
 	 *
-	 * @param key  ввозимый ключ RSA
+	 * @param bits разрядность ввозимого ключа RSA
 	 * @param type род ввозимого ключа
 	 *
 	 */
-	static void strength(EVP_PKEY * key, const crypto_t::key_type_t type) noexcept {
-		// Получаем разрядность ввозимого ключа
-		const size_t bits = static_cast <size_t> (::EVP_PKEY_bits(key));
+	static void strength(const size_t bits, const crypto_t::key_type_t type) noexcept {
 		// Если разрядность ключа порога достигает
 		if(bits >= static_cast <size_t> (AWH_CRYPTO_RSA_BITS))
 			// Выходим из функции
@@ -5130,215 +1731,6 @@ namespace driver {
 		#endif
 	}
 	/**
-	 * @brief Функция получения хэш-функции по типу хэш-суммы
-	 *
-	 * @param hash тип хэш-суммы
-	 * @return     хэш-функция библиотеки криптографии, либо nullptr если тип разбору не знаком
-	 *
-	 */
-	static const EVP_MD * evpmd(const crypto_t::hash_t hash) noexcept {
-		/**
-		 * Определяем тип хэш-суммы
-		 */
-		switch(static_cast <uint8_t> (hash)){
-			// Если тип хэш-суммы указан как MD5
-			case static_cast <uint8_t> (crypto_t::hash_t::MD5):
-				// Выводим хэш-функцию MD5
-				return ::EVP_md5();
-			// Если тип хэш-суммы указан как SHA1
-			case static_cast <uint8_t> (crypto_t::hash_t::SHA1):
-				// Выводим хэш-функцию SHA1
-				return ::EVP_sha1();
-			// Если тип хэш-суммы указан как SHA224
-			case static_cast <uint8_t> (crypto_t::hash_t::SHA224):
-				// Выводим хэш-функцию SHA224
-				return ::EVP_sha224();
-			// Если тип хэш-суммы указан как SHA256
-			case static_cast <uint8_t> (crypto_t::hash_t::SHA256):
-				// Выводим хэш-функцию SHA256
-				return ::EVP_sha256();
-			// Если тип хэш-суммы указан как SHA384
-			case static_cast <uint8_t> (crypto_t::hash_t::SHA384):
-				// Выводим хэш-функцию SHA384
-				return ::EVP_sha384();
-			// Если тип хэш-суммы указан как SHA512
-			case static_cast <uint8_t> (crypto_t::hash_t::SHA512):
-				// Выводим хэш-функцию SHA512
-				return ::EVP_sha512();
-		}
-		// Выводим отсутствие хэш-функции
-		return nullptr;
-	}
-	/**
-	 * @brief Функция получения вида подписи по ключу
-	 *
-	 * @details Вид выводится у самого ключа, а не подаётся вызывающей стороной: запись
-	 *          ключа вид свой несёт, и подача его отдельно позволила бы им разойтись.
-	 *
-	 *          Кривая ключа ECDSA сличается с P-256: договор объявляет одну лишь эту
-	 *          кривую, и ключ на иной кривой подписывался бы схемой, которой вызывающая
-	 *          сторона не просила, - а по виду подписи отличить их было бы нечем
-	 *
-	 * @param key ключ подписи
-	 * @return    вид подписи ключа, либо NONE если ключ договору не отвечает
-	 *
-	 */
-	static crypto_t::signature_t kind(EVP_PKEY * key) noexcept {
-		// Если ключ подписи не заведён
-		if(key == nullptr)
-			// Выводим отсутствие вида подписи
-			return crypto_t::signature_t::NONE;
-		/**
-		 * Определяем разновидность ключа подписи
-		 */
-		switch(::EVP_PKEY_id(key)){
-			// Если ключ подписи является ключом RSA
-			case EVP_PKEY_RSA:
-				// Выводим вид подписи RSA
-				return crypto_t::signature_t::RSA;
-			// Если ключ подписи является ключом Ed25519
-			case EVP_PKEY_ED25519:
-				// Выводим вид подписи Ed25519
-				return crypto_t::signature_t::ED25519;
-			// Если ключ подписи является ключом на эллиптической кривой
-			case EVP_PKEY_EC: {
-				// Получаем ключ на эллиптической кривой
-				const EC_KEY * ec = ::EVP_PKEY_get0_EC_KEY(key);
-				// Если ключ на эллиптической кривой получить не удалось
-				if(ec == nullptr)
-					// Выводим отсутствие вида подписи
-					return crypto_t::signature_t::NONE;
-				// Получаем группу точек эллиптической кривой
-				const EC_GROUP * group = ::EC_KEY_get0_group(ec);
-				// Если группа точек эллиптической кривой не получена
-				if(group == nullptr)
-					// Выводим отсутствие вида подписи
-					return crypto_t::signature_t::NONE;
-				// Если кривая ключа является кривой P-256
-				if(::EC_GROUP_get_curve_name(group) == NID_X9_62_prime256v1)
-					// Выводим вид подписи ECDSA
-					return crypto_t::signature_t::ECDSA;
-			} break;
-		}
-		// Выводим отсутствие вида подписи
-		return crypto_t::signature_t::NONE;
-	}
-	/**
-	 * @brief Функция установки схемы дополнения подписи RSA
-	 *
-	 * @details Схема применяется к ключам RSA и только к ним: у ключей иного
-	 *          устройства дополнения нет вовсе, и установка его на них отменила
-	 *          бы работу без всякого довода.
-	 *
-	 *          Длина соли вероятностной схемы берётся равной длине хэш-суммы -
-	 *          так её выбирает и проверяющая сторона, разбирающая подпись без
-	 *          уговора о длине (RFC 8017 9.1).
-	 *
-	 * @param pctx    контекст ключа подписи
-	 * @param key     ключ подписи
-	 * @param md      функция хэширования подписи
-	 * @param padding схема дополнения подписи RSA
-	 * @return        результат установки схемы дополнения
-	 *
-	 */
-	static bool padding(EVP_PKEY_CTX * pctx, EVP_PKEY * key, const EVP_MD * md, const crypto_t::padding_t padding) noexcept {
-		// Если ключ подписи устройства RSA не имеет
-		if(::EVP_PKEY_base_id(key) != EVP_PKEY_RSA)
-			// Выводим успех: дополнения у такого ключа нет вовсе
-			return true;
-		/**
-		 * Схема, разбору не знакомая, отвергается наравне с незаданной: отбор её
-		 * вёлся сличением с одной лишь вероятностной схемой, и всякое иное значение
-		 * молча уходило дополнением PKCS#1 - схемой, доказанной стойкости не
-		 * имеющей и выбираемой лишь явно (5.1). Тот же довод стоит у режима
-		 * блочного шифрования (5.27) и у вида записи хэш-суммы (5.31)
-		 */
-		// Если схема дополнения подписи не задана либо разбору не знакома
-		if((padding != crypto_t::padding_t::PSS) && (padding != crypto_t::padding_t::PKCS1)){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
-			#endif
-			// Выводим отказ установки схемы дополнения
-			return false;
-		}
-		// Выполняем установку схемы дополнения подписи
-		if(::EVP_PKEY_CTX_set_rsa_padding(pctx, ((padding == crypto_t::padding_t::PSS) ? RSA_PKCS1_PSS_PADDING : RSA_PKCS1_PADDING)) <= 0){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Error during signature padding setup", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Error during signature padding setup", log::flag_t::CRITICAL);
-			#endif
-			// Выводим отказ установки схемы дополнения
-			return false;
-		}
-		/**
-		 * Если схема дополнения подписи вероятностная
-		 */
-		if(padding == crypto_t::padding_t::PSS){
-			/**
-			 * Отказ этих установок записывается наравне с отказом самой схемы
-			 * дополнения: прежде он оставался молчаливым, и вероятностная подпись
-			 * отказывала без единого следа о том, что именно не задалось
-			 */
-			// Выполняем установку функции хэширования маски
-			if(::EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, md) <= 0){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Error during signature mask generation function setup", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Error during signature mask generation function setup", log::flag_t::CRITICAL);
-				#endif
-				// Выводим отказ установки схемы дополнения
-				return false;
-			}
-			// Выполняем установку длины соли подписи
-			if(::EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST) <= 0){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Error during signature salt length setup", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Error during signature salt length setup", log::flag_t::CRITICAL);
-				#endif
-				// Выводим отказ установки схемы дополнения
-				return false;
-			}
-		}
-		// Выводим успех установки схемы дополнения
-		return true;
-	}
-	/**
 	 * @brief Функция инициализации контекста шифрования
 	 *
 	 * @param cipher тип шифрования (AES128, AES192, AES256)
@@ -5350,7 +1742,7 @@ namespace driver {
 	 * @return       результат инициализации
 	 *
 	 */
-	static bool cipher(const crypto_t::cipher_t cipher, const crypto_t::mode_t mode, const crypto_t::hash_t hash, const string & pass, const string & salt, const uint32_t rounds, state_t & state) noexcept {
+	static bool cipher(const crypto_t::cipher_t cipher, const crypto_t::mode_t mode, const crypto_t::hash_t hash, const nts::sys::bytes_t & pass, const nts::sys::bytes_t & salt, const uint32_t rounds, state_t & state) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если пароль для шифрования не пустой
@@ -5360,22 +1752,18 @@ namespace driver {
 			 */
 			try {
 				/**
-				 * Прежние ключ и вектор затираются перед выводом новых: освобождение
-				 * набора содержимое не гасит, и прежний ключ оставался лежать в памяти.
-				 * Гасится вся отведённая ёмкость, а не длина: укорочение набора
-				 * содержимое его не трогает, и хвост прежнего значения оставался бы
-				 * лежать за длиной
+				 * @brief Выполняем затирание прежнего ключа шифрования
+				 *
+				 * @details Прежние ключ и вектор затираются перед выводом новых: освобождение
+				 *          набора содержимое не гасит, и прежний ключ оставался лежать в памяти.
+				 *          Гасится вся отведённая ёмкость, а не длина: укорочение набора
+				 *          содержимое его не трогает, и хвост прежнего значения оставался бы
+				 *          лежать за длиной.
+				 *
 				 */
-				// Выполняем затирание прежнего ключа шифрования
 				secret::erase(state.key);
-				// Выполняем затирание прежнего вектора инициализации
-				secret::erase(state.ivec);
 				// Обнуляем массив ключа
 				state.key.clear();
-				// Обнуляем массив IVEC
-				state.ivec.clear();
-				// Тип шифрования AES
-				const EVP_CIPHER * evp = ::EVP_enc_null();
 				/**
 				 * Определяем длину шифрования
 				 */
@@ -5384,22 +1772,21 @@ namespace driver {
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES128): {
 						// Устанавливаем размер массива KEY
 						state.key.resize(16, 0);
-						// Устанавливаем функцию шифрования
-						evp = ((mode == crypto_t::mode_t::GCM) ? ::EVP_aes_128_gcm() : ::EVP_aes_128_cfb128());
 					} break;
 					// Устанавливаем шифрование в 192
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES192): {
 						// Устанавливаем размер массива KEY
 						state.key.resize(24, 0);
-						// Устанавливаем функцию шифрования
-						evp = ((mode == crypto_t::mode_t::GCM) ? ::EVP_aes_192_gcm() : ::EVP_aes_192_cfb128());
 					} break;
 					// Устанавливаем шифрование в 256
 					case static_cast <uint16_t> (crypto_t::cipher_t::AES256): {
 						// Устанавливаем размер массива KEY
 						state.key.resize(32, 0);
-						// Устанавливаем функцию шифрования
-						evp = ((mode == crypto_t::mode_t::GCM) ? ::EVP_aes_256_gcm() : ::EVP_aes_256_cfb128());
+					} break;
+					// Устанавливаем шифр «Кузнечик» по ГОСТ Р 34.12-2015
+					case static_cast <uint16_t> (crypto_t::cipher_t::KUZNECHIK): {
+						// Устанавливаем размер массива KEY
+						state.key.resize(32, 0);
 					} break;
 					// Если ничего не выбрано
 					default: {
@@ -5417,28 +1804,31 @@ namespace driver {
 							log::print("Unsupported cipher type", log::flag_t::CRITICAL);
 						#endif
 						/**
-						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
-						 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
-						 * остались от прежнего вывода - следующий вызов с прежними метками
-						 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
-						 * сообщив
+						 * @brief Выполняем сброс стейта AES-шифрования
+						 *
+						 * @details Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+						 *          уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+						 *          остались от прежнего вывода - следующий вызов с прежними метками
+						 *          счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не сообщив.
+						 *
 						 */
-						// Выполняем сброс стейта AES-шифрования
 						state.reset();
 						// Возвращаем результат работы функции
 						return result;
 					}
 				}
 				/**
-				 * Режим блочного шифрования отвергается, если он не задан: прежде
-				 * режим был один и в доводах не значился вовсе. Отвергается и всякий
-				 * иной, разбору не знакомый: отбор шифра ведётся сличением с одним
-				 * лишь счётчиком Галуа, и значение, ни одному из режимов не отвечающее,
-				 * молча ушло бы в гаммирование - в работу без проверки подлинности,
-				 * которой вызывающий не просил. Шифр к этой поре ещё не в деле:
-				 * длина вектора инициализации берётся у него ниже
+				 * @brief Если режим блочного шифрования не задан либо разбору не знаком
+				 *
+				 * @details Режим блочного шифрования отвергается, если он не задан: прежде
+				 *          режим был один и в доводах не значился вовсе. Отвергается и всякий
+				 *          иной, разбору не знакомый: отбор шифра ведётся сличением с одним
+				 *          лишь счётчиком Галуа, и значение, ни одному из режимов не отвечающее,
+				 *          молча ушло бы в гаммирование - в работу без проверки подлинности,
+				 *          которой вызывающий не просил. Шифр к этой поре ещё не в деле:
+				 *          длина вектора инициализации берётся у него ниже.
+				 *
 				 */
-				// Если режим блочного шифрования не задан либо разбору не знаком
 				if((mode != crypto_t::mode_t::GCM) && (mode != crypto_t::mode_t::CFB)){
 					/**
 					 * Если включён режим отладки
@@ -5454,113 +1844,62 @@ namespace driver {
 						log::print("Block cipher mode is not set or is unsupported", log::flag_t::CRITICAL);
 					#endif
 					/**
-					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
-					 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
-					 * остались от прежнего вывода - следующий вызов с прежними метками
-					 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
-					 * сообщив
+					 * @brief Выполняем сброс стейта AES-шифрования
+					 *
+					 * @details Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+					 *          уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+					 *          остались от прежнего вывода - следующий вызов с прежними метками
+					 *          счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не сообщив.
+					 *
 					 */
-					// Выполняем сброс стейта AES-шифрования
+					state.reset();
+					// Возвращаем результат работы функции
+					return result;
+				}
+				// Если вид хэш-суммы библиотеке не знаком
+				if(nts::digest::length(static_cast <nts::digest::hash_t> (hash)) == 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Unsupported hash type", log::flag_t::CRITICAL);
+					#endif
+					/**
+					 * @brief Выполняем сброс стейта AES-шифрования
+					 *
+					 * @details Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+					 *          уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+					 *          остались от прежнего вывода - следующий вызов с прежними метками
+					 *          счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не сообщив.
+					 *
+					 */
 					state.reset();
 					// Возвращаем результат работы функции
 					return result;
 				}
 				/**
-				 * Размер вектора инициализации берётся у самого шифра: у гаммирования
-				 * он равен блоку, у счётчика Галуа - двенадцати октетам
+				 * @brief Если длина пароля либо соли превышает предел разрядности библиотеки криптографии
+				 *
+				 * @details Из пароля выводится один лишь ключ: вектор инициализации выводился
+				 *          оттуда же, отчего повторное шифрование теми же паролем и солью
+				 *          давало ту же гамму - два сообщения, сложенные по модулю два, выдавали
+				 *          друг друга без всякого ключа. Вектор теперь берётся случайным на
+				 *          каждое сообщение и выписывается в начало шифротекста.
+				 *
+				 * @details Предел разрядности довода библиотеки криптографии отвергается явно
+				 *          и здесь: длины пароля и соли приводятся к знаковому 32-битному
+				 *          числу, и пароль свыше двух гигаоктетов вывелся бы в ключ по своей
+				 *          обрезанной части - работа думала бы, что взяла его целиком.
+				 *
 				 */
-				// Устанавливаем размер массива IVEC
-				state.ivec.resize(static_cast <size_t> (::EVP_CIPHER_iv_length(evp)), 0);
-				// Выбираем хэш-функцию
-				const EVP_MD * md = nullptr;
-				/**
-				 * Определяем тип хэш-суммы
-				 */
-				switch(static_cast <uint8_t> (hash)){
-					// Если тип хэш-суммы указан как MD5
-					case static_cast <uint8_t> (crypto_t::hash_t::MD5):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_md5();
-					break;
-					// Если тип хэш-суммы указан как SHA1
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA1):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_sha1();
-					break;
-					// Если тип хэш-суммы указан как SHA224
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA224):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_sha224();
-					break;
-					// Если тип хэш-суммы указан как SHA256
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA256):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_sha256();
-					break;
-					// Если тип хэш-суммы указан как SHA384
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA384):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_sha384();
-					break;
-					// Если тип хэш-суммы указан как SHA512
-					case static_cast <uint8_t> (crypto_t::hash_t::SHA512):
-						// Устанавливаем функцию хэширования
-						md = ::EVP_sha512();
-					break;
-					/**
-					 * Если тип хэш-суммы указан как ГОСТ Р 34.11-2012
-					 *
-					 * @details Хэш-функция библиотеке криптографии не известна, оттого
-					 *          её указатель остаётся пустым, а вывод ключа идёт своим
-					 *          путём ниже. Пустота указателя здесь законна и отказом
-					 *          не является
-					 */
-					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG256):
-					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG512):
-					break;
-					// Если ничего не выбрано
-					default: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Unsupported hash type", log::flag_t::CRITICAL);
-						#endif
-						/**
-						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
-						 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
-						 * остались от прежнего вывода - следующий вызов с прежними метками
-						 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
-						 * сообщив
-						 */
-						// Выполняем сброс стейта AES-шифрования
-						state.reset();
-						// Возвращаем результат работы функции
-						return result;
-					}
-				}
-				/**
-				 * Из пароля выводится один лишь ключ: вектор инициализации выводился
-				 * оттуда же, отчего повторное шифрование теми же паролем и солью
-				 * давало ту же гамму - два сообщения, сложенные по модулю два, выдавали
-				 * друг друга без всякого ключа. Вектор теперь берётся случайным на
-				 * каждое сообщение и выписывается в начало шифротекста
-				 */
-				/**
-				 * Предел разрядности довода библиотеки криптографии отвергается явно
-				 * и здесь: длины пароля и соли приводятся к знаковому 32-битному
-				 * числу, и пароль свыше двух гигаоктетов вывелся бы в ключ по своей
-				 * обрезанной части - работа думала бы, что взяла его целиком
-				 */
-				// Если длина пароля либо соли превышает предел разрядности библиотеки криптографии
-				if((pass.length() > static_cast <size_t> (INT32_MAX)) || (salt.length() > static_cast <size_t> (INT32_MAX))){
+				if((pass.size() > static_cast <size_t> (INT32_MAX)) || (salt.size() > static_cast <size_t> (INT32_MAX))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -5575,23 +1914,26 @@ namespace driver {
 						log::print("Password or salt size exceeds the limit of the cryptography library", log::flag_t::CRITICAL);
 					#endif
 					/**
-					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
-					 * уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
-					 * остались от прежнего вывода - следующий вызов с прежними метками
-					 * счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не
-					 * сообщив
+					 * @brief Выполняем сброс стейта AES-шифрования
+					 *
+					 * @details Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
+					 *          уже отведён и заполнен нулями, а метки разрядности и хэш-суммы
+					 *          остались от прежнего вывода - следующий вызов с прежними метками
+					 *          счёл бы ключ готовым и зашифровал бы нулевым ключом, никому не сообщив.
+					 *
 					 */
-					// Выполняем сброс стейта AES-шифрования
 					state.reset();
 					// Возвращаем результат работы функции
 					return result;
 				}
 				/**
-				 * Соль работой не требуется, но без неё вывод ключа теряет всякую
-				 * стойкость к предвычисленным таблицам: один и тот же пароль даёт
-				 * один и тот же ключ у всех, кто им пользуется
+				 * @brief Если соль вывода ключа не установлена
+				 *
+				 * @details Соль работой не требуется, но без неё вывод ключа теряет всякую
+				 *          стойкость к предвычисленным таблицам: один и тот же пароль даёт
+				 *          один и тот же ключ у всех, кто им пользуется.
+				 *
 				 */
-				// Если соль вывода ключа не установлена
 				if(salt.empty()){
 					/**
 					 * Если включён режим отладки
@@ -5608,32 +1950,19 @@ namespace driver {
 					#endif
 				}
 				/**
-				 * Если хэш-функция задана видом ГОСТ Р 34.11-2012
+				 * @brief Выполняем вывод ключа шифрования единым вызовом библиотеки
 				 *
-				 * @details Вывод ключа библиотеки криптографии берёт её же хэш-функцию,
-				 *          а этой она не знает вовсе. Вывод строится своими силами по
-				 *          RFC 8018 поверх своей имитовставки; отказать он не может,
-				 *          оттого и признака отказа у него нет
+				 * @details Вывод ключа шифрования берёт хэш-функцию библиотеки: единый вызов
+				 *          PBKDF2 по RFC 8018 закрывает и классические хэши, и ГОСТ Р 34.11-2012,
+				 *          оттого отдельная ветка для Стрибога более не нужна.
+				 *
 				 */
-				if((hash == crypto_t::hash_t::STREEBOG256) || (hash == crypto_t::hash_t::STREEBOG512)){
-					// Выполняем вывод ключа шифрования
-					gost::pbkdf2(
-						state.key.data(), state.key.size(),
-						reinterpret_cast <const uint8_t *> (pass.c_str()), pass.length(),
-						(salt.empty() ? reinterpret_cast <const uint8_t *> ("") : reinterpret_cast <const uint8_t *> (salt.c_str())), salt.length(),
-						rounds, ((hash == crypto_t::hash_t::STREEBOG256) ? 256 : 512)
-					);
-					// Устанавливаем признак успешно выполненной работы
-					result = true;
-				// Генерация ключа шифрования через PBKDF2
-				} else result = (::PKCS5_PBKDF2_HMAC(
-					pass.c_str(),
-					static_cast <int32_t> (pass.length()),
-					(salt.empty() ? nullptr : reinterpret_cast <const uint8_t *> (salt.c_str())),
-					static_cast <int32_t> (salt.length()),
-					static_cast <int32_t> (rounds), md,
-					static_cast <int32_t> (state.key.size()), state.key.data()
-				) == 1);
+				result = nts::digest::pbkdf2(
+					static_cast <nts::digest::hash_t> (hash),
+					nts::view_t(pass.data(), pass.size()),
+					nts::view_t(salt.data(), salt.size()),
+					rounds, state.key.data(), state.key.size()
+				);
 				// Если инициализация не произошла
 				if(!result){
 					// Выполняем сброс стейта AES-шифрования
@@ -5653,8 +1982,12 @@ namespace driver {
 					#endif
 				// Если инициализация произошла успешно
 				} else {
-					// Устанавливаем контекст шифрования в стейт
-					state.evp = evp;
+					// Если шифрование ведётся шифром «Кузнечик»
+					if(cipher == crypto_t::cipher_t::KUZNECHIK)
+						// Разворачиваем ключ шифра «Кузнечик»
+						result = state.kuznyechik.key(nts::view_t(state.key.data(), state.key.size()));
+					// Разворачиваем ключ базового шифра AES
+					else result = state.aes.key(nts::view_t(state.key.data(), state.key.size()));
 					// Устанавливаем тип хэш-суммы в стейт
 					state.hash = hash;
 					// Устанавливаем тип шифрования в стейт
@@ -5669,11 +2002,13 @@ namespace driver {
 			 */
 			} catch(const exception & error) {
 				/**
-				 * Стейт сбрасывается целиком по тому же доводу, что и при отказе
-				 * вывода ключа: сбой мог застать работу после отведения ключа, но
-				 * до его вывода
+				 * @brief Снимаем признак успешно выполненной работы
+				 *
+				 * @details Стейт сбрасывается целиком по тому же доводу, что и при отказе
+				 *          вывода ключа: сбой мог застать работу после отведения ключа, но
+				 *          до его вывода.
+				 *
 				 */
-				// Снимаем признак успешно выполненной работы
 				result = false;
 				// Выполняем сброс стейта AES-шифрования
 				state.reset();
@@ -5705,7 +2040,7 @@ awh::Crypto::Params_RSA::Params_RSA() noexcept :
  rounds(AWH_CRYPTO_AES_ROUNDS),
  mode(crypto_t::mode_t::GCM),
  padding(crypto_t::padding_t::PSS),
- salt{""}, password{""}, passwordRSA{""},
+ salt(), password(), passwordRSA(),
  state(nullptr), key(nullptr) {}
 
 /**
@@ -5746,8 +2081,6 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5811,8 +2144,6 @@ void awh::Crypto::salt(string_view salt) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5849,7 +2180,7 @@ void awh::Crypto::salt(string_view salt) noexcept {
 		 * ключа пошёл бы от нулей, никому о том не сообщив
 		 */
 		// Собираем новое значение прежде правки объекта
-		string value(salt);
+		nts::sys::bytes_t value(reinterpret_cast <const uint8_t *> (salt.data()), reinterpret_cast <const uint8_t *> (salt.data()) + salt.size());
 		// Сбрасываем стейт шифрования
 		this->_params.state->reset();
 		/**
@@ -5901,8 +2232,6 @@ void awh::Crypto::password(string_view password) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5939,7 +2268,7 @@ void awh::Crypto::password(string_view password) noexcept {
 		 * ключа пошёл бы от нулей, никому о том не сообщив
 		 */
 		// Собираем новое значение прежде правки объекта
-		string value(password);
+		nts::sys::bytes_t value(reinterpret_cast <const uint8_t *> (password.data()), reinterpret_cast <const uint8_t *> (password.data()) + password.size());
 		// Сбрасываем стейт шифрования
 		this->_params.state->reset();
 		/**
@@ -5991,8 +2320,6 @@ void awh::Crypto::mode(const mode_t mode) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -6070,33 +2397,6 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 	 */
 	try {
 		/**
-		 * Предел выдачи пароля библиотекой криптографии отвергается: выписка ключа
-		 * берёт пароль с указанием длины и потому принимает всякий, а буфер выдачи
-		 * при вычитывании отведён библиотекой по своей мерке. Пароль длиннее защитил
-		 * бы ключ целиком, а обратно подавался бы обрезанным - и ключ, только что
-		 * выписанный, тем же объектом не открывался. Довод тот же, что и у пароля с
-		 * нулевым октетом (5.32), и отказ здесь по той же причине: работа, у которой
-		 * запись и чтение расходятся, работой не является
-		 */
-		// Если длина пароля защиты приватного ключа предел выдачи превышает
-		if(password.size() > static_cast <size_t> (PEM_BUFSIZE)){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Private key password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {password.size()}, log::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Private key password size exceeds the limit of the cryptography library", log::flag_t::CRITICAL);
-			#endif
-			// Выходим из функции
-			return;
-		}
-		/**
 		 * Новое значение собирается прежде правки объекта, а не поверх затёртого:
 		 * присвоение отводит память и потому способно отказать, а к поре отказа
 		 * прежнее значение было уже погашено. Объект оставался с нулями в поле, и
@@ -6105,7 +2405,7 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 		 * тем и отличается порядок здесь от порядка у пароля шифрования данных (3.9)
 		 */
 		// Собираем новое значение прежде правки объекта
-		string value(password);
+		nts::sys::bytes_t value(reinterpret_cast <const uint8_t *> (password.data()), reinterpret_cast <const uint8_t *> (password.data()) + password.size());
 		/**
 		 * Прежний пароль защиты приватного ключа затирается: строка стандартной библиотеки при записи
 		 * поверх содержимое не гасит, и прежнее значение оставалось лежать в памяти
@@ -6180,8 +2480,6 @@ template <typename T>
  *
  */
 auto awh::Crypto::hash(string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -6252,8 +2550,6 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hash(const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -6354,8 +2650,6 @@ template <typename T>
  *
  */
 auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -6429,8 +2723,6 @@ template <typename T>
  *
  */
 auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash, const format_t format) const noexcept -> T {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	T result;
 	// Если текст передан
@@ -6505,8 +2797,6 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -6611,8 +2901,6 @@ template <typename A, typename B>
  *
  */
 auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash, const format_t format) const noexcept -> A {
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	A result;
 	// Если текст передан
@@ -6717,8 +3005,6 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -6734,125 +3020,28 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 	try {
 		// Получаем состояние объекта
 		state_t & state = (* this->_params.state);
-		// Если контекст шифрования уже создан
-		if((result = (state.ctx != nullptr))){
-			// Размер имитовставки режима с проверкой подлинности
-			const size_t tagsize = ((state.mode == mode_t::GCM) ? AWH_CRYPTO_TAG_SIZE : 0);
-			/**
-			 * Расшифровка, не получившая вектора инициализации целиком, отвергается
-			 * здесь: контекст расшифровки заводится лишь по вычитывании вектора из
-			 * начала потока, и завершение шло по контексту, ключом не наделённому
-			 */
-			// Если вектор инициализации из потока вычитан не целиком
-			if((state.event == event_t::DECODE) && state.pending){
-				// Снимаем с буфера то, что дописала работа завершения
-				driver::truncate(buffer, origin, (state.event == event_t::DECODE));
-				// Выполняем сброс стейта AES-шифрования
-				state.reset();
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Ciphertext does not carry the full initialization vector", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Ciphertext does not carry the full initialization vector", log::flag_t::WARNING);
-				#endif
-				// Выходим из метода
-				return (result = false);
-			}
-			/**
-			 * При расшифровке в режиме с проверкой подлинности имитовставка
-			 * передаётся до завершения работы: именно ею завершение и проверяет
-			 * подлинность данных. Лежит она в удерживаемом хвосте потока
-			 */
-			if((state.event == event_t::DECODE) && (tagsize > 0)){
-				// Если удерживаемый хвост потока имитовставки не несёт
-				if(state.tail.size() != tagsize){
-					// Снимаем с буфера то, что дописала работа завершения
-					driver::truncate(buffer, origin, (state.event == event_t::DECODE));
-					// Выполняем сброс стейта AES-шифрования
-					state.reset();
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Ciphertext does not carry the authentication tag", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Ciphertext does not carry the authentication tag", log::flag_t::WARNING);
-					#endif
-					// Выходим из метода
-					return (result = false);
-				}
-				// Выполняем установку имитовставки из удерживаемого хвоста потока
-				if(::EVP_CIPHER_CTX_ctrl(state.ctx, EVP_CTRL_AEAD_SET_TAG, static_cast <int32_t> (tagsize), state.tail.data()) != 1){
-					// Снимаем с буфера то, что дописала работа завершения
-					driver::truncate(buffer, origin, (state.event == event_t::DECODE));
-					// Выполняем сброс стейта AES-шифрования
-					state.reset();
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Error during authentication tag setup", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Error during authentication tag setup", log::flag_t::CRITICAL);
-					#endif
-					// Выходим из метода
-					return (result = false);
-				}
-			}
+		// Если поток шифрования заведён
+		if((result = state.stream.ready())){
 			/**
 			 * Признак проверки подлинности снимается до сброса стейта: сброс
 			 * обнуляет направление работы, и сообщение об отказе читало уже
 			 * сброшенное значение - подделка объявлялась сбоем завершения
 			 */
 			// Признак того, что отказ завершения означает подделку шифротекста
-			const bool tampered = ((state.event == event_t::DECODE) && (tagsize > 0));
-			// Размер добавленных завершением данных
-			int32_t offset = 0;
+			const bool tampered = ((state.event == event_t::DECODE) && (state.mode == mode_t::GCM));
+			// Буфер завершающих данных потока
+			vector <uint8_t> ending;
 			/**
-			 * Вектор инициализации выписывается здесь, если ни одной порции данных
-			 * не подавалось: выписывается он первой же порцией выхода, и поток без
-			 * единой порции оставался бы без вектора - расшифровать его было бы
-			 * нечем, хотя имитовставка в него попадала
-			 *
-			 * Дописывается он в конец поданного буфера, а не в его начало: работа
-			 * завершения буфер лишь дополняет, а что в нём лежало до неё - дело
-			 * вызывающего. Вставка в начало ставила вектор перед чужим содержимым,
-			 * а завершение дописывало свой хвост за ним - шифротекст выходил с
-			 * разорванной серединой
+			 * Завершение потока ведёт поточная обёртка: при расшифровке она
+			 * сличает удержанную имитовставку GCM и отказывает при подделке,
+			 * при зашифровании дописывает имитовставку в хвост; вектор
+			 * инициализации, не выписанный ни одной порцией, уходит здесь же
 			 */
-			// Если вектор инициализации в поток ещё не выписан
-			if((state.event == event_t::ENCODE) && state.pending){
-				// Выписываем вектор инициализации в конец поданного буфера
-				buffer.insert(buffer.end(), state.ivec.begin(), state.ivec.end());
-				// Снимаем признак ожидания вектора инициализации
-				state.pending = false;
-			}
-			// Получаем текущий размер результата
-			const size_t length = buffer.size();
-			// Расширяем буфер под результат
-			buffer.resize(length + AES_BLOCK_SIZE + tagsize, 0);
 			// Выполняем завершение работы шифрования
-			if(!(result = (::EVP_CipherFinal_ex(state.ctx, reinterpret_cast <uint8_t *> (buffer.data() + length), &offset) == 1))){
+			if(!(result = state.stream.finish(ending))){
 				// Снимаем с буфера то, что дописала работа завершения
 				driver::truncate(buffer, origin, (state.event == event_t::DECODE));
-				// Выполняем сброс стейта AES-шифрования
+				// Выполняем сброс стейта шифрования
 				state.reset();
 				/**
 				 * Отказ завершения при расшифровке в режиме с проверкой подлинности
@@ -6875,43 +3064,17 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				return result;
 			}
 			/**
-			 * При шифровании в режиме с проверкой подлинности имитовставка
-			 * снимается после завершения работы и дописывается в конец потока
+			 * Завершающие данные дописываются в конец поданного буфера, а не
+			 * вставляются в начало: работа завершения буфер лишь дополняет,
+			 * а что в нём лежало до неё - дело вызывающего
 			 */
-			if((state.event == event_t::ENCODE) && (tagsize > 0)){
-				// Выполняем снятие имитовставки шифротекста
-				if(!(result = (::EVP_CIPHER_CTX_ctrl(state.ctx, EVP_CTRL_AEAD_GET_TAG, static_cast <int32_t> (tagsize), reinterpret_cast <uint8_t *> (buffer.data() + length + offset)) == 1))){
-					// Снимаем с буфера то, что дописала работа завершения
-					driver::truncate(buffer, origin, (state.event == event_t::DECODE));
-					// Выполняем сброс стейта AES-шифрования
-					state.reset();
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Error during authentication tag retrieval", log::flag_t::CRITICAL);
-					#endif
-					// Выходим из метода
-					return result;
-				}
-				// Изменяем размер результата с учётом имитовставки
-				buffer.resize(length + static_cast <size_t> (offset) + tagsize);
-			// Изменяем размер результата на фактический размер данных
-			} else buffer.resize(length + static_cast <size_t> (offset));
+			// Дописываем завершающие данные потока в конец поданного буфера
+			buffer.insert(buffer.end(), ending.begin(), ending.end());
 			/**
 			 * Успешно завершённый поток снимает приметы одного лишь потока, а ключ
 			 * удерживает: без этого всякий новый поток выводил бы его заново - сто
 			 * тысяч итераций, 6.4 мс на замере, - тогда как разовое шифрование ключ
-			 * удерживало всегда. Продолжить завершённый поток нечем: контекст
-			 * освобождён, вектор инициализации затёрт, хвост снят, направление работы
-			 * сброшено. Отказы же сбрасывают стейт целиком - см. 4.26
+			 * удерживало всегда. Отказы же сбрасывают стейт целиком - см. 4.26
 			 */
 			// Выполняем сброс примет одного лишь потока
 			state.renew();
@@ -6998,8 +3161,6 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -7061,7 +3222,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 				 *          написанное прежде пропало. Оглашается тем же словом, что и
 				 *          у потока подписи (5а.18)
 				 */
-				if(state.ctx != nullptr){
+				if(state.stream.ready()){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -7104,108 +3265,29 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					// Выходим из метода
 					return result;
 				}
-				// Создаем контекст шифрования
-				state.ctx = ::EVP_CIPHER_CTX_new();
-				// Если контекст не создан
-				if(state.ctx == nullptr){
-					/**
-					 * Стейт сбрасывается наравне с прочими отказами заведения потока:
-					 * ключ к этой поре уже выведен, и состояние «ключ есть, потока
-					 * нет» расходилось бы с прочими отказами (4.26)
-					 */
-					// Выполняем сброс стейта AES-шифрования
-					state.reset();
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Error during AES context creation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Error during AES context creation", log::flag_t::CRITICAL);
-					#endif
-					// Выходим из метода
-					return result;
-				}
+				// Направление потока шифрования
+				nts::cipher::direction_t direction = nts::cipher::direction_t::NONE;
 				/**
 				 * Определяем событие кодирование или декодирование
 				 */
 				switch(static_cast <uint8_t> (event)){
 					// Если производится кодирование данных
-					case static_cast <uint8_t> (event_t::ENCODE): {
-						/**
-						 * Вектор инициализации берётся случайным на каждый поток и
-						 * выписывается в его начало первой же порцией выхода
-						 */
-						// Выполняем формирование случайного вектора инициализации
-						if(!entropy::random(state.ivec.data(), state.ivec.size())){
-							// Выполняем сброс стейта AES-шифрования
-							state.reset();
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Error during initialization vector generation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Error during initialization vector generation", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода
-							return result;
-						}
-						// Выполняем инициализацию контекста шифрования
-						if(!(result = (::EVP_CipherInit_ex(state.ctx, state.evp, nullptr, state.key.data(), state.ivec.data(), AES_ENCRYPT) == 1))){
-							// Выполняем сброс стейта AES-шифрования
-							state.reset();
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Error during AES context initialization", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода
-							return result;
-						}
-						// Отключаем padding (обязательно для потоковых режимов)
-						::EVP_CIPHER_CTX_set_padding(state.ctx, 0);
-					} break;
+					case static_cast <uint8_t> (event_t::ENCODE):
+						// Устанавливаем направление зашифрования
+						direction = nts::cipher::direction_t::ENCRYPT;
+					break;
 					// Если производится декодирование данных
 					case static_cast <uint8_t> (event_t::DECODE):
-						/**
-						 * Контекст расшифровки отведён выше, но шифром и ключом здесь не
-						 * заводится: вектор инициализации стоит в начале шифротекста и
-						 * придёт первой же порцией входа, а до него заводить контекст
-						 * нечем. Отведён же он потому, что заведённость потока
-						 * распознаётся по нему самому - без отведённого контекста первая
-						 * порция ушла бы в разовую работу вместо потока
-						 */
-						// Помечаем успешную инициализацию потоковой расшифровки
-						result = true;
+						// Устанавливаем направление расшифрования
+						direction = nts::cipher::direction_t::DECRYPT;
 					break;
 					// Если направление работы не задано
 					default: {
 						/**
-						 * Направление, разбору не знакомое, отменяет инициализацию, а
-						 * контекст при этом освобождается: прежде он оставался заведённым
-						 * и неинициализированным, и всякая следующая попытка видела его
-						 * заведённым и отвечала отказом безвозвратно
+						 * Направление, разбору не знакомое, отменяет инициализацию:
+						 * поток без направления не заводится и работу не продолжает
 						 */
-						// Выполняем сброс стейта AES-шифрования
+						// Выполняем сброс стейта шифрования
 						state.reset();
 						/**
 						 * Если включён режим отладки
@@ -7224,15 +3306,39 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 						return result;
 					}
 				}
+				// Определяем режим потока по режиму блочного шифрования
+				const nts::cipher::regime_t regime = ((this->_params.mode == crypto_t::mode_t::GCM) ? nts::cipher::regime_t::GCM : nts::cipher::regime_t::FEEDBACK);
 				/**
-				 * Дополнение блока здесь не отключается: у шифрования оно отключено
-				 * сразу по заведении контекста, а у расшифровки контекст заводится
-				 * лишь по вычитывании вектора инициализации из начала потока - там
-				 * дополнение и отключается. Вызов на не заведённом контексте вреда
-				 * не приносил, но и смысла не имел
+				 * Заводим поточную обёртку шифрования: вектор инициализации при
+				 * зашифровании вырабатывается из энтропии и уходит первым в выход,
+				 * при расшифровании копится из головы потока; имитовставку GCM
+				 * обёртка ведёт сама, дополнение блока потоковым режимам не нужно
 				 */
-				// Помечаем ожидание вектора инициализации в начале потока
-				state.pending = true;
+				// Выполняем заведение потока шифрования
+				if(!(result = state.stream.start(direction, state.block(), regime))){
+					/**
+					 * Стейт сбрасывается наравне с прочими отказами заведения потока:
+					 * ключ к этой поре уже выведен, и состояние «ключ есть, потока
+					 * нет» расходилось бы с прочими отказами (4.26)
+					 */
+					// Выполняем сброс стейта шифрования
+					state.reset();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Error during AES context initialization", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
 				// Запоминаем направление работы потокового шифрования
 				state.event = event;
 			}
@@ -7408,8 +3514,6 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
 	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
@@ -7460,7 +3564,7 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 		 * Теперь она попадает туда по существу - потому что контекст заведён
 		 */
 		// Признак работы поверх заведённого контекста потокового шифрования
-		const bool stream = (state.ctx != nullptr);
+		const bool stream = state.stream.ready();
 		/**
 		 * Доводы разбираются порознь, а не разом: незаданный берётся у потока,
 		 * заданный с потоком сверяется (4.4). Прежде признаком потока служило
@@ -7507,6 +3611,8 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 			case static_cast <uint16_t> (cipher_t::AES128):
 			// Если производится работы с AES192
 			case static_cast <uint16_t> (cipher_t::AES192):
+			// Если производится работа шифром «Кузнечик»
+			case static_cast <uint16_t> (cipher_t::KUZNECHIK):
 			// Если производится работы с AES256
 			case static_cast <uint16_t> (cipher_t::AES256): {
 				/**
@@ -7518,8 +3624,8 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 				 */
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
-					// Если контекст шифрования не создан
-					if(state.ctx == nullptr){
+					// Если поток шифрования не заведён
+					if(!state.stream.ready()){
 						// Проверяем текущее состояние
 						/**
 						 * Режим блочного шифрования входит в сличение наравне с
@@ -7680,7 +3786,7 @@ template bool awh::Crypto::encrypt(const void *, const size_t, vector <uint8_t> 
  * @note Нужен складу тайн: открытый текст там не вправе лечь в общую кучу
  *
  */
-template bool awh::Crypto::encrypt(const void *, const size_t, vector <char, awh::alloc::Keeper <char>> &, const hash_t, const cipher_t) const noexcept;
+template bool awh::Crypto::encrypt(const void *, const size_t, nts::sys::bytes_t &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода кодирования
  *
@@ -7849,8 +3955,6 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Признак работы выводится наружу отдельно от буфера: пустой буфер отказом
 	 * не является - расшифровка сообщения, октетов не имеющего (4.9), даёт
@@ -7901,7 +4005,7 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 		 * Теперь она попадает туда по существу - потому что контекст заведён
 		 */
 		// Признак работы поверх заведённого контекста потокового шифрования
-		const bool stream = (state.ctx != nullptr);
+		const bool stream = state.stream.ready();
 		/**
 		 * Доводы разбираются порознь, а не разом: незаданный берётся у потока,
 		 * заданный с потоком сверяется (4.4). Прежде признаком потока служило
@@ -7943,6 +4047,8 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 			case static_cast <uint16_t> (cipher_t::AES128):
 			// Если производится работы с AES192
 			case static_cast <uint16_t> (cipher_t::AES192):
+			// Если производится работа шифром «Кузнечик»
+			case static_cast <uint16_t> (cipher_t::KUZNECHIK):
 			// Если производится работы с AES256
 			case static_cast <uint16_t> (cipher_t::AES256): {
 				/**
@@ -7954,8 +4060,8 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 				 */
 				// Если пароль установлен
 				if(!this->_params.password.empty()){
-					// Если контекст шифрования не создан
-					if(state.ctx == nullptr){
+					// Если поток шифрования не заведён
+					if(!state.stream.ready()){
 						// Проверяем текущее состояние
 						/**
 						 * Режим блочного шифрования входит в сличение наравне с
@@ -8116,7 +4222,7 @@ template bool awh::Crypto::decrypt(const void *, const size_t, vector <uint8_t> 
  * @note Нужен складу тайн: открытый текст там не вправе лечь в общую кучу
  *
  */
-template bool awh::Crypto::decrypt(const void *, const size_t, vector <char, awh::alloc::Keeper <char>> &, const hash_t, const cipher_t) const noexcept;
+template bool awh::Crypto::decrypt(const void *, const size_t, nts::sys::bytes_t &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода декодирования
  *
@@ -8173,8 +4279,6 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8206,10 +4310,14 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 			// Выходим из метода
 			return result;
 		}
+		// Получаем ссылку на объект ключа RSA
+		key_rsa_t & key = (* this->_params.key);
+		/**
+		 * Генерация сбрасывает прежний ключ примитива: разрядность проверена выше,
+		 * и отказ выработки при годной разрядности — отказ памяти, а не стойкости
+		 */
 		// Выполняем генерацию ключа RSA
-		EVP_PKEY * privKey = ::EVP_RSA_gen(static_cast <uint32_t> (bits));
-		// Если ключ не получен
-		if(privKey == nullptr){
+		if(!key.rsa.generate(bits)){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -8226,23 +4334,10 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 			// Возвращаем результат
 			return result;
 		}
-		// Получаем ссылку на объект ключа RSA
-		key_rsa_t & key = (* this->_params.key);
-		/**
-		 * Прежде заведённый ключ освобождается: запись нового поверх старого
-		 * теряла его безвозвратно, тогда как установка ключа извне и загрузка
-		 * его из файла освобождение выполняют
-		 */
-		// Если ключ RSA уже был заведён
-		if(key.ctx != nullptr)
-			// Освобождаем память выделенную под прежний ключ
-			::EVP_PKEY_free(key.ctx);
 		// Устанавливаем тип ключа
 		key.type = key_type_t::PRIVATE;
-		// Запоминаем приватный ключ
-		key.ctx = privKey;
 		// Формируем итоговый результат
-		result = (key.ctx != nullptr);
+		result = key.rsa.ready();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8275,8 +4370,6 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return "";
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	string result = "";
 	/**
@@ -8286,22 +4379,49 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 		// Получаем ссылку на объект ключа RSA
 		const key_rsa_t & key = (* this->_params.key);
 		// Если ключ загружен
-		if(key.ctx != nullptr){
-			// Создаём объект BIO для записи публичного ключа
-			BIO * bio = ::BIO_new(::BIO_s_mem());
-			// Если объект BIO создан успешно
-			if(bio != nullptr){
+		if(key.rsa.ready()){
+			// Собираем открытый ключ RSA для выписки
+			nts::keys::key_t pub;
+			// Устанавливаем вид ключа RSA
+			pub.kind = nts::keys::kind_t::RSA;
+			// Отводим буфер модуля n
+			pub.n.resize(key.rsa.length(nts::sign::part_t::MODULUS));
+			// Выписываем модуль n
+			key.rsa.part(nts::sign::part_t::MODULUS, pub.n.data(), pub.n.size());
+			// Отводим буфер открытого показателя e
+			pub.e.resize(key.rsa.length(nts::sign::part_t::PUBLIC));
+			// Выписываем открытый показатель e
+			key.rsa.part(nts::sign::part_t::PUBLIC, pub.e.data(), pub.e.size());
+			// Буфер DER записи SubjectPublicKeyInfo
+			vector <uint8_t> der;
+			/**
+			 * Итог снимается только по удавшейся выписке: отказ кодирования оставлял
+			 * бы наружу непустой итог - как будто ключ выписан целиком
+			 */
+			// Кодируем открытый ключ в SubjectPublicKeyInfo
+			if(nts::keys::encodeSubjectPublicKeyInfo(pub, der) != nts::keys::error_t::NONE){
 				/**
-				 * Итог снимается с объекта BIO только по удавшейся выписке: отказ
-				 * записи оставлял в объекте недописанную часть, и она уходила
-				 * наружу непустым итогом - как будто ключ выписан целиком
+				 * Если включён режим отладки
 				 */
-				// Признак удавшейся выписки ключа
-				bool exported = true;
-				// Если файл не может быть записан
-				if(::PEM_write_bio_PUBKEY(bio, key.ctx) != 1){
-					// Снимаем признак удавшейся выписки ключа
-					exported = false;
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Public key export failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Public key export failed", log::flag_t::CRITICAL);
+				#endif
+			} else {
+				// Запись PEM открытого ключа
+				nts::pem::block_t block;
+				// Устанавливаем метку записи PUBLIC KEY
+				block.label = "PUBLIC KEY";
+				// Переносим тело DER в запись
+				block.data = std::move(der);
+				// Выписываем запись PEM в результат
+				if(nts::pem::encode(block, result) != nts::pem::error_t::NONE){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -8316,34 +4436,6 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 						log::print("Public key export failed", log::flag_t::CRITICAL);
 					#endif
 				}
-				// Если выписка ключа удалась
-				if(exported){
-					// Получаем указатель на данные из объекта BIO
-					char * buffer = nullptr;
-					// Получаем размер данных из объекта BIO
-					const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
-					// Если данные получены успешно
-					if((buffer != nullptr) && (size > 0))
-						// Записываем данные в результат
-						result.assign(buffer, size);
-				}
-				// Освобождаем объект BIO
-				::BIO_free_all(bio);
-			// Если объект BIO не создан
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Public key BIO creation failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Public key BIO creation failed", log::flag_t::CRITICAL);
-				#endif
 			}
 		// Если путь к файлу не передан или публичный ключ не загружен
 		} else {
@@ -8394,8 +4486,6 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8409,61 +4499,49 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем парсинг ключа
-			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
-			// Если объект BIO создан успешно
-			if(bio != nullptr){
-				// Читаем публичный ключ из буфера
-				EVP_PKEY * pkey = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
-				// Освобождаем объект BIO
-				::BIO_free(bio);
-				// Если публичный ключ получен, оглашаем его разрядность
-				if(pkey != nullptr)
-					driver::strength(pkey, key_type_t::PUBLIC);
-				// Если публичный ключ получен
-				if(pkey != nullptr){
+			// Текст PEM ключа
+			const string text(key.data(), key.size());
+			// Буфер записей DER открытого ключа
+			vector <vector <uint8_t>> blocks;
+			// Признак удавшегося ввоза открытого ключа
+			bool imported = false;
+			// Если текст PEM по метке PUBLIC KEY разобран
+			if((nts::pem::decode(text, "PUBLIC KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+				// Разобранный ключ RSA
+				nts::keys::key_t pub;
+				// Если запись SubjectPublicKeyInfo разобрана
+				if(nts::keys::decodeSubjectPublicKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), pub) == nts::keys::error_t::NONE){
 					// Получаем ссылку на объект ключа RSA
 					key_rsa_t & key = (* this->_params.key);
-					// Если публичный ключ уже сгенерирован
-					if(key.ctx != nullptr)
-						// Освобождаем публичный ключ
-						::EVP_PKEY_free(key.ctx);
-					// Запоминаем публичный ключ
-					key.ctx = pkey;
-					// Устанавливаем тип ключа
-					key.type = key_type_t::PUBLIC;
-					// Формируем итоговый результат
-					result = (key.ctx != nullptr);
-				// Если публичный ключ не получен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Public key import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Public key import failed", log::flag_t::CRITICAL);
-					#endif
+					// Если открытый ключ в примитив RSA установлен
+					if(pub.load(key.rsa)){
+						// Оглашаем разрядность ввозимого ключа
+						driver::strength(key.rsa.bits(), key_type_t::PUBLIC);
+						// Устанавливаем тип ключа
+						key.type = key_type_t::PUBLIC;
+						// Запоминаем признак удавшегося ввоза ключа
+						imported = true;
+					}
 				}
-			// Если объект BIO не создан
-			} else {
+			}
+			// Если открытый ключ ввезён
+			if(imported)
+				// Формируем итоговый результат
+				result = true;
+			// Если открытый ключ не ввезён
+			else {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("Public key BIO import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
+					log::debug("Public key import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print("Public key BIO import failed", log::flag_t::CRITICAL);
+					log::print("Public key import failed", log::flag_t::CRITICAL);
 				#endif
 			}
 		/**
@@ -8515,8 +4593,6 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8530,61 +4606,57 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем парсинг ключа
-			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
-			// Если объект BIO создан успешно
-			if(bio != nullptr){
-				// Читаем приватный ключ из буфера
-				EVP_PKEY * pkey = ::PEM_read_bio_PrivateKey(bio, nullptr, &driver::password, reinterpret_cast <void *> (const_cast <string *> (&this->_params.passwordRSA)));
-				// Освобождаем объект BIO
-				::BIO_free(bio);
-				// Если приватный ключ получен, оглашаем его разрядность
-				if(pkey != nullptr)
-					driver::strength(pkey, key_type_t::PRIVATE);
-				// Если приватный ключ получен
-				if(pkey != nullptr){
-					// Получаем ссылку на объект ключа RSA
-					key_rsa_t & key = (* this->_params.key);
-					// Если приватный ключ уже сгенерирован
-					if(key.ctx != nullptr)
-						// Освобождаем приватный ключ
-						::EVP_PKEY_free(key.ctx);
-					// Запоминаем приватный ключ
-					key.ctx = pkey;
+			// Текст PEM ключа
+			const string text(key.data(), key.size());
+			// Разобранный ключ RSA
+			nts::keys::key_t priv;
+			// Признак удавшегося ввоза приватного ключа
+			bool imported = false;
+			// Буфер записей DER приватного ключа
+			vector <vector <uint8_t>> blocks;
+			// Если текст PEM по метке PRIVATE KEY разобран
+			if((nts::pem::decode(text, "PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+				// Разбираем запись PrivateKeyInfo
+				imported = (nts::keys::decodePrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), priv) == nts::keys::error_t::NONE);
+			// Если записи PRIVATE KEY нет
+			} else {
+				// Если текст PEM по метке RSA PRIVATE KEY разобран
+				if((nts::pem::decode(text, "RSA PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разбираем запись RSAPrivateKey
+					imported = (nts::keys::decodeRSAPrivateKey(nts::view_t(blocks.front().data(), blocks.front().size()), priv) == nts::keys::error_t::NONE);
+				// Если записи RSA PRIVATE KEY нет
+				} else if((nts::pem::decode(text, "ENCRYPTED PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разбираем запись EncryptedPrivateKeyInfo по паролю
+					imported = (nts::keys::decodeEncryptedPrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), priv) == nts::keys::error_t::NONE);
+				}
+			}
+			// Если приватный ключ разобран
+			if(imported){
+				// Получаем ссылку на объект ключа RSA
+				key_rsa_t & key = (* this->_params.key);
+				// Если приватный ключ в примитив RSA установлен
+				if(priv.load(key.rsa)){
+					// Оглашаем разрядность ввозимого ключа
+					driver::strength(key.rsa.bits(), key_type_t::PRIVATE);
 					// Устанавливаем тип ключа
 					key.type = key_type_t::PRIVATE;
 					// Формируем итоговый результат
-					result = (key.ctx != nullptr);
-				// Если приватный ключ не получен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Private key import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Private key import failed", log::flag_t::CRITICAL);
-					#endif
+					result = true;
 				}
-			// Если объект BIO не создан
+			// Если приватный ключ не разобран
 			} else {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("Private key BIO import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
+					log::debug("Private key import failed", __PRETTY_FUNCTION__, {key.size()}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print("Private key BIO import failed", log::flag_t::CRITICAL);
+					log::print("Private key import failed", log::flag_t::CRITICAL);
 				#endif
 			}
 		/**
@@ -8636,8 +4708,6 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return "";
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	string result = "";
 	/**
@@ -8647,26 +4717,73 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 		// Получаем ссылку на объект ключа RSA
 		const key_rsa_t & key = (* this->_params.key);
 		// Если ключ загружен
-		if(key.ctx != nullptr){
+		if(key.rsa.ready()){
 			// Если ключ является приватным
 			if(key.type == key_type_t::PRIVATE){
-				// Создаём объект BIO для записи приватного ключа
-				BIO * bio = ::BIO_new(::BIO_s_mem());
-				// Если объект BIO создан успешно
-				if(bio != nullptr){
-					/**
-					 * Итог снимается с объекта BIO только по удавшейся выписке: отказ
-					 * записи оставлял в объекте недописанную часть, и она уходила
-					 * наружу непустым итогом - как будто ключ выписан целиком
-					 */
-					// Признак удавшейся выписки ключа
-					bool exported = true;
-					// Если пароль защиты приватного ключа не установлен
-					if(this->_params.passwordRSA.empty()){
-						// Если файл не может быть записан
-						if(::PEM_write_bio_PrivateKey(bio, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) != 1){
-							// Снимаем признак удавшейся выписки ключа
-							exported = false;
+				// Разобранный ключ RSA
+				nts::keys::key_t priv;
+				// Устанавливаем вид ключа RSA
+				priv.kind = nts::keys::kind_t::RSA;
+				// Отводим буфер модуля n
+				priv.n.resize(key.rsa.length(nts::sign::part_t::MODULUS));
+				// Выписываем модуль n
+				key.rsa.part(nts::sign::part_t::MODULUS, priv.n.data(), priv.n.size());
+				// Отводим буфер открытого показателя e
+				priv.e.resize(key.rsa.length(nts::sign::part_t::PUBLIC));
+				// Выписываем открытый показатель e
+				key.rsa.part(nts::sign::part_t::PUBLIC, priv.e.data(), priv.e.size());
+				// Отводим буфер секретного показателя d
+				priv.d.resize(key.rsa.length(nts::sign::part_t::SECRET));
+				// Выписываем секретный показатель d
+				key.rsa.part(nts::sign::part_t::SECRET, priv.d.data(), priv.d.size());
+				// Отводим буфер первого сомножителя p
+				priv.p.resize(key.rsa.length(nts::sign::part_t::PRIME1));
+				// Выписываем первый сомножитель p
+				key.rsa.part(nts::sign::part_t::PRIME1, priv.p.data(), priv.p.size());
+				// Отводим буфер второго сомножителя q
+				priv.q.resize(key.rsa.length(nts::sign::part_t::PRIME2));
+				// Выписываем второй сомножитель q
+				key.rsa.part(nts::sign::part_t::PRIME2, priv.q.data(), priv.q.size());
+				// Отводим буфер показателя dP
+				priv.dP.resize(key.rsa.length(nts::sign::part_t::EXPONENT1));
+				// Выписываем показатель dP
+				key.rsa.part(nts::sign::part_t::EXPONENT1, priv.dP.data(), priv.dP.size());
+				// Отводим буфер показателя dQ
+				priv.dQ.resize(key.rsa.length(nts::sign::part_t::EXPONENT2));
+				// Выписываем показатель dQ
+				key.rsa.part(nts::sign::part_t::EXPONENT2, priv.dQ.data(), priv.dQ.size());
+				// Отводим буфер коэффициента qInv
+				priv.qInv.resize(key.rsa.length(nts::sign::part_t::COEFFICIENT));
+				// Выписываем коэффициент qInv
+				key.rsa.part(nts::sign::part_t::COEFFICIENT, priv.qInv.data(), priv.qInv.size());
+				// Буфер DER записи приватного ключа
+				vector <uint8_t> der;
+				// Если пароль защиты приватного ключа не установлен
+				if(this->_params.passwordRSA.empty()){
+					// Кодируем приватный ключ в PrivateKeyInfo
+					if(nts::keys::encodePrivateKeyInfo(priv, der) != nts::keys::error_t::NONE){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("Private key export failed", log::flag_t::CRITICAL);
+						#endif
+					} else {
+						// Запись PEM приватного ключа
+						nts::pem::block_t block;
+						// Устанавливаем метку записи PRIVATE KEY
+						block.label = "PRIVATE KEY";
+						// Переносим тело DER в запись
+						block.data = std::move(der);
+						// Выписываем запись PEM в результат
+						if(nts::pem::encode(block, result) != nts::pem::error_t::NONE){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -8681,119 +4798,98 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 								log::print("Private key export failed", log::flag_t::CRITICAL);
 							#endif
 						}
-					// Если пароль установлен
-					} else {
-						// Тип шифрования AES
-						const EVP_CIPHER * evp = ::EVP_enc_null();
+					}
+				// Если пароль установлен
+				} else {
+					// Признак годности типа шифрования
+					bool suitable = true;
+					// Разрядность шифрования ключа
+					size_t bits = 256;
+					/**
+					 * Определяем длину шифрования
+					 */
+					switch(static_cast <uint16_t> (cipher)){
+						// Устанавливаем шифрование в 128
+						case static_cast <uint16_t> (cipher_t::AES128):
+							// Устанавливаем разрядность шифрования
+							bits = 128;
+						break;
+						// Устанавливаем шифрование в 192
+						case static_cast <uint16_t> (cipher_t::AES192):
+							// Устанавливаем разрядность шифрования
+							bits = 192;
+						break;
+						// Разрядность шифрования по умолчанию равна наибольшей
+						case static_cast <uint16_t> (cipher_t::AES256):
+						case static_cast <uint16_t> (cipher_t::NONE):
+							// Устанавливаем разрядность шифрования
+							bits = 256;
+						break;
 						/**
-						 * Определяем длину шифрования
+						 * Тип шифрования, защите ключа не подходящий, отвергается явно: прежде
+						 * он молча подменялся наибольшей разрядностью, и работа думала, что ключ
+						 * защищён тем шифром, который она назвала
 						 */
-						switch(static_cast <uint16_t> (cipher)){
-							// Устанавливаем шифрование в 128
-							case static_cast <uint16_t> (cipher_t::AES128):
-								// Устанавливаем функцию шифрования
-								evp = ::EVP_aes_128_cbc();
-							break;
-							// Устанавливаем шифрование в 192
-							case static_cast <uint16_t> (cipher_t::AES192):
-								// Устанавливаем функцию шифрования
-								evp = ::EVP_aes_192_cbc();
-							break;
-							// Устанавливаем шифрование в 256
-							case static_cast <uint16_t> (cipher_t::AES256):
-							// Разрядность шифрования по умолчанию равна наибольшей
-							case static_cast <uint16_t> (cipher_t::NONE):
-								// Устанавливаем функцию шифрования
-								evp = ::EVP_aes_256_cbc();
-							break;
+						// Если тип шифрования разбору не знаком
+						default:
+							// Снимаем признак годности типа шифрования
+							suitable = false;
 							/**
-							 * Тип шифрования, защите ключа не подходящий, отвергается явно: прежде
-							 * он молча подменялся наибольшей разрядностью, и работа думала, что ключ
-							 * защищён тем шифром, который она назвала
+							 * Если включён режим отладки
 							 */
-							// Если тип шифрования разбору не знаком
-							default:
-								// Снимаем функцию шифрования
-								evp = nullptr;
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, log::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Cipher type is not suitable for private key protection", log::flag_t::CRITICAL);
+							#endif
+					}
+					// Если тип шифрования защите ключа подходит
+					if(suitable){
+						// Кодируем приватный ключ в EncryptedPrivateKeyInfo
+						if(nts::keys::encodeEncryptedPrivateKeyInfo(priv, nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), der, bits) != nts::keys::error_t::NONE){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Private key export failed", log::flag_t::CRITICAL);
+							#endif
+						} else {
+							// Запись PEM приватного ключа
+							nts::pem::block_t block;
+							// Устанавливаем метку записи ENCRYPTED PRIVATE KEY
+							block.label = "ENCRYPTED PRIVATE KEY";
+							// Переносим тело DER в запись
+							block.data = std::move(der);
+							// Выписываем запись PEM в результат
+							if(nts::pem::encode(block, result) != nts::pem::error_t::NONE){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, log::flag_t::CRITICAL);
+									log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print("Cipher type is not suitable for private key protection", log::flag_t::CRITICAL);
+									log::print("Private key export failed", log::flag_t::CRITICAL);
 								#endif
-						}
-						// Если файл не может быть записан
-						if((evp == nullptr) || (::PEM_write_bio_PKCS8PrivateKey(bio, key.ctx, evp, this->_params.passwordRSA.c_str(), static_cast <int32_t> (this->_params.passwordRSA.size()), nullptr, nullptr) != 1)){
-							// Снимаем признак удавшейся выписки ключа
-							exported = false;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Private key export failed", log::flag_t::CRITICAL);
-							#endif
+							}
 						}
 					}
-					// Если выписка ключа удалась
-					if(exported){
-						// Получаем указатель на данные из объекта BIO
-						char * buffer = nullptr;
-						// Получаем размер данных из объекта BIO
-						const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
-						// Если данные получены успешно
-						if((buffer != nullptr) && (size > 0))
-							// Записываем данные в результат
-							result.assign(buffer, size);
-					}
-					/**
-					 * Запись ключа в объекте ввода-вывода гасится прежде освобождения:
-					 * освобождение содержимого не гасит, и приватный ключ - в открытом
-					 * ли виде, под защитой ли паролем - оставался лежать в памяти до тех
-					 * пор, покуда её не выдадут кому-то ещё. Гасится и при отказе
-					 * выписки: та могла успеть выписать часть.
-					 *
-					 * Выданная наружу запись тайной распоряжается уже вызывающий: строку
-					 * ему выдали, и гасить её - его дело
-					 */
-					// Указатель на запись ключа в объекте ввода-вывода
-					char * written = nullptr;
-					// Получаем размер записи ключа в объекте ввода-вывода
-					const size_t length = static_cast <size_t> (::BIO_get_mem_data(bio, &written));
-					// Если запись ключа в объекте ввода-вывода есть
-					if((written != nullptr) && (length > 0))
-						// Выполняем затирание записи ключа
-						::OPENSSL_cleanse(written, length);
-					// Освобождаем объект BIO
-					::BIO_free_all(bio);
-				// Если объект BIO не создан
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Private key BIO creation failed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Private key BIO creation failed", log::flag_t::CRITICAL);
-					#endif
 				}
 			// Если ключ не является приватным
 			} else {
@@ -8860,8 +4956,6 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -8870,136 +4964,69 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 	try {
 		// Если путь к файлу передан правильно
 		if(!path.empty()){
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Открываем файл с публичным ключом
-				FILE * file = ::_wfopen(awh::fmk::convert(path).c_str(), L"rb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Читаем публичный ключ из файла
-					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
-					// Закрываем файл
-					::fclose(file);
-					// Если публичный ключ получен, оглашаем его разрядность
-					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PUBLIC);
-					// Если публичный ключ получен
-					if(pkey != nullptr){
+			// Текст PEM ключа
+			string text;
+			// Если файл прочитан
+			if(driver::read(string(path), text)){
+				// Буфер записей DER открытого ключа
+				vector <vector <uint8_t>> blocks;
+				// Признак удавшегося ввоза открытого ключа
+				bool imported = false;
+				// Если текст PEM по метке PUBLIC KEY разобран
+				if((nts::pem::decode(text, "PUBLIC KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разобранный ключ RSA
+					nts::keys::key_t pub;
+					// Если запись SubjectPublicKeyInfo разобрана
+					if(nts::keys::decodeSubjectPublicKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), pub) == nts::keys::error_t::NONE){
 						// Получаем ссылку на объект ключа RSA
 						key_rsa_t & key = (* this->_params.key);
-						// Если публичный ключ уже сгенерирован
-						if(key.ctx != nullptr)
-							// Освобождаем публичный ключ
-							::EVP_PKEY_free(key.ctx);
-						// Запоминаем публичный ключ
-						key.ctx = pkey;
-						// Устанавливаем тип ключа
-						key.type = key_type_t::PUBLIC;
-						// Формируем итоговый результат
-						result = (key.ctx != nullptr);
-					// Если публичный ключ не получен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Public key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Public key reading failed", log::flag_t::CRITICAL);
-						#endif
+						// Если открытый ключ в примитив RSA установлен
+						if(pub.load(key.rsa)){
+							// Оглашаем разрядность ввозимого ключа
+							driver::strength(key.rsa.bits(), key_type_t::PUBLIC);
+							// Устанавливаем тип ключа
+							key.type = key_type_t::PUBLIC;
+							// Запоминаем признак удавшегося ввоза ключа
+							imported = true;
+						}
 					}
-				// Если файл не открыт
-				} else {
+				}
+				// Если открытый ключ ввезён
+				if(imported)
+					// Формируем итоговый результат
+					result = true;
+				// Если открытый ключ не ввезён
+				else {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+						log::debug("Public key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Public key file opening failed", log::flag_t::WARNING);
+						log::print("Public key reading failed", log::flag_t::CRITICAL);
 					#endif
 				}
-			/**
-			 * Для других операционных систем
-			 */
-			#else
-				// Открываем файл с публичным ключом
+			// Если файл не прочитан
+			} else {
 				/**
-				 * Путь снимается в свою строку: обозрение строки завершающего нуля
-				 * не обещает, и подача его указателя открывала бы не тот файл либо
-				 * уводила чтение за границу обозреваемого
+				 * Если включён режим отладки
 				 */
-				// Имя файла, завершающим нулём оканчивающееся
-				const string filename(path);
-				FILE * file = ::fopen(filename.c_str(), "rb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Читаем публичный ключ из файла
-					EVP_PKEY * pkey = ::PEM_read_PUBKEY(file, nullptr, nullptr, nullptr);
-					// Закрываем файл
-					::fclose(file);
-					// Если публичный ключ получен, оглашаем его разрядность
-					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PUBLIC);
-					// Если публичный ключ получен
-					if(pkey != nullptr){
-						// Получаем ссылку на объект ключа RSA
-						key_rsa_t & key = (* this->_params.key);
-						// Если публичный ключ уже сгенерирован
-						if(key.ctx != nullptr)
-							// Освобождаем публичный ключ
-							::EVP_PKEY_free(key.ctx);
-						// Запоминаем публичный ключ
-						key.ctx = pkey;
-						// Устанавливаем тип ключа
-						key.type = key_type_t::PUBLIC;
-						// Формируем итоговый результат
-						result = (key.ctx != nullptr);
-					// Если публичный ключ не получен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Public key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Public key reading failed", log::flag_t::CRITICAL);
-						#endif
-					}
-				// Если файл не открыт
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Public key file opening failed", log::flag_t::WARNING);
-					#endif
-				}
-			#endif
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Public key file opening failed", log::flag_t::WARNING);
+				#endif
+			}
 		// Если путь к файлу не передан
 		} else {
 			/**
@@ -9037,20 +5064,11 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод загрузки приватного ключа RSA из файла
- *
- * @param path путь к файлу с приватным ключом
- * @return     результат загрузки ключа
- *
- */
 bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -9059,136 +5077,77 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 	try {
 		// Если путь к файлу передан правильно
 		if(!path.empty()){
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Открываем файл с приватным ключом
-				FILE * file = ::_wfopen(awh::fmk::convert(path).c_str(), L"rb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Читаем приватный ключ из файла
-					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, &driver::password, reinterpret_cast <void *> (const_cast <string *> (&this->_params.passwordRSA)));
-					// Закрываем файл
-					::fclose(file);
-					// Если приватный ключ получен, оглашаем его разрядность
-					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PRIVATE);
-					// Если приватный ключ получен
-					if(pkey != nullptr){
-						// Получаем ссылку на объект ключа RSA
-						key_rsa_t & key = (* this->_params.key);
-						// Если приватный ключ уже сгенерирован
-						if(key.ctx != nullptr)
-							// Освобождаем приватный ключ
-							::EVP_PKEY_free(key.ctx);
-						// Запоминаем приватный ключ
-						key.ctx = pkey;
+			// Текст PEM ключа
+			string text;
+			// Если файл прочитан
+			if(driver::read(string(path), text)){
+				// Разобранный ключ RSA
+				nts::keys::key_t priv;
+				// Признак удавшегося ввоза приватного ключа
+				bool imported = false;
+				// Буфер записей DER приватного ключа
+				vector <vector <uint8_t>> blocks;
+				// Если текст PEM по метке PRIVATE KEY разобран
+				if((nts::pem::decode(text, "PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разбираем запись PrivateKeyInfo
+					imported = (nts::keys::decodePrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), priv) == nts::keys::error_t::NONE);
+				// Если записи PRIVATE KEY нет
+				} else {
+					// Если текст PEM по метке RSA PRIVATE KEY разобран
+					if((nts::pem::decode(text, "RSA PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+						// Разбираем запись RSAPrivateKey
+						imported = (nts::keys::decodeRSAPrivateKey(nts::view_t(blocks.front().data(), blocks.front().size()), priv) == nts::keys::error_t::NONE);
+					// Если записи RSA PRIVATE KEY нет
+					} else if((nts::pem::decode(text, "ENCRYPTED PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+						// Разбираем запись EncryptedPrivateKeyInfo по паролю
+						imported = (nts::keys::decodeEncryptedPrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), priv) == nts::keys::error_t::NONE);
+					}
+				}
+				// Если приватный ключ разобран
+				if(imported){
+					// Получаем ссылку на объект ключа RSA
+					key_rsa_t & key = (* this->_params.key);
+					// Если приватный ключ в примитив RSA установлен
+					if(priv.load(key.rsa)){
+						// Оглашаем разрядность ввозимого ключа
+						driver::strength(key.rsa.bits(), key_type_t::PRIVATE);
 						// Устанавливаем тип ключа
 						key.type = key_type_t::PRIVATE;
 						// Формируем итоговый результат
-						result = (key.ctx != nullptr);
-					// Если публичный ключ не получен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Private key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Private key reading failed", log::flag_t::CRITICAL);
-						#endif
+						result = true;
 					}
-				// Если файл не открыт
+				// Если приватный ключ не разобран
 				} else {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+						log::debug("Private key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Private key file opening failed", log::flag_t::WARNING);
+						log::print("Private key reading failed", log::flag_t::CRITICAL);
 					#endif
 				}
-			/**
-			 * Для других операционных систем
-			 */
-			#else
+			// Если файл не прочитан
+			} else {
 				/**
-				 * Путь снимается в свою строку: обозрение строки завершающего нуля
-				 * не обещает, и подача его указателя открывала бы не тот файл либо
-				 * уводила чтение за границу обозреваемого
+				 * Если включён режим отладки
 				 */
-				// Имя файла, завершающим нулём оканчивающееся
-				const string filename(path);
-				// Открываем файл с приватным ключом
-				FILE * file = ::fopen(filename.c_str(), "rb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Читаем приватный ключ из файла
-					EVP_PKEY * pkey = ::PEM_read_PrivateKey(file, nullptr, &driver::password, reinterpret_cast <void *> (const_cast <string *> (&this->_params.passwordRSA)));
-					// Закрываем файл
-					::fclose(file);
-					// Если приватный ключ получен, оглашаем его разрядность
-					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PRIVATE);
-					// Если приватный ключ получен
-					if(pkey != nullptr){
-						// Получаем ссылку на объект ключа RSA
-						key_rsa_t & key = (* this->_params.key);
-						// Если приватный ключ уже сгенерирован
-						if(key.ctx != nullptr)
-							// Освобождаем приватный ключ
-							::EVP_PKEY_free(key.ctx);
-						// Запоминаем приватный ключ
-						key.ctx = pkey;
-						// Устанавливаем тип ключа
-						key.type = key_type_t::PRIVATE;
-						// Формируем итоговый результат
-						result = (key.ctx != nullptr);
-					// Если публичный ключ не получен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Private key reading failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Private key reading failed", log::flag_t::CRITICAL);
-						#endif
-					}
-				// Если файл не открыт
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Private key file opening failed", log::flag_t::WARNING);
-					#endif
-				}
-			#endif
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Private key file opening failed", log::flag_t::WARNING);
+				#endif
+			}
 		// Если путь к файлу не передан
 		} else {
 			/**
@@ -9226,20 +5185,11 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод сохранения публичного ключа RSA в файл
- *
- * @param path путь к файлу для сохранения публичного ключа
- * @return     результат сохранения ключа
- *
- */
 bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -9249,212 +5199,241 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 		// Получаем ссылку на объект ключа RSA
 		const key_rsa_t & key = (* this->_params.key);
 		// Если путь к файлу передан правильно
-		if(!path.empty() && (key.ctx != nullptr)){
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Имя файла открытого ключа в широкой записи
-				const wstring filename = awh::fmk::convert(path);
-				/**
-				 * Ключ выписывается в отдельный файл, а на место его ставится
-				 * переименованием - тем же порядком и по тем же доводам, что и у
-				 * прочих операционных систем (5.29a)
-				 *
-				 * @note Дозволений, доступ ограничивающих, открытому ключу не ставится
-				 *       намеренно: тайны он не несёт, а закрывать его от прочих значило
-				 *       бы мешать тому, для чего он и выписывается
-				 *
-				 */
-				// Имя отдельного файла, в который ключ выписывается
-				const wstring temporary(filename + L".tmp");
-				// Сохраняем публичный ключ
-				FILE * file = ::_wfopen(temporary.c_str(), L"wb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Если файл не может быть записан
-					if(!(result = (::PEM_write_PUBKEY(file, key.ctx) == 1))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Public key saving failed", log::flag_t::CRITICAL);
-						#endif
-					}
-					// Закрываем файл
-					::fclose(file);
+		if(!path.empty() && key.rsa.ready()){
+			// Текст PEM открытого ключа
+			string text;
+			// Разобранный ключ RSA
+			nts::keys::key_t pub;
+			// Устанавливаем вид ключа RSA
+			pub.kind = nts::keys::kind_t::RSA;
+			// Отводим буфер модуля n
+			pub.n.resize(key.rsa.length(nts::sign::part_t::MODULUS));
+			// Выписываем модуль n
+			key.rsa.part(nts::sign::part_t::MODULUS, pub.n.data(), pub.n.size());
+			// Отводим буфер открытого показателя e
+			pub.e.resize(key.rsa.length(nts::sign::part_t::PUBLIC));
+			// Выписываем открытый показатель e
+			key.rsa.part(nts::sign::part_t::PUBLIC, pub.e.data(), pub.e.size());
+			// Буфер DER записи SubjectPublicKeyInfo
+			vector <uint8_t> der;
+			// Если открытый ключ в SubjectPublicKeyInfo закодирован
+			if(nts::keys::encodeSubjectPublicKeyInfo(pub, der) == nts::keys::error_t::NONE){
+				// Запись PEM открытого ключа
+				nts::pem::block_t block;
+				// Устанавливаем метку записи PUBLIC KEY
+				block.label = "PUBLIC KEY";
+				// Переносим тело DER в запись
+				block.data = std::move(der);
+				// Если запись PEM выписана
+				if(nts::pem::encode(block, text) == nts::pem::error_t::NONE){
 					/**
-					 * Файл, записанный не до конца, снимается тем же порядком, что и у
-					 * приватного ключа: наполовину выписанный ключ ключом не является
+					 * Для операционной системы MS Windows
 					 */
-					// Если запись ключа удалась
-					if(result){
-						// Если поставить ключ на место переименованием не удалось
-						if(!::MoveFileExW(temporary.c_str(), filename.c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))){
+					#if defined(_WIN32) || defined(_WIN64)
+						// Имя файла открытого ключа в широкой записи
+						const wstring filename = awh::fmk::convert(path);
+						// Имя отдельного файла, в который ключ выписывается
+						const wstring temporary(filename + L".tmp");
+						// Сохраняем публичный ключ
+						FILE * file = ::_wfopen(temporary.c_str(), L"wb");
+						// Если файл открыт удачно
+						if(file != nullptr){
+							// Если файл не может быть записан
+							if(!(result = (::fwrite(text.data(), 1, text.size(), file) == text.size()))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("Public key saving failed", log::flag_t::CRITICAL);
+								#endif
+							}
+							// Закрываем файл
+							::fclose(file);
+							// Если запись ключа удалась
+							if(result){
+								// Если поставить ключ на место переименованием не удалось
+								if(!::MoveFileExW(temporary.c_str(), filename.c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Записываем ошибку в лог
+										log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log::print("Public key file renaming failed", log::flag_t::CRITICAL);
+									#endif
+									// Снимаем отдельный файл, на место не ставший
+									::DeleteFileW(temporary.c_str());
+									// Запоминаем, что выписывание ключа не удалось
+									result = false;
+								}
+							// Если запись ключа не удалась
+							} else
+								// Удаляем отдельный файл, записанный не до конца
+								::DeleteFileW(temporary.c_str());
+						// Если файл не открыт
+						} else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+								log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log::print("Public key file renaming failed", log::flag_t::CRITICAL);
+								log::print("Public key file opening failed", log::flag_t::WARNING);
 							#endif
-							// Снимаем отдельный файл, на место не ставший
-							::DeleteFileW(temporary.c_str());
-							// Запоминаем, что выписывание ключа не удалось
-							result = false;
 						}
-					// Если запись ключа не удалась
-					} else
-						// Удаляем отдельный файл, записанный не до конца
-						::DeleteFileW(temporary.c_str());
-				// Если файл не открыт
+					/**
+					 * Для других операционных систем
+					 */
+					#else
+						// Имя файла, завершающим нулём оканчивающееся
+						const string filename(path);
+						// Имя отдельного файла, в который ключ выписывается
+						const string temporary(filename + ".tmp");
+						// Сохраняем публичный ключ
+						FILE * file = ::fopen(temporary.c_str(), "wb");
+						// Если файл открыт удачно
+						if(file != nullptr){
+							// Если файл не может быть записан
+							if(!(result = (::fwrite(text.data(), 1, text.size(), file) == text.size()))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("Public key saving failed", log::flag_t::CRITICAL);
+								#endif
+							}
+							// Если довести запись файла до носителя не удалось
+							if(result && ((::fflush(file) != 0) || (::fsync(::fileno(file)) != 0))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("Public key file syncing failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("Public key file syncing failed", log::flag_t::CRITICAL);
+								#endif
+								// Запоминаем признак отказа работы
+								result = false;
+							}
+							// Закрываем файл
+							::fclose(file);
+							// Если запись ключа удалась
+							if(result){
+								// Если поставить записанный ключ на место не удалось
+								if(::rename(temporary.c_str(), filename.c_str()) != 0){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Записываем ошибку в лог
+										log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log::print("Public key file renaming failed", log::flag_t::CRITICAL);
+									#endif
+									// Удаляем файл, на место не ставший
+									::remove(temporary.c_str());
+									// Запоминаем признак отказа работы
+									result = false;
+								// Если довести запись каталога до носителя не удалось
+								} else if(!driver::settled(filename)){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+										// Записываем ошибку в лог
+										log::debug("Public key folder syncing failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										log::print("Public key folder syncing failed", log::flag_t::WARNING);
+									#endif
+								}
+							// Если запись ключа не удалась, снимаем файл, записанный не до конца
+							} else ::remove(temporary.c_str());
+						// Если файл не открыт
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Public key file opening failed", log::flag_t::WARNING);
+							#endif
+						}
+					#endif
+				// Если запись PEM не выписана
 				} else {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
+						log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Public key file opening failed", log::flag_t::WARNING);
+						log::print("Public key saving failed", log::flag_t::CRITICAL);
 					#endif
 				}
-			/**
-			 * Для других операционных систем
-			 */
-			#else
-				// Сохраняем публичный ключ
+			// Если открытый ключ в SubjectPublicKeyInfo не закодирован
+			} else {
 				/**
-				 * Путь снимается в свою строку: обозрение строки завершающего нуля
-				 * не обещает, и подача его указателя открывала бы не тот файл либо
-				 * уводила чтение за границу обозреваемого
+				 * Если включён режим отладки
 				 */
-				// Имя файла, завершающим нулём оканчивающееся
-				const string filename(path);
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
 				/**
-				 * Ключ выписывается в отдельный файл и ставится на место
-				 * переименованием, тем же порядком, что и приватный: запись прямо в
-				 * конечный файл усекает прежний ключ первым же открытием, и отказ
-				 * выписки оставлял бы вызывающего вовсе без ключа
+				 * Если режим отладки не включён
 				 */
-				// Имя отдельного файла, в который ключ выписывается
-				const string temporary(filename + ".tmp");
-				FILE * file = ::fopen(temporary.c_str(), "wb");
-				// Если файл открыт удачно
-				if(file != nullptr){
-					// Если файл не может быть записан
-					if(!(result = (::PEM_write_PUBKEY(file, key.ctx) == 1))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Public key saving failed", log::flag_t::CRITICAL);
-						#endif
-					}
-					/**
-					 * Запись доводится до носителя прежде закрытия файла тем же
-					 * порядком, что и у приватного ключа (5.33)
-					 */
-					// Если довести запись файла до носителя не удалось
-					if(result && ((::fflush(file) != 0) || (::fsync(::fileno(file)) != 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Public key file syncing failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Public key file syncing failed", log::flag_t::CRITICAL);
-						#endif
-						// Запоминаем признак отказа работы
-						result = false;
-					}
-					// Закрываем файл
-					::fclose(file);
-					// Если запись ключа удалась
-					if(result){
-						// Если поставить записанный ключ на место не удалось
-						if(::rename(temporary.c_str(), filename.c_str()) != 0){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Public key file renaming failed", log::flag_t::CRITICAL);
-							#endif
-							// Удаляем файл, на место не ставший
-							::remove(temporary.c_str());
-							// Запоминаем признак отказа работы
-							result = false;
-						// Если довести запись каталога до носителя не удалось
-						} else if(!driver::settled(filename)){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Public key folder syncing failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Public key folder syncing failed", log::flag_t::WARNING);
-							#endif
-						}
-					// Если запись ключа не удалась, снимаем файл, записанный не до конца
-					} else ::remove(temporary.c_str());
-				// Если файл не открыт
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, log::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Public key file opening failed", log::flag_t::WARNING);
-					#endif
-				}
-			#endif
+				#else
+					// Записываем ошибку в лог
+					log::print("Public key saving failed", log::flag_t::CRITICAL);
+				#endif
+			}
 		// Если путь к файлу не передан или публичный ключ не загружен
 		} else {
 			/**
@@ -9492,21 +5471,11 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 	// Возвращаем результат
 	return result;
 }
-/**
- * @brief Метод сохранения приватного ключа RSA в файл
- *
- * @param path   путь к файлу для сохранения приватного ключа
- * @param cipher тип шифрования приватного ключа
- * @return       результат сохранения ключа
- *
- */
 bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) const noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
 	/**
@@ -9516,30 +5485,105 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 		// Получаем ссылку на объект ключа RSA
 		const key_rsa_t & key = (* this->_params.key);
 		// Если путь к файлу передан правильно
-		if(!path.empty() && (key.ctx != nullptr)){
+		if(!path.empty() && key.rsa.ready()){
 			// Если ключ является приватным
 			if(key.type == key_type_t::PRIVATE){
 				/**
-				 * Тип шифрования защиты разбирается прежде открытия файла: открытие
-				 * усекает прежний файл сразу, а негодный тип отвергался уже после -
-				 * годный ключ, на диске лежавший, погибал от вызова, который и работы
-				 * не начал. Разбор здесь лишь отвергает; сам шифр выбирается ниже,
-				 * где он и надобен
+				 * Выписка ключа готовится прежде открытия файла: открытие усекает прежний файл
+				 * сразу, а отказ выписки - негодный тип шифрования, отказ кодирования -
+				 * отвергался бы уже после, и годный ключ, на диске лежавший, погибал бы от
+				 * вызова, который и работы не начал
 				 */
-				// Если пароль защиты приватного ключа установлен
-				if(!this->_params.passwordRSA.empty()){
+				// Разобранный ключ RSA
+				nts::keys::key_t priv;
+				// Устанавливаем вид ключа RSA
+				priv.kind = nts::keys::kind_t::RSA;
+				// Отводим буфер модуля n
+				priv.n.resize(key.rsa.length(nts::sign::part_t::MODULUS));
+				// Выписываем модуль n
+				key.rsa.part(nts::sign::part_t::MODULUS, priv.n.data(), priv.n.size());
+				// Отводим буфер открытого показателя e
+				priv.e.resize(key.rsa.length(nts::sign::part_t::PUBLIC));
+				// Выписываем открытый показатель e
+				key.rsa.part(nts::sign::part_t::PUBLIC, priv.e.data(), priv.e.size());
+				// Отводим буфер секретного показателя d
+				priv.d.resize(key.rsa.length(nts::sign::part_t::SECRET));
+				// Выписываем секретный показатель d
+				key.rsa.part(nts::sign::part_t::SECRET, priv.d.data(), priv.d.size());
+				// Отводим буфер первого сомножителя p
+				priv.p.resize(key.rsa.length(nts::sign::part_t::PRIME1));
+				// Выписываем первый сомножитель p
+				key.rsa.part(nts::sign::part_t::PRIME1, priv.p.data(), priv.p.size());
+				// Отводим буфер второго сомножителя q
+				priv.q.resize(key.rsa.length(nts::sign::part_t::PRIME2));
+				// Выписываем второй сомножитель q
+				key.rsa.part(nts::sign::part_t::PRIME2, priv.q.data(), priv.q.size());
+				// Отводим буфер показателя dP
+				priv.dP.resize(key.rsa.length(nts::sign::part_t::EXPONENT1));
+				// Выписываем показатель dP
+				key.rsa.part(nts::sign::part_t::EXPONENT1, priv.dP.data(), priv.dP.size());
+				// Отводим буфер показателя dQ
+				priv.dQ.resize(key.rsa.length(nts::sign::part_t::EXPONENT2));
+				// Выписываем показатель dQ
+				key.rsa.part(nts::sign::part_t::EXPONENT2, priv.dQ.data(), priv.dQ.size());
+				// Отводим буфер коэффициента qInv
+				priv.qInv.resize(key.rsa.length(nts::sign::part_t::COEFFICIENT));
+				// Выписываем коэффициент qInv
+				key.rsa.part(nts::sign::part_t::COEFFICIENT, priv.qInv.data(), priv.qInv.size());
+				// Текст PEM приватного ключа
+				string text;
+				// Буфер DER записи приватного ключа
+				vector <uint8_t> der;
+				// Признак удавшейся выписки ключа
+				bool exported = false;
+				// Если пароль защиты приватного ключа не установлен
+				if(this->_params.passwordRSA.empty()){
+					// Если приватный ключ в PrivateKeyInfo закодирован
+					if(nts::keys::encodePrivateKeyInfo(priv, der) == nts::keys::error_t::NONE){
+						// Запись PEM приватного ключа
+						nts::pem::block_t block;
+						// Устанавливаем метку записи PRIVATE KEY
+						block.label = "PRIVATE KEY";
+						// Переносим тело DER в запись
+						block.data = std::move(der);
+						// Выписываем запись PEM в текст
+						exported = (nts::pem::encode(block, text) == nts::pem::error_t::NONE);
+					}
+				// Если пароль установлен
+				} else {
+					// Признак годности типа шифрования
+					bool suitable = true;
+					// Разрядность шифрования ключа
+					size_t bits = 256;
 					/**
-					 * Определяем пригодность типа шифрования
+					 * Определяем длину шифрования
 					 */
 					switch(static_cast <uint16_t> (cipher)){
-						// Если тип шифрования защите ключа подходит
-						case static_cast <uint16_t> (cipher_t::NONE):
+						// Устанавливаем шифрование в 128
 						case static_cast <uint16_t> (cipher_t::AES128):
-						case static_cast <uint16_t> (cipher_t::AES192):
-						case static_cast <uint16_t> (cipher_t::AES256):
+							// Устанавливаем разрядность шифрования
+							bits = 128;
 						break;
+						// Устанавливаем шифрование в 192
+						case static_cast <uint16_t> (cipher_t::AES192):
+							// Устанавливаем разрядность шифрования
+							bits = 192;
+						break;
+						// Разрядность шифрования по умолчанию равна наибольшей
+						case static_cast <uint16_t> (cipher_t::AES256):
+						case static_cast <uint16_t> (cipher_t::NONE):
+							// Устанавливаем разрядность шифрования
+							bits = 256;
+						break;
+						/**
+						 * Тип шифрования, защите ключа не подходящий, отвергается явно: прежде
+						 * он молча подменялся наибольшей разрядностью, и работа думала, что ключ
+						 * защищён тем шифром, который она назвала
+						 */
 						// Если тип шифрования разбору не знаком
-						default: {
+						default:
+							// Снимаем признак годности типа шифрования
+							suitable = false;
 							/**
 							 * Если включён режим отладки
 							 */
@@ -9555,12 +5599,37 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 							#endif
 							// Выходим из метода с признаком отказа
 							return result;
-						}
+					}
+					// Если приватный ключ в EncryptedPrivateKeyInfo закодирован
+					if(nts::keys::encodeEncryptedPrivateKeyInfo(priv, nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), der, bits) == nts::keys::error_t::NONE){
+						// Запись PEM приватного ключа
+						nts::pem::block_t block;
+						// Устанавливаем метку записи ENCRYPTED PRIVATE KEY
+						block.label = "ENCRYPTED PRIVATE KEY";
+						// Переносим тело DER в запись
+						block.data = std::move(der);
+						// Выписываем запись PEM в текст
+						exported = (nts::pem::encode(block, text) == nts::pem::error_t::NONE);
 					}
 				}
-				/**
-				 * Для операционной системы MS Windows
-				 */
+				// Если выписка ключа не удалась
+				if(!exported){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Private key saving failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода с признаком отказа
+					return result;
+				}
 				#if defined(_WIN32) || defined(_WIN64)
 					// Имя файла приватного ключа в широкой записи
 					const wstring filename = awh::fmk::convert(path);
@@ -9582,88 +5651,21 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 					FILE * file = openPrivateFile(temporary);
 					// Если файл открыт удачно
 					if(file != nullptr){
-						// Если пароль защиты приватного ключа не установлен
-						if(this->_params.passwordRSA.empty()){
-							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PrivateKey(file, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Private key saving failed", log::flag_t::CRITICAL);
-								#endif
-							}
-						// Если пароль установлен
-						} else {
-							// Тип шифрования AES
-							const EVP_CIPHER * evp = ::EVP_enc_null();
+						// Если файл не может быть записан
+						if(!(result = (::fwrite(text.data(), 1, text.size(), file) == text.size()))){
 							/**
-							 * Определяем длину шифрования
+							 * Если включён режим отладки
 							 */
-							switch(static_cast <uint16_t> (cipher)){
-								// Устанавливаем шифрование в 128
-								case static_cast <uint16_t> (cipher_t::AES128):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_128_cbc();
-								break;
-								// Устанавливаем шифрование в 192
-								case static_cast <uint16_t> (cipher_t::AES192):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_192_cbc();
-								break;
-								// Устанавливаем шифрование в 256
-								case static_cast <uint16_t> (cipher_t::AES256):
-								// Разрядность шифрования по умолчанию равна наибольшей
-								case static_cast <uint16_t> (cipher_t::NONE):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_256_cbc();
-								break;
-								/**
-								 * Тип шифрования, защите ключа не подходящий, отвергается явно: прежде
-								 * он молча подменялся наибольшей разрядностью, и работа думала, что ключ
-								 * защищён тем шифром, который она назвала
-								 */
-								// Если тип шифрования разбору не знаком
-								default:
-									// Снимаем функцию шифрования
-									evp = nullptr;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Cipher type is not suitable for private key protection", log::flag_t::CRITICAL);
-									#endif
-							}
-							// Если файл не может быть записан
-							if((evp == nullptr) || !(result = (::PEM_write_PKCS8PrivateKey(file, key.ctx, evp, this->_params.passwordRSA.c_str(), static_cast <int32_t> (this->_params.passwordRSA.size()), nullptr, nullptr) == 1))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Private key saving failed", log::flag_t::CRITICAL);
-								#endif
-							}
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("Private key saving failed", log::flag_t::CRITICAL);
+							#endif
 						}
 						// Закрываем файл
 						::fclose(file);
@@ -9802,111 +5804,21 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 					}
 					// Если файл открыт удачно
 					if(file != nullptr){
-						// Если пароль защиты приватного ключа не установлен
-						if(this->_params.passwordRSA.empty()){
-							// Если файл не может быть записан
-							if(!(result = (::PEM_write_PrivateKey(file, key.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Private key saving failed", log::flag_t::CRITICAL);
-								#endif
-							}
-						// Если пароль установлен
-						} else {
-							// Тип шифрования AES
-							const EVP_CIPHER * evp = ::EVP_enc_null();
-							/**
-							 * Определяем длину шифрования
-							 */
-							switch(static_cast <uint16_t> (cipher)){
-								// Устанавливаем шифрование в 128
-								case static_cast <uint16_t> (cipher_t::AES128):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_128_cbc();
-								break;
-								// Устанавливаем шифрование в 192
-								case static_cast <uint16_t> (cipher_t::AES192):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_192_cbc();
-								break;
-								// Устанавливаем шифрование в 256
-								case static_cast <uint16_t> (cipher_t::AES256):
-								// Разрядность шифрования по умолчанию равна наибольшей
-								case static_cast <uint16_t> (cipher_t::NONE):
-									// Устанавливаем функцию шифрования
-									evp = ::EVP_aes_256_cbc();
-								break;
-								/**
-								 * Тип шифрования, защите ключа не подходящий, отвергается явно: прежде
-								 * он молча подменялся наибольшей разрядностью, и работа думала, что ключ
-								 * защищён тем шифром, который она назвала
-								 */
-								// Если тип шифрования разбору не знаком
-								default:
-									// Снимаем функцию шифрования
-									evp = nullptr;
-									/**
-									 * Если включён режим отладки
-									 */
-									#if defined(DEBUG_MODE)
-										// Записываем ошибку в лог
-										log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, log::flag_t::CRITICAL);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log::print("Cipher type is not suitable for private key protection", log::flag_t::CRITICAL);
-									#endif
-							}
-							// Если файл не может быть записан
-							if((evp == nullptr) || !(result = (::PEM_write_PKCS8PrivateKey(file, key.ctx, evp, this->_params.passwordRSA.c_str(), static_cast <int32_t> (this->_params.passwordRSA.size()), nullptr, nullptr) == 1))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Private key saving failed", log::flag_t::CRITICAL);
-								#endif
-							}
-						}
-						/**
-						 * Запись доводится до носителя прежде закрытия файла: обрыв
-						 * питания между переименованием и сбросом кэша оставил бы на
-						 * месте прежнего ключа файл пустой либо недописанный
-						 */
-						// Если довести запись файла до носителя не удалось
-						if(result && ((::fflush(file) != 0) || (::fsync(fd) != 0))){
+						// Если файл не может быть записан
+						if(!(result = (::fwrite(text.data(), 1, text.size(), file) == text.size()))){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug("Private key file syncing failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
+								log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log::print("Private key file syncing failed", log::flag_t::CRITICAL);
+								log::print("Private key saving failed", log::flag_t::CRITICAL);
 							#endif
-							// Запоминаем признак отказа работы
-							result = false;
 						}
 						// Закрываем файл
 						::fclose(file);
@@ -10048,8 +5960,6 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -10066,13 +5976,6 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 	 */
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	/**
-	 * Контекст библиотеки криптографии заводится в области работы целиком:
-	 * заведён он внутри перехвата, и сбой отведения памяти после его заведения
-	 * уносил бы работу мимо освобождения - контекст оставался бы висеть
-	 */
-	// Контекст работы с ключом
-	EVP_PKEY_CTX * ctx = nullptr;
 	/**
 	 * Отсутствующий буфер при заявленном размере отвергается с записью в лог
 	 * наравне с работой по симметричному ключу (4.27): молчаливый отказ не давал
@@ -10105,172 +6008,91 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 			// Получаем ссылку на объект ключа RSA
 			const key_rsa_t & key = (* this->_params.key);
 			// Если публичный ключ сгенерирован
-			if(key.ctx != nullptr){
-				// Создаём контекст для шифрования
-				ctx = ::EVP_PKEY_CTX_new(key.ctx, nullptr);
-				// Если контекст для подписи не создан
-				if(ctx == nullptr){
+			if(key.rsa.ready()){
+				/**
+				 * Дополнение OAEP отводит под себя две хэш-суммы и ещё два октета,
+				 * и сообщение длиннее остатка ключом RSA не шифруется вовсе. Предел
+				 * этот отвергается здесь, а не в глубине библиотеки: оттуда пришёл
+				 * бы отказ без указания на настоящую причину и без самого предела
+				 */
+				// Определяем размер ключа RSA в октетах: модуль и длина шифротекста
+				const size_t width = key.rsa.size();
+				/**
+				 * Ключ, под одно дополнение слишком короткий, отвергается до вычитания:
+				 * разность считается беззнаковой, и у ключа короче 66 октетов - а такой
+				 * приходит вводом со стороны, где разрядность не проверяется, - она
+				 * обращалась в число огромное. Предел переставал отвергать что бы то ни
+				 * было, и отказ приходил из глубины библиотеки без внятной причины
+				 */
+				// Если размер ключа RSA под одно дополнение OAEP недостаточен
+				if(width <= ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 2)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
+						log::debug("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", __PRETTY_FUNCTION__, {width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3)}, log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Context allocation failed", log::flag_t::CRITICAL);
+						log::print("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
 					#endif
-				// Если контекст для подписи создан
-				} else {
-					// Если контекст для шифрования не инициализирован
-					if((::EVP_PKEY_encrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) || (::EVP_PKEY_CTX_set_rsa_oaep_md(ctx, ::EVP_sha256()) <= 0) || (::EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, ::EVP_sha256()) <= 0)){
-						// Освобождаем контекст для шифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Encrypt init failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Encrypt init failed", log::flag_t::CRITICAL);
-						#endif
-						// Выходим из метода с признаком отказа
-						return outcome;
-					}
-					// Размер подписи в байтах
+					// Выходим из метода с признаком отказа
+					return outcome;
+				}
+				// Определяем наибольший размер сообщения, ключом RSA шифруемого
+				const size_t limit = (width - (2 * AWH_CRYPTO_OAEP_HASH_SIZE) - 2);
+				// Если размер сообщения предел шифрования ключом RSA превышает
+				if(size > limit){
 					/**
-					 * Дополнение OAEP отводит под себя две хэш-суммы и ещё два октета,
-					 * и сообщение длиннее остатка ключом RSA не шифруется вовсе. Предел
-					 * этот отвергается здесь, а не в глубине библиотеки: оттуда пришёл
-					 * бы отказ без указания на настоящую причину и без самого предела
+					 * Если включён режим отладки
 					 */
-					// Определяем размер ключа RSA в октетах
-					const size_t width = static_cast <size_t> (::EVP_PKEY_size(key.ctx));
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", __PRETTY_FUNCTION__, {size, limit}, log::flag_t::CRITICAL, size, limit);
 					/**
-					 * Ключ, под одно дополнение слишком короткий, отвергается до вычитания:
-					 * разность считается беззнаковой, и у ключа короче 66 октетов - а такой
-					 * приходит вводом со стороны, где разрядность не проверяется, - она
-					 * обращалась в число огромное. Предел переставал отвергать что бы то ни
-					 * было, и отказ приходил из глубины библиотеки без внятной причины
+					 * Если режим отладки не включён
 					 */
-					// Если размер ключа RSA под одно дополнение OAEP недостаточен
-					if(width <= ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 2)){
-						// Освобождаем контекст для шифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", __PRETTY_FUNCTION__, {width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3)}, log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
-						#else
-							// Записываем ошибку в лог
-							log::print("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
-						#endif
-						// Выходим из метода с признаком отказа
-						return outcome;
-					}
-					// Определяем наибольший размер сообщения, ключом RSA шифруемого
-					const size_t limit = (width - (2 * AWH_CRYPTO_OAEP_HASH_SIZE) - 2);
-					// Если размер сообщения предел шифрования ключом RSA превышает
-					if(size > limit){
-						// Освобождаем контекст для шифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", __PRETTY_FUNCTION__, {size, limit}, log::flag_t::CRITICAL, size, limit);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", log::flag_t::CRITICAL, size, limit);
-						#endif
-						// Выходим из метода с признаком отказа
-						return outcome;
-					}
-					size_t length = 0;
-					// Получаем размер зашифрованных данных
-					if(::EVP_PKEY_encrypt(ctx, nullptr, &length, buffer, size) <= 0){
-						// Освобождаем контекст для шифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Get encrypted data size failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Get encrypted data size failed", log::flag_t::CRITICAL);
-						#endif
-						// Выходим из метода с признаком отказа
-						return outcome;
-					}
+					#else
+						// Записываем ошибку в лог
+						log::print("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", log::flag_t::CRITICAL, size, limit);
+					#endif
+					// Выходим из метода с признаком отказа
+					return outcome;
+				}
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				// Выделяем память под шифротекст размером модуля RSA
+				result.resize(width, 0);
+				// Шифруем сообщение дополнением OAEP по хэшу SHA-256
+				if(!key.rsa.encrypt(nts::sign::scheme_t::OAEP, nts::digest::hash_t::SHA256, nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), reinterpret_cast <uint8_t *> (result.data()))){
+					/**
+					 * Результат очищается: буфер под него уже отведён и заполнен нулями,
+					 * и работа, судящая об удаче по его непустоте, приняла бы нули за
+					 * готовый результат
+					 */
 					// Затираем и очищаем буфер результата
 					driver::wipe(result);
-					// Выделяем память под подпись
-					result.resize(length, 0);
-					// Получаем зашифрованные данные
-					if(::EVP_PKEY_encrypt(ctx, result.data(), &length, buffer, size) <= 0){
-						/**
-						 * Результат очищается: буфер под него уже отведён и заполнен нулями,
-						 * и работа, судящая об удаче по его непустоте, приняла бы нули за
-						 * готовый результат
-						 */
-						// Затираем и очищаем буфер результата
-						driver::wipe(result);
-						// Освобождаем контекст для шифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Encrypt data failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Encrypt data failed", log::flag_t::CRITICAL);
-						#endif
-						// Выходим из метода с признаком отказа
-						return outcome;
-					}
-					// Изменяем размер буфера под фактический размер зашифрованных данных
-					result.resize(length);
-					// Запоминаем признак успешно выполненной работы
-					outcome = true;
-					// Освобождаем контекст для шифрования
-					::EVP_PKEY_CTX_free(ctx);
-					// Снимаем указатель освобождённого контекста
-					ctx = nullptr;
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Encrypt data failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Encrypt data failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода с признаком отказа
+					return outcome;
 				}
+				// Запоминаем признак успешно выполненной работы
+				outcome = true;
 			// Если публичный ключ не сгенерирован или не загружен
 			} else {
 				/**
@@ -10314,10 +6136,6 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 		 */
 		// Затираем и очищаем буфер результата
 		driver::wipe(result);
-		// Если контекст работы с ключом заведён
-		if(ctx != nullptr)
-			// Освобождаем контекст работы с ключом
-			::EVP_PKEY_CTX_free(ctx);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -10359,8 +6177,6 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -10377,13 +6193,6 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 	 */
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	/**
-	 * Контекст библиотеки криптографии заводится в области работы целиком:
-	 * заведён он внутри перехвата, и сбой отведения памяти после его заведения
-	 * уносил бы работу мимо освобождения - контекст оставался бы висеть
-	 */
-	// Контекст работы с ключом
-	EVP_PKEY_CTX * ctx = nullptr;
 	/**
 	 * Отсутствующий буфер при заявленном размере отвергается с записью в лог
 	 * наравне с работой по симметричному ключу (4.27): молчаливый отказ не давал
@@ -10416,116 +6225,46 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 			// Получаем ссылку на объект ключа RSA
 			const key_rsa_t & key = (* this->_params.key);
 			// Если приватный ключ сгенерирован
-			if(key.ctx != nullptr){
+			if(key.rsa.ready()){
 				// Если ключ является приватным
 				if(key.type == key_type_t::PRIVATE){
-					// Создаём контекст для шифрования
-					ctx = ::EVP_PKEY_CTX_new(key.ctx, nullptr);
-					// Если контекст для подписи не создан
-					if(ctx == nullptr){
+					// Размер ключа RSA в октетах: модуль и длина шифротекста
+					const size_t width = key.rsa.size();
+					// Затираем и очищаем буфер результата
+					driver::wipe(result);
+					// Выделяем память под сообщение не больше модуля RSA
+					result.resize(width, 0);
+					// Длина расшифрованного сообщения
+					size_t length = 0;
+					// Расшифровываем сообщение дополнением OAEP по хэшу SHA-256
+					if(!key.rsa.decrypt(nts::sign::scheme_t::OAEP, nts::digest::hash_t::SHA256, nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), reinterpret_cast <uint8_t *> (result.data()), length)){
+						/**
+						 * Результат очищается: буфер под него уже отведён и заполнен нулями,
+						 * и работа, судящая об удаче по его непустоте, приняла бы нули за
+						 * готовый результат
+						 */
+						// Затираем и очищаем буфер результата
+						driver::wipe(result);
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
+							log::debug("Decrypt data failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print("Context allocation failed", log::flag_t::CRITICAL);
+							log::print("Decrypt data failed", log::flag_t::CRITICAL);
 						#endif
-					// Если контекст для подписи создан
-					} else {
-						// Если контекст для дешифрования не инициализирован
-						if((::EVP_PKEY_decrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) || (::EVP_PKEY_CTX_set_rsa_oaep_md(ctx, ::EVP_sha256()) <= 0) || (::EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, ::EVP_sha256()) <= 0)){
-							// Освобождаем контекст для дешифрования
-							::EVP_PKEY_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Decrypt init failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Decrypt init failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Размер подписи в байтах
-						size_t length = 0;
-						// Получаем размер дешифрованных данных
-						if(::EVP_PKEY_decrypt(ctx, nullptr, &length, buffer, size) <= 0){
-							// Освобождаем контекст для дешифрования
-							::EVP_PKEY_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Get decrypted data size failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Get decrypted data size failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Затираем и очищаем буфер результата
-						driver::wipe(result);
-						// Выделяем память под подпись
-						result.resize(length, 0);
-						// Получаем дешифрованные данные
-						if(::EVP_PKEY_decrypt(ctx, result.data(), &length, buffer, size) <= 0){
-							/**
-							 * Результат очищается: буфер под него уже отведён и заполнен нулями,
-							 * и работа, судящая об удаче по его непустоте, приняла бы нули за
-							 * готовый результат
-							 */
-							// Затираем и очищаем буфер результата
-							driver::wipe(result);
-							// Освобождаем контекст для дешифрования
-							::EVP_PKEY_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Decrypt data failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Decrypt data failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Изменяем размер буфера под фактический размер дешифрованных данных
-						result.resize(length);
-						// Запоминаем признак успешно выполненной работы
-						outcome = true;
-						// Освобождаем контекст для дешифрования
-						::EVP_PKEY_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
+						// Выходим из метода с признаком отказа
+						return outcome;
 					}
+					// Изменяем размер буфера под фактический размер расшифрованного сообщения
+					result.resize(length);
+					// Запоминаем признак успешно выполненной работы
+					outcome = true;
 				// Если ключ не является приватным
 				} else {
 					/**
@@ -10585,10 +6324,6 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 		 */
 		// Затираем и очищаем буфер результата
 		driver::wipe(result);
-		// Если контекст работы с ключом заведён
-		if(ctx != nullptr)
-			// Освобождаем контекст работы с ключом
-			::EVP_PKEY_CTX_free(ctx);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -10632,8 +6367,6 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Буфер результата затирается и очищается на входе: отказ, случившийся до
 	 * отведения буфера, оставлял в нём итог прежней работы - подпись прежних
@@ -10650,13 +6383,6 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 	 */
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	/**
-	 * Контекст библиотеки криптографии заводится в области работы целиком:
-	 * заведён он внутри перехвата, и сбой отведения памяти после его заведения
-	 * уносил бы работу мимо освобождения - контекст оставался бы висеть
-	 */
-	// Контекст работы с ключом
-	EVP_MD_CTX * ctx = nullptr;
 	/**
 	 * Отсутствующий буфер при заявленном размере отвергается с записью в лог
 	 * наравне с работой по симметричному ключу (4.27): молчаливый отказ не давал
@@ -10689,213 +6415,108 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 			// Получаем ссылку на объект ключа RSA
 			const key_rsa_t & key = (* this->_params.key);
 			// Если приватный ключ сгенерирован
-			if(key.ctx != nullptr){
+			if(key.rsa.ready()){
 				// Если ключ является приватным
 				if(key.type == key_type_t::PRIVATE){
-					// Создаём контекст для подписи
-					ctx = ::EVP_MD_CTX_new();
-					// Если контекст для подписи не создан
-					if(ctx == nullptr){
+					// Разрядность хэш-суммы по её виду
+					const size_t dlen = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
+					// Если вид хэш-суммы библиотеке не знаком
+					if(dlen == 0){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
+							log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print("Context allocation failed", log::flag_t::CRITICAL);
+							log::print("Unsupported hash type", log::flag_t::CRITICAL);
 						#endif
-					// Если контекст для подписи создан
-					} else {
-						// Выбираем хэш-функцию
-						const EVP_MD * md = nullptr;
+						// Выходим из метода с признаком отказа
+						return outcome;
+					}
+					// Буфер хэш-суммы данных
+					vector <uint8_t> digest(dlen, 0);
+					// Вырабатываем хэш-сумму данных единым вызовом библиотеки
+					if(!nts::digest::hash(static_cast <nts::digest::hash_t> (hash), nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen)){
 						/**
-						 * Определяем тип хэш-суммы
+						 * Если включён режим отладки
 						 */
-						switch(static_cast <uint8_t> (hash)){
-							// Если тип хэш-суммы указан как MD5
-							case static_cast <uint8_t> (hash_t::MD5):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_md5();
-							break;
-							// Если тип хэш-суммы указан как SHA1
-							case static_cast <uint8_t> (hash_t::SHA1):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_sha1();
-							break;
-							// Если тип хэш-суммы указан как SHA224
-							case static_cast <uint8_t> (hash_t::SHA224):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_sha224();
-							break;
-							// Если тип хэш-суммы указан как SHA256
-							case static_cast <uint8_t> (hash_t::SHA256):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_sha256();
-							break;
-							// Если тип хэш-суммы указан как SHA384
-							case static_cast <uint8_t> (hash_t::SHA384):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_sha384();
-							break;
-							// Если тип хэш-суммы указан как SHA512
-							case static_cast <uint8_t> (hash_t::SHA512):
-								// Устанавливаем функцию хэширования
-								md = ::EVP_sha512();
-							break;
-							// Если ничего не выбрано
-							default: {
-								// Освобождаем контекст для подписи
-								::EVP_MD_CTX_free(ctx);
-								// Снимаем указатель освобождённого контекста
-								ctx = nullptr;
-								/**
-								 * Если включён режим отладки
-								 */
-								#if defined(DEBUG_MODE)
-									// Записываем ошибку в лог
-									log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log::print("Unsupported hash type", log::flag_t::CRITICAL);
-								#endif
-								// Выходим из метода с признаком отказа
-								return outcome;
-							}
-						}
-						// Инициализируем подпись данных
-						// Контекст ключа подписи для установки схемы дополнения
-						EVP_PKEY_CTX * pctx = nullptr;
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("Digest signature update failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
 						/**
-						 * Ступени заведения разнесены порознь тем же порядком, что и у
-						 * проверки подписи (5.25): у схемы дополнения своя запись, и
-						 * общая подменяла бы названную ею причину
+						 * Если режим отладки не включён
 						 */
-						// Если заведение контекста подписи не удалось
-						if(::EVP_DigestSignInit(ctx, &pctx, md, nullptr, key.ctx) != 1){
-							// Освобождаем контекст для подписи
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Digest signature init failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Digest signature init failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						// Если установка схемы дополнения подписи не удалась, причину называет она сама
-						} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding)){
-							// Освобождаем контекст для подписи
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Обновляем подпись данными из буфера
-						if(::EVP_DigestSignUpdate(ctx, buffer, size) != 1){
-							// Освобождаем контекст для подписи
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Digest signature update failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Digest signature update failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Размер подписи в байтах
-						size_t length = 0;
-						// Получаем размер подписи
-						if(::EVP_DigestSignFinal(ctx, nullptr, &length) != 1){
-							// Освобождаем контекст для подписи
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Digest signature final (get length) failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
+						#else
+							// Записываем ошибку в лог
+							log::print("Digest signature update failed", log::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода с признаком отказа
+						return outcome;
+					}
+					// Схема дополнения подписи RSA
+					nts::sign::scheme_t scheme;
+					// Если схема дополнения подписи вероятностная
+					if(this->_params.padding == crypto_t::padding_t::PSS)
+						// Устанавливаем вероятностную схему PSS
+						scheme = nts::sign::scheme_t::PSS;
+					// Если схема дополнения подписи PKCS#1
+					else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+						// Устанавливаем схему PKCS#1
+						scheme = nts::sign::scheme_t::PKCS1;
+					// Если схема дополнения подписи не задана либо разбору не знакома
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода с признаком отказа
+						return outcome;
+					}
+					// Затираем и очищаем буфер результата
+					driver::wipe(result);
+					// Выделяем память под подпись размером модуля RSA
+					result.resize(key.rsa.size(), 0);
+					// Вырабатываем подпись данных по хэш-сумме (соль PSS по умолчанию равна хэшу)
+					if(!key.rsa.make(scheme, static_cast <nts::digest::hash_t> (hash), nts::view_t(digest.data(), dlen), reinterpret_cast <uint8_t *> (result.data()))){
+						/**
+						 * Результат очищается: буфер под него уже отведён и заполнен нулями,
+						 * и работа, судящая об удаче по его непустоте, приняла бы нули за
+						 * готовый результат
+						 */
 						// Затираем и очищаем буфер результата
 						driver::wipe(result);
-						// Выделяем память под подпись
-						result.resize(length, 0);
-						// Получаем подпись данных
-						if(::EVP_DigestSignFinal(ctx, result.data(), &length) != 1){
-							/**
-							 * Результат очищается: буфер под него уже отведён и заполнен нулями,
-							 * и работа, судящая об удаче по его непустоте, приняла бы нули за
-							 * готовый результат
-							 */
-							// Затираем и очищаем буфер результата
-							driver::wipe(result);
-							// Освобождаем контекст для подписи
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Digest signature final (get signature) failed", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода с признаком отказа
-							return outcome;
-						}
-						// Изменяем размер буфера под фактический размер подписи
-						result.resize(length);
-						// Запоминаем признак успешно выполненной работы
-						outcome = true;
-						// Освобождаем контекст для подписи
-						::EVP_MD_CTX_free(ctx);
-						// Снимаем указатель освобождённого контекста
-						ctx = nullptr;
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("Digest signature final (get signature) failed", log::flag_t::CRITICAL);
+						#endif
+						// Выходим из метода с признаком отказа
+						return outcome;
 					}
+					// Запоминаем признак успешно выполненной работы
+					outcome = true;
 				// Если ключ не является приватным
 				} else {
 					/**
@@ -10955,10 +6576,6 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 		 */
 		// Затираем и очищаем буфер результата
 		driver::wipe(result);
-		// Если контекст работы с ключом заведён
-		if(ctx != nullptr)
-			// Освобождаем контекст работы с ключом
-			::EVP_MD_CTX_free(ctx);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -11004,17 +6621,8 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Переменная результата
 	bool result = false;
-	/**
-	 * Контекст библиотеки криптографии заводится в области работы целиком:
-	 * заведён он внутри перехвата, и сбой отведения памяти после его заведения
-	 * уносил бы работу мимо освобождения - контекст оставался бы висеть
-	 */
-	// Контекст работы с ключом
-	EVP_MD_CTX * ctx = nullptr;
 	/**
 	 * Отсутствующий буфер при заявленном размере отвергается с записью в лог
 	 * наравне с работой по симметричному ключу (4.27): молчаливый отказ не давал
@@ -11047,143 +6655,81 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 			// Получаем ссылку на объект ключа RSA
 			const key_rsa_t & key = (* this->_params.key);
 			// Если публичный ключ сгенерирован
-			if(key.ctx != nullptr){
-				// Создаём контекст для верификации
-				ctx = ::EVP_MD_CTX_new();
-				// Если контекст для подписи не создан
-				if(ctx == nullptr){
+			if(key.rsa.ready()){
+				// Разрядность хэш-суммы по её виду
+				const size_t dlen = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
+				// Если вид хэш-суммы библиотеке не знаком
+				if(dlen == 0){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
+						log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Context allocation failed", log::flag_t::CRITICAL);
+						log::print("Unsupported hash type", log::flag_t::CRITICAL);
 					#endif
-				// Если контекст для подписи создан
-				} else {
-					// Выбираем хэш-функцию
-					const EVP_MD * md = nullptr;
-					/**
-					 * Определяем тип хэш-суммы
-					 */
-					switch(static_cast <uint8_t> (hash)){
-						// Если тип хэш-суммы указан как MD5
-						case static_cast <uint8_t> (hash_t::MD5):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_md5();
-						break;
-						// Если тип хэш-суммы указан как SHA1
-						case static_cast <uint8_t> (hash_t::SHA1):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_sha1();
-						break;
-						// Если тип хэш-суммы указан как SHA224
-						case static_cast <uint8_t> (hash_t::SHA224):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_sha224();
-						break;
-						// Если тип хэш-суммы указан как SHA256
-						case static_cast <uint8_t> (hash_t::SHA256):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_sha256();
-						break;
-						// Если тип хэш-суммы указан как SHA384
-						case static_cast <uint8_t> (hash_t::SHA384):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_sha384();
-						break;
-						// Если тип хэш-суммы указан как SHA512
-						case static_cast <uint8_t> (hash_t::SHA512):
-							// Устанавливаем функцию хэширования
-							md = ::EVP_sha512();
-						break;
-						// Если ничего не выбрано
-						default: {
-							// Освобождаем контекст для верификации
-							::EVP_MD_CTX_free(ctx);
-							// Снимаем указатель освобождённого контекста
-							ctx = nullptr;
-							/**
-							 * Если включён режим отладки
-							 */
-							#if defined(DEBUG_MODE)
-								// Записываем ошибку в лог
-								log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log::print("Unsupported hash type", log::flag_t::CRITICAL);
-							#endif
-							// Выходим из метода
-							return result;
-						}
-					}
-					// Инициализируем верификацию данных
-					// Контекст ключа подписи для установки схемы дополнения
-					EVP_PKEY_CTX * pctx = nullptr;
-					/**
-					 * Отказы проверки подписи разделены по существу: несовпадение подписи - это
-					 * законный ответ работы, и записывать его в лог незачем, а сбой заведения
-					 * ответом не является вовсе. Прежде оба давали молчаливый отказ, и
-					 * неисправность выглядела в точности как подделка.
-					 *
-					 * Ступени заведения разнесены порознь: прежде всякая из них записывалась как
-					 * сбой заведения контекста, тогда как подача данных к заведению уже не
-					 * относится. Отказ схемы дополнения своей записи здесь не получает - её
-					 * пишет сама установка схемы, и вторая запись была бы лишь шумом
-					 */
-					// Если контекст проверки подписи не заведён
-					if(::EVP_DigestVerifyInit(ctx, &pctx, md, nullptr, key.ctx) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Error during signature verification context setup", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Error during signature verification context setup", log::flag_t::CRITICAL);
-						#endif
-					// Если схема дополнения подписи не установлена
-					} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding)){
-						/**
-						 * Причину отказа записала сама установка схемы дополнения
-						 */
-					// Если данные к проверке подписи не поданы
-					} else if(::EVP_DigestVerifyUpdate(ctx, buffer, size) != 1){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("Error during signature verification data update", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("Error during signature verification data update", log::flag_t::CRITICAL);
-						#endif
-					// Если контекст проверки подписи заведён
-					} else
-						// Выполняем верификацию данных
-						result = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
-					// Освобождаем контекст для верификации
-					::EVP_MD_CTX_free(ctx);
-					// Снимаем указатель освобождённого контекста
-					ctx = nullptr;
+					// Выходим из метода
+					return result;
 				}
+				// Буфер хэш-суммы данных
+				vector <uint8_t> digest(dlen, 0);
+				// Вырабатываем хэш-сумму данных единым вызовом библиотеки
+				if(!nts::digest::hash(static_cast <nts::digest::hash_t> (hash), nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Error during signature verification data update", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Error during signature verification data update", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
+				// Схема дополнения подписи RSA
+				nts::sign::scheme_t scheme;
+				// Если схема дополнения подписи вероятностная
+				if(this->_params.padding == crypto_t::padding_t::PSS)
+					// Устанавливаем вероятностную схему PSS
+					scheme = nts::sign::scheme_t::PSS;
+				// Если схема дополнения подписи PKCS#1
+				else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+					// Устанавливаем схему PKCS#1
+					scheme = nts::sign::scheme_t::PKCS1;
+				// Если схема дополнения подписи не задана либо разбору не знакома
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
+				/**
+				 * Несовпадение подписи — законный ответ работы, и записывать его в лог
+				 * незачем; сбой заведения ответом не является и оглашается выше
+				 */
+				// Выполняем проверку подписи по хэш-сумме
+				result = key.rsa.check(scheme, static_cast <nts::digest::hash_t> (hash), nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
 			// Если публичный ключ не сгенерирован или не загружен
 			} else {
 				/**
@@ -11220,10 +6766,6 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если контекст работы с ключом заведён
-		if(ctx != nullptr)
-			// Освобождаем контекст работы с ключом
-			::EVP_MD_CTX_free(ctx);
 		/**
 		 * Если включён режим отладки
 		 */
@@ -11256,7 +6798,7 @@ bool awh::Crypto::streamable(const signature_t type) const noexcept {
 	 * ГОСТ Р 34.10 подписывают хэш-сумму, а та набирается порциями
 	 */
 	// Выводим признак поточной работы вида подписи
-	return ((type == signature_t::RSA) || (type == signature_t::ECDSA) || gost::kindOf(type));
+	return ((type == signature_t::RSA) || (type == signature_t::ECDSA) || (type == signature_t::GOST) || (type == signature_t::GOST512));
 }
 /**
  * @brief Метод получения вида подписи ключа из связки
@@ -11297,10 +6839,6 @@ bool awh::Crypto::removeKey(const string & name) noexcept {
 	if(i == this->_keyring->keys.end())
 		// Выходим из метода
 		return false;
-	// Если ключ подписи заведён
-	if(i->second.ctx != nullptr)
-		// Освобождаем память выделенную под ключ подписи
-		::EVP_PKEY_free(i->second.ctx);
 	// Выполняем удаление ключа из связки
 	this->_keyring->keys.erase(i);
 	// Выводим признак успешно выполненной работы
@@ -11320,119 +6858,30 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	// Контекст выработки ключа подписи
-	EVP_PKEY_CTX * pctx = nullptr;
-	// Выработанный ключ подписи
-	EVP_PKEY * key = nullptr;
+	// Разобранный ключ подписи
+	nts::keys::key_t key;
+	// Кривая ключа у ECDSA и ГОСТ
+	unique_ptr <nts::curve::curve_t> curve;
+	// Модуль подписи RSA
+	unique_ptr <nts::sign::rsa_t> rsa;
+	// Модуль подписи ECDSA
+	unique_ptr <nts::sign::ecdsa_t> ecdsa;
+	// Модуль подписи Ed25519
+	unique_ptr <nts::sign::ed25519_t> ed25519;
+	// Модуль подписи ГОСТ
+	unique_ptr <nts::sign::gost_t> gost;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Разновидность вырабатываемого ключа
-		int32_t kind = 0;
 		/**
 		 * Определяем вид вырабатываемой подписи
 		 */
 		switch(static_cast <uint8_t> (type)){
 			// Если вид подписи указан как RSA
-			case static_cast <uint8_t> (signature_t::RSA):
-				// Устанавливаем разновидность вырабатываемого ключа
-				kind = EVP_PKEY_RSA;
-			break;
-			// Если вид подписи указан как ECDSA
-			case static_cast <uint8_t> (signature_t::ECDSA):
-				// Устанавливаем разновидность вырабатываемого ключа
-				kind = EVP_PKEY_EC;
-			break;
-			// Если вид подписи указан как Ed25519
-			case static_cast <uint8_t> (signature_t::ED25519):
-				// Устанавливаем разновидность вырабатываемого ключа
-				kind = EVP_PKEY_ED25519;
-			break;
-			/**
-			 * Если вид подписи указан как ГОСТ Р 34.10-2012
-			 *
-			 * @details Ключ ГОСТ вырабатывается своими силами и до библиотеки
-			 *          криптографии не доходит вовсе, поэтому работа завершается прямо
-			 *          здесь, не заводя ни контекста выработки, ни ключа EVP
-			 */
-			case static_cast <uint8_t> (signature_t::GOST):
-			case static_cast <uint8_t> (signature_t::GOST512): {
-				// Признак схемы подписи на 512 разрядов
-				const bool wide = (type == signature_t::GOST512);
-				// Заводим запись ключа подписи
-				keyring_t::record_t record;
-				// Устанавливаем вид подписи записи
-				record.type = type;
-				/**
-				 * Если ключ подписи выработать не удалось
-				 *
-				 * @note Набор свойств кривой берётся первым из отвечающих разрядности:
-				 *       у схемы на 256 разрядов это CryptoPro-A, у схемы на 512 - ТК26 A.
-				 *       Прочие наборы работе известны и принимаются при вводе ключа, но
-				 *       своей выработке не заказываются: выбор набора договором не задан
-				 */
-				if(!gost::generate(record.gost, (wide ? 2 : 0))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("Signature key is not generated", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("Signature key is not generated", log::flag_t::CRITICAL);
-					#endif
-					// Выходим из метода
-					return false;
-				}
-				// Выполняем удаление ключа подписи с тем же именем
-				this->removeKey(name);
-				// Выполняем добавление ключа подписи в связку
-				this->_keyring->keys.emplace(name, record);
-				// Выводим признак успешно выполненной работы
-				return true;
-			}
-			/**
-			 * Вид подписи, работой не заведённый, отвергается с названной причиной:
-			 * молчаливый отказ не дал бы отличить незаведённую схему от сбоя работы
-			 */
-			// Если вид подписи разбору не знаком либо работой не заведён
-			default: {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Signature kind is unsupported", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Signature kind is unsupported", log::flag_t::WARNING);
-				#endif
-				// Выходим из метода
-				return outcome;
-			}
-		}
-		// Выполняем заведение контекста выработки ключа подписи
-		pctx = ::EVP_PKEY_CTX_new_id(kind, nullptr);
-		// Если контекст выработки ключа подписи заведён
-		if((pctx != nullptr) && (::EVP_PKEY_keygen_init(pctx) == 1)){
-			// Признак готовности параметров выработки ключа
-			bool ready = true;
-			/**
-			 * Если выработке подлежит ключ RSA
-			 */
-			if(type == signature_t::RSA){
+			case static_cast <uint8_t> (signature_t::RSA): {
 				// Разрядность вырабатываемого ключа
 				const size_t width = ((bits > 0) ? static_cast <size_t> (bits) : static_cast <size_t> (AWH_CRYPTO_RSA_BITS));
 				/**
@@ -11454,39 +6903,333 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 						// Записываем ошибку в лог
 						log::print("Signature key width is below the threshold", log::flag_t::WARNING);
 					#endif
-					// Снимаем признак готовности параметров выработки ключа
-					ready = false;
-				// Устанавливаем разрядность вырабатываемого ключа
-				} else ready = (::EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, static_cast <int32_t> (width)) == 1);
+					// Выходим из метода
+					return false;
+				}
+				// Заводим модуль подписи RSA
+				rsa = std::make_unique <nts::sign::rsa_t> ();
+				// Если ключ RSA не выработан
+				if(!rsa->generate(width)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Устанавливаем вид ключа RSA
+				key.kind = nts::keys::kind_t::RSA;
+				// Отводим буфер модуля n
+				key.n.resize(rsa->length(nts::sign::part_t::MODULUS));
+				// Выписываем модуль n
+				rsa->part(nts::sign::part_t::MODULUS, key.n.data(), key.n.size());
+				// Отводим буфер открытого показателя e
+				key.e.resize(rsa->length(nts::sign::part_t::PUBLIC));
+				// Выписываем открытый показатель e
+				rsa->part(nts::sign::part_t::PUBLIC, key.e.data(), key.e.size());
+				// Отводим буфер секретного показателя d
+				key.d.resize(rsa->length(nts::sign::part_t::SECRET));
+				// Выписываем секретный показатель d
+				rsa->part(nts::sign::part_t::SECRET, key.d.data(), key.d.size());
+				// Отводим буфер первого сомножителя p
+				key.p.resize(rsa->length(nts::sign::part_t::PRIME1));
+				// Выписываем первый сомножитель p
+				rsa->part(nts::sign::part_t::PRIME1, key.p.data(), key.p.size());
+				// Отводим буфер второго сомножителя q
+				key.q.resize(rsa->length(nts::sign::part_t::PRIME2));
+				// Выписываем второй сомножитель q
+				rsa->part(nts::sign::part_t::PRIME2, key.q.data(), key.q.size());
+				// Отводим буфер показателя dP
+				key.dP.resize(rsa->length(nts::sign::part_t::EXPONENT1));
+				// Выписываем показатель dP
+				rsa->part(nts::sign::part_t::EXPONENT1, key.dP.data(), key.dP.size());
+				// Отводим буфер показателя dQ
+				key.dQ.resize(rsa->length(nts::sign::part_t::EXPONENT2));
+				// Выписываем показатель dQ
+				rsa->part(nts::sign::part_t::EXPONENT2, key.dQ.data(), key.dQ.size());
+				// Отводим буфер коэффициента qInv
+				key.qInv.resize(rsa->length(nts::sign::part_t::COEFFICIENT));
+				// Выписываем коэффициент qInv
+				rsa->part(nts::sign::part_t::COEFFICIENT, key.qInv.data(), key.qInv.size());
+			} break;
+			// Если вид подписи указан как ECDSA
+			case static_cast <uint8_t> (signature_t::ECDSA): {
+				// Заводим кривую P-256
+				curve = std::make_unique <nts::curve::curve_t> ();
+				// Если кривую по опознавателю установить не удалось
+				if(!nts::curve::parameters(string("1.2.840.10045.3.1.7"), *curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Заводим модуль подписи ECDSA
+				ecdsa = std::make_unique <nts::sign::ecdsa_t> ();
+				// Если кривую в модуль установить не удалось
+				if(!ecdsa->start(*curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Размер порядка подгруппы кривой
+				const size_t size = curve->order().size();
+				// Место ключа подписи
+				uint8_t secret[64];
+				// Если ключ подписи не выработан
+				if(!ecdsa->generate(secret, size)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Устанавливаем вид ключа на кривой
+				key.kind = nts::keys::kind_t::EC;
+				// Устанавливаем опознаватель кривой P-256
+				key.oid = "1.2.840.10045.3.1.7";
+				// Переносим секретный скаляр
+				key.d.assign(secret, secret + size);
+				// Отводим буфер первой координаты точки
+				key.x.resize(size);
+				// Отводим буфер второй координаты точки
+				key.y.resize(size);
+				// Если ключ проверки подписи не получен
+				if(!ecdsa->key(key.x.data(), key.y.data(), size)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+			} break;
+			// Если вид подписи указан как Ed25519
+			case static_cast <uint8_t> (signature_t::ED25519): {
+				// Заводим модуль подписи Ed25519
+				ed25519 = std::make_unique <nts::sign::ed25519_t> ();
+				// Место ключа подписи
+				uint8_t secret[32];
+				// Если ключ подписи не выработан
+				if(!ed25519->generate(secret, sizeof(secret))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Устанавливаем вид ключа Ed25519
+				key.kind = nts::keys::kind_t::ED25519;
+				// Переносим секретное зерно
+				key.d.assign(secret, secret + sizeof(secret));
+				// Отводим буфер открытого ключа
+				key.key.resize(32);
+				// Если открытый ключ не получен
+				if(!ed25519->key(key.key.data(), key.key.size())){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+			} break;
 			/**
-			 * Если выработке подлежит ключ ECDSA
+			 * Ключ ГОСТ вырабатывается на кривой, отвечающей разрядности: у схемы на
+			 * 256 разрядов это CryptoPro-A, у схемы на 512 - ТК26 A
 			 */
-			} else if(type == signature_t::ECDSA)
-				// Устанавливаем кривую вырабатываемого ключа
-				ready = (::EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_X9_62_prime256v1) == 1);
-			// Если параметры выработки ключа установлены
-			if(ready)
-				// Выполняем выработку ключа подписи
-				outcome = (::EVP_PKEY_keygen(pctx, &key) == 1);
+			// Если вид подписи указан как ГОСТ Р 34.10-2012
+			case static_cast <uint8_t> (signature_t::GOST):
+			case static_cast <uint8_t> (signature_t::GOST512): {
+				// Признак схемы подписи на 512 разрядов
+				const bool wide = (type == signature_t::GOST512);
+				// Заводим кривую ГОСТ
+				curve = std::make_unique <nts::curve::curve_t> ();
+				// Если кривую по опознавателю установить не удалось
+				if(!nts::curve::parameters(string(wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.7.1.2.1.1.1"), *curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Заводим модуль подписи ГОСТ
+				gost = std::make_unique <nts::sign::gost_t> ();
+				// Если кривую в модуль установить не удалось
+				if(!gost->start(*curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Размер порядка подгруппы кривой
+				const size_t size = curve->order().size();
+				// Место ключа подписи
+				uint8_t secret[64];
+				// Если ключ подписи не выработан
+				if(!gost->generate(secret, size)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+				// Устанавливаем вид ключа ГОСТ
+				key.kind = nts::keys::kind_t::GOST;
+				// Устанавливаем опознаватель кривой ГОСТ
+				key.oid = (wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.7.1.2.1.1.1");
+				// Устанавливаем опознаватель схемы подписи ГОСТ
+				key.algorithm = (wide ? "1.2.643.7.1.1.1.2" : "1.2.643.7.1.1.1.1");
+				// Переносим секретный скаляр
+				key.d.assign(secret, secret + size);
+				// Отводим буфер первой координаты точки
+				key.x.resize(size);
+				// Отводим буфер второй координаты точки
+				key.y.resize(size);
+				// Если ключ проверки подписи не получен
+				if(!gost->key(key.x.data(), key.y.data(), size)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Generate signature key failed", log::flag_t::WARNING);
+					#endif
+					// Выходим из метода
+					return false;
+				}
+			} break;
+			/**
+			 * Вид подписи, работой не заведённый, отвергается с названной причиной:
+			 * молчаливый отказ не дал бы отличить незаведённую схему от сбоя работы
+			 */
+			// Если вид подписи разбору не знаком либо работой не заведён
+			default: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature kind is unsupported", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature kind is unsupported", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return false;
+			}
 		}
-		// Если ключ подписи выработать не удалось
-		if(!outcome || (key == nullptr)){
-			// Снимаем признак успешно выполненной работы
-			outcome = false;
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Generate signature key failed", log::flag_t::WARNING);
-			#endif
-		}
+		// Запоминаем признак успешно выполненной работы
+		outcome = true;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -11496,10 +7239,6 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 		// Записываем ошибку в лог
 		log::print("%s", log::flag_t::CRITICAL, error.what());
 	}
-	// Если контекст выработки ключа подписи заведён
-	if(pctx != nullptr)
-		// Освобождаем контекст выработки ключа подписи
-		::EVP_PKEY_CTX_free(pctx);
 	/**
 	 * Ключ кладётся в связку одним лишь успехом работы: отказ, случившийся после
 	 * снятия прежнего ключа, оставил бы имя пустым, а вызывающая сторона считала бы
@@ -11511,24 +7250,24 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 		this->removeKey(name);
 		// Получаем запись ключа в связке
 		keyring_t::record_t & record = this->_keyring->keys[name];
-		// Устанавливаем контекст выработанного ключа
-		record.ctx = key;
+		// Переносим разобранный ключ
+		record.key = key;
+		// Переносим кривую ключа
+		record.curve = std::move(curve);
+		// Переносим модуль подписи RSA
+		record.rsa = std::move(rsa);
+		// Переносим модуль подписи ECDSA
+		record.ecdsa = std::move(ecdsa);
+		// Переносим модуль подписи Ed25519
+		record.ed25519 = std::move(ed25519);
+		// Переносим модуль подписи ГОСТ
+		record.gost = std::move(gost);
 		// Устанавливаем вид подписи выработанного ключа
 		record.type = type;
-	// Если ключ подписи выработан не был
-	} else if(key != nullptr)
-		// Освобождаем память выработанного ключа
-		::EVP_PKEY_free(key);
+	}
 	// Выводим признак успешно выполненной работы
 	return outcome;
 }
-/**
- * @brief Метод получения точной длины подписи
- *
- * @param name имя ключа в связке
- * @return     точная длина подписи в октетах, либо ноль если длина непостоянна
- *
- */
 size_t awh::Crypto::length(const string & name) const noexcept {
 	// Если объект собран не был
 	if(!this->ready())
@@ -11536,13 +7275,8 @@ size_t awh::Crypto::length(const string & name) const noexcept {
 		return 0;
 	// Выполняем поиск ключа в связке
 	auto i = this->_keyring->keys.find(name);
-	/**
-	 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-	 * библиотеки криптографии нет вовсе, а закрытая часть тут не нужна
-	 */
-	// Если ключа под таким именем в связке нет
-	if((i == this->_keyring->keys.end()) ||
-	   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
+	// Если ключа под таким именем в связке нет либо ключ не подготовлен
+	if((i == this->_keyring->keys.end()) || !i->second.ready())
 		// Выходим из метода
 		return 0;
 	/**
@@ -11558,22 +7292,22 @@ size_t awh::Crypto::length(const string & name) const noexcept {
 			// Выводим постоянную длину подписи Ed25519
 			return 64;
 		/**
-		 * Подпись ГОСТ Р 34.10-2012 длину имеет постоянную: два числа шириною со
-		 * свойства кривой, каждое дополняется нулями до полной ширины, оттого длина от
-		 * сообщения не зависит - в отличие от записи DER у схемы ECDSA
+		 * Подпись ГОСТ Р 34.10-2012 длину имеет постоянную: два числа шириною с
+		 * порядок подгруппы, оттого длина от сообщения не зависит - в отличие от
+		 * записи DER у схемы ECDSA
 		 */
 		// Если вид подписи указан как ГОСТ Р 34.10-2012
 		case static_cast <uint8_t> (signature_t::GOST):
 		case static_cast <uint8_t> (signature_t::GOST512):
 			// Выводим постоянную длину подписи ГОСТ
-			return (gost::digitOf(i->second.gost) * 2);
+			return i->second.gost->size();
 		/**
 		 * Подпись RSA равна разрядности ключа и от подписываемого не зависит
 		 */
 		// Если вид подписи указан как RSA
 		case static_cast <uint8_t> (signature_t::RSA):
 			// Выводим длину подписи, равную разрядности ключа
-			return static_cast <size_t> (::EVP_PKEY_size(i->second.ctx));
+			return i->second.rsa->size();
 		/**
 		 * Подпись ECDSA постоянной длины не имеет: запись DER несёт два числа
 		 * переменной длины, и старший разряд числа требует нулевого предшествования -
@@ -11588,13 +7322,6 @@ size_t awh::Crypto::length(const string & name) const noexcept {
 	// Выводим отсутствие постоянной длины подписи
 	return 0;
 }
-/**
- * @brief Метод получения верхнего предела длины подписи
- *
- * @param name имя ключа в связке
- * @return     верхний предел длины подписи в октетах
- *
- */
 size_t awh::Crypto::limit(const string & name) const noexcept {
 	// Если объект собран не был
 	if(!this->ready())
@@ -11602,13 +7329,8 @@ size_t awh::Crypto::limit(const string & name) const noexcept {
 		return 0;
 	// Выполняем поиск ключа в связке
 	auto i = this->_keyring->keys.find(name);
-	/**
-	 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-	 * библиотеки криптографии нет вовсе, а закрытая часть тут не нужна
-	 */
-	// Если ключа под таким именем в связке нет
-	if((i == this->_keyring->keys.end()) ||
-	   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
+	// Если ключа под таким именем в связке нет либо ключ не подготовлен
+	if((i == this->_keyring->keys.end()) || !i->second.ready())
 		// Выходим из метода
 		return 0;
 	// Если вид подписи ключа договору не отвечает
@@ -11616,20 +7338,36 @@ size_t awh::Crypto::limit(const string & name) const noexcept {
 		// Выходим из метода
 		return 0;
 	/**
-	 * Предел берётся у самой библиотеки криптографии: у Ed25519 и RSA он совпадает с
-	 * точной длиной, а у ECDSA учитывает наибольшую запись DER
+	 * Определяем вид подписи ключа
 	 */
-	/**
-	 * Если ключ подписи является ключом ГОСТ Р 34.10-2012
-	 *
-	 * @details Длина подписи ГОСТ постоянна, оттого предел равен ей самой, а спросить
-	 *          его у библиотеки криптографии нельзя - вида этого она не знает
-	 */
-	if(gost::kindOf(i->second.type))
-		// Выводим постоянную длину подписи ГОСТ
-		return (gost::digitOf(i->second.gost) * 2);
-	// Выводим верхний предел длины подписи
-	return static_cast <size_t> (::EVP_PKEY_size(i->second.ctx));
+	switch(static_cast <uint8_t> (i->second.type)){
+		/**
+		 * Подпись ГОСТ Р 34.10-2012 длину имеет постоянную, оттого предел равен ей
+		 * самой - двум числам шириною с порядок подгруппы
+		 */
+		// Если вид подписи указан как ГОСТ Р 34.10-2012
+		case static_cast <uint8_t> (signature_t::GOST):
+		case static_cast <uint8_t> (signature_t::GOST512):
+			// Выводим постоянную длину подписи ГОСТ
+			return i->second.gost->limit();
+		// Если вид подписи указан как RSA
+		case static_cast <uint8_t> (signature_t::RSA):
+			// Выводим предел, равный разрядности ключа
+			return i->second.rsa->limit();
+		/**
+		 * Предел ECDSA учитывает наибольшую запись DER - подпись переменной длины
+		 */
+		// Если вид подписи указан как ECDSA
+		case static_cast <uint8_t> (signature_t::ECDSA):
+			// Выводим верхний предел длины подписи ECDSA
+			return i->second.ecdsa->limit();
+		// Если вид подписи указан как Ed25519
+		case static_cast <uint8_t> (signature_t::ED25519):
+			// Выводим постоянную длину подписи Ed25519
+			return i->second.ed25519->limit();
+	}
+	// Выводим отсутствие верхнего предела длины подписи
+	return 0;
 }
 /**
  * @brief Метод получения записи ключа подписи
@@ -11640,148 +7378,124 @@ size_t awh::Crypto::limit(const string & name) const noexcept {
  *
  */
 string awh::Crypto::getKey(const string & name, const key_type_t type) const noexcept {
-	// Переменная результата
-	string result = "";
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
-		return result;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
+		return "";
+	// Переменная результата
+	string result = "";
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready())
 			// Выходим из метода
 			return result;
-		/**
-		 * Если ключ подписи является ключом ГОСТ Р 34.10-2012
-		 *
-		 * @details Записи PEM вырабатываются своими силами: библиотека криптографии
-		 *          схемы этой не знает, а выписка обязана остаться в том же виде, что
-		 *          и у прочих ключей - её принимают и чужие работы
-		 */
-		if(gost::kindOf(i->second.type)){
-			// Каноническая запись ключа
-			vector <uint8_t> record;
-			/**
-			 * Если выдаче подлежит закрытый ключ
-			 */
-			if(type == key_type_t::PRIVATE){
+		// Если выдаче подлежит закрытый ключ, а секретной части у него нет
+		if((type == key_type_t::PRIVATE) && !i->second.key.secret())
+			// Выходим из метода
+			return result;
+		// Буфер DER записи ключа
+		vector <uint8_t> der;
+		// Метка записи PEM
+		const char * label = nullptr;
+		// Если выдаче подлежит открытый ключ
+		if(type == key_type_t::PUBLIC){
+			// Устанавливаем метку записи PUBLIC KEY
+			label = "PUBLIC KEY";
+			// Если открытый ключ в SubjectPublicKeyInfo не закодирован
+			if(nts::keys::encodeSubjectPublicKeyInfo(i->second.key, der) != nts::keys::error_t::NONE){
 				/**
-				 * Если закрытой части ключа нет
+				 * Если включён режим отладки
 				 */
-				if(!i->second.gost.secured)
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature key export failed", log::flag_t::CRITICAL);
+				#endif
+				// Выходим из метода
+				return result;
+			}
+		// Если выдаче подлежит закрытый ключ
+		} else if(type == key_type_t::PRIVATE){
+			// Если пароль защиты закрытого ключа установлен
+			if(!this->_params.passwordRSA.empty()){
+				// Устанавливаем метку записи ENCRYPTED PRIVATE KEY
+				label = "ENCRYPTED PRIVATE KEY";
+				// Если закрытый ключ в EncryptedPrivateKeyInfo не закодирован
+				if(nts::keys::encodeEncryptedPrivateKeyInfo(i->second.key, nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), der) != nts::keys::error_t::NONE){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key export failed", log::flag_t::CRITICAL);
+					#endif
 					// Выходим из метода
 					return result;
-				// Выполняем выработку записи закрытого ключа
-				gost::pkcs8(i->second.gost, record);
-			// Выполняем выработку записи открытого ключа
-			} else gost::spki(i->second.gost, record);
-			// Заводим объект BIO для записи ключа
-			BIO * bio = ::BIO_new(::BIO_s_mem());
-			/**
-			 * Если объект BIO заведён
-			 */
-			if(bio != nullptr){
-				// Выполняем запись ключа в виде PEM
-				if(::PEM_write_bio(bio, ((type == key_type_t::PRIVATE) ? "PRIVATE KEY" : "PUBLIC KEY"), "", record.data(), static_cast <long> (record.size())) > 0){
-					// Буфер записанного ключа
-					char * buffer = nullptr;
-					// Получаем размер записанного ключа
-					const long length = ::BIO_get_mem_data(bio, &buffer);
-					// Если ключ записан
-					if((length > 0) && (buffer != nullptr))
-						// Выполняем перенос записанного ключа в результат
-						result.assign(buffer, static_cast <size_t> (length));
 				}
-				// Освобождаем объект BIO
-				::BIO_free(bio);
+			// Если пароль защиты закрытого ключа не установлен
+			} else {
+				// Устанавливаем метку записи PRIVATE KEY
+				label = "PRIVATE KEY";
+				// Если закрытый ключ в PrivateKeyInfo не закодирован
+				if(nts::keys::encodePrivateKeyInfo(i->second.key, der) != nts::keys::error_t::NONE){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key export failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return result;
+				}
 			}
-			/**
-			 * Запись закрытого ключа гасится: она несёт закрытую часть, а буфер
-			 * набора после выхода из метода остался бы в памяти неприбранным
-			 */
-			// Выполняем затирание канонической записи ключа
-			::OPENSSL_cleanse(record.data(), record.size());
+		// Если тип выдаваемого ключа разбору не знаком
+		} else
 			// Выходим из метода
 			return result;
-		}
-		// Заводим объект BIO для записи ключа
-		BIO * bio = ::BIO_new(::BIO_s_mem());
-		// Если объект BIO заведён
-		if(bio != nullptr){
-			// Признак удавшейся выписки ключа
-			bool exported = false;
-			/**
-			 * Определяем тип выдаваемого ключа
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если выдаче подлежит открытый ключ
-				case static_cast <uint8_t> (key_type_t::PUBLIC):
-					// Выполняем выписку открытого ключа
-					exported = (::PEM_write_bio_PUBKEY(bio, i->second.ctx) == 1);
-				break;
-				// Если выдаче подлежит закрытый ключ
-				case static_cast <uint8_t> (key_type_t::PRIVATE): {
-					/**
-					 * Закрытый ключ выдаётся защищённым паролем, если пароль защиты
-					 * установлен: тем же порядком, каким выдаётся и ключ RSA
-					 */
-					// Если пароль защиты закрытого ключа установлен
-					if(!this->_params.passwordRSA.empty())
-						// Выполняем выписку закрытого ключа под защитой пароля
-						exported = (::PEM_write_bio_PrivateKey(
-							bio, i->second.ctx, ::EVP_aes_256_cbc(),
-							nullptr, 0, &driver::password,
-							const_cast <string *> (&this->_params.passwordRSA)
-						) == 1);
-					// Выполняем выписку закрытого ключа без защиты паролем
-					else exported = (::PEM_write_bio_PrivateKey(bio, i->second.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1);
-				} break;
-			}
-			// Если выписка ключа удалась
-			if(exported){
-				// Буфер выписанной записи ключа
-				char * buffer = nullptr;
-				// Получаем размер выписанной записи ключа
-				const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
-				// Если запись ключа выписана
-				if((buffer != nullptr) && (size > 0))
-					// Устанавливаем полученную запись ключа
-					result.assign(buffer, size);
+		// Запись PEM ключа
+		nts::pem::block_t block;
+		// Устанавливаем метку записи
+		block.label = label;
+		// Переносим тело DER в запись
+		block.data = std::move(der);
+		// Если запись PEM не выписана
+		if(nts::pem::encode(block, result) != nts::pem::error_t::NONE){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				} else log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+				log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				} else log::print("Signature key export failed", log::flag_t::CRITICAL);
+				log::print("Signature key export failed", log::flag_t::CRITICAL);
 			#endif
-			/**
-			 * Память объекта BIO гасится прежде освобождения: в ней лежит запись
-			 * закрытого ключа, а освобождение содержимого не гасит (5.29b)
-			 */
-			// Буфер памяти объекта BIO
-			BUF_MEM * memory = nullptr;
-			// Получаем память объекта BIO
-			::BIO_get_mem_ptr(bio, &memory);
-			// Если память объекта BIO получена
-			if((memory != nullptr) && (memory->data != nullptr) && (memory->length > 0))
-				// Выполняем затирание памяти объекта BIO
-				::OPENSSL_cleanse(memory->data, memory->length);
-			// Освобождаем объект BIO
-			::BIO_free_all(bio);
 		}
 	/**
 	 * Если возникает ошибка
@@ -11815,185 +7529,234 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 	if(key.empty())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	// Введённый ключ подписи
-	EVP_PKEY * result = nullptr;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		/**
-		 * Разбор ГОСТ ведётся своими силами и идёт ПЕРВЫМ
-		 *
-		 * @details Порядок этот задан содержимым ключа, а не ответом библиотеки.
-		 *          Прежде своя попытка шла второй, по отказу библиотеки, и держалась
-		 *          на допущении «схем ГОСТ библиотека не знает вовсе». Допущение это
-		 *          неверно: на стенде Астры в OpenSSL 3.4 включён поставщик gostprov,
-		 *          и там библиотека разбирает ключ ГОСТ сама - своя ветвь не работала
-		 *          вовсе, и пять проверок отказывали. Разбор свой строг: он сверяет
-		 *          опознаватель схемы с таблицей кривых ГОСТ и всякий чужой ключ
-		 *          отвергает, оттого договор прежних видов подписи он не трогает
-		 */
-		{
-			// Заводим объект BIO для чтения записи ключа
-			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
-			/**
-			 * Если объект BIO заведён
-			 */
-			if(bio != nullptr){
-				// Название записи PEM
-				char * label = nullptr;
-				// Заголовок записи PEM
-				char * header = nullptr;
-				// Содержимое записи PEM
-				uint8_t * body = nullptr;
-				// Размер содержимого записи PEM
-				long length = 0;
-				/**
-				 * Если запись PEM прочитана
-				 */
-				if(::PEM_read_bio(bio, &label, &header, &body, &length) > 0){
-					// Заводим запись ключа подписи
-					keyring_t::record_t record;
-					// Устанавливаем вид подписи записи
-					record.type = signature_t::GOST;
-					/**
-					 * Разбор ведётся по запрошенному типу ключа, а не по названию записи:
-					 * запрос закрытого ключа, удовлетворённый открытым, дал бы связку, на
-					 * которой подпись молча не вырабатывается
-					 */
-					// Признак удавшегося разбора ключа
-					const bool parsed = ((type == key_type_t::PRIVATE) ?
-					 gost::readPkcs8(record.gost, body, static_cast <size_t> (length)) :
-					 gost::readSpki(record.gost, body, static_cast <size_t> (length)));
-					/**
-					 * Если ключ подписи разобран
-					 */
-					if(parsed){
-						/**
-						 * Устанавливаем вид подписи по разрядности разобранного ключа
-						 *
-						 * @note Вид ставится после разбора, а не до него: разрядность
-						 *       схемы задана набором свойств кривой в самой записи, и
-						 *       постоянная величина здесь выдавала бы схему на 512
-						 *       разрядов за схему на 256 - при верной работе подписи
-						 */
-						record.type = ((gost::digitOf(record.gost) == 64) ? signature_t::GOST512 : signature_t::GOST);
-						// Выполняем удаление ключа подписи с тем же именем
-						this->removeKey(name);
-						// Выполняем добавление ключа подписи в связку
-						this->_keyring->keys.emplace(name, record);
-						// Устанавливаем признак успешно выполненной работы
-						outcome = true;
-					}
-					// Выполняем затирание содержимого записи PEM
-					::OPENSSL_cleanse(body, static_cast <size_t> (length));
-					// Освобождаем название записи PEM
-					::OPENSSL_free(label);
-					// Освобождаем заголовок записи PEM
-					::OPENSSL_free(header);
-					// Освобождаем содержимое записи PEM
-					::OPENSSL_free(body);
+		// Разобранный ключ подписи
+		nts::keys::key_t parsed;
+		// Признак удавшегося разбора ключа
+		bool imported = false;
+		// Буфер записей DER ключа
+		vector <vector <uint8_t>> blocks;
+		// Если вводу подлежит открытый ключ
+		if(type == key_type_t::PUBLIC){
+			// Если текст PEM по метке PUBLIC KEY разобран
+			if((nts::pem::decode(key, "PUBLIC KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty())
+				// Разбираем запись SubjectPublicKeyInfo
+				imported = (nts::keys::decodeSubjectPublicKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), parsed) == nts::keys::error_t::NONE);
+		// Если вводу подлежит закрытый ключ
+		} else if(type == key_type_t::PRIVATE){
+			// Если текст PEM по метке PRIVATE KEY разобран
+			if((nts::pem::decode(key, "PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+				// Разбираем запись PrivateKeyInfo
+				imported = (nts::keys::decodePrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), parsed) == nts::keys::error_t::NONE);
+			// Если записи PRIVATE KEY нет
+			} else {
+				// Если текст PEM по метке RSA PRIVATE KEY разобран
+				if((nts::pem::decode(key, "RSA PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разбираем запись RSAPrivateKey
+					imported = (nts::keys::decodeRSAPrivateKey(nts::view_t(blocks.front().data(), blocks.front().size()), parsed) == nts::keys::error_t::NONE);
+				// Если записи RSA PRIVATE KEY нет
+				} else if((nts::pem::decode(key, "ENCRYPTED PRIVATE KEY", blocks) == nts::pem::error_t::NONE) && !blocks.empty()){
+					// Разбираем запись EncryptedPrivateKeyInfo по паролю
+					imported = (nts::keys::decodeEncryptedPrivateKeyInfo(nts::view_t(blocks.front().data(), blocks.front().size()), nts::view_t(reinterpret_cast <const uint8_t *> (this->_params.passwordRSA.data()), this->_params.passwordRSA.size()), parsed) == nts::keys::error_t::NONE);
 				}
-				// Освобождаем объект BIO
-				::BIO_free_all(bio);
-				}
+			}
 		}
-		// Если разбор своими силами удался, работа на этом закончена
-		if(outcome)
+		// Если ключ не разобран
+		if(!imported){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Signature key import failed", log::flag_t::CRITICAL);
+			#endif
 			// Выходим из метода
 			return outcome;
-		// Заводим объект BIO для чтения записи ключа
-		BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
-		// Если объект BIO заведён
-		if(bio != nullptr){
-			/**
-			 * Определяем тип вводимого ключа
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если вводу подлежит открытый ключ
-				case static_cast <uint8_t> (key_type_t::PUBLIC):
-					// Выполняем чтение открытого ключа
-					result = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
-				break;
-				// Если вводу подлежит закрытый ключ
-				case static_cast <uint8_t> (key_type_t::PRIVATE):
-					// Выполняем чтение закрытого ключа
-					result = ::PEM_read_bio_PrivateKey(bio, nullptr, &driver::password, const_cast <string *> (&this->_params.passwordRSA));
-				break;
-			}
-			// Освобождаем объект BIO
-			::BIO_free_all(bio);
 		}
-		// Если ключ подписи прочитан
-		if(result != nullptr){
-			// Получаем вид подписи прочитанного ключа
-			const signature_t kind = driver::kind(result);
+		// Вид подписи разобранного ключа
+		signature_t kind = signature_t::NONE;
+		/**
+		 * Определяем вид подписи разобранного ключа
+		 */
+		switch(static_cast <uint8_t> (parsed.kind)){
+			// Если ключ является ключом RSA
+			case static_cast <uint8_t> (nts::keys::kind_t::RSA):
+				// Устанавливаем вид подписи RSA
+				kind = signature_t::RSA;
+			break;
+			// Если ключ является ключом Ed25519
+			case static_cast <uint8_t> (nts::keys::kind_t::ED25519):
+				// Устанавливаем вид подписи Ed25519
+				kind = signature_t::ED25519;
+			break;
+			// Если ключ является ключом на кривой Вейерштрасса
+			case static_cast <uint8_t> (nts::keys::kind_t::EC):
+				// Если кривая ключа является кривой P-256
+				if(parsed.oid.compare("1.2.840.10045.3.1.7") == 0)
+					// Устанавливаем вид подписи ECDSA
+					kind = signature_t::ECDSA;
+			break;
+			// Если ключ является ключом ГОСТ Р 34.10-2012
+			case static_cast <uint8_t> (nts::keys::kind_t::GOST):
+				// Устанавливаем вид подписи по разрядности ключа
+				kind = ((parsed.size() == 64) ? signature_t::GOST512 : signature_t::GOST);
+			break;
+		}
+		/**
+		 * Ключ, договору не отвечающий, отвергается с названной причиной: вид подписи
+		 * выводится у самого ключа, и ключ на иной кривой либо иной схемы подписывался
+		 * бы тем, чего вызывающая сторона не просила
+		 */
+		// Если вид подписи разобранного ключа договору не отвечает
+		if(kind == signature_t::NONE){
 			/**
-			 * Ключ, договору не отвечающий, отвергается с названной причиной: вид
-			 * подписи выводится у самого ключа, и ключ на иной кривой либо иной
-			 * схемы подписывался бы тем, чего вызывающая сторона не просила
+			 * Если включён режим отладки
 			 */
-			// Если вид подписи прочитанного ключа договору не отвечает
-			if(kind == signature_t::NONE){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Signature key kind is unsupported", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Signature key kind is unsupported", log::flag_t::WARNING);
-				#endif
-				// Освобождаем память прочитанного ключа
-				::EVP_PKEY_free(result);
-				// Снимаем указатель освобождённого ключа
-				result = nullptr;
-			// Если вид подписи прочитанного ключа договору отвечает
-			} else {
-				/**
-				 * Разрядность оглашается одному лишь ключу RSA: порог её взят у RSA и
-				 * прочим схемам не отвечает вовсе. Ключ Ed25519 имеет 253 разряда, а
-				 * ключ на кривой P-256 - 256, и оба заведомо ниже порога RSA, хотя
-				 * стойкость их с ним сравнима: разрядность у этих схем задана самой
-				 * схемой и вызывающей стороной не выбирается. Оглашение их по порогу
-				 * RSA было бы предупреждением о том, что исправить нельзя и не нужно
-				 */
-				// Если введённый ключ является ключом RSA
-				if(kind == signature_t::RSA)
-					// Выполняем оглашение разрядности введённого ключа
-					driver::strength(result, type);
-				// Выполняем снятие ключа, лежавшего под этим именем прежде
-				this->removeKey(name);
-				// Получаем запись ключа в связке
-				keyring_t::record_t & record = this->_keyring->keys[name];
-				// Устанавливаем контекст введённого ключа
-				record.ctx = result;
-				// Устанавливаем вид подписи введённого ключа
-				record.type = kind;
-				// Устанавливаем признак успешно выполненной работы
-				outcome = true;
-			}
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Signature key kind is unsupported", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Signature key kind is unsupported", log::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Запись ключа подписи
+		keyring_t::record_t record;
+		// Устанавливаем вид подписи записи
+		record.type = kind;
+		// Переносим разобранный ключ
+		record.key = parsed;
 		/**
-		 * Если включён режим отладки
+		 * Определяем вид ключа и заводим модуль подписи
 		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			} else log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+		switch(static_cast <uint8_t> (kind)){
+			// Если ключ является ключом RSA
+			case static_cast <uint8_t> (signature_t::RSA): {
+				// Заводим модуль подписи RSA
+				record.rsa = std::make_unique <nts::sign::rsa_t> ();
+				// Если ключ в модуль подписи RSA не установлен
+				if(!parsed.load(* record.rsa)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key import failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return outcome;
+				}
+			} break;
+			// Если ключ является ключом ECDSA
+			case static_cast <uint8_t> (signature_t::ECDSA): {
+				// Заводим кривую и модуль подписи ECDSA
+				record.curve = std::make_unique <nts::curve::curve_t> ();
+				record.ecdsa = std::make_unique <nts::sign::ecdsa_t> ();
+				// Если ключ в модуль подписи ECDSA не установлен
+				if(!parsed.load(* record.ecdsa, * record.curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key import failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return outcome;
+				}
+			} break;
+			// Если ключ является ключом Ed25519
+			case static_cast <uint8_t> (signature_t::ED25519): {
+				// Заводим модуль подписи Ed25519
+				record.ed25519 = std::make_unique <nts::sign::ed25519_t> ();
+				// Если ключ в модуль подписи Ed25519 не установлен
+				if(!parsed.load(* record.ed25519)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key import failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return outcome;
+				}
+			} break;
+			// Если ключ является ключом ГОСТ Р 34.10-2012
+			case static_cast <uint8_t> (signature_t::GOST):
+			case static_cast <uint8_t> (signature_t::GOST512): {
+				// Заводим кривую и модуль подписи ГОСТ
+				record.curve = std::make_unique <nts::curve::curve_t> ();
+				record.gost = std::make_unique <nts::sign::gost_t> ();
+				// Если ключ в модуль подписи ГОСТ не установлен
+				if(!parsed.load(* record.gost, * record.curve)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Signature key import failed", log::flag_t::CRITICAL);
+					#endif
+					// Выходим из метода
+					return outcome;
+				}
+			} break;
+		}
 		/**
-		 * Если режим отладки не включён
+		 * Разрядность оглашается одному лишь ключу RSA: порог её взят у RSA и прочим
+		 * схемам не отвечает вовсе. Ключ Ed25519 имеет 253 разряда, а ключ на кривой
+		 * P-256 - 256, и оба заведомо ниже порога RSA, хотя стойкость их с ним сравнима
 		 */
-		#else
-			// Записываем ошибку в лог
-			} else log::print("Signature key import failed", log::flag_t::CRITICAL);
-		#endif
+		// Если введённый ключ является ключом RSA
+		if(kind == signature_t::RSA)
+			// Выполняем оглашение разрядности введённого ключа
+			driver::strength(record.rsa->bits(), type);
+		// Выполняем снятие ключа, лежавшего под этим именем прежде
+		this->removeKey(name);
+		// Добавляем ключ подписи в связку
+		this->_keyring->keys[name] = std::move(record);
+		// Устанавливаем признак успешно выполненной работы
+		outcome = true;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -12028,11 +7791,6 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 	if(!this->ready())
 		// Выходим из метода
 		return result;
-	/**
-	 * Вид записи, разбору не знакомый, отвергается тем же порядком, что и у выработки
-	 * хэш-суммы (5.31): значение, ни одному из видов не отвечающее, ушло бы в двоичную
-	 * выдачу молча - в вид, которого вызывающая сторона не просила
-	 */
 	// Если вид записи отпечатка разбору не знаком
 	if((format != format_t::HEX) && (format != format_t::RAW)){
 		/**
@@ -12051,86 +7809,60 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		// Выходим из метода
 		return result;
 	}
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready())
 			// Выходим из метода
 			return result;
-		/**
-		 * Отпечаток считается от канонической записи открытого ключа
-		 * (SubjectPublicKeyInfo в виде DER): запись эта одна на все виды ключей, и
-		 * закрытой части ключа не требует - проверяющая сторона её не имеет
-		 */
-		/**
-		 * Если ключ подписи является ключом ГОСТ Р 34.10-2012
-		 *
-		 * @details Каноническая запись вырабатывается своими силами: библиотека
-		 *          криптографии схемы этой не знает, а договор отпечатка обязан
-		 *          остаться единым на все виды подписи - иначе опознание владельца
-		 *          у ГОСТ считалось бы иначе, чем у прочих, и переносимым не было бы
-		 */
-		if(gost::kindOf(i->second.type)){
-			// Каноническая запись открытого ключа
-			vector <uint8_t> record;
-			// Выполняем выработку канонической записи открытого ключа
-			gost::spki(i->second.gost, record);
-			// Буфер вырабатываемого отпечатка
-			uint8_t digest[SHA256_DIGEST_LENGTH];
-			// Выполняем выработку отпечатка открытого ключа
-			::SHA256(record.data(), record.size(), digest);
-			// Выполняем разметку буфера результата
-			result.resize(driver::width(sizeof(digest), format));
-			// Выполняем запись отпечатка в буфер результата
-			driver::emit(digest, sizeof(digest), format, result);
+		// Каноническая запись открытого ключа
+		vector <uint8_t> record;
+		// Если каноническая запись открытого ключа не выработана
+		if(nts::keys::encodeSubjectPublicKeyInfo(i->second.key, record) != nts::keys::error_t::NONE){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Public key canonical form export failed", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Public key canonical form export failed", log::flag_t::CRITICAL);
+			#endif
 			// Выходим из метода
 			return result;
 		}
-		// Буфер канонической записи открытого ключа
-		uint8_t * buffer = nullptr;
-		// Выполняем выработку канонической записи открытого ключа
-		const int32_t size = ::i2d_PUBKEY(i->second.ctx, &buffer);
-		// Если каноническая запись открытого ключа выработана
-		if((size > 0) && (buffer != nullptr)){
-			// Буфер вырабатываемого отпечатка
-			uint8_t digest[SHA256_DIGEST_LENGTH];
-			// Выполняем выработку отпечатка открытого ключа
-			::SHA256(buffer, static_cast <size_t> (size), digest);
+		// Буфер вырабатываемого отпечатка
+		uint8_t digest[32];
+		// Вырабатываем отпечаток открытого ключа
+		if(!nts::digest::hash(nts::digest::hash_t::SHA256, nts::view_t(record.data(), record.size()), digest, sizeof(digest))){
 			/**
-			 * Буфер размечается прежде записи: работа выписывания в него пишет по
-			 * положению, а не дополняет его, и запись в неразмеченный буфер ушла бы
-			 * за его границу
+			 * Если включён режим отладки
 			 */
-			// Размечаем буфер под запись отпечатка требуемого вида
-			result.resize(driver::width(sizeof(digest), format));
-			// Выполняем запись отпечатка в требуемом виде
-			driver::emit(digest, sizeof(digest), format, result);
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Public key canonical form export failed", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL);
 			/**
-			 * Каноническая запись открытого ключа тайной не является, но память под
-			 * неё отведена библиотекой криптографии и освобождается ею же
+			 * Если режим отладки не включён
 			 */
-			// Освобождаем память канонической записи открытого ключа
-			::OPENSSL_free(buffer);
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			} else log::debug("Public key canonical form export failed", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			} else log::print("Public key canonical form export failed", log::flag_t::CRITICAL);
-		#endif
+			#else
+				// Записываем ошибку в лог
+				log::print("Public key canonical form export failed", log::flag_t::CRITICAL);
+			#endif
+			// Выходим из метода
+			return result;
+		}
+		// Размечаем буфер под запись отпечатка требуемого вида
+		result.resize(driver::width(sizeof(digest), format));
+		// Выполняем запись отпечатка в требуемом виде
+		driver::emit(digest, sizeof(digest), format, result);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -12174,27 +7906,14 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
-	/**
-	 * Буфер результата затирается и очищается на входе тем же порядком, что и у
-	 * подписи ключом RSA (4.18): отказ, случившийся до отведения буфера, оставлял бы
-	 * в нём подпись прежних данных - а та выглядела бы подписью нынешних
-	 */
 	// Затираем и очищаем буфер результата
 	driver::wipe(result);
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	// Контекст выработки подписи
-	EVP_MD_CTX * ctx = nullptr;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		/**
-		 * Отсутствующий буфер при заявленном размере отвергается тем же порядком, что
-		 * и у работы по симметричному ключу (4.27)
-		 */
 		// Если буфер данных не передан, а размер его заявлен
 		if((buffer == nullptr) && (size > 0)){
 			/**
@@ -12215,14 +7934,8 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		}
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		/**
-		 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-		 * библиотеки криптографии нет вовсе, и сверка его с пустотой объявляла бы
-		 * заведённый ключ отсутствующим
-		 */
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready()){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12241,18 +7954,9 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		}
 		// Получаем вид подписи ключа
 		const signature_t type = i->second.type;
-		/**
-		 * Если ключ подписи является ключом ГОСТ Р 34.10-2012
-		 *
-		 * @details Схема ГОСТ считается своими силами и до библиотеки криптографии не
-		 *          доходит, поэтому работа завершается прямо здесь. Хэш-функция схемой
-		 *          предписана - ГОСТ Р 34.11-2012 на 256 разрядов, - и подача иной была
-		 *          бы подменой предписанного, оттого тип хэш-суммы обязан быть пустым
-		 */
-		if(gost::kindOf(type)){
-			/**
-			 * Если тип хэш-суммы всё же задан
-			 */
+		// Если ключ подписи является ключом ГОСТ Р 34.10-2012
+		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
+			// Если тип хэш-суммы всё же задан
 			if(hash != hash_t::NONE){
 				/**
 				 * Если включён режим отладки
@@ -12270,32 +7974,14 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				// Выходим из метода
 				return outcome;
 			}
-			/**
-			 * Размер числа подписи ключа
-			 *
-			 * @note Разрядность хэш-функции схемой предписана и равна разрядности самой
-			 *       схемы: у схемы на 256 разрядов - ГОСТ Р 34.11-2012 на 256 разрядов,
-			 *       у схемы на 512 разрядов - на 512
-			 */
-			const size_t digit = gost::digitOf(i->second.gost);
-			// Состояние счёта хэш-суммы
-			gost::digest_t state;
-			// Выполняем заведение состояния счёта хэш-суммы
-			gost::initialize(state, (digit * 8));
-			// Выполняем подачу подписываемых данных в счёт хэш-суммы
-			gost::update(state, buffer, size);
-			// Буфер хэш-суммы подписываемых данных
-			uint8_t digest[gost::DIGIT];
-			// Выполняем завершение счёта хэш-суммы
-			gost::finalize(state, digest);
-			// Выполняем отведение буфера результата под подпись
-			result.resize((digit * 2), 0);
-			// Выполняем выработку подписи
-			outcome = gost::sign(i->second.gost, digest, digit, result.data());
-			/**
-			 * Если подпись выработать не удалось
-			 */
-			if(!outcome){
+			// Хэш-функция схемы ГОСТ
+			const nts::digest::hash_t algorithm = ((type == signature_t::GOST512) ? nts::digest::hash_t::STREEBOG512 : nts::digest::hash_t::STREEBOG256);
+			// Длина хэш-суммы
+			const size_t dlen = nts::digest::length(algorithm);
+			// Буфер хэш-суммы данных
+			vector <uint8_t> digest(dlen, 0);
+			// Вырабатываем хэш-сумму данных
+			if(!nts::digest::hash(algorithm, nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen)){
 				// Затираем и очищаем буфер результата
 				driver::wipe(result);
 				/**
@@ -12311,18 +7997,38 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 					// Записываем ошибку в лог
 					log::print("Signature is not produced", log::flag_t::WARNING);
 				#endif
+				// Выходим из метода
+				return outcome;
 			}
+			// Отводим место под подпись
+			result.resize(i->second.gost->size(), 0);
+			// Вырабатываем подпись по хэш-сумме
+			if(!i->second.gost->make(nts::view_t(digest.data(), dlen), result.data())){
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature is not produced", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature is not produced", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Запоминаем признак успешно выполненной работы
+			outcome = true;
 			// Выходим из метода
 			return outcome;
 		}
 		// Признак схемы, подписывающей сообщение само
 		const bool pure = (type == signature_t::ED25519);
-		/**
-		 * Уместность типа хэш-суммы проверяется прежде работы: схемам RSA и ECDSA он
-		 * обязателен, а схеме Ed25519 неуместен - она подписывает сообщение сама, и
-		 * поданная ей хэш-сумма подписью хэш-суммы не станет. Молчание об этом выдало
-		 * бы одно за другое
-		 */
 		// Если тип хэш-суммы схеме подписи не отвечает
 		if(pure ? (hash != hash_t::NONE) : (hash == hash_t::NONE)){
 			/**
@@ -12341,10 +8047,39 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			// Выходим из метода
 			return outcome;
 		}
-		// Хэш-функция выработки подписи
-		const EVP_MD * md = (pure ? nullptr : driver::evpmd(hash));
-		// Если хэш-функция схемы подписи не получена
-		if(!pure && (md == nullptr)){
+		// Если подпись вырабатывается схемой, подписывающей сообщение само
+		if(pure){
+			// Отводим место под подпись
+			result.resize(i->second.ed25519->limit(), 0);
+			// Вырабатываем подпись сообщения одним вызовом
+			if(!i->second.ed25519->make(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), result.data())){
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Data signing failed", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Запоминаем признак успешно выполненной работы
+			outcome = true;
+			// Выходим из метода
+			return outcome;
+		}
+		// Длина хэш-суммы по её виду
+		const size_t dlen = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
+		// Если вид хэш-суммы библиотеке не знаком
+		if(dlen == 0){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12361,65 +8096,10 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			// Выходим из метода
 			return outcome;
 		}
-		// Выполняем заведение контекста выработки подписи
-		ctx = ::EVP_MD_CTX_new();
-		// Если контекст выработки подписи заведён
-		if(ctx != nullptr){
-			// Контекст работы с ключом подписи
-			EVP_PKEY_CTX * pctx = nullptr;
-			// Если заведение выработки подписи удалось
-			if(::EVP_DigestSignInit(ctx, &pctx, md, nullptr, i->second.ctx) == 1){
-				// Признак готовности схемы дополнения подписи
-				bool ready = true;
-				/**
-				 * Схема дополнения ставится одному лишь ключу RSA: у прочих схем
-				 * дополнения нет вовсе, и постановка его им отказала бы
-				 */
-				// Если подпись вырабатывается ключом RSA
-				if(type == signature_t::RSA)
-					// Выполняем установку схемы дополнения подписи
-					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
-				// Если схема дополнения подписи установлена
-				if(ready){
-					// Длина вырабатываемой подписи
-					size_t length = 0;
-					/**
-					 * Схема Ed25519 подписывает сообщение одним вызовом: поточной
-					 * выработки она не имеет вовсе - см. streamable
-					 */
-					// Если подпись вырабатывается схемой, подписывающей сообщение само
-					if(pure){
-						// Выполняем получение длины вырабатываемой подписи
-						if(::EVP_DigestSign(ctx, nullptr, &length, buffer, size) == 1){
-							// Отводим память под вырабатываемую подпись
-							result.resize(length, 0);
-							// Выполняем выработку подписи
-							outcome = (::EVP_DigestSign(ctx, result.data(), &length, buffer, size) == 1);
-						}
-					// Если подпись вырабатывается схемой, подписывающей хэш-сумму
-					} else if(::EVP_DigestSignUpdate(ctx, buffer, size) == 1){
-						// Выполняем получение длины вырабатываемой подписи
-						if(::EVP_DigestSignFinal(ctx, nullptr, &length) == 1){
-							// Отводим память под вырабатываемую подпись
-							result.resize(length, 0);
-							// Выполняем выработку подписи
-							outcome = (::EVP_DigestSignFinal(ctx, result.data(), &length) == 1);
-						}
-					}
-					/**
-					 * Буфер подписи укорачивается до её настоящей длины: отводится он
-					 * по длине, названной наперёд, а запись DER у схемы ECDSA выходит
-					 * короче отведённого - хвост отведения ушёл бы в подпись нулями
-					 */
-					// Если подпись выработана
-					if(outcome)
-						// Укорачиваем буфер подписи до её настоящей длины
-						result.resize(length);
-				}
-			}
-		}
-		// Если подпись выработать не удалось
-		if(!outcome){
+		// Буфер хэш-суммы данных
+		vector <uint8_t> digest(dlen, 0);
+		// Вырабатываем хэш-сумму данных
+		if(!nts::digest::hash(static_cast <nts::digest::hash_t> (hash), nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen)){
 			// Затираем и очищаем буфер результата
 			driver::wipe(result);
 			/**
@@ -12427,15 +8107,142 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), size}, log::flag_t::CRITICAL);
+				log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log::print("Data signing failed", log::flag_t::CRITICAL);
+				log::print("Data signing failed", log::flag_t::WARNING);
 			#endif
+			// Выходим из метода
+			return outcome;
 		}
+		// Если подпись вырабатывается ключом RSA
+		if(type == signature_t::RSA){
+			// Схема дополнения подписи RSA
+			nts::sign::scheme_t scheme;
+			// Если схема дополнения подписи вероятностная
+			if(this->_params.padding == crypto_t::padding_t::PSS)
+				// Устанавливаем вероятностную схему PSS
+				scheme = nts::sign::scheme_t::PSS;
+			// Если схема дополнения подписи PKCS#1
+			else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+				// Устанавливаем схему PKCS#1
+				scheme = nts::sign::scheme_t::PKCS1;
+			// Если схема дополнения подписи не задана либо разбору не знакома
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Отводим место под подпись
+			result.resize(i->second.rsa->size(), 0);
+			// Вырабатываем подпись по хэш-сумме
+			if(!i->second.rsa->make(scheme, static_cast <nts::digest::hash_t> (hash), nts::view_t(digest.data(), dlen), result.data())){
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Data signing failed", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Запоминаем признак успешно выполненной работы
+			outcome = true;
+			// Выходим из метода
+			return outcome;
+		}
+		// Если подпись вырабатывается ключом ECDSA
+		if(type == signature_t::ECDSA){
+			// Буфер сырой подписи
+			vector <uint8_t> raw(i->second.ecdsa->size(), 0);
+			// Вырабатываем сырую подпись по хэш-сумме
+			if(!i->second.ecdsa->make(static_cast <nts::digest::hash_t> (hash), nts::view_t(digest.data(), dlen), raw.data())){
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Data signing failed", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Буфер записи DER подписи
+			vector <uint8_t> der;
+			// Если подпись в запись DER не сложена
+			if(!nts::sign::encode(nts::view_t(raw.data(), raw.size()), der)){
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Data signing failed", log::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Переносим запись DER в результат
+			result = std::move(der);
+			// Запоминаем признак успешно выполненной работы
+			outcome = true;
+			// Выходим из метода
+			return outcome;
+		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Signature kind is unsupported", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Signature kind is unsupported", log::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return outcome;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -12447,10 +8254,6 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		// Записываем ошибку в лог
 		log::print("%s", log::flag_t::CRITICAL, error.what());
 	}
-	// Если контекст выработки подписи заведён
-	if(ctx != nullptr)
-		// Освобождаем контекст выработки подписи
-		::EVP_MD_CTX_free(ctx);
 	// Выводим признак успешно выполненной работы
 	return outcome;
 }
@@ -12470,12 +8273,8 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Признак успешно выполненной работы
 	bool outcome = false;
-	// Контекст проверки подписи
-	EVP_MD_CTX * ctx = nullptr;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -12498,25 +8297,14 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			// Выходим из метода
 			return outcome;
 		}
-		/**
-		 * Пустая подпись отвергается прежде работы: проверка пустого буфера у иных
-		 * схем отвечает отказом сама, но полагаться на это значило бы отдать решение
-		 * библиотеке
-		 */
 		// Если подпись данных не передана
 		if(signature.empty())
 			// Выходим из метода
 			return outcome;
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		/**
-		 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-		 * библиотеки криптографии нет вовсе, а закрытая часть тут не нужна, и сверка его с пустотой объявляла бы
-		 * заведённый ключ отсутствующим
-		 */
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr))){
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready()){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12535,16 +8323,9 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		}
 		// Получаем вид подписи ключа
 		const signature_t type = i->second.type;
-		/**
-		 * Если ключ подписи является ключом ГОСТ Р 34.10-2012
-		 *
-		 * @details Договор тот же, что и у выработки подписи: хэш-функция схемой
-		 *          предписана, и тип хэш-суммы обязан быть пустым
-		 */
-		if(gost::kindOf(type)){
-			/**
-			 * Если тип хэш-суммы всё же задан
-			 */
+		// Если ключ подписи является ключом ГОСТ Р 34.10-2012
+		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
+			// Если тип хэш-суммы всё же задан
 			if(hash != hash_t::NONE){
 				/**
 				 * Если включён режим отладки
@@ -12562,13 +8343,8 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 				// Выходим из метода
 				return outcome;
 			}
-			/**
-			 * Если размер подписи схеме не отвечает
-			 *
-			 * @note Подпись ГОСТ имеет постоянную длину в два числа по 32 октета, и
-			 *       разбор подписи иной длины взял бы под числа чужие октеты
-			 */
-			if(signature.size() != (gost::digitOf(i->second.gost) * 2)){
+			// Если размер подписи разрядности схемы не отвечает
+			if(signature.size() != i->second.gost->size()){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -12585,18 +8361,18 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 				// Выходим из метода
 				return outcome;
 			}
-			// Состояние счёта хэш-суммы
-			gost::digest_t state;
-			// Выполняем заведение состояния счёта хэш-суммы
-			gost::initialize(state, (gost::digitOf(i->second.gost) * 8));
-			// Выполняем подачу проверяемых данных в счёт хэш-суммы
-			gost::update(state, buffer, size);
-			// Буфер хэш-суммы проверяемых данных
-			uint8_t digest[gost::DIGIT];
-			// Выполняем завершение счёта хэш-суммы
-			gost::finalize(state, digest);
-			// Выводим результат проверки подписи
-			return gost::verify(i->second.gost, digest, gost::digitOf(i->second.gost), signature.data());
+			// Хэш-функция схемы ГОСТ
+			const nts::digest::hash_t algorithm = ((type == signature_t::GOST512) ? nts::digest::hash_t::STREEBOG512 : nts::digest::hash_t::STREEBOG256);
+			// Длина хэш-суммы
+			const size_t dlen = nts::digest::length(algorithm);
+			// Буфер хэш-суммы данных
+			vector <uint8_t> digest(dlen, 0);
+			// Вырабатываем хэш-сумму данных
+			if(!nts::digest::hash(algorithm, nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen))
+				// Выходим из метода
+				return outcome;
+			// Выполняем проверку подписи по хэш-сумме
+			return i->second.gost->check(nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
 		}
 		// Признак схемы, подписывающей сообщение само
 		const bool pure = (type == signature_t::ED25519);
@@ -12618,43 +8394,65 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			// Выходим из метода
 			return outcome;
 		}
-		// Хэш-функция проверки подписи
-		const EVP_MD * md = (pure ? nullptr : driver::evpmd(hash));
-		// Если хэш-функция схемы подписи не получена
-		if(!pure && (md == nullptr))
+		// Если подпись проверяется схемой, подписывающей сообщение само
+		if(pure)
+			// Выполняем проверку подписи одним вызовом
+			return i->second.ed25519->check(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), nts::view_t(signature.data(), signature.size()));
+		// Длина хэш-суммы по её виду
+		const size_t dlen = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
+		// Если вид хэш-суммы библиотеке не знаком
+		if(dlen == 0)
 			// Выходим из метода
 			return outcome;
-		// Выполняем заведение контекста проверки подписи
-		ctx = ::EVP_MD_CTX_new();
-		// Если контекст проверки подписи заведён
-		if(ctx != nullptr){
-			// Контекст работы с ключом подписи
-			EVP_PKEY_CTX * pctx = nullptr;
-			// Если заведение проверки подписи удалось
-			if(::EVP_DigestVerifyInit(ctx, &pctx, md, nullptr, i->second.ctx) == 1){
-				// Признак готовности схемы дополнения подписи
-				bool ready = true;
-				// Если подпись проверяется ключом RSA
-				if(type == signature_t::RSA)
-					// Выполняем установку схемы дополнения подписи
-					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
-				// Если схема дополнения подписи установлена
-				if(ready){
-					/**
-					 * Несовпадение подписи отказом работы не является и в лог не
-					 * пишется: подделка - это законный исход проверки, а не сбой
-					 * (5.23). Сбой же заведения проверки записан выше
-					 */
-					// Если подпись проверяется схемой, подписывающей сообщение само
-					if(pure)
-						// Выполняем проверку подписи одним вызовом
-						outcome = (::EVP_DigestVerify(ctx, signature.data(), signature.size(), buffer, size) == 1);
-					// Если подпись проверяется схемой, подписывающей хэш-сумму
-					else if(::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1)
-						// Выполняем проверку подписи
-						outcome = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
-				}
+		// Буфер хэш-суммы данных
+		vector <uint8_t> digest(dlen, 0);
+		// Вырабатываем хэш-сумму данных
+		if(!nts::digest::hash(static_cast <nts::digest::hash_t> (hash), nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen))
+			// Выходим из метода
+			return outcome;
+		// Если подпись проверяется ключом RSA
+		if(type == signature_t::RSA){
+			// Схема дополнения подписи RSA
+			nts::sign::scheme_t scheme;
+			// Если схема дополнения подписи вероятностная
+			if(this->_params.padding == crypto_t::padding_t::PSS)
+				// Устанавливаем вероятностную схему PSS
+				scheme = nts::sign::scheme_t::PSS;
+			// Если схема дополнения подписи PKCS#1
+			else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+				// Устанавливаем схему PKCS#1
+				scheme = nts::sign::scheme_t::PKCS1;
+			// Если схема дополнения подписи не задана либо разбору не знакома
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
+				#endif
+				// Выходим из метода
+				return outcome;
 			}
+			// Выполняем проверку подписи по хэш-сумме
+			return i->second.rsa->check(scheme, static_cast <nts::digest::hash_t> (hash), nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
+		}
+		// Если подпись проверяется ключом ECDSA
+		if(type == signature_t::ECDSA){
+			// Буфер сырой подписи
+			vector <uint8_t> raw(i->second.ecdsa->size(), 0);
+			// Если запись DER подписи в сырой вид не разобрана
+			if(!nts::sign::decode(nts::view_t(signature.data(), signature.size()), raw.data(), raw.size()))
+				// Выходим из метода
+				return outcome;
+			// Выполняем проверку подписи по хэш-сумме
+			return i->second.ecdsa->check(nts::view_t(digest.data(), dlen), nts::view_t(raw.data(), raw.size()));
 		}
 	/**
 	 * Если возникает ошибка
@@ -12665,10 +8463,6 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		// Записываем ошибку в лог
 		log::print("%s", log::flag_t::CRITICAL, error.what());
 	}
-	// Если контекст проверки подписи заведён
-	if(ctx != nullptr)
-		// Освобождаем контекст проверки подписи
-		::EVP_MD_CTX_free(ctx);
 	// Выводим результат проверки подписи
 	return outcome;
 }
@@ -12928,28 +8722,19 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
-	/**
-	 * Поток, заведённый прежде, сбрасывается, а не отвергает заведение: тем же порядком
-	 * ведёт себя заведение потока шифрования, и почерк у модуля один. Но сброс этот
-	 * оглашается: незавершённый поток несёт поданное в него, и работа эта пропадает -
-	 * молчаливая же пропажа выглядит работающим обиходом, покуда кто-нибудь не хватится
-	 * подписи, которой нет
-	 */
 	// Если поток, заведённый прежде, ещё не завершён
 	if(this->_keyring->live()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Записываем предупреждение в лог
+			// Записываем ошибку в лог
 			log::debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, {this->_keyring->name, name}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Записываем предупреждение в лог
+			// Записываем ошибку в лог
 			log::print("Unfinished stream is discarded by the new initialization", log::flag_t::WARNING);
 		#endif
 	}
@@ -12963,14 +8748,8 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 	try {
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		/**
-		 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-		 * библиотеки криптографии нет вовсе, и сверка его с пустотой объявляла бы
-		 * заведённый ключ отсутствующим
-		 */
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready()){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12987,12 +8766,6 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			// Выходим из метода
 			return outcome;
 		}
-		/**
-		 * Вид, поточным не бывающий, отвергается с названной причиной: потребитель,
-		 * написавший работу под поточный договор, при одной лишь смене вида ключа
-		 * наткнулся бы на отказ посреди работы, а по общему «нельзя» причины не узнал
-		 * бы вовсе. Спросить о поточности можно и наперёд - см. streamable
-		 */
 		// Если вид подписи ключа поточным не бывает
 		if(!this->streamable(i->second.type)){
 			/**
@@ -13011,16 +8784,9 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			// Выходим из метода
 			return outcome;
 		}
-		/**
-		 * Если поток заводится под схему ГОСТ Р 34.10-2012
-		 *
-		 * @details Хэш-функция схемой предписана, оттого тип хэш-суммы обязан быть
-		 *          пустым - тем же договором, что и у разовой работы
-		 */
-		if(gost::kindOf(i->second.type)){
-			/**
-			 * Если тип хэш-суммы всё же задан
-			 */
+		// Если поток заводится под схему ГОСТ Р 34.10-2012
+		if((i->second.type == signature_t::GOST) || (i->second.type == signature_t::GOST512)){
+			// Если тип хэш-суммы всё же задан
 			if(hash != hash_t::NONE){
 				/**
 				 * Если включён режим отладки
@@ -13038,16 +8804,8 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 				// Выходим из метода
 				return outcome;
 			}
-			/**
-			 * Выполняем заведение состояния поточного счёта хэш-суммы
-			 *
-			 * @note Разрядность хэш-функции берётся у свойств кривой ключа: схема
-			 *       предписывает её сама, и постоянная величина здесь увела бы схему на
-			 *       512 разрядов на хэш-функцию чужой разрядности
-			 */
-			gost::initialize(this->_keyring->digest, (gost::digitOf(i->second.gost) * 8));
-			// Устанавливаем признак потока по ГОСТ
-			this->_keyring->streaming = true;
+			// Устанавливаем хэш-функцию схемы ГОСТ
+			this->_keyring->stream.reset(((i->second.type == signature_t::GOST512) ? nts::digest::hash_t::STREEBOG512 : nts::digest::hash_t::STREEBOG256));
 			// Устанавливаем признак потока проверки подписи
 			this->_keyring->checking = false;
 			// Запоминаем имя ключа потока подписи
@@ -13055,10 +8813,8 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			// Выводим признак успешно выполненной работы
 			return true;
 		}
-		// Хэш-функция выработки подписи
-		const EVP_MD * md = driver::evpmd(hash);
-		// Если хэш-функция схемы подписи не получена
-		if((hash == hash_t::NONE) || (md == nullptr)){
+		// Если тип хэш-суммы не задан либо библиотеке не знаком
+		if((hash == hash_t::NONE) || (nts::digest::length(static_cast <nts::digest::hash_t> (hash)) == 0)){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -13075,33 +8831,14 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			// Выходим из метода
 			return outcome;
 		}
-		// Выполняем заведение контекста потока подписи
-		this->_keyring->stream = ::EVP_MD_CTX_new();
-		// Если контекст потока подписи заведён
-		if(this->_keyring->live()){
-			// Контекст работы с ключом подписи
-			EVP_PKEY_CTX * pctx = nullptr;
-			// Если заведение выработки подписи удалось
-			if(::EVP_DigestSignInit(this->_keyring->stream, &pctx, md, nullptr, i->second.ctx) == 1){
-				// Если подпись вырабатывается ключом RSA
-				if(i->second.type == signature_t::RSA)
-					// Выполняем установку схемы дополнения подписи
-					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
-				// Устанавливаем признак успешно выполненной работы
-				else outcome = true;
-			}
-		}
-		/**
-		 * Стейт потока сбрасывается на всяком отказе заведения: контекст к этой поре
-		 * мог быть заведён, а имя ключа не записано - подача в такой поток шла бы в
-		 * контекст, заведения не прошедший (4.31)
-		 */
-		// Если поток подписи заведён
-		if(outcome)
-			// Запоминаем имя ключа, которым заведён поток подписи
-			this->_keyring->name = name;
-		// Если поток подписи завести не удалось
-		else this->_keyring->reset();
+		// Устанавливаем хэш-функцию потока подписи
+		this->_keyring->stream.reset(static_cast <nts::digest::hash_t> (hash));
+		// Устанавливаем признак потока проверки подписи
+		this->_keyring->checking = false;
+		// Запоминаем имя ключа потока подписи
+		this->_keyring->name = name;
+		// Запоминаем признак успешно выполненной работы
+		outcome = true;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -13116,24 +8853,11 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 	// Выводим признак успешно выполненной работы
 	return outcome;
 }
-/**
- * @brief Метод подачи порции данных в поток подписи
- *
- * @param buffer буфер порции данных
- * @param size   размер порции данных
- * @return       признак успешно выполненной работы
- *
- */
 bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	/**
-	 * Поток проверки подписи подачи в выработку не принимает: контексты их между собой
-	 * не взаимозаменяемы, и подача проверяемого в поток выработки прошла бы молча -
-	 * подпись вышла бы не той, которой ждёт вызывающая сторона
-	 */
 	// Если поток подписи не заведён либо заведён проверкой
 	if(!this->_keyring->live() || this->_keyring->checking){
 		/**
@@ -13156,63 +8880,15 @@ bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept
 	if((buffer == nullptr) && (size > 0))
 		// Выходим из метода
 		return false;
-	/**
-	 * Порция нулевого размера подачей является законной: поток мог быть подан
-	 * порциями, из которых последняя пуста, и отказ на ней рвал бы работу без причины
-	 */
 	// Если порция данных пуста
 	if(size == 0)
 		// Выводим признак успешно выполненной работы
 		return true;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Выполняем подачу порции данных в поток подписи
-	/**
-	 * Если в деле поток по схеме ГОСТ Р 34.10-2012
-	 *
-	 * @details Счёт хэш-суммы ведётся своими силами, и подача идёт в своё состояние;
-	 *          отказать такая подача не может, оттого и признака отказа у неё нет
-	 */
-	if(this->_keyring->streaming){
-		// Выполняем подачу данных в счёт хэш-суммы
-		gost::update(this->_keyring->digest, buffer, size);
-		// Выводим признак успешно выполненной работы
-		return true;
-	}
-	const bool outcome = (::EVP_DigestSignUpdate(this->_keyring->stream, buffer, size) == 1);
-	/**
-	 * Поток сбрасывается на отказе подачи: продолжать поток, порцию потерявший,
-	 * значило бы подписать не то, что подано, - и подпись эта прошла бы проверку у
-	 * того, кто подал бы те же данные с той же потерей
-	 */
-	// Если подать порцию данных в поток подписи не удалось
-	if(!outcome){
-		// Выполняем сброс потока подписи
-		this->_keyring->reset();
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("Signature stream update failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("Signature stream update failed", log::flag_t::CRITICAL);
-		#endif
-	}
+	this->_keyring->stream.update(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size));
 	// Выводим признак успешно выполненной работы
-	return outcome;
+	return true;
 }
-/**
- * @brief Метод завершения потока подписи
- *
- * @param result буфер куда следует положить результат
- * @return       признак успешно выполненной работы
- *
- */
 bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
@@ -13238,76 +8914,134 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		// Выходим из метода
 		return false;
 	}
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Признак успешно выполненной работы
 	bool outcome = false;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		/**
-		 * Если в деле поток по схеме ГОСТ Р 34.10-2012
-		 */
-		if(this->_keyring->streaming){
-			// Выполняем поиск ключа потока в связке
-			auto i = this->_keyring->keys.find(this->_keyring->name);
+		// Выполняем поиск ключа потока в связке
+		auto i = this->_keyring->keys.find(this->_keyring->name);
+		// Если ключ потока из связки исчез
+		if(i == this->_keyring->keys.end()){
+			// Выполняем сброс потока подписи
+			this->_keyring->reset();
 			/**
-			 * Если ключ потока из связки исчез
-			 *
-			 * @note Ключ мог быть снят между заведением потока и его завершением, и
-			 *       подписывать тогда нечем
+			 * Если включён режим отладки
 			 */
-			if(i == this->_keyring->keys.end()){
-				// Выполняем сброс потока подписи
-				this->_keyring->reset();
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {this->_keyring->name}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Signature key is not found in the keyring", log::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Вид подписи ключа
+		const signature_t type = i->second.type;
+		// Алгоритм хэширования потока
+		const nts::digest::hash_t algorithm = this->_keyring->stream.type();
+		// Длина хэш-суммы
+		const size_t dlen = nts::digest::length(algorithm);
+		// Буфер хэш-суммы подписываемых данных
+		vector <uint8_t> digest(dlen, 0);
+		// Если завершение счёта хэш-суммы не удалось
+		if(!this->_keyring->stream.finish(digest.data(), dlen)){
+			// Затираем и очищаем буфер результата
+			driver::wipe(result);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем ошибку в лог
+				log::debug("Signature stream finalization failed", __PRETTY_FUNCTION__, {this->_keyring->name}, log::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log::print("Signature stream finalization failed", log::flag_t::CRITICAL);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Если подпись вырабатывается ключом ГОСТ Р 34.10-2012
+		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
+			// Отводим место под подпись
+			result.resize(i->second.gost->size(), 0);
+			// Вырабатываем подпись по хэш-сумме
+			if(!i->second.gost->make(nts::view_t(digest.data(), dlen), result.data()))
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+			// Запоминаем признак успешно выполненной работы
+			else outcome = true;
+		// Если подпись вырабатывается ключом RSA
+		} else if(type == signature_t::RSA){
+			// Схема дополнения подписи RSA
+			nts::sign::scheme_t scheme;
+			// Если схема дополнения подписи вероятностная
+			if(this->_params.padding == crypto_t::padding_t::PSS)
+				// Устанавливаем вероятностную схему PSS
+				scheme = nts::sign::scheme_t::PSS;
+			// Если схема дополнения подписи PKCS#1
+			else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+				// Устанавливаем схему PKCS#1
+				scheme = nts::sign::scheme_t::PKCS1;
+			// Если схема дополнения подписи не задана либо разбору не знакома
+			else {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {this->_keyring->name}, log::flag_t::WARNING);
+					log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print("Signature key is not found in the keyring", log::flag_t::WARNING);
+					log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
 				#endif
 				// Выходим из метода
 				return outcome;
 			}
-			// Размер числа подписи ключа
-			const size_t digit = gost::digitOf(i->second.gost);
-			// Буфер хэш-суммы подписываемых данных
-			uint8_t digest[gost::DIGIT];
-			// Выполняем завершение счёта хэш-суммы
-			gost::finalize(this->_keyring->digest, digest);
-			// Выполняем отведение буфера результата под подпись
-			result.resize((digit * 2), 0);
-			// Выполняем выработку подписи
-			outcome = gost::sign(i->second.gost, digest, digit, result.data());
-			// Если подпись выработать не удалось
-			if(!outcome)
+			// Отводим место под подпись
+			result.resize(i->second.rsa->size(), 0);
+			// Вырабатываем подпись по хэш-сумме
+			if(!i->second.rsa->make(scheme, algorithm, nts::view_t(digest.data(), dlen), result.data()))
 				// Затираем и очищаем буфер результата
 				driver::wipe(result);
-			// Выполняем сброс потока подписи
-			this->_keyring->reset();
-			// Выходим из метода
-			return outcome;
-		}
-		// Длина вырабатываемой подписи
-		size_t length = 0;
-		// Выполняем получение длины вырабатываемой подписи
-		if(::EVP_DigestSignFinal(this->_keyring->stream, nullptr, &length) == 1){
-			// Отводим память под вырабатываемую подпись
-			result.resize(length, 0);
-			// Выполняем выработку подписи потока
-			outcome = (::EVP_DigestSignFinal(this->_keyring->stream, result.data(), &length) == 1);
-			// Если подпись потока выработана
-			if(outcome)
-				// Укорачиваем буфер подписи до её настоящей длины
-				result.resize(length);
+			// Запоминаем признак успешно выполненной работы
+			else outcome = true;
+		// Если подпись вырабатывается ключом ECDSA
+		} else if(type == signature_t::ECDSA){
+			// Буфер сырой подписи
+			vector <uint8_t> raw(i->second.ecdsa->size(), 0);
+			// Вырабатываем сырую подпись по хэш-сумме
+			if(!i->second.ecdsa->make(algorithm, nts::view_t(digest.data(), dlen), raw.data()))
+				// Затираем и очищаем буфер результата
+				driver::wipe(result);
+			// Если подпись в запись DER не сложена
+			else {
+				// Буфер записи DER подписи
+				vector <uint8_t> der;
+				// Если подпись в запись DER не сложена
+				if(!nts::sign::encode(nts::view_t(raw.data(), raw.size()), der))
+					// Затираем и очищаем буфер результата
+					driver::wipe(result);
+				// Запоминаем признак успешно выполненной работы
+				else {
+					// Переносим запись DER в результат
+					result = std::move(der);
+					// Запоминаем признак успешно выполненной работы
+					outcome = true;
+				}
+			}
 		}
 		// Если подпись потока выработать не удалось
 		if(!outcome){
@@ -13338,50 +9072,29 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		// Записываем ошибку в лог
 		log::print("%s", log::flag_t::CRITICAL, error.what());
 	}
-	/**
-	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
-	 * контекст выработки подписи завершением израсходован
-	 */
 	// Выполняем сброс потока подписи
 	this->_keyring->reset();
 	// Выводим признак успешно выполненной работы
 	return outcome;
 }
-/**
- * @brief Метод заведения потока проверки подписи
- *
- * @param name имя ключа в связке
- * @param hash тип хэш-суммы
- * @return     признак успешно выполненной работы
- *
- */
 bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
-	/**
-	 * Поток, заведённый прежде, сбрасывается, а не отвергает заведение: тем же порядком
-	 * ведёт себя заведение потока шифрования, и почерк у модуля один. Но сброс этот
-	 * оглашается: незавершённый поток несёт поданное в него, и работа эта пропадает -
-	 * молчаливая же пропажа выглядит работающим обиходом, покуда кто-нибудь не хватится
-	 * подписи, которой нет
-	 */
 	// Если поток, заведённый прежде, ещё не завершён
 	if(this->_keyring->live()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Записываем предупреждение в лог
+			// Записываем ошибку в лог
 			log::debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, {this->_keyring->name, name}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Записываем предупреждение в лог
+			// Записываем ошибку в лог
 			log::print("Unfinished stream is discarded by the new initialization", log::flag_t::WARNING);
 		#endif
 	}
@@ -13395,14 +9108,8 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 	try {
 		// Выполняем поиск ключа в связке
 		auto i = this->_keyring->keys.find(name);
-		/**
-		 * Наличие ключа проверяется с оглядкой на вид подписи: у записи ГОСТ контекста
-		 * библиотеки криптографии нет вовсе, а закрытая часть тут не нужна, и сверка его с пустотой объявляла бы
-		 * заведённый ключ отсутствующим
-		 */
-		// Если ключа под таким именем в связке нет
-		if((i == this->_keyring->keys.end()) ||
-		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr))){
+		// Если ключа под таким именем в связке нет либо ключ не подготовлен
+		if((i == this->_keyring->keys.end()) || !i->second.ready()){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -13419,11 +9126,6 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			// Выходим из метода
 			return outcome;
 		}
-		/**
-		 * Вид, поточным не бывающий, отвергается с названной причиной - тем же порядком,
-		 * что и у потока выработки подписи (5а.3): схема Ed25519 требует двух проходов по
-		 * сообщению, и поточной разновидности у неё нет
-		 */
 		// Если вид подписи ключа поточным не бывает
 		if(!this->streamable(i->second.type)){
 			/**
@@ -13442,16 +9144,9 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			// Выходим из метода
 			return outcome;
 		}
-		/**
-		 * Если поток заводится под схему ГОСТ Р 34.10-2012
-		 *
-		 * @details Хэш-функция схемой предписана, оттого тип хэш-суммы обязан быть
-		 *          пустым - тем же договором, что и у разовой работы
-		 */
-		if(gost::kindOf(i->second.type)){
-			/**
-			 * Если тип хэш-суммы всё же задан
-			 */
+		// Если поток заводится под схему ГОСТ Р 34.10-2012
+		if((i->second.type == signature_t::GOST) || (i->second.type == signature_t::GOST512)){
+			// Если тип хэш-суммы всё же задан
 			if(hash != hash_t::NONE){
 				/**
 				 * Если включён режим отладки
@@ -13469,27 +9164,17 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 				// Выходим из метода
 				return outcome;
 			}
-			/**
-			 * Выполняем заведение состояния поточного счёта хэш-суммы
-			 *
-			 * @note Разрядность хэш-функции берётся у свойств кривой ключа: схема
-			 *       предписывает её сама, и постоянная величина здесь увела бы схему на
-			 *       512 разрядов на хэш-функцию чужой разрядности
-			 */
-			gost::initialize(this->_keyring->digest, (gost::digitOf(i->second.gost) * 8));
-			// Устанавливаем признак потока по ГОСТ
-			this->_keyring->streaming = true;
+			// Устанавливаем хэш-функцию схемы ГОСТ
+			this->_keyring->stream.reset(((i->second.type == signature_t::GOST512) ? nts::digest::hash_t::STREEBOG512 : nts::digest::hash_t::STREEBOG256));
 			// Устанавливаем признак потока проверки подписи
 			this->_keyring->checking = true;
-			// Запоминаем имя ключа потока подписи
+			// Запоминаем имя ключа потока проверки подписи
 			this->_keyring->name = name;
 			// Выводим признак успешно выполненной работы
 			return true;
 		}
-		// Хэш-функция проверки подписи
-		const EVP_MD * md = driver::evpmd(hash);
-		// Если хэш-функция схемы подписи не получена
-		if((hash == hash_t::NONE) || (md == nullptr)){
+		// Если тип хэш-суммы не задан либо библиотеке не знаком
+		if((hash == hash_t::NONE) || (nts::digest::length(static_cast <nts::digest::hash_t> (hash)) == 0)){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -13506,34 +9191,14 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			// Выходим из метода
 			return outcome;
 		}
-		// Выполняем заведение контекста потока проверки подписи
-		this->_keyring->stream = ::EVP_MD_CTX_new();
-		// Если контекст потока проверки подписи заведён
-		if(this->_keyring->live()){
-			// Контекст работы с ключом подписи
-			EVP_PKEY_CTX * pctx = nullptr;
-			// Если заведение проверки подписи удалось
-			if(::EVP_DigestVerifyInit(this->_keyring->stream, &pctx, md, nullptr, i->second.ctx) == 1){
-				// Если подпись проверяется ключом RSA
-				if(i->second.type == signature_t::RSA)
-					// Выполняем установку схемы дополнения подписи
-					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
-				// Устанавливаем признак успешно выполненной работы
-				else outcome = true;
-			}
-		}
-		// Если поток проверки подписи заведён
-		if(outcome){
-			// Устанавливаем признак потока проверки подписи
-			this->_keyring->checking = true;
-			// Запоминаем имя ключа, которым заведён поток
-			this->_keyring->name = name;
-		/**
-		 * Стейт потока сбрасывается на всяком отказе заведения: контекст к этой поре мог
-		 * быть заведён, а приметы потока не записаны (4.31)
-		 */
-		// Если поток проверки подписи завести не удалось
-		} else this->_keyring->reset();
+		// Устанавливаем хэш-функцию потока проверки подписи
+		this->_keyring->stream.reset(static_cast <nts::digest::hash_t> (hash));
+		// Устанавливаем признак потока проверки подписи
+		this->_keyring->checking = true;
+		// Запоминаем имя ключа потока проверки подписи
+		this->_keyring->name = name;
+		// Запоминаем признак успешно выполненной работы
+		outcome = true;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -13548,23 +9213,11 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 	// Выводим признак успешно выполненной работы
 	return outcome;
 }
-/**
- * @brief Метод подачи порции данных в поток проверки подписи
- *
- * @param buffer буфер порции данных
- * @param size   размер порции данных
- * @return       признак успешно выполненной работы
- *
- */
 bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	/**
-	 * Поток выработки подписи подачи в проверку не принимает: контексты их между собой
-	 * не взаимозаменяемы, и подача проверяемого в поток выработки прошла бы молча
-	 */
 	// Если поток проверки не заведён либо заведён выработкой подписи
 	if(!this->_keyring->live() || !this->_keyring->checking){
 		/**
@@ -13572,13 +9225,13 @@ bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexce
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING);
+			log::debug(this->_keyring->live() ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {size}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log::flag_t::WARNING);
+			log::print(this->_keyring->live() ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -13591,55 +9244,11 @@ bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexce
 	if(size == 0)
 		// Выводим признак успешно выполненной работы
 		return true;
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Выполняем подачу порции данных в поток проверки подписи
-	/**
-	 * Если в деле поток по схеме ГОСТ Р 34.10-2012
-	 *
-	 * @details Счёт хэш-суммы ведётся своими силами, и подача идёт в своё состояние;
-	 *          отказать такая подача не может, оттого и признака отказа у неё нет
-	 */
-	if(this->_keyring->streaming){
-		// Выполняем подачу данных в счёт хэш-суммы
-		gost::update(this->_keyring->digest, buffer, size);
-		// Выводим признак успешно выполненной работы
-		return true;
-	}
-	const bool outcome = (::EVP_DigestVerifyUpdate(this->_keyring->stream, buffer, size) == 1);
-	/**
-	 * Поток сбрасывается на отказе подачи: продолжать поток, порцию потерявший, значило
-	 * бы проверить не то, что подано, - и подпись такого потока была бы отвергнута с
-	 * видом подделки, хотя подделки не было
-	 */
-	// Если подать порцию данных в поток проверки не удалось
-	if(!outcome){
-		// Выполняем сброс потока проверки подписи
-		this->_keyring->reset();
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			log::debug("Verification stream update failed", __PRETTY_FUNCTION__, {size}, log::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			log::print("Verification stream update failed", log::flag_t::CRITICAL);
-		#endif
-	}
+	this->_keyring->stream.update(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size));
 	// Выводим признак успешно выполненной работы
-	return outcome;
+	return true;
 }
-/**
- * @brief Метод завершения потока проверки подписи
- *
- * @param signature буфер с подписью данных
- * @return          результат проверки подписи
- *
- */
 bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 	// Если объект собран не был
 	if(!this->ready())
@@ -13652,59 +9261,101 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
+			log::debug(this->_keyring->live() ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log::flag_t::WARNING);
+			log::print(this->_keyring->live() ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
 	}
-	// Охранник очереди ошибок библиотеки криптографии
-	const driver::purge_t purge;
 	// Признак успешно выполненной работы
 	bool outcome = false;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		/**
-		 * Пустая подпись отвергается прежде работы - тем же порядком, что и у разовой
-		 * проверки: полагаться на отказ библиотеки значило бы отдать решение ей
-		 */
-		/**
-		 * Если в деле поток по схеме ГОСТ Р 34.10-2012
-		 */
-		if(this->_keyring->streaming){
-			// Выполняем поиск ключа потока в связке
-			auto i = this->_keyring->keys.find(this->_keyring->name);
-			// Буфер хэш-суммы проверяемых данных
-			uint8_t digest[gost::DIGIT];
-			// Выполняем завершение счёта хэш-суммы
-			gost::finalize(this->_keyring->digest, digest);
-			/**
-			 * Проверка идёт только при найденном ключе и подписи должной длины:
-			 * подпись иной длины взяла бы под числа чужие октеты
-			 */
-			if((i != this->_keyring->keys.end()) && (signature.size() == (gost::digitOf(i->second.gost) * 2)))
-				// Выполняем проверку подписи поданного потока
-				outcome = gost::verify(i->second.gost, digest, gost::digitOf(i->second.gost), signature.data());
+		// Если подпись данных не передана
+		if(signature.empty()){
 			// Выполняем сброс потока проверки подписи
 			this->_keyring->reset();
 			// Выходим из метода
 			return outcome;
 		}
-		// Если подпись данных передана
-		if(!signature.empty())
-			/**
-			 * Несовпадение подписи отказом работы не является и в лог не пишется:
-			 * подделка - это законный исход проверки, а не сбой (5.23)
-			 */
-			// Выполняем проверку подписи поданного потока
-			outcome = (::EVP_DigestVerifyFinal(this->_keyring->stream, signature.data(), signature.size()) == 1);
+		// Выполняем поиск ключа потока в связке
+		auto i = this->_keyring->keys.find(this->_keyring->name);
+		// Если ключ потока из связки исчез
+		if(i == this->_keyring->keys.end()){
+			// Выполняем сброс потока проверки подписи
+			this->_keyring->reset();
+			// Выходим из метода
+			return outcome;
+		}
+		// Вид подписи ключа
+		const signature_t type = i->second.type;
+		// Алгоритм хэширования потока
+		const nts::digest::hash_t algorithm = this->_keyring->stream.type();
+		// Длина хэш-суммы
+		const size_t dlen = nts::digest::length(algorithm);
+		// Буфер хэш-суммы проверяемых данных
+		vector <uint8_t> digest(dlen, 0);
+		// Если завершение счёта хэш-суммы не удалось
+		if(!this->_keyring->stream.finish(digest.data(), dlen)){
+			// Выполняем сброс потока проверки подписи
+			this->_keyring->reset();
+			// Выходим из метода
+			return outcome;
+		}
+		// Если подпись проверяется ключом ГОСТ Р 34.10-2012
+		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
+			// Если размер подписи разрядности схемы не отвечает
+			if(signature.size() == i->second.gost->size())
+				// Выполняем проверку подписи по хэш-сумме
+				outcome = i->second.gost->check(nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
+		// Если подпись проверяется ключом RSA
+		} else if(type == signature_t::RSA){
+			// Схема дополнения подписи RSA
+			nts::sign::scheme_t scheme;
+			// Если схема дополнения подписи вероятностная
+			if(this->_params.padding == crypto_t::padding_t::PSS)
+				// Устанавливаем вероятностную схему PSS
+				scheme = nts::sign::scheme_t::PSS;
+			// Если схема дополнения подписи PKCS#1
+			else if(this->_params.padding == crypto_t::padding_t::PKCS1)
+				// Устанавливаем схему PKCS#1
+				scheme = nts::sign::scheme_t::PKCS1;
+			// Если схема дополнения подписи не задана либо разбору не знакома
+			else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Signature padding scheme is not set or is unsupported", log::flag_t::CRITICAL);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+			// Выполняем проверку подписи по хэш-сумме
+			outcome = i->second.rsa->check(scheme, algorithm, nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
+		// Если подпись проверяется ключом ECDSA
+		} else if(type == signature_t::ECDSA){
+			// Буфер сырой подписи
+			vector <uint8_t> raw(i->second.ecdsa->size(), 0);
+			// Если запись DER подписи в сырой вид разобрана
+			if(nts::sign::decode(nts::view_t(signature.data(), signature.size()), raw.data(), raw.size()))
+				// Выполняем проверку подписи по хэш-сумме
+				outcome = i->second.ecdsa->check(nts::view_t(digest.data(), dlen), nts::view_t(raw.data(), raw.size()));
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -13714,10 +9365,6 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 		// Записываем ошибку в лог
 		log::print("%s", log::flag_t::CRITICAL, error.what());
 	}
-	/**
-	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
-	 * контекст проверки завершением израсходован
-	 */
 	// Выполняем сброс потока проверки подписи
 	this->_keyring->reset();
 	// Выводим результат проверки подписи

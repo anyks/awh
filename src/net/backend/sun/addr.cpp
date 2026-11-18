@@ -384,12 +384,6 @@ namespace {
 	 */
 	static outward_t __awh_outward__[2];
 	/**
-	 * @brief Генератор случайных чисел для рандомизации DNS-серверов
-	 *
-	 */
-	static random_device __awh_randev__;
-
-	/**
 	 * @brief Шаблон структуры состояния блокировок, погашенное при заведении
 	 *
 	 * @tparam MutexType тип активного мьютекса

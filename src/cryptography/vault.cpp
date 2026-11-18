@@ -22,15 +22,11 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочные файлы библиотеки криптографии
- */
-#include <openssl/rand.h>
-#include <openssl/crypto.h>
-
-/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
+#include <sys/wipe.hpp>
+#include <entropy/entropy.hpp>
 #include <cryptography/vault.hpp>
 
 /**
@@ -60,7 +56,7 @@ namespace {
 	 */
 	static bool entropy(uint8_t * buffer, const size_t size) noexcept {
 		// Выводим признак удавшегося набора случайных октетов
-		return (::RAND_bytes(buffer, static_cast <int32_t> (size)) == 1);
+		return nts::entropy::bytes(buffer, size);
 	}
 	/**
 	 * @brief Функция записи октетов шестнадцатеричным текстом
@@ -127,7 +123,7 @@ awh::Vault::Handle & awh::Vault::Handle::operator = (Handle && handle) noexcept 
 		// Затираем открытый текст, лежавший в рукояти прежде
 		if(!this->_plain.empty())
 			// Затираем содержимое рукояти
-			::OPENSSL_cleanse(this->_plain.data(), this->_plain.size());
+			nts::sys::wipe(this->_plain.data(), this->_plain.size());
 		// Переносим открытый текст тайны
 		this->_plain = ::move(handle._plain);
 		// Переносим признак удавшегося взятия
@@ -180,7 +176,7 @@ awh::Vault::Handle::~Handle() noexcept {
 	 */
 	if(!this->_plain.empty())
 		// Затираем содержимое рукояти
-		::OPENSSL_cleanse(this->_plain.data(), this->_plain.size());
+		nts::sys::wipe(this->_plain.data(), this->_plain.size());
 }
 /**
  * @brief Метод получения признака заведённого склада
@@ -198,7 +194,7 @@ bool awh::Vault::ready() const noexcept {
  * @return сведения о состоявшейся защите
  *
  */
-const awh::alloc::shelter_t & awh::Vault::shelter() const noexcept {
+const nts::sys::shelter_t & awh::Vault::shelter() const noexcept {
 	// Выводим сведения о состоявшейся защите
 	return this->_shelter;
 }
@@ -240,7 +236,7 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
 		// Затираем то, что успело лечь в буфер
 		if(!cipher.empty())
 			// Затираем буфер шифротекста
-			::OPENSSL_cleanse(cipher.data(), cipher.size());
+			nts::sys::wipe(cipher.data(), cipher.size());
 		// Отвечаем отказом
 		return false;
 	}
@@ -257,7 +253,7 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
 	// Если тайна того же названия на складе уже лежит
 	if((i != this->_secrets.end()) && !i->second.empty())
 		// Затираем прежний шифротекст тайны
-		::OPENSSL_cleanse(i->second.data(), i->second.size());
+		nts::sys::wipe(i->second.data(), i->second.size());
 	// Укладываем шифротекст тайны на склад
 	this->_secrets[name] = ::move(cipher);
 	// Отвечаем успехом
@@ -332,7 +328,7 @@ awh::Vault::Handle awh::Vault::borrow(const std::string & name) noexcept {
 		// Затираем то, что успело лечь в буфер
 		if(!plain.empty())
 			// Затираем буфер открытого текста
-			::OPENSSL_cleanse(plain.data(), plain.size());
+			nts::sys::wipe(plain.data(), plain.size());
 		// Выводим негодную рукоять
 		return Handle();
 	}
@@ -369,7 +365,7 @@ bool awh::Vault::erase(const std::string & name) noexcept {
 	// Затираем шифротекст тайны прежде снятия
 	if(!i->second.empty())
 		// Затираем буфер шифротекста
-		::OPENSSL_cleanse(i->second.data(), i->second.size());
+		nts::sys::wipe(i->second.data(), i->second.size());
 	// Снимаем тайну со склада
 	this->_secrets.erase(i);
 	// Отвечаем успехом
@@ -507,12 +503,16 @@ awh::Vault::Vault(const alloc::secrecy_t secrecy, const threading_t threading) n
 	 * понижении защиты не узнал бы никто
 	 */
 	{
+		// Устанавливаем требование укрытия по строгости склада
+		nts::sys::Vault::instance().demand(this->_secrecy == alloc::secrecy_t::STRICT);
 		// Выполняем пробную укрытую выдачу
-		void * probe = alloc::allocator::secure(KEYSIZE, &this->_shelter);
+		void * probe = nts::sys::Vault::instance().take(KEYSIZE);
 		// Если пробная выдача удалась
 		if(probe != nullptr)
-			// Возвращаем пробную выдачу распределителю
-			alloc::allocator::release(probe);
+			// Возвращаем пробную выдачу хранилищу
+			nts::sys::Vault::instance().give(probe, KEYSIZE);
+		// Снимаем сведения о состоявшейся защите памяти
+		this->_shelter = nts::sys::Vault::instance().shelter();
 	}
 	/**
 	 * Строгий склад отвечает отказом, не получив обещанной защиты
@@ -553,9 +553,9 @@ awh::Vault::Vault(const alloc::secrecy_t secrecy, const threading_t threading) n
 		// Устанавливаем пароль шифрования
 		this->_crypto.password(password);
 		// Затираем текст пароля: средство шифрования вывело из него ключ и в тексте больше не нуждается
-		::OPENSSL_cleanse(&password[0], password.size());
+		nts::sys::wipe(&password[0], password.size());
 		// Затираем текст соли
-		::OPENSSL_cleanse(&flavour[0], flavour.size());
+		nts::sys::wipe(&flavour[0], flavour.size());
 		// Отмечаем склад заведённым
 		this->_ready = true;
 	/**
@@ -565,9 +565,9 @@ awh::Vault::Vault(const alloc::secrecy_t secrecy, const threading_t threading) n
 		// Выводим сообщение об ошибке
 		awh::log::print("Vault is not prepared: the source of randomness is not available", awh::log::flag_t::CRITICAL);
 	// Затираем случайные октеты
-	::OPENSSL_cleanse(key, sizeof(key));
+	nts::sys::wipe(key, sizeof(key));
 	// Затираем случайные октеты соли
-	::OPENSSL_cleanse(salt, sizeof(salt));
+	nts::sys::wipe(salt, sizeof(salt));
 }
 /**
  * @brief Деструктор
@@ -581,6 +581,6 @@ awh::Vault::~Vault() noexcept {
 		// Затираем шифротекст тайны
 		if(!item.second.empty())
 			// Затираем буфер шифротекста
-			::OPENSSL_cleanse(item.second.data(), item.second.size());
+			nts::sys::wipe(item.second.data(), item.second.size());
 	}
 }

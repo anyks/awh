@@ -91,8 +91,8 @@
 /**
  * Наши модули
  */
+#include <sys/vault.hpp>
 #include "crypto.hpp"
-#include "../alloc/keeper.hpp"
 #include "../alloc/vessel.hpp"
 
 /**
@@ -128,7 +128,7 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Vault {
 		public:
 			// Тип укрытого буфера: содержимое его не уходит в подкачку и затирается при возврате
-			typedef vector <char, alloc::Keeper <char>> buffer_t;
+			typedef nts::sys::bytes_t buffer_t;
 		public:
 			/**
 			 * \~russian
@@ -426,7 +426,7 @@ namespace awh {
 			 */
 			mutable std::mutex _mutex;
 			// Сведения о защите, состоявшейся у укрытой памяти склада
-			alloc::shelter_t _shelter;
+			nts::sys::shelter_t _shelter;
 		public:
 			/**
 			 * \~russian
@@ -488,7 +488,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			const alloc::shelter_t & shelter() const noexcept;
+			const nts::sys::shelter_t & shelter() const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод укладки тайны на склад

@@ -425,6 +425,27 @@ def anon_ns_lines(lines):
             delta += 1
     return held
 
+def class_body_lines(lines):
+    """Строки внутри тел class/struct { ... }: методы живут по §4.2, а не по §4.12."""
+    held = set()
+    stack = []
+    in_block = False
+    for n, raw in enumerate(lines, 1):
+        code, in_block = strip_comments_strings(raw.rstrip("\n"), in_block)
+        if "class" in stack:
+            held.add(n)
+        delta = code.count("{") - code.count("}")
+        if delta > 0:
+            if re.search(r"\b(?:class|struct)\s+\w+[^{;]*\{", code) and code.count("{") == 1:
+                stack.append("class")
+            else:
+                stack.append("other")
+            delta -= 1
+        while delta < 0 and stack:
+            stack.pop()
+            delta += 1
+    return held
+
 def collect_members(files):
     """Собирает имена членов вида _name из объявлений в заголовках/источниках."""
     pat = re.compile(r"^\s*(?:const\s+)?[\w:<>]+(?:\s*[*&]\s*|\s+)(_\w+)\s*(?:=[^;]+)?;")
@@ -541,6 +562,20 @@ INIT_COLON = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable|fi
 # Запись с '/' на конце — префикс каталога, прочее — точное имя под include/.
 HEADER_ONLY = ("sys/callback.hpp", "sys/threadpool.hpp", "net/callback.hpp",
     "net/engine.hpp", "alloc/capture.hpp", "codec/value.hpp", "num/lexical/")
+
+# Рабочие имена из стандартов криптографии (FIPS 180-4 и родственные): a-h,
+# w/w0-w15, k, s0-s2, t1/t2, p0-p15, x0-x3. В ядрах криптомодулей переменные
+# названы текстом стандарта и документаруются по нему — §4.3 их не флажит
+# (решение владельца 18.11.2026). Прочие 1-2-знаковые имена (t, m, hi, ef, ab)
+# остаются нарушениями и переименовываются.
+RFC_WORK = re.compile(r"(?:[a-hkqvwxyz][0-9]?|r[0-9a-dl]?|s[0-9]?|t[0-9]?|m[0-9]?|u[0-9]?|o[12]|hi2?|lo|w\d{1,2}|p\d{1,2}|x\d)\Z")
+RFC_KERNEL = re.compile(r"(?:^|/)(?:digest|cipher|curve|math|field|sign|agreement|internal|cryptography)/")
+
+# Внутренние каталоги размещения (src/internal/**): именованные namespace ядер
+# больших чисел и машинных ядер — dunder-вид __nts_{name}__ здесь законен наравне
+# с анонимными namespace (владелец, 18.11.2026): поверхность не публичная, единый
+# вид маркирует внутренние ядра по всему дереву.
+INTERNAL_KERNELS = re.compile(r"(?:^|/)internal/")
 
 
 HEADER_TAGS = ["file", "date", "license", "author", "telegram", "phone", "email", "site", "brief", "copyright"]
@@ -963,6 +998,7 @@ def check_file(path, lines, members, report, fixes=None):
     bodies = find_bodies(lines)
     c_abi = c_abi_lines(lines)
     anon_ns = anon_ns_lines(lines)
+    class_body = class_body_lines(lines)
     blank_ctx = None
     prev_code = ""
     static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
@@ -1025,7 +1061,7 @@ def check_file(path, lines, members, report, fixes=None):
             j = n - 2
             while j >= 0 and lines[j].strip() == "":
                 j -= 1
-            pl = lines[j].strip() if j >= 0 else ""
+            pl = re.sub(r"\\+$", "", lines[j].strip()).strip() if j >= 0 else ""
             if not (pl.endswith("*/") or pl.startswith("*")):
                 if pl.startswith("//"):
                     report(path, n, "ERROR", "§6.6", f"над «{lm.group(1)}» строчный комментарий — по §6.6 заголовок цикла/switch требует doc-блок /** */")
@@ -1114,15 +1150,15 @@ def check_file(path, lines, members, report, fixes=None):
                 report(path, n, "ERROR", "§4.2", f"имя функции/метода '{fname}' с заглавной буквы — заглавная первая буква только у типов, функции в camelCase")
             # §4.12: внутри анонимного namespace приватная форма __awh_/__nts_ обязательна
             # (смотрим определения с телом), вне анонимных эта форма запрещена; метод —
-            # отступ глубже одного таба либо квалификатор Класс:: перед именем (§4.2)
-            elif n in anon_ns and ns_indent <= 1 and not quals and not re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
+            # тело class/struct либо квалификатор Класс:: перед именем (§4.2)
+            elif n in anon_ns and n not in class_body and not quals and not re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
                 report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__nts_{{name}}__ (§4.10)")
             # §4.10: {name} внутри обрамления — строчные слова через подчёркивание;
             # склеенный camelCase внутри бренда (__nts_gostAlgorithm__) запрещён
             elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and not re.fullmatch(r"__(?:awh|nts)_[a-z0-9_]+__", fname):
                 report(path, n, "ERROR", "§4.10", f"имя '{fname}' внутри обрамления — строчные слова через подчёркивание: __nts_gost_algorithm__, не __nts_gostAlgorithm__")
-            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and n not in anon_ns:
-                report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная, живёт только внутри анонимного namespace")
+            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and n not in anon_ns and not INTERNAL_KERNELS.search(path.replace(os.sep, "/")):
+                report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная, живёт только внутри анонимного namespace или внутреннего каталога src/internal")
         # вид callable в @brief (§7.2): ближайший doc--block над определением обязан называть род
         if fm and not directive_line:
             j = n - 2
@@ -1165,12 +1201,27 @@ def check_file(path, lines, members, report, fixes=None):
         if not re.match(r"\s*for\s*\(", code) and n not in c_abi:
             for vm in re.finditer(r"(?:const\s+)?([A-Za-z_][\w:<>]*)(?:\s*[*&]\s*)?\s+([a-z]{1,2}[0-9]?)\s*(?==[^=]|;|,|\)|\()", code):
                 short = vm.group(2)
+                # Ключевое слово инструкции перед именем не является типом:
+                # `return i;` — возврат счётчика цикла, а не объявление переменной
+                if vm.group(1) in ("return", "throw", "goto", "co_return", "co_yield"):
+                    continue
                 # SLICE * i внутри выражения (перед совпадением стоит =) - произведение
                 # константы, а не объявление: объявления параметров и переменных
                 # объявляются в начале инструкции, без знака равенства до имени типа
                 if "=" in code[:vm.start()]:
                     continue
-                if short in ("ok", "id", "to", "in", "on", "no", "do", "if"):
+                # Умножение/операнд в вызове или выражении (dispatch(data + (step * i)):
+                # перед «типом» стоит токен выражения, а объявление живёт в начале
+                # инструкции — всё, что до совпадения, не пусто, объявлением не является
+                if code[:vm.start()].rstrip():
+                    continue
+                # Общепринятые аббревиатуры протоколов в публичных полях/методах:
+                # dh (Diffie-Hellman), sm2 (кривая SM2), ja3/ja4 (отпечатки TLS)
+                if short in ("ok", "id", "to", "in", "on", "no", "do", "if", "dh", "sm2", "ja3", "ja4"):
+                    continue
+                # Рабочие имена стандартов криптографии (FIPS 180-4 и родственные)
+                # в ядрах криптомодулей названы текстом стандарта — §4.3 молчит
+                if RFC_WORK.fullmatch(short) and RFC_KERNEL.search(path.replace(os.sep, "/")):
                     continue
                 before = code[:vm.start()]
                 if re.match(r"\s*typedef\b", code) or directive_line:
