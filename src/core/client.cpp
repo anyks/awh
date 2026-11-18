@@ -179,12 +179,25 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						else host = (!url.domain.empty() ? url.domain.c_str() : (!url.ip.empty() ? url.ip.c_str() : nullptr));
 						// Если хост сервера получен правильно
 						if(host != nullptr){
+							// Признак запрошенного шифрования канала
+							bool ssl = false;
 							// Если функция обратного вызова активации шифрованного SSL канала установлена
 							if(!shm->isProxy() && this->_callback.is("ssl"))
-								// Выполняем активацию шифрованного SSL канала
-								this->_engine.encrypted(this->_callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", url, broker->id(), sid), broker->ectx);
+								// Запрашиваем шифрование канала у модуля
+								ssl = this->_callback.call <bool (const uri_t::url_t &, const uint64_t, const uint16_t)> ("ssl", url, broker->id(), sid);
 							// Выполняем активацию контекста подключения
 							this->_engine.wrap(broker->ectx, &broker->addr, host);
+							/**
+							 * Шифрование оставляем только запрошенному каналу: в фазе прокси-сервера
+							 * запрос CONNECT (или приветствие SOCKS5) идёт открытым текстом, и
+							 * обёрнутый контекст отправлял бы туда ClientHello, на который прокси
+							 * отвечает обрывом запроса. Канал к серверу заводит шифрование
+							 * switchProxy() уже после ответа прокси; контекст при этом нужен ради
+							 * адреса подключения, который ставит wrap
+							 */
+							if(!ssl)
+								// Снимаем флаг шифрования у контекста подключения
+								this->_engine.encrypted(false, broker->ectx);
 						// Если хост сервера не получен
 						} else {
 							// Разрешаем выполнение работы
