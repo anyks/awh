@@ -55,8 +55,8 @@ if [ -n "$1" ]; then
 			rm -rf "$ROOT/submodules/libidn2"
 		fi
 
-		# Удаляем сборочную директорию
-		rm -rf "$ROOT/third_party"
+		# Удаляем сборочную директорию (префикс у каждой оснастки свой)
+		rm -rf "${AWH_THIRD_PARTY:-$ROOT/third_party}"
 
 		printf "\n****************************************"
 		printf "\n************   Success!!!   ************"
@@ -95,8 +95,14 @@ if [ -n "$1" ]; then
 	fi
 fi
 
-# Каталог для установки собранных библиотек
-PREFIX="$ROOT/third_party"
+##
+ # Каталог для установки собранных библиотек
+ #
+ # Префикс берётся из окружения: у каждой оснастки он свой (MSVC -
+ # third_party-msvc, CLANGARM64 - third_party-clangarm64), и жёстко прописанный
+ # third_party у них не находится. Без переменной адрес прежний
+ ##
+PREFIX="${AWH_THIRD_PARTY:-$ROOT/third_party}"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
 # Устанавливаем флаги глобального использования
@@ -1492,8 +1498,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Выполняем объединение статических библиотек
-bash "$ROOT/merge_static_libs.sh"
+# Выполняем объединение статических библиотек (каталог берётся из префикса)
+bash "$ROOT/merge_static_libs.sh" "$PREFIX/lib"
 
 # Сборка GPerfTools
 src="$ROOT/submodules/gperftools"
@@ -1511,6 +1517,18 @@ if [ $OS = "OpenBSD" ]; then
 elif [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** GPerfTools ******\n"
 	cd "$src" || exit 1
+
+	##
+	 # Признак объявленного nanosleep под clang
+	 #
+	 # Его config.h перекрывает -D из флагов компилятора, поэтому признак
+	 # передаётся переменной CMake: без него clang-оснастка MSYS2 упирается
+	 # в конфликт port.h с pthread_time.h
+	 ##
+	NANOSLEEP_FLAG=""
+	if cc --version 2>/dev/null | grep -qi clang; then
+		NANOSLEEP_FLAG="-DHAVE_DECL_NANOSLEEP=1"
+	fi
 
 	# Версия GPerfTools
 	VER="2.17.2"
@@ -1559,6 +1577,7 @@ elif [ ! -f "$src/.stamp_done" ]; then
 		 -DBUILD_SHARED_LIBS="OFF" \
 		 -DDEFAULT_BUILD_MINIMAL="ON" \
 		 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
+		 $NANOSLEEP_FLAG \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -G "MSYS Makefiles" \
 		 .. || exit 1
@@ -1568,6 +1587,7 @@ elif [ ! -f "$src/.stamp_done" ]; then
 		 -DBUILD_SHARED_LIBS="OFF" \
 		 -DDEFAULT_BUILD_MINIMAL="ON" \
 		 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
+		 $NANOSLEEP_FLAG \
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 .. || exit 1

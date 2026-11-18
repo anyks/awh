@@ -6,8 +6,17 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # Название библиотеки
 readonly LIBNAME="dependence"
 
-# Каталог статических библиотек
-THIRD_PARTY="$ROOT/third_party/lib"
+##
+ # Каталог статических библиотек
+ #
+ # Префикс задаётся переменной окружения AWH_THIRD_PARTY (у оснасток он свой:
+ # MSVC - third_party-msvc, CLANGARM64 - third_party-clangarm64), а
+ # build_third_party.sh передаёт каталог доводом. Жёстко прописанный third_party
+ # у них не находится; без того и другого берётся прежний адрес
+ ##
+PREFIX="${AWH_THIRD_PARTY:-$ROOT/third_party}"
+PREFIX="${PREFIX%/}"
+THIRD_PARTY="$PREFIX/lib"
 
 # Если на вход получен каталог с библиотеками
 if [[ -d $1 ]]; then

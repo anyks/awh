@@ -3,8 +3,27 @@
 # Получаем корневую дирректорию
 readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 
-# Каталог статических библиотек (корень репозитория на уровень выше каталога скриптов)
-readonly THIRD_PARTY="$ROOT/third_party/lib"
+##
+ # Средства работы с архивами
+ #
+ # Инструменты берутся из окружения, а не по имени: у clang-оснастки индекс
+ # архива кладёт только llvm-ranlib, а GNU-ranlib на ARM64 оставляет архив
+ # без индекса, и линковка не находит в нём ни одного символа
+ ##
+AR_CMD="${AR:-ar}"
+RANLIB_CMD="${RANLIB:-ranlib}"
+
+##
+ # Каталог зависимостей и статических библиотек
+ #
+ # Префикс задаётся переменной окружения AWH_THIRD_PARTY, которую передаёт CMake:
+ # у каждой оснастки он свой (MSVC - third_party-msvc, CLANGARM64 -
+ # third_party-clangarm64), и жёстко прописанный third_party у них не находится.
+ # Без переменной берётся прежний адрес, чтобы прямой вызов скрипта работал
+ ##
+PREFIX="${AWH_THIRD_PARTY:-$ROOT/third_party}"
+readonly PREFIX="${PREFIX%/}"
+readonly THIRD_PARTY="$PREFIX/lib"
 
 ## Каталог сборки
  #
@@ -19,7 +38,7 @@ readonly THIRD_PARTY="$ROOT/third_party/lib"
  # сборки как отдельный шаг, и при сборке в несколько нитей прогоны разных целей
  # делили бы один каталог.
  ##
-BUILD_DIR="$ROOT/third_party/.static"
+BUILD_DIR="$PREFIX/.static"
 
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
@@ -104,7 +123,7 @@ prune(){
 		# Если длина пачки подошла к пределу командной строки
 		if [ ${#BATCH} -ge $BATCH_LENGTH ]; then
 			# Выполняем удаление пачки модулей из архива
-			ar -d "$ARCHIVE" $BATCH || exit 1
+			"$AR_CMD" -d "$ARCHIVE" $BATCH || exit 1
 			# Выполняем очистку пачки
 			BATCH=""
 		fi
@@ -112,7 +131,7 @@ prune(){
 	# Если в пачке остались модули
 	if [ -n "$BATCH" ]; then
 		# Выполняем удаление пачки модулей из архива
-		ar -d "$ARCHIVE" $BATCH || exit 1
+		"$AR_CMD" -d "$ARCHIVE" $BATCH || exit 1
 	fi
 }
 
@@ -140,7 +159,7 @@ intract(){
 		# Если длина списка модулей подошла к пределу командной строки
 		if [ ${#MODULES} -ge $BATCH_LENGTH ]; then
 			# Выполняем сборку новой статической библиотеки
-			ar -crv $1 $MODULES || exit 1
+			"$AR_CMD" -crv $1 $MODULES || exit 1
 			# Выполняем очистку списка модулей
 			MODULES=""
 		fi
@@ -149,14 +168,14 @@ intract(){
 	# Если список уже сформирован
 	if [ -n "$MODULES" ]; then
 		# Выполняем сборку новой статической библиотеки
-		ar -crv $1 $MODULES || exit 1
+		"$AR_CMD" -crv $1 $MODULES || exit 1
 	fi
 
 	# Выполняем удаление всех обработанных модулей
 	rm -f *.$OBJECT_NAME || exit 1
 
 	# Выполняем запуск библиотеки
-	ranlib "$1"
+	"$RANLIB_CMD" "$1"
 
 	# Если операционной системой является Unix-подобная ОС
 	if [ ! $OS = "Windows" ]; then
@@ -178,7 +197,7 @@ intract(){
  ##
 contains(){
 	# Перебираем все модули архива
-	for m in $(ar -t "$1" | tr -d '\r');
+	for m in $("$AR_CMD" -t "$1" | tr -d '\r');
 	do
 		# Если название модуля совпадает
 		if [ "$m" = "$2" ]; then
@@ -206,7 +225,7 @@ extract(){
 	# Выводим сообщение
 	echo "Extract \"$1\""
 	# Получаем список модулей
-	MODULES=$(ar -t "$1" | tr -d '\r' | grep ".*\.$2$")
+	MODULES=$("$AR_CMD" -t "$1" | tr -d '\r' | grep ".*\.$2$")
 	# Получаем список модулей-двойников
 	DUPLICATES=$(printf '%s\n' $MODULES | sort | uniq -d)
 	# Получаем список уникальных модулей
@@ -215,7 +234,7 @@ extract(){
 	if [ -n "$UNIQUES" ]; then
 		# Извлекаем архив целиком одним вызовом в отдельный каталог
 		rm -rf ".extract" && mkdir ".extract" || exit 1
-		(cd ".extract" && ar -x "../$1") || exit 1
+		(cd ".extract" && "$AR_CMD" -x "../$1") || exit 1
 		# Выполняем формирование последовательности списка модулей
 		for i in $UNIQUES;
 		do
@@ -243,9 +262,9 @@ extract(){
 			# Выводим название модуля
 			echo "Module: $i in $1"
 			# Выполняем извлечение модуля из архива
-			ar -xv "$1" "$i"
+			"$AR_CMD" -xv "$1" "$i"
 			# Выполняем удаление модуля в архиве
-			ar -dv "$1" "$i" || exit 1
+			"$AR_CMD" -dv "$1" "$i" || exit 1
 			# Выполняем переименование модуля
 			mv "${i%.*}.$2" "${i%.*}_$INDEX.$OBJECT_NAME" || exit 1
 			# Выполняем увеличение индекса
@@ -305,7 +324,7 @@ cd "$ROOT" || exit 1
 rm -rf "$BUILD_DIR"
 
 # Выполняем удаление каталога общего, если прогонов иных не осталось
-rmdir "$ROOT/third_party/.static" 2>/dev/null
+rmdir "$PREFIX/.static" 2>/dev/null
 
 ##
  # Выводим успешное завершение слияния

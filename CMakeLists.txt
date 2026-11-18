@@ -1408,7 +1408,8 @@ if (NOT CMAKE_SHARED_BUILD_LIB)
             VERBATIM)
         else()
             add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-                COMMAND bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
+                COMMAND "${CMAKE_COMMAND}" -E env "AR=${CMAKE_AR}" "RANLIB=${CMAKE_RANLIB}" "AWH_THIRD_PARTY=${AWH_THIRD_PARTY}"
+                    bash "${CMAKE_SOURCE_DIR}/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
             VERBATIM)
         endif()
     # Если режим отладки активирован
