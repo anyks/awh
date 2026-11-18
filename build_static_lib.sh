@@ -262,8 +262,18 @@ mkdir -p "$BUILD_DIR" || exit 1
 
 # Выполняем копирование собранной библиотеки
 cp "$LIB" "$BUILD_DIR/$FILENAME" || exit 1
-# Выполняем копирование библиотеки зависимостей
-cp "$THIRD_PARTY/libdependence.$LIBRARY_NAME" "$BUILD_DIR/libdependence.$LIBRARY_NAME" || exit 1
+##
+ # Выполняем копирование библиотеки зависимостей
+ #
+ # Приставку расширения задаёт оснастка, а не система: под Windows MSVC кладёт
+ # «libdependence.lib», GNU-оснастка - «libdependence.a». С одним лишь «.lib»
+ # сборка MinGW встала бы на отсутствии файла при собранной библиотеке
+ ##
+DEPENDENCE_FILE="$THIRD_PARTY/libdependence.$LIBRARY_NAME"
+if [ ! -f "$DEPENDENCE_FILE" ] && [ -f "$THIRD_PARTY/libdependence.a" ]; then
+	DEPENDENCE_FILE="$THIRD_PARTY/libdependence.a"
+fi
+cp "$DEPENDENCE_FILE" "$BUILD_DIR/libdependence.$LIBRARY_NAME" || exit 1
 
 # Переходим в каталог сборки
 cd "$BUILD_DIR" || exit 1

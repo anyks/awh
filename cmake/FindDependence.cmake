@@ -37,10 +37,13 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      ##
     if (MSVC)
         SET(CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
     else()
         SET(CMAKE_FIND_LIBRARY_PREFIXES "lib")
+        # GNU-оснастка под Windows кладёт архивы с расширением «.a», а «.lib»
+        # оставлен рядом: часть зависимостей может быть собрана MSVC-оснасткой
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
     endif()
-    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 endif()
 
 ##

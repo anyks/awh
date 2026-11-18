@@ -33,7 +33,13 @@ readonly BUILD_DIR="$THIRD_PARTY/../.merge"
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
 
-if [[ $OS =~ "MINGW64" ]]; then
+##
+ # Опознаём MS Windows по любому из окружений MSYS2, а не по одному лишь MINGW64:
+ # оболочка ARM64 зовётся CLANGARM64, а Git for Windows представляется как MSYS_NT.
+ # При одной проверке MINGW64 слияние считало бы такую сборку Unix-подобной и искало
+ # объекты «.o» в архивах MinGW, где они лежат с расширением «.obj»
+ ##
+if [[ $OS =~ "MINGW" ]] || [[ $OS =~ "MSYS" ]] || [[ $OS =~ "CLANG" ]] || [[ $OS =~ "UCRT" ]] || [[ $OS =~ "CYGWIN" ]]; then
 	OS="Windows"
 fi
 
