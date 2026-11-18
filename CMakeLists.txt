@@ -503,6 +503,9 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/hash.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cryptography/hash.cpp"
+    "${CMAKE_SOURCE_DIR}/src/num/bignum.cpp"
+    "${CMAKE_SOURCE_DIR}/src/num/lexical/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/queue.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/buffer.cpp"
@@ -573,7 +576,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
-    "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
 ##

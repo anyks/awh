@@ -1,7 +1,7 @@
 /**
  * @file: http1.cpp
  * @date: 2022-10-01
- * @license: GPL-3.0
+ * @license{LicenseRef-AWH-1.0}
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

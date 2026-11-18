@@ -1,7 +1,7 @@
 /**
  * @file: socket.hpp
  * @date: 2021-12-19
- * @license: GPL-3.0
+ * @license{LicenseRef-AWH-1.0}
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev

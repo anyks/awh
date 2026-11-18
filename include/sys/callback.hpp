@@ -1,7 +1,7 @@
 /**
  * @file: callback.hpp
  * @date: 2025-06-25
- * @license: GPL-3.0
+ * @license{LicenseRef-AWH-1.0}
  *
  * @telegram: @forman
  * @author: Yuriy Lobarev
@@ -30,7 +30,7 @@
  * Наши модули
  */
 #include "log.hpp"
-#include <cityhash/city.h>
+#include <cryptography/hash.hpp>
 
 /**
  * @brief пространство имён
@@ -131,7 +131,12 @@ namespace awh {
 						// Выполняем копирование данных имени
 						::memcpy(&result, name.data(), name.size());
 					// Получаем идентификатор обратного вызова
-					else return ::CityHash64(name.c_str(), name.size());
+					else {
+						// Хеш v5 - тот же, что зовёт обратный вызов в старшей ветке
+						static const CryptoHash hash;
+						// Выполняем хеширование имени
+						return hash.hash <uint64_t> (string_view(name));
+					}
 				/**
 				 * Если возникает ошибка
 				 */
