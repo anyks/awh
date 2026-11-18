@@ -17,9 +17,11 @@ if [ -n "$1" ]; then
 		fi
 		##
 		 # Удаляем все зависимые заголовки библиотеки: A-NTS ставится в каталог nts,
-		 # а не a-nts - по имени подмодуля каталог искать нечем
+		 # а не a-nts - по имени подмодуля каталог искать нечем. С сборочных пакетов
+		 # раскладка экосистемная: заголовки в include/anyks/nts, архив в lib/anyks -
+		 # убираем и её, иначе остатки прежней установки переживут --clean
 		 ##
-		rm -rf "$PREFIX/include/nts"
+		rm -rf "$PREFIX/include/nts" "$PREFIX/include/anyks/nts" "$PREFIX/lib/anyks" "$PREFIX/lib/amd64/anyks"
 
 		# Переходим обратно в рабочий каталог
 		cd "$ROOT/.." || exit 1
@@ -164,6 +166,21 @@ if [ -n "$1" ]; then
 			$MAKE -j"$numproc" || exit 1
 			# Выполняем установку проекта
 			$MAKE install || exit 1
+
+			##
+			 # A-NTS ставит архив в экосистемный подкаталог lib/anyks, а на Solaris и
+			 # illumos - в 64-битный lib/amd64/anyks (сборка смотрит их оба; измерено
+			 # ногами веера), тогда как слияние зависимостей видит только корень
+			 # каталога библиотек: архив поднимается в lib. Заголовки остаются по
+			 # экосистемному адресу - их корень сообщает cmake/FindDependence
+			 ##
+			for arch in "$PREFIX"/lib/anyks/libnts.* "$PREFIX"/lib/anyks/nts.* \
+			            "$PREFIX"/lib/amd64/anyks/libnts.* "$PREFIX"/lib/amd64/anyks/nts.*; do
+				# Если архив на месте - переносим его в корень библиотек
+				if [ -f "$arch" ]; then
+					mv -f "$arch" "$PREFIX/lib/" || exit 1
+				fi
+			done
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX
