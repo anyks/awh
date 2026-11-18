@@ -4487,14 +4487,23 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 					}
 				} break;
 			}
-			// Выполняем заведение связи наружного модуля
-			if(this->wrapTLS(target, type, host)){
-				// Если приложение является сервером, переводим сокет в неблокирующий режим
-				if(type == type_t::SERVER)
-					// Устанавливаем неблокирующий режим ввода/вывода для сокета
-					target.blocking(mode_t::DISABLED);
-			// Если связь не завелась, очищаем контекст
-			} else target.clear();
+			/**
+			 * Шифрование заводится только запрошенному каналу: клиентская сторона просит
+			 * его вызовом encrypted до обёртывания, и открытая связь получает лишь адрес
+			 * подключения. Иначе TLS-состояние отправляло бы в открытый канал ClientHello,
+			 * на который прокси отвечает обрывом запроса. Серверная сторона шифруется по
+			 * наличию сертификата в самом wrapTLS
+			 */
+			if((type == type_t::SERVER) || target._encrypted){
+				// Выполняем заведение связи наружного модуля
+				if(this->wrapTLS(target, type, host)){
+					// Если приложение является сервером, переводим сокет в неблокирующий режим
+					if(type == type_t::SERVER)
+						// Устанавливаем неблокирующий режим ввода/вывода для сокета
+						target.blocking(mode_t::DISABLED);
+				// Если связь не завелась, очищаем контекст
+				} else target.clear();
+			}
 		// Если передан неверный сокет
 		} else {
 			// Очищаем созданный контекст
@@ -4512,8 +4521,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
  * @param host   хост удалённого сервера
  */
 void awh::Engine::wrap(ctx_t & target, ctx_t & source, const string & host) noexcept {
-	// Если объект ещё не обёрнут в контекст шифрования
-	if(!source._encrypted && (source._addr != nullptr))
+	/**
+	 * Обёртывание выполняется и тогда, когда шифрование запрошено, но связи ещё нет:
+	 * после переключения с прокси-сервера флаг поднимается до обёртывания, и TLS-состояние
+	 * заводится этим же вызовом
+	 */
+	if((source._addr != nullptr) && (!source._encrypted || (source._tls == nullptr)))
 		// Выполняем обёртывание уже активного подключения
 		this->wrap(target, source._addr, type_t::CLIENT, host);
 }

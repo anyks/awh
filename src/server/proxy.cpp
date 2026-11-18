@@ -1017,8 +1017,20 @@ void awh::server::Proxy::handshake(const int32_t sid, const uint64_t bid, const 
 							} else flags.emplace(client::web_t::flag_t::NO_INIT_SSL);
 							// Устанавливаем флаги настроек модуля
 							i->second->awh.mode(flags);
+							// Адрес сервера для подключения
+							uri_t::url_t target = i->second->request.params.url;
+							/**
+							 * Туннель CONNECT заводится открытым текстом: защищённый канал сквозь
+							 * него строит сам клиент, и шифрование апстрима не нужно - https-схема
+							 * адреса заставила бы внутренний клиент начать с сервером собственное
+							 * рукопожатие, и его ClientHello уходил бы в туннель вместо данных
+							 * клиента
+							 */
+							if(i->second->request.params.method == awh::web_t::method_t::CONNECT)
+								// Устанавливаем открытую схему адреса сервера
+								target.schema = "http";
 							// Выполняем инициализацию подключения
-							i->second->awh.init(this->_uri.origin(i->second->request.params.url), {
+							i->second->awh.init(this->_uri.origin(target), {
 								awh::http_t::compressor_t::ZSTD,
 								awh::http_t::compressor_t::BROTLI,
 								awh::http_t::compressor_t::GZIP,
