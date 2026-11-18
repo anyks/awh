@@ -4408,12 +4408,15 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				this->httpUpgrade(target);
 			break;
 		}
-		// Выполняем заведение связи наружного модуля
-		if(this->wrapTLS(target, type_t::SERVER, "")){
-			// Устанавливаем неблокирующий режим ввода/вывода для сокета
-			target.blocking(mode_t::DISABLED);
-		// Если связь не завелась, очищаем контекст
-		} else target.clear();
+		// Если сертификат сервера задан, заводим защищённую связь
+		if(!this->_cert.key.empty() && !this->_cert.pem.empty()){
+			// Выполняем заведение связи наружного модуля
+			if(this->wrapTLS(target, type_t::SERVER, "")){
+				// Устанавливаем неблокирующий режим ввода/вывода для сокета
+				target.blocking(mode_t::DISABLED);
+			// Если связь не завелась, очищаем контекст
+			} else target.clear();
+		}
 	}
 }
 /**
