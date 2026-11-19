@@ -1210,6 +1210,8 @@ namespace ssl {
 			if(!cts->shares.empty())
 				// Устанавливаем группы долей ключа
 				ctx.shares(cts->shares);
+			// Иначе ограничиваем доли ключа классической X25519: гибридная доля не влезает в пакет Initial QUIC
+			else ctx.shares(vector <nts::extension::group_t> {nts::extension::group_t::X25519});
 			// Если имя узла задано
 			if(!cts->host.empty())
 				// Устанавливаем имя узла
