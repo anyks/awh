@@ -1325,6 +1325,33 @@ namespace ssl {
 		return false;
 	}
 	/**
+	 * @brief Функция проверки цепочки сертификатов собеседника запасом доверенных
+	 *
+	 * @param member объект транспортного уровня передачи
+	 * @return       результат проверки (false - доверие цепочке не сложилось)
+	 *
+	 */
+	static bool verifyPeer(::ctl_t * member) noexcept {
+		// Если проверка сертификата собеседника не требуется
+		if((member->cts->state & state::CERTIFICATE_VERIFY) == 0)
+			// Выводим положительный результат
+			return true;
+		// Цепочка сертификатов собеседника
+		const vector <vector <uint8_t>> & chain = ((member->node == event::node_t::CLIENT) ? member->client->peer() : member->server->peer());
+		// Роль собеседника для суждения назначения сертификата
+		const nts::trust::role_t role = ((member->node == event::node_t::CLIENT) ? nts::trust::role_t::SERVER : nts::trust::role_t::CLIENT);
+		// Если цепочка собеседника не прошла проверку доверия
+		if(nts::trust::verify(chain, member->cts->store, ::time(nullptr), role) != nts::trust::error_t::NONE)
+			// Выводим отрицательный результат
+			return false;
+		// Если имя узла не отвечает ни одному имени сертификата
+		if(!member->cts->host.empty() && (chain.empty() || (nts::trust::belongs(nts::view_t(chain[0].data(), chain[0].size()), member->cts->host) != nts::trust::error_t::NONE)))
+			// Выводим отрицательный результат
+			return false;
+		// Выводим положительный результат
+		return true;
+	}
+	/**
 	 * @brief Функция подачи принятых байтов связи транспортного уровня
 	 *
 	 * @param member объект транспортного уровня передачи
@@ -3244,12 +3271,23 @@ bool awh::tls::coder::handshake(const id_t id) noexcept {
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
+				// Если участник помечен мусорным
+				if(member->state & ::state::GARBAGE_MODE)
+					// Выходим из переключателя
+					break;
 				// Если рукопожатие ещё не выполнено
 				if(!(result = (member->state & state::HANDSHAKE_MODE))){
 					// Выдаём накопленные байты отправки
 					result = ::ssl::emitOutput(member, id);
 					// Если связь установлена
 					if(::ssl::established(member)){
+						// Если цепочка сертификатов собеседника не прошла проверку доверия
+						if(!::ssl::verifyPeer(member)){
+							// Вызываем отказ доверия сертификату собеседника
+							::ssl::fail(member, id, error_t::CERT_FAILED, "Certificate is not trusted");
+							// Выходим из переключателя
+							break;
+						}
 						// Устанавливаем режим выполненного рукопожатия
 						member->state |= state::HANDSHAKE_MODE;
 						// Очищаем буфер сборки ClientHello
@@ -3410,17 +3448,6 @@ bool awh::tls::coder::retransmit(const id_t id) noexcept {
 	return result;
 }
 /**
- * @brief Функция получения нативного контекста криптографической библиотеки
- *
- * @param id идентификатор транспортного уровня или шаблона контекста безопасности
- * @return   нативный контекст криптографической библиотеки либо nullptr
- *
- */
-ssl_ctx_st * awh::tls::coder::native([[maybe_unused]] const id_t id) noexcept {
-	// Выводим пустой результат
-	return nullptr;
-}
-/**
  * @brief Функция создания связи TLS с переносом рукопожатия по уровням (QUIC)
  *
  * @param id идентификатор шаблона контекста безопасности
@@ -3479,6 +3506,66 @@ void * awh::tls::coder::quicContext(const id_t id) noexcept {
 	}
 	// Возвращаем пустой результат
 	return nullptr;
+}
+/**
+ * @brief Функция проверки цепочки сертификатов собеседника запасом доверенных (QUIC)
+ *
+ * @param id    идентификатор шаблона контекста безопасности
+ * @param chain цепочка сертификатов собеседника от своего к издателю
+ * @return      результат проверки (false - доверие цепочке не сложилось)
+ *
+ */
+bool awh::tls::coder::verified(const id_t id, const vector <vector <uint8_t>> & chain) noexcept {
+	/**
+	 * Перехватываем ошибки
+	 */
+	try {
+		// Закрепляем участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
+			// Извлекаем объект шаблона контекста безопасности
+			::cts_t * cts = ::ssl::templateOf(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id)));
+			// Если шаблон контекста безопасности получен
+			if(cts != nullptr){
+				// Если проверка сертификата собеседника не требуется
+				if((cts->state & state::CERTIFICATE_VERIFY) == 0)
+					// Выводим положительный результат
+					return true;
+				// Роль собеседника для суждения назначения сертификата
+				const nts::trust::role_t role = ((cts->node == event::node_t::CLIENT) ? nts::trust::role_t::SERVER : nts::trust::role_t::CLIENT);
+				// Если цепочка собеседника не прошла проверку доверия
+				if(nts::trust::verify(chain, cts->store, ::time(nullptr), role) != nts::trust::error_t::NONE)
+					// Выводим отрицательный результат
+					return false;
+				// Если имя узла не отвечает ни одному имени сертификата
+				if(!cts->host.empty() && (chain.empty() || (nts::trust::belongs(nts::view_t(chain[0].data(), chain[0].size()), cts->host) != nts::trust::error_t::NONE)))
+					// Выводим отрицательный результат
+					return false;
+				// Выводим положительный результат
+				return true;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем отрицательный результат
+	return false;
 }
 /**
  * @brief Функция создания идентификатора транспортного уровня
@@ -5467,8 +5554,10 @@ void awh::tls::coder::privateKey(const id_t id, string_view filename, const type
 					if(::ssl::readFile(filename, content)){
 						// Если тип файла PEM
 						if(type == type_t::PEM){
-							// Если приватный ключ не декодирован
-							if(nts::pem::secret(string(content.begin(), content.end()), cts->credential.secret) != nts::pem::error_t::NONE){
+							// Набор записей PEM
+							vector <nts::pem::block_t> blocks;
+							// Если записи PEM не разобраны
+							if((nts::pem::decode(string(content.begin(), content.end()), blocks) != nts::pem::error_t::NONE) || blocks.empty() || blocks[0].data.empty()){
 								// Если функция обратного вызова состояния установлена
 								if(cts->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -5498,6 +5587,8 @@ void awh::tls::coder::privateKey(const id_t id, string_view filename, const type
 								// Выходим из функции
 								return;
 							}
+							// Кладём DER приватного ключа в подлинность
+							cts->credential.secret = std::move(blocks[0].data);
 						// Если тип файла ASN1
 						} else
 							// Кладём DER приватного ключа в подлинность

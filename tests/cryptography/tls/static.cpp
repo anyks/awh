@@ -183,34 +183,6 @@ TEST_F(TlsFixture, DestroyNotifiesStateTest){
 }
 
 /**
- * @brief Тест получения нативного контекста криптографической библиотеки
- *
- * @details Нативный контекст выдаётся протоколам, которые ведут собственный
- *          обмен данными поверх настроенного контекста и транспортным уровнем
- *          кодера не пользуются
- *
- */
-TEST_F(TlsFixture, NativeContextTest){
-	// Проверяем что нативный контекст несуществующего идентификатора не выдаётся
-	ASSERT_EQ(tls::coder::native(0), nullptr);
-	// Создаём шаблон контекста безопасности клиента
-	const tls::coder::id_t context = tls::coder::context(event::node_t::CLIENT, event::protocol_t::TCP);
-	// Проверяем что шаблон контекста создан
-	ASSERT_NE(context, 0u);
-	// Проверяем что нативный контекст шаблона выдаётся
-	ASSERT_NE(tls::coder::native(context), nullptr);
-	// Создаём транспортный уровень из шаблона контекста
-	const tls::coder::id_t transport = tls::coder::transport(context);
-	// Проверяем что транспортный уровень создан
-	ASSERT_NE(transport, 0u);
-	// Проверяем что нативный контекст транспортного уровня совпадает с контекстом шаблона
-	ASSERT_EQ(tls::coder::native(transport), tls::coder::native(context));
-	// Выполняем удаление созданных объектов
-	ASSERT_TRUE(tls::coder::destroy(transport));
-	ASSERT_TRUE(tls::coder::destroy(context));
-}
-
-/**
  * @brief Тест настройки сертификата и приватного ключа
  *
  * @details Настройка выполняется на шаблоне контекста до создания транспортных
@@ -236,7 +208,11 @@ TEST_F(TlsFixture, CertificateSetupTest){
 	// Устанавливаем пустой путь к сертификату
 	tls::coder::certificate(context, "");
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(tls::coder::native(context), nullptr);
+	const tls::coder::id_t transport = tls::coder::transport(context);
+	// Проверяем что транспортный уровень создан
+	ASSERT_NE(transport, 0u);
+	// Выполняем удаление транспортного уровня
+	ASSERT_TRUE(tls::coder::destroy(transport));
 	// Выполняем удаление шаблона контекста
 	ASSERT_TRUE(tls::coder::destroy(context));
 }
@@ -261,7 +237,11 @@ TEST_F(TlsFixture, CertificateAuthoritySetupTest){
 	// Устанавливаем пустой путь к доверенному центру сертификации
 	tls::coder::ca(context, "");
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(tls::coder::native(context), nullptr);
+	const tls::coder::id_t transport = tls::coder::transport(context);
+	// Проверяем что транспортный уровень создан
+	ASSERT_NE(transport, 0u);
+	// Выполняем удаление транспортного уровня
+	ASSERT_TRUE(tls::coder::destroy(transport));
 	// Выполняем удаление шаблона контекста
 	ASSERT_TRUE(tls::coder::destroy(context));
 }
@@ -289,7 +269,11 @@ TEST_F(TlsFixture, NegotiationSetupTest){
 	// Устанавливаем проверку доменного имени удалённого узла
 	tls::coder::validateServerNameIndication(context, true);
 	// Проверяем что шаблон контекста остался работоспособным
-	ASSERT_NE(tls::coder::native(context), nullptr);
+	const tls::coder::id_t transport = tls::coder::transport(context);
+	// Проверяем что транспортный уровень создан
+	ASSERT_NE(transport, 0u);
+	// Выполняем удаление транспортного уровня
+	ASSERT_TRUE(tls::coder::destroy(transport));
 	// Выполняем удаление шаблона контекста
 	ASSERT_TRUE(tls::coder::destroy(context));
 }
@@ -313,8 +297,6 @@ TEST_F(TlsFixture, InvalidIdentifierTest){
 	const tls::coder::id_t invalid = 0;
 	// Проверяем отказ создания транспортного уровня по недопустимому идентификатору
 	ASSERT_EQ(tls::coder::transport(invalid), 0u);
-	// Проверяем отказ получения нативного контекста
-	ASSERT_EQ(tls::coder::native(invalid), nullptr);
 	// Проверяем отказ удаления несуществующего объекта
 	ASSERT_FALSE(tls::coder::destroy(invalid));
 	// Выполняем настройку несуществующего объекта - обработка обязана быть безопасной

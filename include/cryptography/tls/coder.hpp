@@ -34,23 +34,6 @@
 #pragma once
 
 /**
- * \~russian
- * Предварительное объявление типа контекста криптографической библиотеки
- *
- * @details Объявление, а не подключение заголовочного файла: публичный интерфейс
- *          модуля не должен тянуть за собой зависимости внешних библиотек на
- *          этапе подключения библиотеки потребителем.
- *
- * \~english
- * @details A declaration rather than the inclusion of a header file: the public interface
- *          of the module must not drag along the dependencies of external libraries at
- *          the stage of the inclusion of the library by the consumer.
- *
- * \~
- */
-struct ssl_ctx_st;
-
-/**
  * Стандартный заголовочный файл
  */
 #include <functional>
@@ -944,34 +927,6 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool retransmit(const id_t id) noexcept;
 			/**
 			 * \~russian
-			 * @brief Функция получения нативного контекста криптографической библиотеки
-			 *
-			 * @note Предназначен для протоколов, которые ведут собственный обмен
-			 *       данными поверх настроенного контекста и не пользуются
-			 *       транспортным уровнем кодера - в частности для QUIC, где
-			 *       криптографический слой замещает слой записей TLS целиком.
-			 *       Владение контекстом остаётся за кодером
-			 *
-			 * @param id идентификатор транспортного уровня или шаблона контекста безопасности
-			 * @return   нативный контекст криптографической библиотеки либо nullptr
-			 *
-			 * \~english
-			 * @brief Function obtaining the native context of the cryptographic library
-			 *
-			 * @note Intended for the protocols that conduct their own exchange of
-			 *       data on top of a configured context and do not use
-			 *       the transport layer of the coder - in particular for QUIC, where
-			 *       the cryptographic layer replaces the TLS record layer entirely.
-			 *       The ownership of the context remains with the coder
-			 *
-			 * @param id identifier of the transport layer or of the template security context
-			 * @return   native context of the cryptographic library or nullptr
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ ssl_ctx_st * native(const id_t id) noexcept;
-			/**
-			 * \~russian
 			 * @brief Функция создания связи TLS с переносом рукопожатия по уровням (QUIC)
 			 *
 			 * @param id идентификатор шаблона контекста безопасности
@@ -986,6 +941,24 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ void * quicContext(const id_t id) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция проверки цепочки сертификатов собеседника запасом доверенных (QUIC)
+			 *
+			 * @param id    идентификатор шаблона контекста безопасности
+			 * @param chain цепочка сертификатов собеседника от своего к издателю
+			 * @return      результат проверки (false - доверие цепочке не сложилось)
+			 *
+			 * \~english
+			 * @brief Function checking the chain of the certificates of the peer by the store of the trusted ones (QUIC)
+			 *
+			 * @param id    identifier of the template security context
+			 * @param chain the chain of the certificates of the peer from one's own to the issuer
+			 * @return      result of the check (false — the trust to the chain has not formed)
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool verified(const id_t id, const vector <vector <uint8_t>> & chain) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция создания идентификатора транспортного уровня

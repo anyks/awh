@@ -170,6 +170,15 @@ awh::quic::status_t awh::quic::Handshake::processImpl(T & ctx) noexcept {
 	}
 	// Если связь установлена
 	if(ctx.established()){
+		// Если цепочка сертификатов собеседника не прошла проверку доверия
+		if(!tls::coder::verified(this->_ctx, ctx.peer())){
+			// Устанавливаем состояние ошибки хендшейка
+			this->_state = state_t::FAILED;
+			// Записываем ошибку в лог
+			awh::log::print("QUIC TLS certificate is not trusted", awh::log::flag_t::CRITICAL);
+			// Выводим отрицательный результат
+			return status_t::ERROR;
+		}
 		// Устанавливаем состояние успешного завершения хендшейка
 		this->_state = state_t::COMPLETED;
 		// Если локальный эндпоинт является клиентом и билет ещё не снят
@@ -663,18 +672,19 @@ awh::quic::Handshake::state_t awh::quic::Handshake::state() const noexcept {
  *
  */
 awh::quic::error_t awh::quic::Handshake::error() const noexcept {
-	// Если связь оборвана фатальным извещением
-	if((this->_endpoint == endpoint_t::CLIENT) && (this->_client != nullptr) && nts::alert::fatal(this->_client->alert()))
-		// Выводим код ошибки транспорта диапазона CRYPTO_ERROR (0x0100 + код алерта)
-		return static_cast <error_t> (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + static_cast <uint64_t> (this->_client->alert().description));
-	// Если связь оборвана фатальным извещением
-	if((this->_endpoint == endpoint_t::SERVER) && (this->_server != nullptr) && nts::alert::fatal(this->_server->alert()))
-		// Выводим код ошибки транспорта диапазона CRYPTO_ERROR (0x0100 + код алерта)
-		return static_cast <error_t> (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + static_cast <uint64_t> (this->_server->alert().description));
 	// Если хендшейк завершился ошибкой
-	if(this->_state == state_t::FAILED)
+	if(this->_state == state_t::FAILED){
+		// Если связь оборвана фатальным извещением
+		if((this->_endpoint == endpoint_t::CLIENT) && (this->_client != nullptr) && nts::alert::fatal(this->_client->alert()))
+			// Выводим код ошибки транспорта диапазона CRYPTO_ERROR (0x0100 + код алерта)
+			return static_cast <error_t> (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + static_cast <uint64_t> (this->_client->alert().description));
+		// Если связь оборвана фатальным извещением
+		if((this->_endpoint == endpoint_t::SERVER) && (this->_server != nullptr) && nts::alert::fatal(this->_server->alert()))
+			// Выводим код ошибки транспорта диапазона CRYPTO_ERROR (0x0100 + код алерта)
+			return static_cast <error_t> (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + static_cast <uint64_t> (this->_server->alert().description));
 		// Выводим код внутренней ошибки реализации
 		return error_t::INTERNAL_ERROR;
+	}
 	// Выводим код отсутствия ошибки
 	return error_t::NO_ERROR;
 }
@@ -687,7 +697,7 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  *
  */
 awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept :
- _endpoint(endpoint), _state(state_t::NONE),
+ _endpoint(endpoint), _state(state_t::NONE), _ctx(ctx),
  _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(tls::coder::protocols(ctx)) {
 	// Создаём связь TLS по уровням из шаблона контекста безопасности
 	void * context = tls::coder::quicContext(ctx);

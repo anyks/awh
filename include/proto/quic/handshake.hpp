@@ -227,6 +227,9 @@ namespace awh {
 				// Состояние хендшейка
 				state_t _state;
 			private:
+				// Идентификатор шаблона контекста безопасности кодера
+				tls::coder::id_t _ctx;
+			private:
 				// Связь клиента TLS
 				unique_ptr <nts::client::Context> _client;
 				// Связь сервера TLS
