@@ -181,7 +181,7 @@ bool awh::eth::sctp::initMessages(const net::socket_t sock, const net::sctp::ini
 	init.sinit_num_ostreams = initmsg.ostreams;
 	// Устанавливаем количество входящих стримов
 	init.sinit_max_instreams = initmsg.istreams;
-	// Выполняем инициализацию SCTP сокета
+	// Устанавливаем параметры инициализации SCTP-сокета
 	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
 		/**
 		 * Если включён режим отладки
@@ -236,7 +236,7 @@ bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::
 	 */
 	subscribe.sctp_data_io_event = 1;
 	/**
-	 * Выполняем перебор всех переданных событий SCTP
+	 * Перебираем все переданные события SCTP
 	 */
 	for(auto & event : events){
 		/**
@@ -322,7 +322,7 @@ bool awh::eth::sctp::eventsSubscribe(const net::socket_t sock, const net::sctp::
 			break;
 		}
 	}
-	// Выполняем активацию получения событий SCTP для сокета
+	// Подписываем сокет на события SCTP устаревшим вызовом
 	if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe)))){
 		// Запоминаем ошибку подписки через устаревший API
 		resultLegacy = false;
@@ -971,7 +971,7 @@ bool awh::eth::sctp::explicitEndOfRecord(const net::socket_t sock, const bool mo
 	#if defined(SCTP_EXPLICIT_EOR)
 		// Значение режима явной границы записи
 		const int32_t value = static_cast <int32_t> (mode);
-		// Выполняем установку режима явной границы записи
+		// Устанавливаем режим явной границы записи сокета
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
 			// Выводим сообщение об ошибке
 			log::print("SCTP explicit end of record: %s", log::flag_t::WARNING, ::strerror(errno));
@@ -1007,10 +1007,10 @@ bool awh::eth::sctp::explicitEndOfRecord(const net::socket_t sock, const bool mo
 ssize_t awh::eth::sctp::receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) noexcept {
 	// Количество принятых октетов
 	ssize_t result = -1;
-	// Выполняем сброс флагов полученного сообщения
+	// Сбрасываем флаги полученного сообщения
 	info.flags.clear();
 	/**
-	 * Выполняем сброс флагов сообщения в системном виде
+	 * Сбрасываем флаги сообщения в системном виде
 	 *
 	 * @note Довод этот у обоих способов чтения входной И выходной: не обнулив его,
 	 *       мы подали бы ядру флаги прошлого приёма как просьбу, а прежний признак
@@ -1079,7 +1079,7 @@ ssize_t awh::eth::sctp::receive(const net::socket_t sock, void * buffer, const s
 	message.msg_control = control;
 	// Устанавливаем размер буфера служебных сообщений
 	message.msg_controllen = sizeof(control);
-	// Выполняем чтение сообщения из сокета
+	// Читаем сообщение из сокета
 	result = ::recvmsg(sock, &message, 0);
 	/**
 	 * Если сообщение получено
@@ -1260,7 +1260,7 @@ ssize_t awh::eth::sctp::send([[maybe_unused]] const net::socket_t sock, const vo
 		if(complete)
 			// Устанавливаем флаг границы записи
 			flags |= MSG_EOR;
-		// Выполняем отправку сообщения вместе с метаданными
+		// Отправляем сообщение вместе с метаданными
 		const ssize_t bytes = ::sctp_sendv(sock, &iov, 1, const_cast <struct sockaddr *> (addr), ((addr != nullptr) ? 1 : 0), &spa, sizeof(spa), SCTP_SENDV_SPA, flags);
 		/**
 		 * Приводим успешный исход к числу отправленных октетов

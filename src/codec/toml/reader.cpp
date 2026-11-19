@@ -680,7 +680,8 @@ void awh::codec::toml::Reader::Names::Slot::release() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::toml::Reader::Names::Slot::Slot() noexcept : state(FREE), kind(static_cast <kind_t> (0)), length(0) {}/**
+awh::codec::toml::Reader::Names::Slot::Slot() noexcept : state(FREE), kind(static_cast <kind_t> (0)), length(0), key{} {}
+/**
  * @brief Очистка указателя имён
  *
  */
@@ -690,13 +691,14 @@ void awh::codec::toml::Reader::Names::clear() noexcept {
 	 */
 	if(this->slots != nullptr){
 		/**
-		 * Выполняем перебор слотов таблицы
+		 * Перебираем слоты таблицы
 		 */
-		for(size_t i = 0; i < this->capacity; i++)
-			// Выполняем освобождение длинного имени очередного слота
+		for(size_t i = 0; i < this->capacity; i++){
+			// Освобождаем длинное имя очередного слота
 			this->slots[i].release();
-		// Выполняем опустошение слотов таблицы
-		::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
+			// Опустошаем очередной слот присваиванием пустого
+			this->slots[i] = Slot();
+		}
 	}
 	// Выполняем сброс занятости указателя имён
 	this->occupied = 0;
@@ -1022,8 +1024,12 @@ awh::codec::toml::Reader::Names & awh::codec::toml::Reader::Names::operator = (N
 		names.occupied = 0;
 		// Выполняем обнуление числа снятых имён перемещаемого указателя
 		names.buried = 0;
-		// Выполняем опустошение слотов перемещаемого указателя имён
-		::memset(names.embedded, 0, sizeof(names.embedded));
+		/**
+		 * Перебираем встроенные слоты перемещаемого указателя имён
+		 */
+		for(size_t i = 0; i < (sizeof(names.embedded) / sizeof(Slot)); i++)
+			// Опустошаем очередной слот: длинное имя уже принадлежит приёмнику
+			names.embedded[i] = Slot();
 	}
 	// Выводим приёмник перемещения
 	return (* this);

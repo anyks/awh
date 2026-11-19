@@ -1446,7 +1446,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/cryptography/crypto.cpp"
     "${CMAKE_SOURCE_DIR}/src/cryptography/vault.cpp"
     "${CMAKE_SOURCE_DIR}/src/cryptography/tls/coder.cpp"
-    "${CMAKE_SOURCE_DIR}/src/cryptography/tls/fingerprint.cpp"
     "${CMAKE_SOURCE_DIR}/src/unit/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/unit/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/unit/ntp.cpp"

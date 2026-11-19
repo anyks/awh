@@ -442,7 +442,7 @@ struct awh::codec::toml::Document::Index::Slot {
 	 * @brief Конструктор
 	 *
 	 */
-	explicit Slot() noexcept : occupied(false), value(0), length(0) {}
+	explicit Slot() noexcept : occupied(false), value(0), length(0), key{} {}
 };
 
 /**
@@ -453,10 +453,15 @@ void awh::codec::toml::Document::Index::clear() noexcept {
 	/**
 	 * Если таблица слотов заведена
 	 */
-	if(this->slots != nullptr)
-		// Выполняем опустошение слотов таблицы
-		::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
-	// Выполняем сброс занятости указателя записей
+	if(this->slots != nullptr){
+		/**
+		 * Перебираем все слоты указателя записей
+		 */
+		for(size_t i = 0; i < this->capacity; i++)
+			// Опустошаем очередной слот присваиванием пустого
+			this->slots[i] = Slot();
+	}
+	// Сбрасываем занятость указателя записей
 	this->occupied = 0;
 }
 /**
@@ -474,10 +479,8 @@ void awh::codec::toml::Document::Index::rehash(const size_t wanted) noexcept {
 	while(capacity < wanted)
 		// Выполняем удвоение количества слотов
 		capacity <<= 1;
-	// Слоты пересобранной таблицы
+	// Слоты пересобранной таблицы, каждый слот конструируется пустым
 	Slot * slots = new Slot[capacity];
-	// Выполняем опустошение слотов пересобранной таблицы
-	::memset(slots, 0, (capacity * sizeof(Slot)));
 	// Количество занятых слотов пересобранной таблицы
 	size_t occupied = 0;
 	/**

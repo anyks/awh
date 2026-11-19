@@ -30,6 +30,7 @@
  *
  * @note Нужен заслону наличия каталога образцов удостоверений: у MS Windows
  *       объявления эти приходят через единую точку sys/macro/win32.hpp
+ *
  */
 #include <sys/stat.h>
 #include <atomic>
@@ -78,12 +79,14 @@
 	 *       ветвь «судить не о чем» и отвечает согласием - на Linux и FreeBSD это
 	 *       совпадало с правдой, а на Solaris разошлось, и проверка отказала, будучи
 	 *       зелёной по совпадению на трёх системах
+	 *
 	 */
 	#include <netinet/tcp.h>
 	/**
 	 * @note Адрес сокета UNIX-домена нужен проверке столкновения имён: она занимает
 	 *       имя временного файла клиента ДО заведения узла, обычным сокетом системы,
 	 *       и без этого заголовка `struct sockaddr_un` не объявлен
+	 *
 	 */
 	#include <sys/un.h>
 	/**
@@ -91,12 +94,14 @@
 	 *       У MS Windows `IF_NAMESIZE` и `if_indextoname` приходят своей цепочкой, а у
 	 *       систем POSIX живут здесь: без этого заголовка набор не собирался вовсе на
 	 *       NetBSD, и следом на прочих
+	 *
 	 */
 	#include <net/if.h>
 	/**
 	 * @note Ожидание дочернего процесса и разбор его состояния нужны проверке передачи
 	 *       события чужому процессу. У macOS заголовок этот подтягивается чужой цепочкой,
 	 *       а у FreeBSD нет: там сборка валилась на `waitpid` и `WIFEXITED`
+	 *
 	 */
 	#include <sys/wait.h>
 	/**
@@ -104,12 +109,14 @@
 	 *       исчерпании: опыт обязан ДОВОДИТЬ до предельного состояния, а не выбирать
 	 *       величину. Правка идёт в дочернем процессе, поэтому предела самого набора
 	 *       она не задевает
+	 *
 	 */
 	#include <sys/resource.h>
 	/**
 	 * @note Перебор открытых описателей процесса нужен проверке подписки, ядром
 	 *       отвергнутой: описатель события движок наружу не отдаёт, и найти его
 	 *       можно единственно разницей перечней - до заведения события и после
+	 *
 	 */
 	#include <fcntl.h>
 	/**
@@ -164,7 +171,7 @@
  */
 
 /**
- * @brief Выдача СВОБОДНОГО порта из разряда 49152-65535
+ * @brief Функция выдачи СВОБОДНОГО порта из разряда 49152-65535
  *
  * @return порт, свободный на момент выдачи
  *
@@ -175,11 +182,12 @@ static uint16_t port() noexcept {
 	 *
 	 * @details Разряд вычисляется ОДИН раз за процесс и лежит ВНЕ того, каким
 	 *          распоряжается система: подробности у `__awh_test_port_range__`
+	 *
 	 */
 	static const std::pair <uint16_t, uint16_t> range = [](void) noexcept -> std::pair <uint16_t, uint16_t> {
 		// Границы разряда, отводимого проверкам
 		uint16_t begin = 0, end = 0;
-		// Выполняем выбор разряда портов для проверок
+		// Выбираем разряд портов для проверок
 		__awh_test_port_range__(begin, end);
 		// Выводим выбранный разряд портов
 		return std::make_pair(begin, end);
@@ -202,6 +210,7 @@ static uint16_t port() noexcept {
 	 *          ЖЕ порт. Вторая из них не могла зафиксировать своё событие, и виден этот
 	 *          изъян был лишь у illumos - там порт отпускается неспешно, а повторного
 	 *          использования порта нет вовсе
+	 *
 	 */
 	static const uint16_t begin = [](const uint16_t lower, const uint16_t upper) noexcept -> uint16_t {
 		/**
@@ -227,6 +236,7 @@ static uint16_t port() noexcept {
 	 *
 	 * @note Предел нужен лишь на случай, когда свободных портов не осталось вовсе:
 	 *       без него отбор ушёл бы в бесконечный обход разряда
+	 *
 	 */
 	constexpr uint16_t ATTEMPTS = 512;
 	/**
@@ -255,6 +265,7 @@ static uint16_t port() noexcept {
 	 *       поверх занятого порта, и проба перестала бы что-либо проверять.
 	 *       Проверяются оба переноса: раздатчиком пользуются и потоковые
 	 *       проверки, и датаграммные, а занятость у них раздельная.
+	 *
 	 */
 	for(uint16_t attempt = 0; attempt < ATTEMPTS; attempt++){
 		// Получаем очередной порт, обходя разряд по кругу
@@ -298,6 +309,7 @@ static uint16_t port() noexcept {
 			 *          Установлено щупом на стенде: 10013 у MS Windows даёт РОВНО это
 			 *          сочетание. У POSIX разделения нет, и `closesocket` восполняется
 			 *          посредником в tests/posix.hpp
+			 *
 			 */
 			::closesocket(probe);
 			// Если порт занят, прочие переносы проверять незачем
@@ -315,6 +327,7 @@ static uint16_t port() noexcept {
 	 *
 	 * @note Выводится очередной порт счётчика: пусть привязка ответит отказом и
 	 *       проверка укажет на исчерпание разряда, чем отбор молча зациклится
+	 *
 	 */
 	return static_cast <uint16_t> (BEGIN + ((static_cast <uint32_t> (begin - BEGIN) + offset++) % (END - BEGIN + 1)));
 }
@@ -404,7 +417,7 @@ static bool broadcastLoopsBack(const std::string & bcast) noexcept {
 }
 
 /**
- * @brief Проверка наличия каталога образцов удостоверений
+ * @brief Функция проверки наличия каталога образцов удостоверений
  *
  * @details Пути к удостоверениям в проверках ОТНОСИТЕЛЬНЫЕ - «../sh/certificates», -
  *          и оттого каталог запуска оказывается СКРЫТЫМ доводом проверки. Запусти
@@ -424,7 +437,7 @@ static bool broadcastLoopsBack(const std::string & bcast) noexcept {
 static bool certificates() noexcept {
 	// Признак существования каталога образцов удостоверений
 	struct stat info;
-	// Выполняем опрос каталога образцов удостоверений
+	// Проверяем наличие каталога образцов удостоверений
 	if(::stat("../sh/certificates", &info) != 0)
 		// Выводим отсутствие каталога образцов удостоверений
 		return false;
@@ -433,7 +446,7 @@ static bool certificates() noexcept {
 }
 
 /**
- * @brief Выдача пути к файлу сокета UNIX-домена
+ * @brief Функция выдачи пути к файлу сокета UNIX-домена
  *
  * @details MS Windows понимает сокеты UNIX-домена, но путь к их файлу берёт
  *          СВОЙ, а не путь оболочки MSYS2: «/tmp/awh.sock» там разбирается
@@ -454,7 +467,7 @@ static std::string uds(const std::string & name) noexcept {
 	#if defined(_WIN32) || defined(_WIN64)
 		// Буфер для получения пути к каталогу временных файлов
 		char buffer[MAX_PATH + 1];
-		// Выполняем получение пути к каталогу временных файлов
+		// Получаем путь к каталогу временных файлов
 		const DWORD length = ::GetTempPathA(static_cast <DWORD> (sizeof(buffer)), buffer);
 		// Если путь к каталогу временных файлов получен
 		if((length > 0) && (length < sizeof(buffer)))
@@ -532,7 +545,7 @@ TEST_F(IoFixture, IoTimerPairDifficultTest){
 	awh::engine::timer::timeout(timeout, awh::event::action_t::NONE, 2000);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(interval));
 	ASSERT_TRUE(awh::engine::io::commit(timeout));
 	// Устанавливаем функцию обратного вызова на событие интервала
@@ -549,12 +562,14 @@ TEST_F(IoFixture, IoTimerPairDifficultTest){
 			// Увеличиваем количество срабатываний таймаута
 			timeouts++;
 	});
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(interval));
 	ASSERT_TRUE(awh::engine::io::launch(timeout));
 	// Запоминаем время начала опроса событий
 	const auto start = std::chrono::steady_clock::now();
-	// Гоняем опрос до пяти срабатываний интервала и одного срабатывания таймаута
+	/**
+	 * Гоняем опрос до пяти срабатываний интервала и одного срабатывания таймаута
+	 */
 	while(((intervals < 5) || (timeouts < 1)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Интервал обязан перезаряжаться, а не смолкать после первого срабатывания
 	ASSERT_GE(intervals, 5) << "сложная структура таймеров интервал не перезаряжает";
@@ -568,19 +583,21 @@ TEST_F(IoFixture, IoTimerPairDifficultTest){
 	 *       взведённого. Прежде здесь стояло обнуление срока перед уничтожением -
 	 *       снимать после него было уже нечего, и покрытие показывало снятие
 	 *       непройденным при проходящей проверке
+	 *
 	 */
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(interval);
 	awh::engine::io::destroy(timeout);
 	/**
-	 * Выполняем обороты цикла ПОСЛЕ уничтожения
+	 * Крутим обороты цикла ПОСЛЕ уничтожения
 	 *
 	 * @note Разбор удаления узла - а с ним и снятие таймера со сложной структуры -
 	 *       идёт оборотом цикла, а не самим вызовом уничтожения. Без этих оборотов
 	 *       покрытие показывало снятие непройденным при проходящей проверке
+	 *
 	 */
 	for(uint8_t round = 0; round < 5; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 }
 
@@ -604,7 +621,7 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 	bool connected = false, echoed = false;
 	// Идентификатор принятого сервером узла
 	awh::event::id_t accepted = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Переводим движок на сложную структуру таймеров
 	awh::engine::timer::internal::set(awh::event::timer_t::DIFFICULT);
@@ -644,6 +661,7 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 	 *       переподключению прибавляются сроки отдачи долга по полосе, - и снимаются
 	 *       они особой перегрузкой. Покрытие показало её непройденной: узла с полосой
 	 *       под сложной структурой таймеров набор не уничтожал никогда
+	 *
 	 */
 	awh::engine::io::bandwidth(events[0], awh::event::limiting_t::INGRESS, "100Mbps");
 	awh::engine::io::bandwidth(events[0], awh::event::limiting_t::EGRESS, "100Mbps");
@@ -668,7 +686,7 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 				(void) awh::engine::io::send(eid, data, size);
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -698,18 +716,18 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 			// Отмечаем приход отклика
 			echoed = true;
 		});
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение события клиента
+		// Подключаем событие клиента
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда отклик не придёт
+	 * Крутим обороты цикла, покуда отклик не придёт
 	 */
 	for(uint16_t round = 0; (round < 300) && !echoed; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение и обмен обязаны состояться
 	ASSERT_TRUE(connected) << "клиент не подключился под сложной структурой таймеров";
@@ -720,6 +738,7 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 	 * @note Ради этого проверка и заведена: снятие нескольких сроков разом живёт в
 	 *       разборе удаления узла сети, и достичь его можно лишь уничтожением такого
 	 *       узла под сложной структурой
+	 *
 	 */
 	/**
 	 * Заводим ВТОРОГО клиента - БЕЗ полосы пропускания
@@ -727,6 +746,7 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 	 * @note Снятие сроков у клиента с полосой и без неё - две стороны одного условия,
 	 *       и покрыть их одним узлом нельзя: замер показал, что полоса закрывает
 	 *       шестисрочное снятие и тут же открывает четырёхсрочное. Оттого узлов и два
+	 *
 	 */
 	{
 		// Заводим событие второго клиента
@@ -745,29 +765,30 @@ TEST_F(IoFixture, IoTimerDifficultNetworkNodeTest){
 		ASSERT_TRUE(awh::engine::address::set(plain, awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::target::set(plain, "127.0.0.1"));
-		// Выполняем фиксацию настроек события второго клиента
+		// Фиксируем настройки события второго клиента
 		ASSERT_TRUE(awh::engine::io::commit(plain));
-		// Выполняем подключение события второго клиента
+		// Подключаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::connect(plain));
 		// Запускаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::launch(plain));
 		/**
-		 * Выполняем обороты цикла, давая второму клиенту подключиться
+		 * Крутим обороты цикла, давая второму клиенту подключиться
 		 */
 		for(uint8_t round = 0; round < 30; ++round)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Уничтожаем второго клиента со взведёнными сроками и БЕЗ полосы
 		awh::engine::io::destroy(plain);
 	}
+	// Уничтожаем событие принятого подключения
 	awh::engine::io::destroy(accepted);
 	awh::engine::io::destroy(events[0]);
 	awh::engine::io::destroy(events[1]);
 	/**
-	 * Выполняем обороты цикла: разбор удаления идёт оборотом, а не самим вызовом
+	 * Крутим обороты цикла: разбор удаления идёт оборотом, а не самим вызовом
 	 */
 	for(uint8_t round = 0; round < 5; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 }
 
@@ -792,7 +813,7 @@ TEST_F(IoFixture, IoTimerPairTest){
 	awh::engine::timer::timeout(timeout, awh::event::action_t::NONE, 2000);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(interval));
 	ASSERT_TRUE(awh::engine::io::commit(timeout));
 	// Устанавливаем функцию обратного вызова на событие интервала
@@ -809,7 +830,7 @@ TEST_F(IoFixture, IoTimerPairTest){
 			// Увеличиваем количество срабатываний таймаута
 			timeouts++;
 	});
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(interval));
 	ASSERT_TRUE(awh::engine::io::launch(timeout));
 	// Запоминаем время начала опроса событий
@@ -822,6 +843,7 @@ TEST_F(IoFixture, IoTimerPairTest){
 	 * @note Опрос ограничен по времени намеренно. Если интервал перестаёт
 	 *       перезаряжаться, ждать накопления срабатываний бессмысленно - без
 	 *       ограничения тест не падал бы, а висел
+	 *
 	 */
 	while(((intervals < 5) || (timeouts < 1)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	/**
@@ -843,7 +865,7 @@ TEST_F(IoFixture, IoTimerPairTest){
 TEST_F(IoFixture, RebuildServerBeforeCommitTest){
 	// Генерируем случайный порт привязки
 	const uint16_t listenPort = port();
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём серверное событие TCP
 	awh::event::id_t eid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -874,7 +896,7 @@ TEST_F(IoFixture, RebuildServerBeforeCommitTest){
 TEST_F(IoFixture, RebuildServerListeningTest){
 	// Генерируем случайный порт привязки
 	const uint16_t listenPort = port();
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём серверное событие TCP
 	awh::event::id_t eid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -990,7 +1012,7 @@ TEST_F(IoFixture, IoTimerRescheduleTest){
 		awh::engine::timer::timeout(timeout, awh::event::action_t::NONE, 5000);
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(awh::engine::io::initialize());
-		// Выполняем фиксацию настроек события
+		// Фиксируем настройки события
 		ASSERT_TRUE(awh::engine::io::commit(timeout));
 		// Устанавливаем функцию обратного вызова на событие таймаута
 		awh::engine::io::on(timeout, [&timeouts]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -999,13 +1021,13 @@ TEST_F(IoFixture, IoTimerRescheduleTest){
 				// Увеличиваем количество срабатываний таймаута
 				timeouts++;
 		});
-		// Выполняем запуск события
+		// Запускаем событие
 		ASSERT_TRUE(awh::engine::io::launch(timeout));
 		/**
 		 * Прокручиваем несколько оборотов цикла: таймер обязан быть взведён и молчать
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// По длинному сроку сработать было нечему
 		ASSERT_EQ(timeouts, static_cast <uint16_t> (0)) << "таймаут сработал по длинному сроку";
@@ -1017,13 +1039,14 @@ TEST_F(IoFixture, IoTimerRescheduleTest){
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
 		/**
-		 * Ждём срабатывания по новому сроку
+		 * Дожидаемся срабатывания по новому сроку
 		 *
 		 * @note Ожидание ограничено сроком намеренно: перевзведение, потерявшее таймер,
 		 *       не даёт события никогда, и без ограничения проверка висела бы
+		 *
 		 */
 		while((timeouts == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Таймаут обязан сработать по перевзведённому сроку
 		ASSERT_EQ(timeouts, static_cast <uint16_t> (1)) << "после перевзведения таймаут не сработал";
@@ -1186,7 +1209,7 @@ TEST_F(IoFixture, IoSuiteTest){
 	// Создаём объект работы с Ethernet
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
-	// Выполняем извлечение сетевых параметров
+	// Извлекаем сетевые параметры
 	awh::eth::addr::fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено
 	ASSERT_FALSE(source.iface.empty());
@@ -1220,7 +1243,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::iface::get(eid1).empty());
 			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
 			ASSERT_EQ(source.iface, awh::engine::iface::get(eid1));
-
 			/**
 			 * Для операционной системы FreeBSD
 			 */
@@ -1229,10 +1251,15 @@ TEST_F(IoFixture, IoSuiteTest){
 				const awh::net::sctp::minfo_t & minfo = awh::engine::sctp::messageInfo(eid1);
 				// Записываем в лог информацию о сообщении SCTP-сокета
 				std::cout << " SCTP Message Info: " << std::endl;
+				// Выводим номер потока сообщения
 				std::cout << "  - Stream Number: " << minfo.num << std::endl;
+				// Выводим идентификатор протокола полезной нагрузки
 				std::cout << "  - Payload Protocol ID: " << static_cast <u_short> (minfo.ppid) << std::endl;
+				// Выводим контекст сообщения
 				std::cout << "  - Context: " << minfo.ctx << std::endl;
+				// Выводим предел жизни сообщения
 				std::cout << "  - Time to Live: " << minfo.ttl << std::endl;
+				// Выводим число метаданных сообщения
 				std::cout << "  - Flags: " << minfo.flags.size() << std::endl;
 				// Устанавливаем информационные метаданные SCTP сообщения
 				awh::engine::sctp::messageInfo(eid1, minfo);
@@ -1240,15 +1267,22 @@ TEST_F(IoFixture, IoSuiteTest){
 				const awh::net::sctp::status_t & status = awh::engine::sctp::status(eid1);
 				// Возвращаем статус SCTP-сокета
 				std::cout << " SCTP Status: " << std::endl;
+				// Выводим идентификатор сокета
 				std::cout << "  - ID: " << status.id << std::endl;
+				// Выводим состояние сокета
 				std::cout << "  - State: " << static_cast <u_short> (status.state) << std::endl;
+				// Выводим число исходящих потоков
 				std::cout << "  - Outbound Streams: " << status.ostreams << std::endl;
+				// Выводим число входящих потоков
 				std::cout << "  - Inbound Streams: " << status.istreams << std::endl;
+				// Выводим порог фрагментации
 				std::cout << "  - Fragmentation Point: " << status.fragpoint << std::endl;
+				// Выводим окно скорости
 				std::cout << "  - Rate Window: " << status.ratewind << std::endl;
+				// Выводим объём неподтверждённых данных
 				std::cout << "  - Unpack Data: " << status.unackdata << std::endl;
+				// Выводим объём ожидающих данных
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
-
 				// Текст инициализационных сообщений SCTP
 				awh::net::sctp::initmsg_t initmsg;
 				// Устанавливаем количество попыток подключения SCTP
@@ -1267,47 +1301,38 @@ TEST_F(IoFixture, IoSuiteTest){
 					awh::net::sctp::event_type_t::REMOTE_ERROR,
 					awh::net::sctp::event_type_t::AUTHENTICATION_EVENT
 				};
-				// Выполняем подписку на SCTP события
+				// Подписываем сокет на SCTP события
 				awh::engine::sctp::subscription(eid1, types);
-
 				// Проверяем что типы SCTP событий совпадают с установленными ранее (так-как событие не принадлежит к SCTP)
 				ASSERT_NE(types, awh::engine::sctp::subscription(eid1));
-
 				// Устанавливаем таймаут INIT SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::INIT, 3000));
 				// Проверяем что таймаут INIT SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::INIT));
-
 				// Устанавливаем таймаут DATA SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::DATA, 3000));
 				// Проверяем что таймаут DATA SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::DATA));
-
 				// Устанавливаем таймаут SACK SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SACK, 3000));
 				// Проверяем что таймаут SACK SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SACK));
-
 				// Устанавливаем таймаут COOKIE SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::COOKIE, 3000));
 				// Проверяем что таймаут COOKIE SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::COOKIE));
-
 				// Устанавливаем таймаут SHUTDOWN SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN, 3000));
 				// Проверяем что таймаут SHUTDOWN SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWN));
-
 				// Устанавливаем таймаут HEARTBEAT SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Проверяем что таймаут HEARTBEAT SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::HEARTBEAT));
-
 				// Устанавливаем таймаут SHUTDOWNACK SCTP события
 				ASSERT_FALSE(awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK, 3000));
 				// Проверяем что таймаут SHUTDOWNACK SCTP события получен
 				ASSERT_NE(3000, awh::engine::sctp::timeout(eid1, awh::net::sctp::timeout_t::SHUTDOWNACK));
-
 				// Устанавливаем ключ аутентификации SCTP-сокета
 				ASSERT_FALSE(awh::engine::sctp::auth::key(eid1, 1, "0123456789abcdef0123456789abcdef"));
 				// Устанавливаем режим использования ключа аутентификации SCTP-сокета
@@ -1316,10 +1341,9 @@ TEST_F(IoFixture, IoSuiteTest){
 				ASSERT_FALSE(awh::engine::sctp::auth::algorithms(eid1, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 				// Устанавливаем чанки аутентификации SCTP-сокета
 				ASSERT_FALSE(awh::engine::sctp::auth::chunks(eid1, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
-				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				// Извлекаем чанки аутентификации SCTP-сокета
 				ASSERT_FALSE(awh::engine::sctp::auth::chunks(eid1, awh::event::origin_t::LOCAL, chunks));
 				// Проверяем что чанки аутентификации SCTP-сокета получены
 				ASSERT_TRUE(chunks.empty());
@@ -1330,7 +1354,6 @@ TEST_F(IoFixture, IoSuiteTest){
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 			#endif
-
 			// Извлекаем IP-адрес сетевого интерфейса
 			ip = awh::engine::address::get(eid1, awh::event::address_t::IPV4);
 			// Извлекаем MAC-адрес сетевого интерфейса
@@ -1343,7 +1366,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::target::get(eid1).empty());
 			// Проверяем, что UDS-адрес не установлен
 			ASSERT_TRUE(awh::engine::address::get(eid1, awh::event::address_t::UDS).empty());
-
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid2 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1370,7 +1392,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::target::get(eid2).empty());
 			// Проверяем, что UDS-адрес не установлен
 			ASSERT_TRUE(awh::engine::address::get(eid2, awh::event::address_t::UDS).empty());
-
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid3 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1393,7 +1414,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::target::get(eid3).empty());
 			// Проверяем, что UDS-адрес не установлен
 			ASSERT_TRUE(awh::engine::address::get(eid3, awh::event::address_t::UDS).empty());
-			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid4 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1416,7 +1436,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::target::get(eid4).empty());
 			// Проверяем, что UDS-адрес не установлен
 			ASSERT_TRUE(awh::engine::address::get(eid4, awh::event::address_t::UDS).empty());
-			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid5 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1435,7 +1454,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_FALSE(awh::engine::target::get(eid4).empty());
 			// Проверяем, что UDS-адрес установлен и правильный
 			ASSERT_EQ(::uds("awh.sock"), awh::engine::address::get(eid5, awh::event::address_t::UDS));
-			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid6 = awh::engine::io::event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 			// Проверяем, что идентификатор события больше нуля
@@ -1461,16 +1479,20 @@ TEST_F(IoFixture, IoSuiteTest){
 			 *       оттого ждать нельзя - буква диска зависит от того, откуда запущен
 			 *       набор, - и сличается здесь хвост пути. У систем POSIX полный путь
 			 *       с исходным совпадает, и сличение остаётся дословным
+			 *
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Получаем адрес файловой системы события
 				const std::string fspath = awh::engine::address::get(eid6, awh::event::address_t::FS);
 				// Проверяем, что путь приведён к полному и оканчивается заданным
 				ASSERT_TRUE((fspath.size() > 11) && (fspath.compare((fspath.size() - 11), 11, "tmp\\awh.txt") == 0)) << fspath;
+			/**
+			 * Для операционных систем POSIX
+			 */
 			#else
+				// Проверяем дословное совпадение пути файловой системы
 				ASSERT_EQ("/tmp/awh.txt", awh::engine::address::get(eid6, awh::event::address_t::FS));
 			#endif
-			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid7 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1493,7 +1515,6 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_EQ(ip, awh::engine::target::get(eid7));
 			// Проверяем, что UDS-адрес не установлен
 			ASSERT_TRUE(awh::engine::address::get(eid7, awh::event::address_t::UDS).empty());
-			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid8 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Проверяем, что идентификатор события больше нуля
@@ -1536,7 +1557,7 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 	// Создаём объект работы с Ethernet
 	// Временный объект для извлечения сетевого интерфейса
 	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
-	// Выполняем извлечение сетевых параметров
+	// Извлекаем сетевые параметры
 	awh::eth::addr::fillSource(source);
 	// Проверяем, что название сетевого интерфейса получено
 	ASSERT_FALSE(source.iface.empty());
@@ -1561,7 +1582,7 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 		// Атрибуты источника IPv6 для проверки настроенности сети
 		awh::net::src_t probe(std::make_unique <awh::net::addr_net_ipv6_t> ());
 		// Создаём объект работы с Ethernet для проверки настроенности сети
-		// Выполняем извлечение сетевых параметров источника IPv6
+		// Извлекаем сетевые параметры источника IPv6
 		awh::eth::addr::fillSource(probe);
 		// Если сеть IPv6 на машине не настроена, проверять нечего
 		if(probe.iface.empty())
@@ -1593,7 +1614,6 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 		ASSERT_FALSE(awh::engine::target::get(eid1).empty());
 		// Проверяем, что UDS-адрес не установлен
 		ASSERT_TRUE(awh::engine::address::get(eid1, awh::event::address_t::UDS).empty());
-
 		// Добавляем новое событие клиента TCP
 		awh::event::id_t eid2 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор события больше нуля
@@ -1616,7 +1636,6 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 		ASSERT_FALSE(awh::engine::target::get(eid2).empty());
 		// Проверяем, что UDS-адрес не установлен
 		ASSERT_TRUE(awh::engine::address::get(eid2, awh::event::address_t::UDS).empty());
-
 		// Добавляем новое событие клиента TCP
 		awh::event::id_t eid3 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор события больше нуля
@@ -1639,7 +1658,6 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 		ASSERT_FALSE(awh::engine::target::get(eid3).empty());
 		// Проверяем, что UDS-адрес не установлен
 		ASSERT_TRUE(awh::engine::address::get(eid3, awh::event::address_t::UDS).empty());
-		
 		// Добавляем новое событие клиента TCP
 		awh::event::id_t eid4 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор события больше нуля
@@ -1658,7 +1676,6 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 		ASSERT_FALSE(awh::engine::target::get(eid4).empty());
 		// Проверяем, что UDS-адрес не установлен
 		ASSERT_TRUE(awh::engine::address::get(eid4, awh::event::address_t::UDS).empty());
-		
 		// Добавляем новое событие клиента TCP
 		awh::event::id_t eid7 = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор события больше нуля
@@ -1685,7 +1702,7 @@ TEST_F(IoFixture, IoSuiteIPv6Test){
 TEST_F(IoFixture, IoTCPTest){
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -2023,9 +2040,9 @@ TEST_F(IoFixture, IoTCPTest){
 		awh::engine::timer::usage(events[1], awh::event::usage_t::REUSABLE);
 		// Проверяем, что режим многократного использования таймаута события на чтение установлен правильно
 		ASSERT_EQ(awh::event::usage_t::REUSABLE, awh::engine::timer::usage(events[1]));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
-		// Выполняем прослушивание сервера
+		// Объявляем сервер слушающим
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -2273,9 +2290,9 @@ TEST_F(IoFixture, IoTCPTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -2291,7 +2308,9 @@ TEST_F(IoFixture, IoTCPTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -2302,6 +2321,7 @@ TEST_F(IoFixture, IoTCPTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ по TCP не получен: опрос завершился, а отклик чтения не сработал";
 	}
@@ -2322,7 +2342,7 @@ TEST_F(IoFixture, IoUDPTest){
 	 * событий, то есть переживает блок настройки события
 	 */
 	uint8_t count = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -2779,7 +2799,7 @@ TEST_F(IoFixture, IoUDPTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -3015,7 +3035,7 @@ TEST_F(IoFixture, IoUDPTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -3035,7 +3055,9 @@ TEST_F(IoFixture, IoUDPTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -3046,6 +3068,7 @@ TEST_F(IoFixture, IoUDPTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "обмен датаграммами не дошёл до конца: опрос завершился, а принято датаграмм " << count << " из 10";
 	}
@@ -3110,7 +3133,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 	awh::event::id_t accepted = 0;
 	// Признак дошедшего отклика второго клиента
 	bool echoed = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -3138,6 +3161,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 	 * @note Принятое сервером НЕ ВЫЧИТЫВАЕТСЯ намеренно: непрочитанное наполняет окно
 	 *       собеседника, отправка клиента перестаёт уходить целиком, и в ядре остаётся
 	 *       поданная операция - ровно то состояние, какое проверка и ловит
+	 *
 	 */
 	{
 		// Устанавливаем адрес сервера назначения
@@ -3153,6 +3177,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 			 *       договор движка, - и без этого вызова узел уходит блокирующей
 			 *       ветвью отправки, где родного пути нет вовсе. Щуп показал ровно
 			 *       это: заходов отправки 200, а с признаком неблокирующего - ни одного
+			 *
 			 */
 			(void) awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
 			/**
@@ -3161,12 +3186,13 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 			 * @note Урезание обоих буферов - и отправки здесь, и приёма у клиента ниже -
 			 *       единственный найденный способ заставить обмен на петле задержаться:
 			 *       без него ядро глотает мегабайты, ничего не оставляя в полёте
+			 *
 			 */
 			(void) awh::engine::buffer::size::set(cid, awh::event::action_t::WRITE, 4096);
 			// Отмечаем подключение клиента
 			connected = true;
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
@@ -3182,6 +3208,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 	 *          ничего. Сырой собеседник не читает вовсе, окно его закрывается, и
 	 *          поданная отправка у ядра ОСТАЁТСЯ - ровно то состояние, какое здесь
 	 *          и ловится
+	 *
 	 */
 	const int32_t stranger = ::socket(AF_INET, SOCK_STREAM, 0);
 	// Сокет собеседника обязан быть заведён
@@ -3201,14 +3228,14 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 		server.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		server.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&server), sizeof(server)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
-	 * Выполняем обороты цикла, покуда клиент не подключится
+	 * Крутим обороты цикла, покуда клиент не подключится
 	 */
 	for(uint16_t round = 0; (round < 300) && !connected; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "клиент не подключился к серверу";
@@ -3219,6 +3246,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 	 *       порций не крупнее предела встраивания (16 КБ), а крупные уходят обычным
 	 *       обращением мимо ядра вовсе. Щуп на порциях по 64 КБ показал ноль подач -
 	 *       и это было свойство устройства, а не отказ проверки
+	 *
 	 */
 	{
 		// Порция отправляемых данных
@@ -3226,11 +3254,12 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 		// Число порций, ушедших в очередь
 		size_t queued = 0;
 		/**
-		 * Выполняем заходы отправки, покуда очередь принимает
+		 * Повторяем заходы отправки, покуда очередь принимает
 		 *
 		 * @note Отправляет ПРИНЯТЫЙ сервером узел, а не клиент: щуп показал, что
 		 *       родная отправка ядру подаётся именно у принятых узлов, а клиентские
 		 *       порции на петле уходят обращением сразу и в ядре не задерживаются
+		 *
 		 */
 		for(uint16_t round = 0; round < 4096; ++round){
 			// Отправляем порцию данных клиенту
@@ -3241,24 +3270,25 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 				break;
 			// Увеличиваем счётчик принятых порций
 			queued++;
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(0);
 		}
 		// Хоть одна порция обязана быть принята: иначе отправки в полёте нет
 		ASSERT_GT(queued, static_cast <size_t> (0)) << "очередь передачи не приняла ни одной порции";
 	}
 	/**
-	 * Выполняем заключительную отправку БЕЗ оборота цикла следом
+	 * Отправляем заключительную порцию БЕЗ оборота цикла следом
 	 *
 	 * @note Оборот цикла забирает завершение поданной отправки и метку её гасит.
 	 *       Долив выше оборот делает на каждом заходе, и после него в ядре не
 	 *       остаётся ничего: щуп показывал подач 199 при нуле отмен. Эта отправка
 	 *       подаётся последней и остаётся у ядра до самого уничтожения узла
+	 *
 	 */
 	{
 		// Порция заключительной отправки
 		const std::vector <char> tail(8 * 1024, 'T');
-		// Выполняем отправку порции принятым узлом
+		// Отправляем порцию принятым узлом
 		(void) awh::engine::io::send(accepted, tail.data(), tail.size());
 	}
 	/**
@@ -3268,19 +3298,21 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 	 *       завершение и метку гасит. Пять оборотов, стоявшие тут прежде, ровно это и
 	 *       делали: щуп показывал подач 199, а отмен при уничтожении - ноль. Узел
 	 *       обязан уничтожаться, покуда поданная отправка ещё не завершена
+	 *
 	 */
 	// Уничтожаем принятый узел прямо с поданной ядру отправкой
 	awh::engine::io::destroy(accepted);
 	/**
-	 * Выполняем обороты цикла: завершение отменённой отправки приходит уже без узла
+	 * Крутим обороты цикла: завершение отменённой отправки приходит уже без узла
 	 */
 	for(uint16_t round = 0; round < 50; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Заводим второе подключение к тому же серверу
 	 *
 	 * @note Здесь и утверждение проверки: движок обязан остаться работоспособным
+	 *
 	 */
 	{
 		// Заводим событие второго клиента
@@ -3302,17 +3334,17 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 			// Отмечаем приход отклика
 			echoed = true;
 		});
-		// Выполняем фиксацию настроек события второго клиента
+		// Фиксируем настройки события второго клиента
 		ASSERT_TRUE(awh::engine::io::commit(client));
-		// Выполняем подключение события второго клиента
+		// Подключаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::connect(client));
 		// Запускаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::launch(client));
 		/**
-		 * Выполняем обороты цикла, покуда второй клиент не подключится
+		 * Крутим обороты цикла, покуда второй клиент не подключится
 		 */
 		for(uint16_t round = 0; (round < 300) && !connected; ++round)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Движок обязан остаться работоспособным
 		ASSERT_TRUE(connected) << "после уничтожения узла с поданной отправкой движок нового подключения не принял";
@@ -3346,7 +3378,7 @@ TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
 TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 	// Признак пришедшего срока и признак подключения
 	bool expired = false, connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -3368,6 +3400,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 	 * @note Одноразовый режим (он же умолчание) считает срок от ОТПРАВКИ запроса и
 	 *       молчащего собеседника не режет по замыслу - так он и описан. Надзор за
 	 *       простоем даёт режим повторный, и проверяется здесь именно он
+	 *
 	 */
 	awh::engine::timer::usage(server, awh::event::usage_t::REUSABLE);
 	/**
@@ -3377,6 +3410,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 	 *       здесь же, отликом приёма, ровно так, как это делает фасад
 	 *       `unit::Server::accept`. Подписка срока на само серверное событие ничего не
 	 *       ловит: проверка так и была написана сперва и отказывала на верном теле
+	 *
 	 */
 	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 		// Отмечаем подключение собеседника
@@ -3390,6 +3424,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 		 *          срока у принятого узла стоит под заслоном неблокирующего события, а
 		 *          ветвь по умолчанию ставит срок самому сокету (`SO_RCVTIMEO`), какой
 		 *          для чтения силами движка недействителен
+		 *
 		 */
 		(void) awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
 		// Устанавливаем функцию обратного вызова на срок ожидания принятого узла
@@ -3402,7 +3437,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 			return false;
 		}));
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -3425,18 +3460,20 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 		address.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
-	 * Выполняем обороты цикла, покуда срок не придёт либо не выйдет отведённое окно
+	 * Крутим обороты цикла, покуда срок не придёт либо не выйдет отведённое окно
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла, покуда срок не пришёл
+		/**
+		 * Крутим обороты цикла, покуда срок не пришёл
+		 */
 		while(!expired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(50);
 	}
 	// Закрываем сокет сырого собеседника
@@ -3473,7 +3510,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 TEST_F(IoFixture, IoAcceptedReadTimeoutDifficultTest){
 	// Признак пришедшего срока и признак подключения
 	bool expired = false, connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Переводим движок на сложную структуру таймеров
 	awh::engine::timer::internal::set(awh::event::timer_t::DIFFICULT);
@@ -3511,7 +3548,7 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutDifficultTest){
 			return false;
 		}));
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -3532,18 +3569,20 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutDifficultTest){
 		address.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
-	 * Выполняем обороты цикла, покуда срок не придёт либо не выйдет отведённое окно
+	 * Крутим обороты цикла, покуда срок не придёт либо не выйдет отведённое окно
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла, покуда срок не пришёл
+		/**
+		 * Крутим обороты цикла, покуда срок не пришёл
+		 */
 		while(!expired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(50);
 	}
 	// Закрываем сокет сырого собеседника
@@ -3581,7 +3620,7 @@ TEST_F(IoFixture, IoDeliverBeforeHangupTest){
 	std::string received;
 	// Признак принятого сервером подключения
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -3605,7 +3644,7 @@ TEST_F(IoFixture, IoDeliverBeforeHangupTest){
 			received.append(reinterpret_cast <const char *> (buffer), size);
 		});
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -3628,13 +3667,14 @@ TEST_F(IoFixture, IoDeliverBeforeHangupTest){
 		address.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
 		/**
 		 * Отдаём содержимое и закрываемся, НЕ дав движку оборота цикла
 		 *
 		 * @note В этом вся суть опыта: закрытие обязано догнать данные и прийти движку
 		 *       одним уведомлением с ними
+		 *
 		 */
 		ASSERT_EQ(::send(stranger, body.data(), static_cast <int32_t> (body.size()), 0), static_cast <int32_t> (body.size()));
 		// Закрываем сокет собеседника вежливо
@@ -3646,9 +3686,11 @@ TEST_F(IoFixture, IoDeliverBeforeHangupTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться
@@ -3658,6 +3700,7 @@ TEST_F(IoFixture, IoDeliverBeforeHangupTest){
 	 *
 	 * @note Утверждается содержимое, а не сам приход: потеря хвоста при закрытии
 	 *       выглядела бы приходом обрезанного тела и прошла бы при утверждении факта
+	 *
 	 */
 	ASSERT_EQ(received, body) << "принято сервером: " << received;
 	// Уничтожаем событие сервера
@@ -3687,10 +3730,11 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	bool expired = false, connected = false, rearmed = false;
 	// Времена начала ожидания и прихода срока
 	std::chrono::steady_clock::time_point armed, fired;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -3713,6 +3757,7 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	 * @note Повторный режим утверждения не портит: продолжение ставит отметку, по которой
 	 *       движок сроком сам не распоряжается, а перезапуск полным сроком отличается от
 	 *       остатка числом - на то и порог
+	 *
 	 */
 	awh::engine::timer::usage(server, awh::event::usage_t::REUSABLE);
 	// Устанавливаем функцию обратного вызова на подключение нового клиента
@@ -3727,6 +3772,7 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 		 * @note Здесь и ставится опыт: пришедшее объявляется НЕ ОТВЕТОМ, и ожидание
 		 *       продолжается остатком - ровно тот случай, ради которого продолжение
 		 *       и заведено
+		 *
 		 */
 		awh::engine::io::on(cid, [&rearmed](const awh::event::id_t sid, [[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size) noexcept -> void {
 			// Если продолжение ещё не заказывалось
@@ -3753,6 +3799,7 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	// Собеседник - сырой сокет
 	const int32_t stranger = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что сырой сокет собеседника заведён
 	ASSERT_GT(stranger, 0);
 	{
 		// Адрес сервера, к которому выполняется подключение
@@ -3765,7 +3812,7 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 		address.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
@@ -3774,9 +3821,11 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться
@@ -3788,13 +3837,16 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	 *
 	 * @note Выдержка здесь и делает опыт разрешимым: продолжение остатком даст срок
 	 *       примерно на исходной отметке, а перезапуск полным сроком - на 700 мс позже
+	 *
 	 */
 	{
 		// Запоминаем миг начала выдержки
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл событий отведённую часть срока
+		/**
+		 * Крутим цикл событий отведённую часть срока
+		 */
 		while(std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 700)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Отправляем не-ответ, снимающий срок ожидания чтения
@@ -3805,9 +3857,11 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!expired && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Закрываем сокет сырого собеседника
@@ -3824,6 +3878,7 @@ TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
 	 * @note Порог 1900 мс взят посередине между исходной отметкой (1500 мс) и
 	 *       перезапуском полным сроком (700 + 1500 = 2200 мс): при перезапуске остаток
 	 *       был бы неотличим от продолжения, если утверждать один лишь приход срока
+	 *
 	 */
 	ASSERT_LT(elapsed, 1900) << "срок пришёл через " << elapsed
 	 << " мс: ожидание продолжено не остатком, а полным сроком заново";
@@ -3861,7 +3916,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 	ASSERT_GT(timer, 0u);
 	// Устанавливаем заведомо долгий срок ожидания
 	awh::engine::timer::timeout(timer, awh::event::action_t::NONE, 3000);
-	// Выполняем фиксацию настроек события таймера
+	// Фиксируем настройки события таймера
 	ASSERT_TRUE(awh::engine::io::commit(timer));
 	/**
 	 * Устанавливаем функцию обратного вызова на срабатывание таймера
@@ -3871,6 +3926,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 	 *          Отклик срока движок у таймера не принимает и отвечает предупреждением в
 	 *          журнал, а проверка тогда ждёт события, какого не будет. Так же подписаны
 	 *          и соседние проверки таймеров
+	 *
 	 */
 	awh::engine::io::on(timer, [&fired, &moment]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если состояние события успешно
@@ -3881,6 +3937,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 			fired = true;
 		}
 	});
+	// Запускаем событие таймера
 	ASSERT_TRUE(awh::engine::io::launch(timer));
 	// Запоминаем миг завода таймера
 	const auto armed = std::chrono::steady_clock::now();
@@ -3889,13 +3946,16 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 	 *
 	 * @note Без этой выдержки таймер правился бы ещё не идущим, и перевзведение не
 	 *       случилось бы вовсе - путь ушёл бы в обычную постановку
+	 *
 	 */
 	{
 		// Запоминаем миг начала выдержки
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл событий отведённую часть срока
+		/**
+		 * Крутим цикл событий отведённую часть срока
+		 */
 		while(!fired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 200))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Таймер сработать раньше правки не должен
@@ -3908,9 +3968,11 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!fired && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Таймер обязан сработать
@@ -3922,6 +3984,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
 	 *
 	 * @note Порог 1500 мс взят между переносом (около 800 мс) и исходным сроком (3000 мс),
 	 *       с запасом на зерно таймера системы: у MS Windows оно округляет всякое ожидание
+	 *
 	 */
 	ASSERT_LT(elapsed, 1500) << "таймер сработал через " << elapsed
 	 << " мс: срок у идущего таймера не перенесён, сработал исходный";
@@ -3959,7 +4022,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 	ASSERT_GT(timer, 0u);
 	// Устанавливаем заведомо долгий срок ожидания
 	awh::engine::timer::timeout(timer, awh::event::action_t::NONE, 3000);
-	// Выполняем фиксацию настроек события таймера
+	// Фиксируем настройки события таймера
 	ASSERT_TRUE(awh::engine::io::commit(timer));
 	/**
 	 * Устанавливаем функцию обратного вызова на срабатывание таймера
@@ -3969,6 +4032,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 	 *          Отклик срока движок у таймера не принимает и отвечает предупреждением в
 	 *          журнал, а проверка тогда ждёт события, какого не будет. Так же подписаны
 	 *          и соседние проверки таймеров
+	 *
 	 */
 	awh::engine::io::on(timer, [&fired, &moment]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если состояние события успешно
@@ -3979,6 +4043,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 			fired = true;
 		}
 	});
+	// Запускаем событие таймера
 	ASSERT_TRUE(awh::engine::io::launch(timer));
 	// Запоминаем миг завода таймера
 	const auto armed = std::chrono::steady_clock::now();
@@ -3987,13 +4052,16 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 	 *
 	 * @note Без этой выдержки таймер правился бы ещё не идущим, и перевзведение не
 	 *       случилось бы вовсе - путь ушёл бы в обычную постановку
+	 *
 	 */
 	{
 		// Запоминаем миг начала выдержки
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл событий отведённую часть срока
+		/**
+		 * Крутим цикл событий отведённую часть срока
+		 */
 		while(!fired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 200))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Таймер сработать раньше правки не должен
@@ -4006,9 +4074,11 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!fired && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Таймер обязан сработать
@@ -4020,6 +4090,7 @@ TEST_F(IoFixture, IoTimerRescheduleWhilePendingDifficultTest){
 	 *
 	 * @note Порог 1500 мс взят между переносом (около 800 мс) и исходным сроком (3000 мс),
 	 *       с запасом на зерно таймера системы: у MS Windows оно округляет всякое ожидание
+	 *
 	 */
 	ASSERT_LT(elapsed, 1500) << "таймер сработал через " << elapsed
 	 << " мс: срок у идущего таймера не перенесён, сработал исходный";
@@ -4047,10 +4118,11 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	std::string received, answered;
 	// Признак принятого сервером подключения
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -4078,12 +4150,14 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	// Заводим событие клиента
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	/**
 	 * Выставляем клиенту УМНЫЙ неблокирующий ввод-вывод
 	 *
 	 * @note Это и заводит проверяемый путь: обычного неблокирующего признака здесь нет
 	 *       намеренно - с ним отправка ушла бы иной дорогой
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::SM_IO_BLOCK));
 	// Устанавливаем адрес, цель и порт назначения события клиента
@@ -4105,16 +4179,18 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "сервер подключения не принял";
 	// Содержимое первого и второго обменов
 	const std::string first = "SEMI-BLOCKING-FIRST", second = "SEMI-BLOCKING-SECOND";
-	// Выполняем первый обмен
+	// Проводим первый обмен
 	ASSERT_GT(awh::engine::io::send(client, first.data(), first.size()), static_cast <size_t> (0)) << "первый обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда первый ответ не придёт целиком
@@ -4122,14 +4198,16 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < first.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Первый обмен обязан пройти целиком
 	ASSERT_EQ(answered, first) << "первый обмен: принято " << answered;
-	// Выполняем второй обмен
+	// Проводим второй обмен
 	ASSERT_GT(awh::engine::io::send(client, second.data(), second.size()), static_cast <size_t> (0)) << "второй обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда второй ответ не придёт целиком
@@ -4137,9 +4215,11 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < (first.size() + second.size())) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -4148,6 +4228,7 @@ TEST_F(IoFixture, IoClientSemiBlockingSendTest){
 	 * @note Это и есть главное утверждение: переключив сокет в блокирующий режим ради
 	 *       отправки, движок обязан вернуть его обратно. Не вернув, он оставил бы узел
 	 *       блокирующим, и второй приём встал бы намертво
+	 *
 	 */
 	ASSERT_EQ(answered, (first + second)) << "второй обмен не прошёл: принято " << answered;
 	// Сервер обязан принять оба содержимого
@@ -4184,13 +4265,15 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	std::string received, answered;
 	// Признак заведённой сессии-источника
 	bool accepted = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Заводим событие клиента UDP
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	// Устанавливаем порт события сервера и порт назначения события клиента
 	ASSERT_TRUE(awh::engine::source::port::set(server, port));
@@ -4232,6 +4315,7 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	 *
 	 * @note Это и заводит проверяемый путь: обычного неблокирующего признака здесь нет
 	 *       намеренно - с ним отправка ушла бы иной дорогой
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::SM_IO_BLOCK));
 	// Устанавливаем адрес и адрес назначения события клиента
@@ -4256,11 +4340,13 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
 	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
 	 *          порцию прямо из этого отклика
+	 *
 	 */
 	awh::engine::io::on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Запоминаем исход подключения
 		linked = ok;
 	}));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
 	ASSERT_TRUE(awh::engine::io::connect(client));
 	ASSERT_TRUE(awh::engine::io::launch(client));
@@ -4270,16 +4356,18 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto linking = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться: без него отправлять некуда
 	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
 	// Содержимое первого и второго обменов: ключ сессии у обоих один
 	const std::string first = "KEY0-SEMI-FIRST", second = "KEY0-SEMI-SECOND";
-	// Выполняем первый обмен
+	// Проводим первый обмен
 	ASSERT_GT(awh::engine::io::send(client, first.data(), first.size()), static_cast <size_t> (0)) << "первый обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда первый ответ не придёт целиком
@@ -4287,15 +4375,18 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < first.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Сессия-источник обязана быть заведена, а первый обмен - пройти целиком
 	ASSERT_TRUE(accepted) << "сессия-источник не заведена";
+	// Проверяем, что первый обмен принят целиком
 	ASSERT_EQ(answered, first) << "первый обмен: принято " << answered;
-	// Выполняем второй обмен
+	// Проводим второй обмен
 	ASSERT_GT(awh::engine::io::send(client, second.data(), second.size()), static_cast <size_t> (0)) << "второй обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда второй ответ не придёт целиком
@@ -4303,9 +4394,11 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < (first.size() + second.size())) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -4313,6 +4406,7 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	 *
 	 * @note Это и есть главное утверждение: переключив сокет в блокирующий режим ради
 	 *       отправки, движок обязан вернуть его обратно
+	 *
 	 */
 	ASSERT_EQ(answered, (first + second)) << "второй обмен не прошёл: принято " << answered;
 	// Сервер обязан принять оба содержимого
@@ -4346,10 +4440,11 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	std::string received, answered;
 	// Признак принятого сервером подключения
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -4366,6 +4461,7 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 		 *
 		 * @note Это и заводит проверяемый путь: обычного неблокирующего признака здесь нет
 		 *       намеренно - с ним отражение ушло бы иной дорогой
+		 *
 		 */
 		(void) awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::SM_IO_BLOCK);
 		// Устанавливаем функцию обратного вызова на чтение принятого узла
@@ -4382,6 +4478,7 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	// Заводим событие клиента
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	// Устанавливаем опции, адрес, цель и порт назначения события клиента
 	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
@@ -4403,16 +4500,18 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "сервер подключения не принял";
 	// Содержимое первого и второго обменов
 	const std::string first = "PEER-SEMI-FIRST", second = "PEER-SEMI-SECOND";
-	// Выполняем первый обмен
+	// Проводим первый обмен
 	ASSERT_GT(awh::engine::io::send(client, first.data(), first.size()), static_cast <size_t> (0)) << "первый обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда первый ответ не придёт целиком
@@ -4420,14 +4519,16 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < first.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Первый обмен обязан пройти целиком
 	ASSERT_EQ(answered, first) << "первый обмен: принято " << answered;
-	// Выполняем второй обмен
+	// Проводим второй обмен
 	ASSERT_GT(awh::engine::io::send(client, second.data(), second.size()), static_cast <size_t> (0)) << "второй обмен: данные к отправке не приняты";
 	/**
 	 * Крутим цикл, покуда второй ответ не придёт целиком
@@ -4435,9 +4536,11 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answered.size() < (first.size() + second.size())) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -4445,6 +4548,7 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	 *
 	 * @note Главное утверждение: движок обязан вернуть принятый узел из блокирующего
 	 *       режима обратно, иначе второй приём у него не состоится вовсе
+	 *
 	 */
 	ASSERT_EQ(answered, (first + second)) << "второй обмен не прошёл: принято " << answered;
 	// Сервер обязан принять оба содержимого
@@ -4486,13 +4590,15 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	size_t sessions = 0, answers = 0;
 	// Размер пачки ответов, заведомо переполняющей ужатый буфер
 	const size_t burst = 64;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Заводим событие клиента UDP
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	// Устанавливаем порт события сервера и порт назначения события клиента
 	ASSERT_TRUE(awh::engine::source::port::set(server, port));
@@ -4537,9 +4643,10 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 			 * @note В этом и опыт: ужатый буфер принимает первые, остальные ложатся в
 			 *       очередь сессии, и она взводит готовность к записи на ОБЩЕМ с
 			 *       сервером дескрипторе
+			 *
 			 */
 			for(size_t i = 0; i < burst; i++)
-				// Выполняем отправку очередного ответа
+				// Отправляем очередной ответ
 				(void) awh::engine::io::send(sid, body.data(), body.size());
 		});
 	}));
@@ -4552,13 +4659,13 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	ASSERT_TRUE(awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0"));
 	ASSERT_TRUE(awh::engine::target::set(client, "127.0.0.1"));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Ужимаем буфер отправки сервера ПОСЛЕ фиксации: до неё дескриптора нет вовсе
 	ASSERT_TRUE(awh::engine::buffer::size::set(server, awh::event::action_t::WRITE, 2048));
-	// Выполняем запуск события сервера
+	// Запускаем событие сервера
 	ASSERT_TRUE(awh::engine::io::launch(server));
-	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Фиксируем настройки, подключаем и запускаем событие клиента
 	// Признак того, что движок доложил о состоявшемся подключении
 	bool linked = false;
 	/**
@@ -4569,11 +4676,13 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
 	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
 	 *          порцию прямо из этого отклика
+	 *
 	 */
 	awh::engine::io::on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Запоминаем исход подключения
 		linked = ok;
 	}));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
 	ASSERT_TRUE(awh::engine::io::connect(client));
 	ASSERT_TRUE(awh::engine::io::launch(client));
@@ -4583,14 +4692,16 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto linking = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться: без него отправлять некуда
 	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
-	// Выполняем отправку запроса, заводящего первую сессию
+	// Отправляем запрос, заводящий первую сессию
 	(void) awh::engine::io::send(client, "KEY0request", 11);
 	/**
 	 * Крутим цикл, покуда пачка не разойдётся либо не выйдет отведённое окно
@@ -4598,14 +4709,16 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answers < (burst / 2)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Первая сессия обязана быть заведена
 	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "первая сессия-источник не заведена";
-	// Выполняем отправку запроса с НОВЫМ ключом сессии
+	// Отправляем запрос с НОВЫМ ключом сессии
 	(void) awh::engine::io::send(client, "KEY1request", 11);
 	/**
 	 * Крутим цикл, покуда вторая сессия не заведётся либо не выйдет отведённое окно
@@ -4613,9 +4726,11 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((sessions < 2) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -4623,9 +4738,9 @@ TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
 	 *
 	 * @note Отказ здесь означал бы, что ответы одной сессии отнимают у сервера его
 	 *       собственные события чтения на общем с нею дескрипторе
+	 *
 	 */
-	ASSERT_EQ(sessions, static_cast <size_t> (2)) << "сервер не завёл вторую сессию,"
-	 " пока первая отвечала пачкой: приём у него отнят";
+	ASSERT_EQ(sessions, static_cast <size_t> (2)) << "сервер не завёл вторую сессию," " пока первая отвечала пачкой: приём у него отнят";
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(client);
 	awh::engine::io::destroy(server);
@@ -4661,6 +4776,7 @@ TEST_F(IoFixture, IoRelayInjectionTest){
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие клиента TCP
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	// Устанавливаем функцию обратного вызова впрыска перенаправленных данных
 	awh::engine::io::on(client, static_cast <awh::engine::callback::inject_t> ([&injected, &requests, &accept](
@@ -4691,6 +4807,7 @@ TEST_F(IoFixture, IoRelayInjectionTest){
 	 *
 	 * @note Это и есть главное утверждение: приняв отказ за успех, перенос частями
 	 *       ушёл бы по кругу на несделанной работе
+	 *
 	 */
 	ASSERT_EQ(awh::engine::io::relay(client, body.data(), body.size()), static_cast <size_t> (0)) << "отказ впрыска принят за успех переноса";
 	// Впрыск обязан быть позван второй раз, а принятое им - не измениться
@@ -4713,7 +4830,7 @@ TEST_F(IoFixture, IoRelayInjectionTest){
  *
  */
 TEST_F(IoFixture, IoIpcLargeTransferTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -4725,7 +4842,9 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело переноса: вчетверо выше найденного потолка
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -4748,6 +4867,7 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
 	 *
 	 * @note Неблокирующий узел ведёт себя иначе и здесь проверяется он: остаток, не
 	 *       вошедший в канал, ложится в очередь узла, и отдать его обязан движок сам
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	ASSERT_TRUE(awh::engine::options::set(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
@@ -4767,6 +4887,7 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
 	 *
 	 * @note Отказ отправки здесь не беда, а подпор: доля повторяется после оборота цикла,
 	 *       за который движок отдаёт накопленный остаток
+	 *
 	 */
 	{
 		// Смещение отданного тела
@@ -4779,13 +4900,13 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
 		while((offset < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20)){
 			// Определяем размер очередной доли
 			const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
-			// Выполняем отправку очередной доли
+			// Отправляем очередную долю
 			const size_t sent = awh::engine::io::send(channels[1], body.data() + offset, part);
 			// Если доля принята к отправке - сдвигаем смещение отданного
 			if(sent > 0)
 				// Сдвигаем смещение отданного тела
 				offset += sent;
-			// Выполняем оборот цикла событий: движку надо отдать накопленный остаток
+			// Опрашиваем события одним оборотом цикла: движку надо отдать накопленный остаток
 			awh::engine::io::poll(10);
 		}
 		// Тело обязано быть отдано целиком
@@ -4798,9 +4919,11 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Тело обязано дойти целиком
@@ -4851,10 +4974,15 @@ TEST_F(IoFixture, IoIpcLargeTransferTest){
  *          Поэтому договор разнесён на две проверки под одним именем: у Windows режим не
  *          выставляется и меряется умолчание, у POSIX отдающий конец заводится
  *          неблокирующим явно - иначе меряется не движок, а терпение читающего.
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
+/**
+ * @brief Тест договора переполнения блокирующего канала
+ *
+ */
 TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -4905,6 +5033,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *
 	 * @note Оборот здесь не даётся намеренно: с ним встречный конец выбирал бы принятое,
 	 *       и канал не наполнился бы вовсе
+	 *
 	 */
 	for(size_t i = 0; (i < 64) && !refused; i++)
 		// Отправка обязана рано или поздно ответить отказом
@@ -4914,6 +5043,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *
 	 * @note Это не дефект, а договор: место в канале кончилось, а блокирующая запись у
 	 *       описателя, привязанного к порту завершений, ждать его не может
+	 *
 	 */
 	ASSERT_TRUE(refused) << "канал не наполнился: отправка отказа не дала ни разу";
 	// Отклик записи обязан отчитаться нулём октетов
@@ -4923,8 +5053,10 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *
 	 * @note Вот это и есть главное утверждение договора: отданное не пропадает молча.
 	 *       Потребителю сказано всё, чтобы повторить долю либо завести узел неблокирующим
+	 *
 	 */
 	ASSERT_GT(errors, static_cast <size_t> (0)) << "отклик ошибки о переполнении канала не сообщил";
+	// Проверяем, что ошибка переполнения названа отказом события
 	ASSERT_EQ(reason, awh::event::error_t::EVENT_FAIL) << "ошибка переполнения канала названа иначе";
 	// Уничтожаем оба конца канала
 	awh::engine::io::destroy(channels[0]);
@@ -4932,10 +5064,15 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 }
 /**
  * @brief Тест договора отказа отправки в полный канал (POSIX)
+ *
  */
 #else
+/**
+ * @brief Тест договора переполнения блокирующего канала
+ *
+ */
 TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -4974,6 +5111,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *
 	 * @note Умолчание у POSIX блокирующее, и без этой строки ::write в полный канал ждёт
 	 *       читающего конца вечно - оборота цикла проверка не даёт намеренно
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	// Фиксируем и запускаем оба конца канала
@@ -4990,6 +5128,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *
 	 * @note Оборот здесь не даётся намеренно: с ним встречный конец выбирал бы принятое,
 	 *       и канал не наполнился бы вовсе
+	 *
 	 */
 	for(size_t i = 0; (i < 64) && !refused; i++)
 		// Отправка обязана рано или поздно ответить отказом
@@ -5008,6 +5147,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
 	 *       Отчёт нулём означает «сейчас не взяли», а не «потеряли», и ошибки тут нет.
 	 *
 	 * @warning Замерено: отклик ошибки не позван ни разу, признак ошибки остался NONE
+	 *
 	 */
 	ASSERT_EQ(errors, static_cast <size_t> (0)) << "подпор канала доложен ошибкой, хотя остаток лёг в очередь";
 	ASSERT_EQ(reason, awh::event::error_t::NONE) << "признак ошибки выставлен при обычном подпоре канала";
@@ -5035,7 +5175,7 @@ TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
  *
  */
 TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -5047,7 +5187,9 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело переноса: заведомо крупнее вместимости канала
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -5071,6 +5213,7 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 	 *
 	 * @note Принятое очередью считаем сами: что в неё не вошло, к делу не относится -
 	 *       спрашивается судьба принятого, а не отвергнутого
+	 *
 	 */
 	size_t accepted = 0;
 	/**
@@ -5086,11 +5229,12 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 	 *          у Linux, macOS и MS Windows, а всеобщей она не является: у Solaris канал
 	 *          вмещает 16384 октета, вчетверо меньше (замерено на стенде).
 	 *          Проверка с числом своей машины отказывала бы там, где движок работает верно
+	 *
 	 */
 	for(size_t offset = 0; offset < body.size(); offset += 4096){
 		// Определяем размер очередной доли
 		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
-		// Выполняем отправку очередной доли
+		// Отправляем очередную долю
 		const size_t taken = awh::engine::io::send(channels[1], body.data() + offset, part);
 		// Складываем принятое очередью
 		accepted += taken;
@@ -5112,9 +5256,11 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -5122,6 +5268,7 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 	 *
 	 * @note Отказ означает потерю хвоста у всякого крупного межпроцессного сообщения:
 	 *       движок принял данные в очередь, а отдать их ему нечем
+	 *
 	 */
 	ASSERT_EQ(received.size(), accepted) << "принято " << received.size() << " из " << accepted
 	 << ": хвост очереди канала не уходит без новых отправок";
@@ -5148,7 +5295,7 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
  *
  */
 TEST_F(IoFixture, IoDataSourcePullIpcLargeTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -5160,7 +5307,9 @@ TEST_F(IoFixture, IoDataSourcePullIpcLargeTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело, отдаваемое источником: вчетверо крупнее вместимости канала
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -5216,9 +5365,11 @@ TEST_F(IoFixture, IoDataSourcePullIpcLargeTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Тело обязано дойти целиком
@@ -5229,6 +5380,7 @@ TEST_F(IoFixture, IoDataSourcePullIpcLargeTest){
 	 *
 	 * @note Это и есть утверждение о ПРОДОЛЖЕНИИ вытягивания: одно обращение означало бы,
 	 *       что движок спросил источник единожды и дальше вёз уже отданное
+	 *
 	 */
 	ASSERT_GT(requests, static_cast <size_t> (16)) << "обращений к источнику " << requests
 	 << ": продолжения вытягивания у канального узла не случилось";
@@ -5257,10 +5409,11 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	std::string received;
 	// Признак принятого сервером подключения
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -5286,6 +5439,7 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	// Заводим событие клиента
 	const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(client, 0u);
 	// Устанавливаем опции, адрес, цель и порт назначения события клиента
 	ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
@@ -5304,16 +5458,20 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "сервер подключения не принял";
 	// Тело переноса: заведомо крупнее ужатого буфера отправки
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -5332,6 +5490,7 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	 *          буфером отправки, - а всякое такое число снято с одной машины. Вместимости
 	 *          у систем разные, и проверка с чужим числом отказывает там, где движок
 	 *          работает верно
+	 *
 	 */
 	/**
 	 * Предел отдачи, оберегающий от бесконечной отдачи при неработающем отказе
@@ -5342,13 +5501,14 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	 *          у систем разный, и заранее набранного тела недостаточно ни при каком
 	 *          выбранном числе - оттого отдача идёт покуда очередь принимает, а телом
 	 *          служит одна и та же доля: содержимое здесь не сличается, только объёмы
+	 *
 	 */
 	const size_t ceiling = (64 * 1024 * 1024);
 	/**
 	 * Отдаём долю за долей, покуда очередь принимает целиком
 	 */
 	while(accepted < ceiling){
-		// Выполняем отправку очередной доли
+		// Отправляем очередную долю
 		const size_t taken = awh::engine::io::send(client, body.data(), 4096);
 		// Складываем принятое очередью
 		accepted += taken;
@@ -5368,9 +5528,11 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -5378,6 +5540,7 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	 *
 	 * @note У потока это обеспечивает готовность к записи, и проверка её и стережёт:
 	 *       отказ означал бы, что отложенная запись у потокового узла не работает
+	 *
 	 */
 	ASSERT_EQ(received.size(), accepted) << "принято " << received.size() << " из " << accepted
 	 << ": хвост очереди потокового узла не уходит без новых отправок";
@@ -5399,7 +5562,7 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
  *
  */
 TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -5411,7 +5574,9 @@ TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело посылки: вчетверо крупнее вместимости очереди узла
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -5430,7 +5595,7 @@ TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
-	// Выполняем отправку тела ОДНИМ вызовом
+	// Отправляем тело ОДНИМ вызовом
 	const size_t accepted = awh::engine::io::send(channels[1], body.data(), body.size());
 	/**
 	 * Крутим цикл, покуда принятое не дойдёт либо не выйдет отведённое окно
@@ -5438,9 +5603,11 @@ TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -5450,6 +5617,7 @@ TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
 	 * @note Отправитель по этому числу и судит: принято меньше отданного - остаток
 	 *       отдавать ему заново. Молчаливая потеря случается не здесь, а у того, кто
 	 *       возвращённое число не смотрит вовсе
+	 *
 	 */
 	ASSERT_EQ(received.size(), accepted) << "объявлено принятым " << accepted
 	 << ", доставлено " << received.size();
@@ -5477,7 +5645,7 @@ TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
  *
  */
 TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -5489,7 +5657,9 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело переноса: заведомо крупнее вместимости канала
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -5517,11 +5687,12 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	 *
 	 * @note Насыщение меряется отказом очереди, а не числом октет: вместимость канала у
 	 *       систем разная - 65536 у Linux, macOS и MS Windows против 16384 у Solaris
+	 *
 	 */
 	for(size_t offset = 0; offset < body.size(); offset += 4096){
 		// Определяем размер очередной доли
 		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
-		// Выполняем отправку очередной доли
+		// Отправляем очередную долю
 		const size_t taken = awh::engine::io::send(channels[1], body.data() + offset, part);
 		// Складываем принятое очередью
 		accepted += taken;
@@ -5540,6 +5711,7 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	 *
 	 * @note Именно здесь узел и уходит из-под списка неотданных остатков: разбор списка
 	 *       обязан обнаружить его пропажу и снять запись, а не идти по мёртвому адресу
+	 *
 	 */
 	awh::engine::io::destroy(channels[1]);
 	awh::engine::io::destroy(channels[0]);
@@ -5547,7 +5719,7 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	 * Крутим цикл: движок обязан пережить разбор списка со снесённым узлом
 	 */
 	for(uint16_t round = 0; round < 20; round++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Заводим новую пару и убеждаемся, что обмен работает
@@ -5573,7 +5745,7 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	ASSERT_TRUE(awh::engine::io::launch(fresh[1]));
 	// Содержимое проверочной посылки
 	const std::string probe = "ALIVE-AFTER-DESTROY";
-	// Выполняем отправку проверочной посылки
+	// Отправляем проверочную посылку
 	ASSERT_GT(awh::engine::io::send(fresh[1], probe.data(), probe.size()), static_cast <size_t> (0)) << "посылка новой пары не принята";
 	/**
 	 * Крутим цикл, покуда посылка не придёт либо не выйдет отведённое окно
@@ -5581,9 +5753,11 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < probe.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Обмен новой пары обязан состояться
@@ -5611,7 +5785,7 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
  *
  */
 TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару сокетов домена UNIX потокового вида
 	const auto & pair = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
@@ -5638,7 +5812,7 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	ASSERT_TRUE(awh::engine::io::launch(pair[1]));
 	// Содержимое проверочной посылки
 	const std::string probe = "UDS-STREAM-PAIR-EXCHANGE";
-	// Выполняем отправку проверочной посылки
+	// Отправляем проверочную посылку
 	ASSERT_GT(awh::engine::io::send(pair[1], probe.data(), probe.size()), static_cast <size_t> (0)) << "посылка парой не принята";
 	/**
 	 * Крутим цикл, покуда посылка не придёт либо не выйдет отведённое окно
@@ -5646,9 +5820,11 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((received.size() < probe.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Обмен по паре обязан состояться
@@ -5661,6 +5837,7 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	 *       по имени там незачем. Утверждение это о свойстве ИЗОБРАЖЕНИЯ, а не о договоре
 	 *       семейства, - оттого и обведено признаком системы. Расхождение найдено
 	 *       замером на macOS/kqueue и Debian/epoll
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 	/**
@@ -5673,6 +5850,7 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	 *
 	 * @note Утверждение стережёт именно это: пропадёт имя - и межпроцессный обмен домена
 	 *       UNIX под MS Windows отвалится молча, а виноватым будет выглядеть не то место
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::target::get(pair[1]).empty())
 	 << "у пары домена UNIX пропала цель: встречать процессы по имени стало нечем";
@@ -5687,7 +5865,7 @@ TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 	bool stop = false;
 	// Список идентификаторов удерживающих событий
 	std::vector <awh::event::id_t> holders;
-	// Выполняем инициализацию асинхронного движка ввода-вывода
+	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Заводим события, удерживающие буферы приёма
@@ -5715,7 +5893,7 @@ TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 	// Удерживающих событий обязано хватить, чтобы пул исчерпался
 	ASSERT_GT(holders.size(), static_cast <size_t> (256))
 	 << "удерживающих событий поднято " << holders.size() << " - пул буферов не исчерпан, проверять нечего";
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -5749,7 +5927,7 @@ TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 				awh::engine::io::send(eid, reinterpret_cast <const char *> (data), size);
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -5771,7 +5949,7 @@ TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -5781,10 +5959,10 @@ TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 		awh::engine::io::send(events[0], message.c_str(), message.size());
 	}
 	/**
-	 * Выполняем обороты цикла, покуда отклик не придёт либо не выйдет срок
+	 * Крутим обороты цикла, покуда отклик не придёт либо не выйдет срок
 	 */
 	for(uint16_t round = 0; (round < 600) && !stop; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Отклик обязан дойти и при исчерпанном пуле буферов приёма
 	ASSERT_TRUE(stop) << "при исчерпанном пуле буферов дейтаграмма не доставлена: отступление к ожиданию готовности не сработало";
@@ -5807,7 +5985,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 	uint8_t traffics = 0;
 	// Предел жизни последнего принятого пакета
 	uint16_t hops = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -5850,9 +6028,10 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 		 *       приём настройки, а её доставка до провода. Взято `COMPANY` (32), потому
 		 *       что оно заведомо отлично от умолчания системы - замер без установки даёт
 		 *       у принявшей стороны 64
+		 *
 		 */
 		ASSERT_TRUE(awh::engine::hops::set(events[1], awh::event::hops_t::COMPANY));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -5881,7 +6060,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -5901,7 +6080,9 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -5920,6 +6101,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 	 *          `COMPANY` (32), и принявшая сторона обязана прочесть ровно 32:
 	 *          так закрепляется доставка настройки до провода, а не приём её фасадом.
 	 *          Замер без установки даёт здесь 64 - умолчание системы
+	 *
 	 */
 	ASSERT_EQ(hops, static_cast <uint16_t> (32)) << "предел жизни, выставленный сервером, до принявшей стороны не дошёл";
 }
@@ -5968,10 +6150,10 @@ TEST_F(IoFixture, IoServiceMarkNotOutlivingSocketTest){
 	// Отметка, какую круг оставляет за собою
 	constexpr awh::event::dscp_t left = awh::event::dscp_t::CS5;
 	/**
-	 * Выполняем круги заведения и уничтожения события
+	 * Прогоняем круги заведения и уничтожения события
 	 */
 	for(uint8_t round = 0; round < rounds; round++){
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера UDP
 		const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -5989,6 +6171,7 @@ TEST_F(IoFixture, IoServiceMarkNotOutlivingSocketTest){
 		 * @note Утверждение это и есть предмет проверки: отметки этому сокету никто не
 		 *       ставил, и ответом обязано быть начальное значение. Приход отметки
 		 *       прежнего круга означает, что запись реестра пережила свой сокет
+		 *
 		 */
 		EXPECT_EQ(awh::engine::qos::dscp::get(events[0], awh::event::family_t::IPV4), awh::event::dscp_t::CS0)
 			<< "круг " << static_cast <uint32_t> (round) << ": свежий сокет получил отметку прежнего - запись реестра пережила закрытие сокета";
@@ -6032,11 +6215,12 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 	 *       то, что придёт при непомеченной датаграмме, и оттого утверждение внизу
 	 *       двустороннее: не отличив доставленную метку от начального значения,
 	 *       проверка проходила бы и при молчащем движке
+	 *
 	 */
 	awh::event::ecn_t congestion = awh::event::ecn_t::NOT_ECT;
 	// Количество принятых сервером сведений о пакетах
 	uint8_t traffics = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -6078,6 +6262,7 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 		 * @note Отклик этот вешается на САМО серверное событие, а не на принятое
 		 *       соединение: сведения о датаграмме движок выдаёт слушающему событию
 		 *       (`server->callbacks.traffic`), и на принятом их не будет вовсе
+		 *
 		 */
 		awh::engine::io::on(events[1], static_cast <awh::engine::callback::traffic_t> ([&congestion, &traffics]([[maybe_unused]] const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
 			// Запоминаем признак перегрузки пути принятой датаграммы
@@ -6093,7 +6278,7 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 				awh::engine::io::send(eid, reinterpret_cast <const char *> (data), size);
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -6115,7 +6300,7 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Помечаем исходящие датаграммы клиента поддержкой перегрузки пути
 		ASSERT_TRUE(awh::engine::qos::ecn::set(events[0], awh::event::family_t::IPV4, awh::event::ecn_t::ECT0));
@@ -6133,11 +6318,14 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 	 *
 	 * @note Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос
 	 *       ждал бы его без конца, и проверка не отказала бы, а зависла
+	 *
 	 */
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -6159,7 +6347,7 @@ TEST_F(IoFixture, IoEcnDeliveryTest){
 TEST_F(IoFixture, IoUDPConnectTest){
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -6616,7 +6804,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -6864,9 +7052,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -6882,7 +7070,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -6893,6 +7083,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ по присоединённому сокету UDP не получен: опрос завершился, а отклик чтения не сработал";
 	}
@@ -7220,9 +7411,9 @@ TEST_F(IoFixture, IoUDSTest){
 		awh::engine::timer::timeout(sid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(sid, awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(sid));
-		// Выполняем прослушивание сервера
+		// Объявляем сервер слушающим
 		ASSERT_TRUE(awh::engine::io::listen(sid, 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(sid));
@@ -7466,9 +7657,9 @@ TEST_F(IoFixture, IoUDSTest){
 		awh::engine::timer::timeout(cid, awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(cid, awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(cid));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -7484,7 +7675,9 @@ TEST_F(IoFixture, IoUDSTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -7495,6 +7688,7 @@ TEST_F(IoFixture, IoUDSTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ по сокету домена UNIX не получен: опрос завершился, а отклик чтения не сработал";
 	}
@@ -7562,7 +7756,7 @@ TEST_F(IoFixture, IoUDSAbstractTest){
 					awh::engine::io::send(eid, data, size);
 				}));
 			}));
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(sid));
 			// Переводим событие сервера в прослушивание
 			ASSERT_TRUE(awh::engine::io::listen(sid, 100));
@@ -7584,9 +7778,9 @@ TEST_F(IoFixture, IoUDSAbstractTest){
 			awh::engine::timer::timeout(cid, awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(cid, awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(cid));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(cid));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -7602,7 +7796,7 @@ TEST_F(IoFixture, IoUDSAbstractTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			/**
-			 * Выполняем опрос активных событий
+			 * Опрашиваем активные события
 			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__)){
 				// Отправляем сообщение серверу
@@ -8086,7 +8280,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		awh::engine::timer::timeout(sid, awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(sid, awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(sid));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(sid));
@@ -8330,9 +8524,9 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		awh::engine::timer::timeout(cid, awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(cid, awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(cid));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -8348,7 +8542,9 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -8359,6 +8555,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ по дейтаграммному сокету домена UNIX не получен: опрос завершился, а отклик чтения не сработал";
 	}
@@ -8388,7 +8585,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
  *
  */
 TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
-	// Выполняем инициализацию движка
+	// Инициализируем движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Название устройства, чей канальный адрес берётся для проверки
 	std::string iface;
@@ -8400,11 +8597,14 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
 	 * @warning Название задавать одно на все системы нельзя: у BSD и macOS петля
 	 *          зовётся `lo0`, у Linux `lo`, а у MS Windows названием служит строка
 	 *          вида `{GUID}`. Оттого имя берётся у самой системы по номеру
+	 *
 	 */
 	{
 		// Буфер под название устройства
 		char name[IF_NAMESIZE] = {0};
-		// Перебираем первые номера устройств, покуда какое-нибудь не отзовётся
+		/**
+		 * Перебираем первые номера устройств, покуда какое-нибудь не отзовётся
+		 */
 		for(uint32_t i = 1; (i <= 32) && iface.empty(); i++){
 			// Если устройство с таким номером в системе есть
 			if(::if_indextoname(i, name) != nullptr){
@@ -8427,12 +8627,14 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
 		awh::event::node_t::SERVER, awh::event::family_t::IPV6,
 		awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 	);
+	// Проверяем, что событие сокета заведено
 	ASSERT_GT(sid, 0u);
 	/**
 	 * Ставим узлу адрес канальной связи вместе с зоной
 	 *
 	 * @note Сам адрес взят из блока адресов канальной связи и никому не принадлежит:
 	 *       проверке нужен разбор записи с зоной, а не достижимость узла
+	 *
 	 */
 	const std::string address = std::string("fe80::1%") + iface;
 	// Движок обязан принять запись адреса с зоной
@@ -8442,6 +8644,7 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
 	std::unique_ptr <awh::net::addr_t> value = nullptr;
 	// Движок обязан отдать поставленный адрес обратно
 	ASSERT_TRUE(awh::engine::address::get(sid, awh::event::address_t::IPV6, value));
+	// Проверяем, что адрес отдан не пустым указателем
 	ASSERT_NE(nullptr, value);
 	// Отданный адрес обязан оказаться адресом IPv6
 	ASSERT_EQ(16u, value->size);
@@ -8451,6 +8654,7 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
 	 * @warning Утверждается именно РАВЕНСТВО номеру устройства, а не просто отличие
 	 *          от нуля: чужая зона так же дурна, как и её отсутствие, - привязка с
 	 *          нею уводит узел на другое устройство
+	 *
 	 */
 	ASSERT_EQ(index, awh_cast <awh::net::addr_net_ipv6_t *> (value.get())->zone)
 		<< "зона потерялась по пути к узлу: поставлено \"" << address
@@ -8470,9 +8674,10 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneTest){
  *
  * @note Виды узлов перебираются все четыре: ветвь у каждого своя, и закрытие
  *       одной о прочих не говорит ничего
+ *
  */
 TEST_F(IoFixture, IoNodeKeepsAddressZoneByObjectTest){
-	// Выполняем инициализацию движка
+	// Инициализируем движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Номер устройства, чья зона берётся для проверки
 	uint32_t index = 0;
@@ -8481,12 +8686,15 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneByObjectTest){
 	{
 		// Буфер под название устройства
 		char name[IF_NAMESIZE] = {0};
-		// Перебираем первые номера устройств, покуда какое-нибудь не отзовётся
+		/**
+		 * Перебираем первые номера устройств, покуда какое-нибудь не отзовётся
+		 */
 		for(uint32_t i = 1; (i <= 32) && iface.empty(); i++){
 			// Если устройство с таким номером в системе есть
 			if(::if_indextoname(i, name) != nullptr){
 				// Запоминаем название и номер найденного устройства
 				iface = name;
+				// Запоминаем номер найденного устройства
 				index = i;
 			}
 		}
@@ -8507,12 +8715,15 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneByObjectTest){
 			node, awh::event::family_t::IPV6,
 			awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
 		);
+		// Проверяем, что событие сокета заведено
 		ASSERT_GT(id, 0u);
 		// Собираем адрес канальной связи вместе с зоной
 		std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv6_t> ();
 		// Адрес взят из блока канальной связи и никому не принадлежит
 		awh_cast <awh::net::addr_net_ipv6_t *> (addr.get())->address[0] = 0xfe;
+		// Устанавливаем второй октет канального префикса
 		awh_cast <awh::net::addr_net_ipv6_t *> (addr.get())->address[1] = 0x80;
+		// Устанавливаем последний октет адреса узла
 		awh_cast <awh::net::addr_net_ipv6_t *> (addr.get())->address[15] = 0x01;
 		// Ставим зону номером найденного устройства
 		awh_cast <awh::net::addr_net_ipv6_t *> (addr.get())->zone = index;
@@ -8524,12 +8735,14 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneByObjectTest){
 		std::unique_ptr <awh::net::addr_t> value = nullptr;
 		// Движок обязан отдать поставленный адрес обратно
 		ASSERT_TRUE(awh::engine::address::get(id, awh::event::address_t::IPV6, value));
+		// Проверяем, что адрес отдан не пустым указателем
 		ASSERT_NE(nullptr, value);
 		/**
 		 * Зона обязана пережить дорогу через объектную перегрузку
 		 *
 		 * @warning Утверждается РАВЕНСТВО номеру: чужая зона так же дурна, как и её
 		 *          отсутствие, - привязка с нею уводит узел на другое устройство
+		 *
 		 */
 		ASSERT_EQ(index, awh_cast <awh::net::addr_net_ipv6_t *> (value.get())->zone)
 			<< "зона потерялась в объектной перегрузке setAddress: устройство "
@@ -8557,12 +8770,13 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 *          нему одному было бы зелено и при нулевой доставке: довольно, чтобы
 	 *          выбранный интерфейс оказался VPN, и проверка не проверяла бы НИЧЕГО,
 	 *          оставаясь зелёной на всякой такой машине
+	 *
 	 */
 	// Признак того, что широковещательная дейтаграмма ДОШЛА
 	bool delivered = false;
 	// Признак того, что проверка пропущена по свойству окружения
 	bool skipped = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
@@ -9013,7 +9227,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		});
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -9027,7 +9241,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Создаём объект работы с Ethernet
 		// Временный объект для извлечения сетевого интерфейса
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
-		// Выполняем извлечение сетевых параметров
+		// Извлекаем сетевые параметры
 		awh::eth::addr::fillSource(source);
 		// Если сетевой интерфейс не принадлежит к VPN
 		if(::memcmp("ut", source.iface.c_str(), 2) != 0){
@@ -9280,7 +9494,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -9307,11 +9521,12 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 *          запустить набор не из каталога сборки, как читается пустышка, данных
 	 *          не приходит вовсе и признак остановки не выставляется никогда. Стенд
 	 *          Windows ARM64 держал так шесть таких прогонов разом
+	 *
 	 */
 	{
 		// Время начала опроса событий
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем опрос событий, пока не получено ожидаемое либо не вышел срок
+		// Опрашиваем события, пока не получено ожидаемое либо не вышел срок
 		/**
 		 * Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос ждал бы
 		 * его без конца, и проверка не отказала бы, а зависла. Зависшая проверка неотличима
@@ -9320,13 +9535,15 @@ TEST_F(IoFixture, IoBroadcastTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
 	}
-	// Выполняем проверку того, что опрос завершён, а не оборван сроком
+	// Проверяем, что опрос завершён, а не оборван сроком
 	ASSERT_TRUE(stop);
 	/**
 	 * Если проверка пропущена по свойству окружения
@@ -9334,6 +9551,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 	 * @note Пропуск объявляется ПРОПУСКОМ, а не успехом: широковещание сквозь VPN-интерфейс
 	 *       не проходит по устройству сети, и вины движка в том нет. Прежде такой исход
 	 *       выглядел зелёной проверкой и был неотличим от настоящей доставки
+	 *
 	 */
 	if(skipped){
 		// Уничтожаем все события
@@ -9341,7 +9559,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Объявляем проверку пропущенной по свойству окружения
 		GTEST_SKIP() << "широковещание пропущено: выбран VPN-интерфейс";
 	}
-	// Выполняем проверку того, что широковещательная дейтаграмма ДОШЛА
+	// Проверяем, что широковещательная дейтаграмма ДОШЛА
 	ASSERT_TRUE(delivered) << "широковещательная дейтаграмма не доставлена";
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -9354,7 +9572,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие отслеживания файла
 	awh::event::id_t fid = awh::engine::io::event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
@@ -9819,7 +10037,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -9832,7 +10050,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
-		// Выполняем объединение двух сокетов
+		// Объединяем два сокета
 		ASSERT_TRUE(awh::engine::io::splice(fid, events[0]));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		awh::engine::io::on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -9989,7 +10207,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			awh::log::print("Событие подключения: ID=%u, результат: %s", awh::log::flag_t::INFO, eid, ok ? "YES" : "NO");
 			// Если подключение успешно
 			if(ok){
-				// Выполняем фиксацию события файла
+				// Фиксируем событие файла
 				EXPECT_TRUE(awh::engine::io::commit(fid));
 				// Устананавливаем опции события
 				EXPECT_TRUE(awh::engine::options::set(fid, awh::event::options::AUTO_FOLLOW));
@@ -10069,9 +10287,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -10087,7 +10305,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -10098,6 +10318,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "обмен через объединение сокетов не состоялся: опрос завершился, а отклик чтения не сработал";
 	}
@@ -10463,7 +10684,7 @@ TEST_F(IoFixture, IoFsTest){
 		});
 		// Устанавливаем путь к отслеживаемому каталогу
 		ASSERT_TRUE(awh::engine::address::set(did, awh::event::address_t::FS, "./"));
-		// Выполняем фиксацию настроек события каталога
+		// Фиксируем настройки события каталога
 		ASSERT_TRUE(awh::engine::io::commit(did));
 		// Запускаем событие каталога
 		ASSERT_TRUE(awh::engine::io::launch(did));
@@ -10706,7 +10927,7 @@ TEST_F(IoFixture, IoFsTest){
 		});
 		// Устанавливаем путь к отслеживаемому файлу
 		ASSERT_TRUE(awh::engine::address::set(fid, awh::event::address_t::FS, "./tmp.txt"));
-		// Выполняем фиксацию настроек события файла
+		// Фиксируем настройки события файла
 		ASSERT_TRUE(awh::engine::io::commit(fid));
 		// Устанавливаем опции события
 		ASSERT_TRUE(awh::engine::options::set(fid, awh::event::options::AUTO_FOLLOW));
@@ -10724,7 +10945,9 @@ TEST_F(IoFixture, IoFsTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -10735,6 +10958,7 @@ TEST_F(IoFixture, IoFsTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "событие изменения файла не пришло: опрос завершился, а отклик наблюдения не сработал";
 	}
@@ -10786,6 +11010,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 	 *       к полному виду, и вид этот зависит от рабочего каталога прогона. Сам
 	 *       путь проверяется отдельно - тем, что он оканчивается ожидаемым названием
 	 *       внутри отслеживаемого каталога
+	 *
 	 */
 	const std::set <std::string> expected = {
 		"CHANGE|FILE|a.txt",
@@ -10800,6 +11025,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 		 * @note Указывает она на несуществующее, и это намеренно: снятие статистики
 		 *       с переходом по ссылке на битой ссылке отказывает целиком, и запись
 		 *       не попадала в состав каталога вовсе - ни под каким видом узла
+		 *
 		 */
 		"CHANGE|LINK|c.lnk"
 	};
@@ -10845,6 +11071,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 	 * @note Шаги разнесены по времени намеренно: тогда всякое изменение приходит
 	 *       движку отдельным оповещением, и проверка сличает не только состав
 	 *       событий, но и то, что ни одно из них не потеряно по дороге
+	 *
 	 */
 	awh::engine::io::on(ticker, [&step, &dirname]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если сработал очередной шаг проверки
@@ -10855,31 +11082,31 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 			switch(++step){
 				// Заводим файл в отслеживаемом каталоге
 				case 1: {
-					// Выполняем создание файла
+					// Создаём файл
 					FILE * file = ::fopen((dirname + "/a.txt").c_str(), "wb");
 					// Если файл заведён, закрываем его
 					if(file != nullptr)
-						// Выполняем закрытие файла
+						// Закрываем файл
 						::fclose(file);
 				} break;
 				// Заводим подкаталог в отслеживаемом каталоге
 				case 2:
-					// Выполняем создание подкаталога
+					// Создаём подкаталог
 					::mkdir((dirname + "/sub").c_str(), 0755);
 				break;
 				// Переносим файл под другим именем
 				case 3:
-					// Выполняем перенос файла
+					// Переносим файл
 					::rename((dirname + "/a.txt").c_str(), (dirname + "/b.txt").c_str());
 				break;
 				// Удаляем файл
 				case 4:
-					// Выполняем удаление файла
+					// Удаляем файл
 					::unlink((dirname + "/b.txt").c_str());
 				break;
 				// Удаляем подкаталог
 				case 5:
-					// Выполняем удаление подкаталога
+					// Удаляем подкаталог
 					::rmdir((dirname + "/sub").c_str());
 				break;
 				/**
@@ -10887,9 +11114,10 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 				 *
 				 * @note Цель у ссылки отсутствует намеренно: движок обязан отдать
 				 *       САМУ запись видом узла LINK, а не то, на что она указывает
+				 *
 				 */
 				case 6:
-					// Выполняем создание символической ссылки
+					// Создаём символическую ссылку
 					::symlink("nowhere.txt", (dirname + "/c.lnk").c_str());
 				break;
 			}
@@ -10925,7 +11153,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 			// Прочие виды проверку не занимают
 			default: return;
 		}
-		// Выполняем поиск последнего разделителя в пути записи
+		// Ищем последний разделитель в пути записи
 		const size_t pos = path.rfind('/');
 		// Если разделитель в пути не найден, событие проверку не занимает
 		if(pos == std::string::npos)
@@ -10945,6 +11173,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 		 *
 		 * @note Отбор по ожидаемым скрыл бы от разбора отказа то, что движок отдал
 		 *       на самом деле, - а именно это и нужно знать, когда событие не сошлось
+		 *
 		 */
 		collected.emplace(signature);
 		// Если все ожидаемые события собраны, останавливаем проверку
@@ -10952,11 +11181,11 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 			// Останавливаем проверку
 			stop = true;
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(did));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	ASSERT_TRUE(awh::engine::io::commit(ticker));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(did));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
 	ASSERT_TRUE(awh::engine::io::launch(ticker));
@@ -10971,7 +11200,9 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -11005,7 +11236,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
 }
-#endif // !(_WIN32 || _WIN64)
+#endif
 
 /**
  * Проверка событий записей каталога для MS Windows
@@ -11082,6 +11313,7 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 	std::set <awh::event::id_t> received;
 	// Слушающий сокет, через который заводятся пары
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что слушающий сокет заведён
 	ASSERT_GT(listener, 0);
 	// Адрес, на котором слушающий сокет будет ожидать подключения
 	struct sockaddr_in host{};
@@ -11090,16 +11322,22 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 	 * MS Windows его нет вовсе, а нужным оно не является нигде
 	 */
 	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		// Устанавливаем длину записи адреса BSD-систем
 		host.sin_len = sizeof(host);
 	#endif
+	// Устанавливаем семейство адресов слушающего сокета
 	host.sin_family = AF_INET;
+	// Устанавливаем порт, выдаваемый системой
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушающий сокет к адресу петли
 	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
 	// Длина записи адреса, которую вернёт опрос имени сокета
 	socklen_t length = sizeof(host);
+	// Получаем адрес, выданный слушающему сокету системой
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	ASSERT_EQ(0, ::listen(listener, COUNT));
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заведённые события клиентов
 	std::vector <awh::event::id_t> clients;
@@ -11114,7 +11352,9 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 			awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 			awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 		);
+		// Проверяем, что событие клиента заведено
 		ASSERT_GT(eid, 0u);
+		// Устанавливаем опции события клиента
 		ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 		ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
 		ASSERT_TRUE(awh::engine::target::port::set(eid, ntohs(host.sin_port)));
@@ -11125,6 +11365,7 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 				received.emplace(eid);
 			}
 		));
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(eid));
 		ASSERT_TRUE(awh::engine::io::connect(eid));
 		ASSERT_TRUE(awh::engine::io::launch(eid));
@@ -11137,12 +11378,16 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 		 *
 		 * @note Приём идёт сырым обращением, а не событием движка: проверяется здесь
 		 *       разбор готовностей, а не приём подключений
+		 *
 		 */
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+		/**
+		 * Опрашиваем ядро, покуда не придут все подключения или не выйдет срок
+		 */
 		while((peers.size() < COUNT) && (std::chrono::steady_clock::now() < deadline)){
-			// Выполняем оборот опроса, чтобы подключения ушли ядру
+			// Опрашиваем события, чтобы подключения ушли ядру
 			awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
-			// Выполняем приём очередного подключения
+			// Принимаем очередное подключение
 			const int32_t peer = ::accept(listener, nullptr, nullptr);
 			// Если подключение принято, запоминаем встречную сторону
 			if(peer > 0)
@@ -11152,12 +11397,14 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 	}
 	// Роспись опыта, выводимая при отказе
 	std::string sign = std::string("пар=") + std::to_string(peers.size());
+	// Проверяем, что приняты все подключения пар
 	ASSERT_EQ(peers.size(), static_cast <size_t> (COUNT)) << sign;
 	/**
 	 * Шлём со всех встречных сторон разом
 	 *
 	 * @note Опроса между отправками нет намеренно: готовности обязаны прийти одним
 	 *       забором завершений, чтобы разбор упёрся в предел записей оборота
+	 *
 	 */
 	for(const auto & peer : peers)
 		// Отправляем сообщение встречной стороной
@@ -11165,20 +11412,27 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 	{
 		// Срок, за который все сообщения обязаны быть принятыми
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий, пока все сообщения не приняты
+		/**
+		 * Опрашиваем активные события, пока все сообщения не приняты
+		 */
 		while((received.size() < COUNT) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	}
 	// Дополняем роспись опыта итогом приёма
 	sign.append(" принято=").append(std::to_string(received.size())).append(" из ").append(std::to_string(COUNT));
-	// Закрываем сырые встречные стороны
+	/**
+	 * Закрываем сырые встречные стороны
+	 */
 	for(const auto & peer : peers)
 		// Закрываем встречную сторону
 		::closesocket(peer);
 	::closesocket(listener);
-	// Уничтожаем заведённые события
+	/**
+	 * Уничтожаем заведённые события
+	 */
 	for(const auto & eid : clients)
 		// Уничтожаем событие клиента
 		awh::engine::io::destroy(eid);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 	// Всякое событие обязано принять своё сообщение
 	ASSERT_EQ(received.size(), static_cast <size_t> (COUNT)) << sign;
@@ -11191,7 +11445,9 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 	const std::string dirname = ".\\dirburst";
 	// Собранные названия появившихся записей
 	std::set <std::string> collected;
-	// Удаляем остатки от предыдущего запуска
+	/**
+	 * Удаляем остатки от предыдущего запуска
+	 */
 	for(uint16_t index = 0; index < COUNT; index++)
 		// Удаляем запись каталога
 		::unlink((dirname + "\\f" + std::to_string(index) + ".txt").c_str());
@@ -11200,6 +11456,7 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 	ASSERT_EQ(::mkdir(dirname.c_str()), 0);
 	// Добавляем событие отслеживания каталога
 	const awh::event::id_t did = awh::engine::io::event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
+	// Проверяем, что событие отслеживания каталога заведено
 	ASSERT_GT(did, 0u);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -11211,7 +11468,7 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 		if(action != awh::event::action_t::CHANGE)
 			// Выходим из функции обратного вызова
 			return;
-		// Выполняем поиск последнего разделителя в пути записи
+		// Ищем последний разделитель в пути записи
 		const size_t pos = path.rfind('\\');
 		// Если разделитель в пути не найден, событие проверку не занимает
 		if(pos == std::string::npos)
@@ -11224,6 +11481,7 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 		 *
 		 * @note Наблюдение сообщает и о самом отслеживаемом каталоге - его изменение и
 		 *       есть появление в нём записей, - а считаем мы здесь только заведённое
+		 *
 		 */
 		if((name.length() < 5) || (name.compare(name.length() - 4, 4, ".txt") != 0))
 			// Выходим из функции обратного вызова
@@ -11231,16 +11489,17 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 		// Запоминаем название появившейся записи
 		collected.emplace(name);
 	});
-	// Выполняем фиксацию настроек события
+	// Фиксируем настройки события
 	ASSERT_TRUE(awh::engine::io::commit(did));
-	// Выполняем запуск события
+	// Запускаем событие
 	ASSERT_TRUE(awh::engine::io::launch(did));
-	// Выполняем один оборот опроса: подписка обязана уйти ядру до всплеска
+	// Опрашиваем события одним оборотом: подписка обязана уйти ядру до всплеска
 	awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	/**
 	 * Заводим все записи каталога одним всплеском
 	 *
 	 * @note Опроса между ними нет намеренно: извещения обязаны прийти одним завершением
+	 *
 	 */
 	for(uint16_t index = 0; index < COUNT; index++){
 		// Заводим очередную запись каталога
@@ -11256,9 +11515,12 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 		 *
 		 * @note Каталог после всплеска не трогается: выдача остатка обязана идти сама -
 		 *       оборотами опроса, а не приходом нового извещения
+		 *
 		 */
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-		// Выполняем опрос активных событий, пока все записи не собраны
+		/**
+		 * Опрашиваем активные события, пока все записи не собраны
+		 */
 		while((collected.size() < COUNT) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	}
 	// Роспись опыта, выводимая при отказе
@@ -11266,7 +11528,9 @@ TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
 		" собрано=" + std::to_string(collected.size());
 	// Уничтожаем заведённое событие
 	ASSERT_TRUE(awh::engine::io::deinitialize());
-	// Удаляем остатки отслеживаемого каталога
+	/**
+	 * Удаляем остатки отслеживаемого каталога
+	 */
 	for(uint16_t index = 0; index < COUNT; index++)
 		// Удаляем запись каталога
 		::unlink((dirname + "\\f" + std::to_string(index) + ".txt").c_str());
@@ -11293,6 +11557,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	 *       к полному виду, и вид этот зависит от рабочего каталога прогона. Сам
 	 *       путь проверяется отдельно - тем, что он оканчивается ожидаемым названием
 	 *       внутри отслеживаемого каталога
+	 *
 	 */
 	const std::set <std::string> expected = {
 		"CHANGE|FILE|a.txt",
@@ -11343,6 +11608,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	 * @note Шаги разнесены по времени намеренно: тогда всякое изменение приходит
 	 *       движку отдельным оповещением, и проверка сличает не только состав
 	 *       событий, но и то, что ни одно из них не потеряно по дороге
+	 *
 	 */
 	awh::engine::io::on(ticker, [&step, &dirname]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если сработал очередной шаг проверки
@@ -11353,31 +11619,31 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 			switch(++step){
 				// Заводим файл в отслеживаемом каталоге
 				case 1: {
-					// Выполняем создание файла
+					// Создаём файл
 					FILE * file = ::fopen((dirname + "\\a.txt").c_str(), "wb");
 					// Если файл заведён, закрываем его
 					if(file != nullptr)
-						// Выполняем закрытие файла
+						// Закрываем файл
 						::fclose(file);
 				} break;
 				// Заводим подкаталог в отслеживаемом каталоге
 				case 2:
-					// Выполняем создание подкаталога
+					// Создаём подкаталог
 					::mkdir((dirname + "\\sub").c_str());
 				break;
 				// Переносим файл под другим именем
 				case 3:
-					// Выполняем перенос файла
+					// Переносим файл
 					::rename((dirname + "\\a.txt").c_str(), (dirname + "\\b.txt").c_str());
 				break;
 				// Удаляем файл
 				case 4:
-					// Выполняем удаление файла
+					// Удаляем файл
 					::unlink((dirname + "\\b.txt").c_str());
 				break;
 				// Удаляем подкаталог
 				case 5:
-					// Выполняем удаление подкаталога
+					// Удаляем подкаталог
 					::rmdir((dirname + "\\sub").c_str());
 				break;
 			}
@@ -11411,7 +11677,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 			// Прочие виды проверку не занимают
 			default: return;
 		}
-		// Выполняем поиск последнего разделителя в пути записи
+		// Ищем последний разделитель в пути записи
 		const size_t pos = path.rfind('\\');
 		// Если разделитель в пути не найден, событие проверку не занимает
 		if(pos == std::string::npos)
@@ -11431,6 +11697,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 		 *
 		 * @note Отбор по ожидаемым скрыл бы от разбора отказа то, что движок отдал
 		 *       на самом деле, - а именно это и нужно знать, когда событие не сошлось
+		 *
 		 */
 		collected.emplace(signature);
 		// Если все ожидаемые события собраны, останавливаем проверку
@@ -11438,11 +11705,11 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 			// Останавливаем проверку
 			stop = true;
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(did));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	ASSERT_TRUE(awh::engine::io::commit(ticker));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(did));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
 	ASSERT_TRUE(awh::engine::io::launch(ticker));
@@ -11457,7 +11724,9 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -11490,7 +11759,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
 }
-#endif // _WIN32 || _WIN64
+#endif
 
 /**
  * Проверка столкновения имён - только для систем POSIX
@@ -11501,6 +11770,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
  *       не заведётся, и клиентский узел дейтаграммного UNIX-домена тоже. Вдобавок
  *       `sockaddr_un` объявлен у MinGW не в `sys/un.h`, а в `<afunix.h>`, и без
  *       ограды цель `awh_UNITTEST_net` не собиралась там вовсе
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 /**
@@ -11516,6 +11786,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
  * @note Проверка написана по общей находке подбора имени (движки POSIX, коммит
  *       8c7efaf5c); тело её не менялось ни строкой, добавлена только эта ограда. Сама
  *       правка в моём движке внесена и живёт своей жизнью
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 /**
@@ -11581,6 +11852,7 @@ TEST_F(IoFixture, IoUnixClientNameCollisionTest){
 	 *
 	 * @note Прежде отказ привязки уводил подбор в бесконечное вращение по всякой
 	 *       причине, кроме занятости; занятость же обходилась сносом чужого файла
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::commit(cid));
 	// Объект сведений о занятом файле
@@ -11608,8 +11880,8 @@ TEST_F(IoFixture, IoUnixClientNameCollisionTest){
 	::unlink(::uds("cid2_awh-collide.sock").c_str());
 	::unlink(target.c_str());
 }
-#endif // !(_WIN32 || _WIN64)
-#endif // !(_WIN32 || _WIN64)
+#endif
+#endif
 
 /**
  * @brief Тест приёма нескольких подключений одним UNIX-доменным сервером
@@ -11659,7 +11931,7 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 			stop = true;
 		}
 	});
-	// Выполняем фиксацию настроек ограничителя времени
+	// Фиксируем настройки ограничителя времени
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	// Запускаем ограничитель времени
 	ASSERT_TRUE(awh::engine::io::launch(guard));
@@ -11680,9 +11952,9 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 				// Останавливаем проверку: все подключения приняты
 				stop = true;
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(sid));
-		// Выполняем прослушивание UNIX-доменного сокета
+		// Объявляем UNIX-доменный сокет слушающим
 		ASSERT_TRUE(awh::engine::io::listen(sid, 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(sid));
@@ -11693,6 +11965,7 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 	 * @note Подключения заводятся все разом, до первого оборота цикла: тогда они
 	 *       приходят серверу подряд, а не по одному за оборот, - именно тот случай,
 	 *       ради которого приём и подаётся многократным
+	 *
 	 */
 	for(uint16_t i = 0; i < expected; i++){
 		// Добавляем событие клиента
@@ -11705,9 +11978,9 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 		ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адрес UNIX-доменного сокета сервера
 		ASSERT_TRUE(awh::engine::target::set(cid, socketPath));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(cid));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -11723,7 +11996,9 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -11770,15 +12045,15 @@ TEST_F(IoFixture, IoFsFollowTest){
 	 *
 	 */
 	auto store = [&filename](const std::string & data, const char * mode) noexcept -> bool {
-		// Выполняем открытие файла на запись
+		// Открываем файл на запись
 		FILE * file = ::fopen(filename.c_str(), mode);
 		// Если файл открыть не удалось
 		if(file == nullptr)
 			// Выводим отрицательный результат
 			return false;
-		// Выполняем запись данных в файл
+		// Записываем данные в файл
 		const size_t size = ::fwrite(data.data(), sizeof(char), data.size(), file);
-		// Выполняем закрытие файла
+		// Закрываем файл
 		::fclose(file);
 		// Выводим результат записи
 		return (size == data.size());
@@ -11805,7 +12080,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Устанавливаем путь к отслеживаемому файлу
 	ASSERT_TRUE(awh::engine::address::set(fid, awh::event::address_t::FS, filename));
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(fid));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	ASSERT_TRUE(awh::engine::io::commit(starter));
@@ -11825,7 +12100,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 	awh::engine::io::on(starter, [&store]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло, записываем в файл первую порцию данных
 		if(status == awh::event::status_t::SUCCESS)
-			// Выполняем запись первой порции данных в файл
+			// Записываем первую порцию данных в файл
 			store("AAA", "ab");
 	});
 	// Устанавливаем функцию обратного вызова на чтение из события
@@ -11838,7 +12113,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 		switch(chunks.size()){
 			// Если прочитана первая порция данных, дописываем вторую
 			case 1:
-				// Выполняем дописывание второй порции данных в файл
+				// Дописываем вторую порцию данных в файл
 				store("BBBB", "ab");
 			break;
 			// Если прочитана вторая порция данных, перезаписываем файл заново
@@ -11848,7 +12123,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 				 * перезапись неотличима от отсутствия изменений и чтение не начнётся
 				 */
 				std::this_thread::sleep_for(std::chrono::milliseconds(1100));
-				// Выполняем перезапись файла более короткими данными
+				// Перезаписываем файл более короткими данными
 				store("CC", "wb");
 			} break;
 			// Если прочитана третья порция данных, останавливаем проверку
@@ -11857,7 +12132,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 				stop = true;
 		}
 	});
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(fid));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
 	ASSERT_TRUE(awh::engine::io::launch(starter));
@@ -11872,7 +12147,9 @@ TEST_F(IoFixture, IoFsFollowTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -11929,12 +12206,13 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	 *       странице системы, и `fopen` завёл бы файл с искажённым названием - иной,
 	 *       нежели откроет движок. Проверка тогда падала бы не по дефекту движка, а
 	 *       по дефекту самой проверки
+	 *
 	 */
 	// Удаляем файл, оставшийся от предыдущего запуска
 	if(awh::fs::type(filename) != awh::fs::type_t::NONE)
-		// Выполняем удаление отслеживаемого файла
+		// Удаляем отслеживаемый файл
 		awh::fs::unlink(filename);
-	// Выполняем заведение отслеживаемого файла с содержимым
+	// Заводим отслеживаемый файл с содержимым
 	awh::fs::write(filename, content.c_str());
 	// Файл обязан завестись
 	ASSERT_EQ(awh::fs::type(filename), awh::fs::type_t::FILE);
@@ -11957,6 +12235,7 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	 * @note Файл заведён с содержимым, и чтение его выполняется уже фиксацией:
 	 *       поставь мы функцию обратного вызова после неё - прочитанное было бы
 	 *       некому отдать
+	 *
 	 */
 	// Устанавливаем функцию обратного вызова на превышение времени ожидания
 	awh::engine::io::on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -11975,10 +12254,10 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 		// Останавливаем проверку
 		stop = true;
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(fid));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(fid));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
 	/**
@@ -11992,7 +12271,9 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -12038,7 +12319,7 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	const std::string child = (dirname + "/child.txt");
 	// Удаляем каталог, оставшийся от предыдущего запуска
 	if(awh::fs::type(dirname) != awh::fs::type_t::NONE)
-		// Выполняем удаление наблюдаемого каталога
+		// Удаляем наблюдаемый каталог
 		awh::fs::unlink(dirname);
 	// Заводим наблюдаемый каталог
 	ASSERT_TRUE(awh::fs::mkdir(dirname));
@@ -12109,12 +12390,12 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 			stop = (dirChanged && fileDeleted);
 		}
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(did));
 	ASSERT_TRUE(awh::engine::io::commit(fid));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	ASSERT_TRUE(awh::engine::io::commit(starter));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(did));
 	ASSERT_TRUE(awh::engine::io::launch(fid));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
@@ -12130,7 +12411,9 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -12141,7 +12424,7 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 	awh::fs::unlink(dirname);
 	// Удаляем наблюдаемый файл, если он уцелел
 	if(awh::fs::type(filename) != awh::fs::type_t::NONE)
-		// Выполняем удаление наблюдаемого файла
+		// Удаляем наблюдаемый файл
 		awh::fs::unlink(filename);
 	// Проверяем что проверка завершилась не по превышению времени ожидания
 	ASSERT_FALSE(expired);
@@ -12186,11 +12469,13 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	const std::string before = "./foreign_before.txt";
 	// Путь к посторонней записи после переноса
 	const std::string after = "./foreign_after.txt";
-	// Удаляем остатки от предыдущего запуска
+	/**
+	 * Удаляем остатки от предыдущего запуска
+	 */
 	for(const auto & path : {filename, before, after}){
 		// Если запись файловой системы уцелела от предыдущего запуска
 		if(awh::fs::type(path) != awh::fs::type_t::NONE)
-			// Выполняем удаление записи файловой системы
+			// Удаляем запись файловой системы
 			awh::fs::unlink(path);
 	}
 	// Заводим наблюдаемый файл
@@ -12218,6 +12503,7 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	 *
 	 * @note Перенос и правка разнесены по времени намеренно: правка обязана прийти
 	 *       ПОСЛЕ чужого переноса, иначе проверка сойдётся и при оборванном наблюдении
+	 *
 	 */
 	awh::engine::timer::timeout(mover, awh::event::action_t::NONE, 300);
 	awh::engine::timer::timeout(writer, awh::event::action_t::NONE, 900);
@@ -12241,7 +12527,7 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	awh::engine::io::on(mover, [&before, &after]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
 		if(status == awh::event::status_t::SUCCESS)
-			// Выполняем перенос посторонней записи по соседству с наблюдаемым файлом
+			// Переносим постороннюю запись по соседству с наблюдаемым файлом
 			::rename(before.c_str(), after.c_str());
 	});
 	/**
@@ -12252,11 +12538,12 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	 *       чужой описатель объекту этому не помеха. Под MS Windows было именно так -
 	 *       дозапись уходила мимо файла молча, - и закреплено это отдельной проверкой
 	 *       `SharedOpenFileTest` в наборе `sys`
+	 *
 	 */
 	awh::engine::io::on(writer, [&filename]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Если время ожидания истекло
 		if(status == awh::event::status_t::SUCCESS)
-			// Выполняем правку наблюдаемого файла
+			// Правим наблюдаемый файл
 			awh::fs::append(filename, "CCC");
 	});
 	// Устанавливаем функцию обратного вызова на изменение наблюдаемого файла
@@ -12277,6 +12564,7 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 			 *
 			 * @note Ровно это и означал бы дефект: чужой перенос принят за судьбу самого
 			 *       наблюдаемого узла, и событие уничтожено
+			 *
 			 */
 			case static_cast <uint8_t> (awh::event::action_t::DELETE): {
 				// Запоминаем уничтожение наблюдения за файлом
@@ -12286,12 +12574,12 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 			} break;
 		}
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(fid));
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	ASSERT_TRUE(awh::engine::io::commit(mover));
 	ASSERT_TRUE(awh::engine::io::commit(writer));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(fid));
 	ASSERT_TRUE(awh::engine::io::launch(guard));
 	ASSERT_TRUE(awh::engine::io::launch(mover));
@@ -12307,18 +12595,22 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(awh::engine::io::deinitialize());
-	// Удаляем остатки проверки
+	/**
+	 * Удаляем остатки проверки
+	 */
 	for(const auto & path : {filename, before, after}){
 		// Если запись файловой системы уцелела
 		if(awh::fs::type(path) != awh::fs::type_t::NONE)
-			// Выполняем удаление записи файловой системы
+			// Удаляем запись файловой системы
 			awh::fs::unlink(path);
 	}
 	// Проверяем что чужой перенос наблюдения не оборвал
@@ -12388,6 +12680,10 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
  *
  */
 #if defined(_WIN32) || defined(_WIN64)
+/**
+ * @brief Тест опроса событий внутри волокна
+ *
+ */
 TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
 	// Признак того, что отклик позвался внутри волокна
 	bool inside = false;
@@ -12401,7 +12697,7 @@ TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
 	awh::engine::timer::timeout(interval, awh::event::action_t::NONE, 50);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
-	// Выполняем фиксацию настроек события
+	// Фиксируем настройки события
 	ASSERT_TRUE(awh::engine::io::commit(interval));
 	// Устанавливаем функцию обратного вызова на событие интервала
 	awh::engine::io::on(interval, [&inside, &fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -12413,11 +12709,13 @@ TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
 			inside = (awh::fiber::current() != nullptr);
 		}
 	});
-	// Выполняем запуск события
+	// Запускаем событие
 	ASSERT_TRUE(awh::engine::io::launch(interval));
 	// Запоминаем время начала опроса событий
 	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(5));
-	// Выполняем опрос событий до первого срабатывания отклика
+	/**
+	 * Опрашиваем события до первого срабатывания отклика
+	 */
 	while((fired < 1) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Отклик обязан был сработать, иначе проверка ничего не проверяет
 	ASSERT_GT(fired, 0u) << "отклик не сработал - проверка стала холостой";
@@ -12455,13 +12753,16 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	const std::string message = "AWH direct recv on blocking socket";
 	// Получаем пару событий для обмена по протоколу TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-	// Выполняем проверку, что события созданы
+	/**
+	 * Проверяем, что события созданы
+	 */
 	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что событие заведено
 		ASSERT_GT(events[i], 0u);
 	// Устанавливаем порт назначения клиенту и порт источника серверу
 	ASSERT_TRUE(awh::engine::target::port::set(events[0], listenPort));
 	ASSERT_TRUE(awh::engine::source::port::set(events[1], listenPort));
-	// Выполняем инициализацию движка
+	// Инициализируем движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Признаки узлов НАМЕРЕННО без `NO_IO_BLOCK`: сокеты остаются блокирующими,
@@ -12472,7 +12773,11 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 		awh::event::options::REUSE_ADDR | awh::event::options::CLOSE_ON_EXEC |
 		awh::event::options::TCP_NO_DELAY
 	);
+	/**
+	 * Устанавливаем набор опций обоим событиям проверки
+	 */
 	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции события
 		ASSERT_TRUE(awh::engine::options::set(events[i], options));
 	// Устанавливаем адрес прослушивания серверу
 	ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
@@ -12488,7 +12793,7 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 			delivered.store(true);
 		});
 	}));
-	// Выполняем закрепление настроек сервера и его запуск
+	// Закрепляем настройки сервера и запускаем его
 	ASSERT_TRUE(awh::engine::io::commit(events[1]));
 	ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 	ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -12499,16 +12804,18 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	awh::engine::io::on(events[0], static_cast <awh::engine::callback::connect_t> ([&message](const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Если подключение удалось, отправляем сообщение серверу
 		if(ok)
-			// Выполняем отправку сообщения серверу
+			// Отправляем сообщение серверу
 			awh::engine::io::send(eid, message.c_str(), message.size());
 	}));
-	// Выполняем закрепление настроек клиента, подключение и запуск
+	// Закрепляем настройки клиента, подключаем и запускаем его
 	ASSERT_TRUE(awh::engine::io::commit(events[0]));
 	ASSERT_TRUE(awh::engine::io::connect(events[0]));
 	ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	// Определяем срок ожидания доставки
 	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(10));
-	// Выполняем опрос событий до доставки данных серверу
+	/**
+	 * Опрашиваем события до доставки данных серверу
+	 */
 	while(!delivered.load() && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Данные обязаны были дойти, иначе проверка ничего не проверяет
 	ASSERT_TRUE(delivered.load()) << "данные до сервера не дошли - проверка стала холостой";
@@ -12521,6 +12828,7 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	 *       Отрицательный ответ сам по себе дефектом НЕ является - данных к этому
 	 *       мигу может и не быть. Дефектом был бы отказ по `EAGAIN` на сокете,
 	 *       заведённом блокирующим, и его ловит утверждение о журнале ниже
+	 *
 	 */
 	/**
 	 * Ставим узлу срок ожидания приёма
@@ -12528,11 +12836,12 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	 * @note Срок этот движок отсчитывает САМ - так и записано в договоре `engine.hpp`,
 	 *       и настройкой `SO_RCVTIMEO` он не является. Проверкой выясняется, кроет
 	 *       ли он прямое чтение по требованию или только разбор по готовности
+	 *
 	 */
 	awh::engine::timer::timeout(accession.load(), awh::event::action_t::READ, 2000);
 	// Запоминаем время захода в прямое чтение
 	const auto entered = std::chrono::steady_clock::now();
-	// Выполняем прямое чтение узла
+	// Читаем узел напрямую
 	accepted.store(awh::engine::io::recv(accession.load()));
 	// Считаем, сколько прямое чтение занимало
 	const auto spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - entered).count();
@@ -12542,12 +12851,15 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	 * @note Утверждается здесь не удача чтения, а САМ ВОЗВРАТ: данных к этому мигу
 	 *       может и не быть, и отрицательный ответ законен. Незаконно бессрочное
 	 *       ожидание при выставленном сроке - тогда обещание системы не работает
+	 *
 	 */
 	ASSERT_LT(spent, 6000) << "прямое чтение не вернулось за выставленный срок в 2000 мс (потрачено "
 		<< spent << " мс): срок ожидания приёма на этом пути не действует";
-
-	// Сносим заведённые узлы
+	/**
+	 * Сносим заведённые узлы
+	 */
 	for(uint8_t i = 0; i < 2; i++)
+		// Уничтожаем событие
 		awh::engine::io::destroy(events[i]);
 }
 
@@ -12576,7 +12888,7 @@ TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 	const awh::event::id_t eid = awh::engine::io::event(awh::event::node_t::NOTIFY, awh::event::family_t::USER);
 	// Узел обязан завестись
 	ASSERT_GT(eid, 0u);
-	// Выполняем инициализацию движка
+	// Инициализируем движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Наибольшая достигнутая глубина возвратного захода
 	size_t reached = 0;
@@ -12589,10 +12901,10 @@ TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::write_t> ([ &reached](const awh::event::id_t eid, [[maybe_unused]] const size_t size) noexcept -> void {
 		// Запоминаем достигнутую глубину
 		reached++;
-		// Выполняем долив очереди прямо из отклика
+		// Доливаем очередь прямо из отклика
 		awh::engine::io::send(eid, PAYLOAD, ::strlen(PAYLOAD));
 	}));
-	// Выполняем первую отправку: она и заводит возвратность
+	// Отправляем первую порцию: она и заводит возвратность
 	awh::engine::io::send(eid, PAYLOAD, ::strlen(PAYLOAD));
 	// Возвратность обязана была случиться, иначе проверка ничего не проверяет
 	ASSERT_GT(reached, 1u) << "отклик записи не позвался возвратно - путь возвратности исчез, и проверка стала холостой";
@@ -12602,7 +12914,9 @@ TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 	{
 		// Признак найденного доклада о возвратном заходе
 		bool reported = false;
-		// Выполняем перебор всех пойманных записей
+		/**
+		 * Перебираем все пойманные записи
+		 */
 		for(const auto & item : * critical){
 			// Если запись сообщает о возвратном заходе в отправку
 			if(item.find("re-entered") != std::string::npos){
@@ -12842,7 +13156,7 @@ TEST_F(IoFixture, IoEventsTest){
 			break;
 		}
 	});
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	// Запускаем событие пользователя
 	ASSERT_TRUE(awh::engine::io::launch(eid));
@@ -12877,7 +13191,9 @@ TEST_F(IoFixture, IoEventsTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -12890,12 +13206,13 @@ TEST_F(IoFixture, IoEventsTest){
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка
 		 *          написана: сообщение прошло через пользовательское событие и
 		 *          дошло до отклика чтения
+		 *
 		 */
 		EXPECT_TRUE(stop) << "сообщение через пользовательское событие не дошло: опрос завершился, а отклик чтения не сработал";
 	}
 	// Дожидаемся завершения дочернего потока уведомления события
 	if(notifier.joinable())
-		// Выполняем присоединение дочернего потока
+		// Присоединяем дочерний поток
 		notifier.join();
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -12909,6 +13226,7 @@ TEST_F(IoFixture, IoEventsTest){
  *       заодно там, где передача проходит: на стенде MS Windows она проходит, и
  *       рассылка доходит. Теперь проверка утверждает доставку, а на сети, её не
  *       пропускающей, пропускается сроком с указанием причины
+ *
  */
 TEST_F(IoFixture, IoMulticast1Test){
 	/**
@@ -12918,7 +13236,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 */
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
@@ -12952,7 +13270,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::multicast::membership(events[1], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0"));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		awh::engine::io::on(events[1], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -13397,7 +13715,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 				break;
 			}
 		});
-		// Выполняем запуск события
+		// Запускаем событие
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
 	}
 	/**
@@ -13414,7 +13732,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		ASSERT_TRUE(awh::engine::target::set(events[0], "239.255.1.1"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::multicast::membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0"));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		awh::engine::io::on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -13624,7 +13942,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 				break;
 			}
 		});
-		// Выполняем запуск события
+		// Запускаем событие
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 		// Формируем отправляемое сообщение
 		const std::string & message = "Hello World!!!";
@@ -13643,11 +13961,14 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 *          не проходит (замер на FreeBSD: 2 отказа из 8 прогонов набора, тогда как
 	 *          в одиночку проверка проходит за 9 мс). Отказывать тут нечему: недоставку
 	 *          рассылки решает место прогона, а не движок
+	 *
 	 */
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	}
 	/**
@@ -13660,6 +13981,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 *
 	 * @note Пропуск этот заменил собой отключение проверки именем: отключённая проверка
 	 *       молчит и там, где передача проходит, - на стенде MS Windows она проходит
+	 *
 	 */
 	if(!stop){
 		// Уничтожаем все события: пропуск прекращает проверку немедленно
@@ -13677,6 +13999,7 @@ TEST_F(IoFixture, IoMulticast1Test){
  * @note Тест отключён: многоадресная передача требует, чтобы её пропускал
  *       сетевой интерфейс, а через VPN она не проходит вовсе, поэтому
  *       результат прогона зависит от того, где он выполняется, а не от кода
+ *
  */
 /**
  * @brief Проверка того, что отказ вступления в группу не гасит работающее событие
@@ -13692,7 +14015,7 @@ TEST_F(IoFixture, IoMulticast1Test){
  *
  */
 TEST_F(IoFixture, IoMulticastMembershipAfterCommitTest){
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
@@ -13712,18 +14035,19 @@ TEST_F(IoFixture, IoMulticastMembershipAfterCommitTest){
 	ASSERT_TRUE(awh::engine::delivery::set(events[0], awh::event::delivery_mode_t::MULTICAST));
 	// Устанавливаем опции события
 	ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
-	// Выполняем фиксацию настроек события клиента
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(events[0]));
 	// Запоминаем состояние события до вступления в группу
 	const awh::event::status_t before = awh::engine::io::status(events[0]);
 	// Проверяем, что событие не числится незапущенным до вступления в группу
 	ASSERT_NE(before, awh::event::status_t::NONE);
 	/**
-	 * Выполняем вступление в группу ПОСЛЕ фиксации - порядок нарушен намеренно
+	 * Вступаем в группу ПОСЛЕ фиксации - порядок нарушен намеренно
 	 *
 	 * @note Исход вызова здесь не проверяется вовсе, и это намеренно: привязка
 	 *       пропускается как уже выполненная, а сама подписка вправе и удаться, и нет -
 	 *       зависит это от настройки сети испытательной машины. Проверка не об исходе
+	 *
 	 */
 	awh::engine::multicast::membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0", port);
 	// Проверяем, что состояние события вступлением в группу не изменилось
@@ -13755,7 +14079,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 	 * событий, то есть переживает блок настройки события
 	 */
 	uint8_t count = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
@@ -13790,9 +14114,10 @@ TEST_F(IoFixture, IoMulticast3Test){
 		 *       оповещения, то есть три шага. При шаге в пять секунд проверка занимала
 		 *       пятнадцать секунд - треть времени всего набора awh::engine:: Доказывает она
 		 *       доставку рассылки, а не выдержку, и от укорочения шага не слабеет
+		 *
 		 */
 		awh::engine::timer::timeout(tid, awh::event::action_t::NONE, 300);
-		// Выполняем фиксацию настроек события интервала
+		// Фиксируем настройки события интервала
 		ASSERT_TRUE(awh::engine::io::commit(tid));
 		// Устанавливаем функцию обратного вызова на событие интервала
 		awh::engine::io::on(tid, [&events]([[maybe_unused]] const awh::event::id_t tid, [[maybe_unused]] const awh::event::status_t status) noexcept -> void {
@@ -13800,7 +14125,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 			static uint8_t counter = 0;
 			// Формируем отправляемое сообщение
 			const std::string & message = awh::fmk::format("Message #%d", ++counter);
-			// Выполняем отправку сообщения в мультикастовую группу
+			// Отправляем сообщение в мультикастовую группу
 			if(awh::engine::io::send(events[1], message.c_str(), message.size()))
 				// Записываем ошибку в лог отправки сообщения
 				awh::log::print("Сообщение отправлено: ID=%u, %s", awh::log::flag_t::INFO, events[1], message.c_str());
@@ -13813,7 +14138,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		ASSERT_TRUE(awh::engine::options::set(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "239.255.1.1"));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		awh::engine::io::on(events[1], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -14235,9 +14560,9 @@ TEST_F(IoFixture, IoMulticast3Test){
 				break;
 			}
 		});
-		// Выполняем запуск работы таймера
+		// Запускаем работу таймера
 		ASSERT_TRUE(awh::engine::io::launch(tid));
-		// Выполняем запуск работы сервера
+		// Запускаем работу сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
 	}
 	/**
@@ -14250,7 +14575,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::multicast::membership(events[0], awh::event::mode_t::ENABLED, "239.255.1.1", "0.0.0.0", port));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Устанавливаем функцию обратного вызова на событие таймера
 		awh::engine::io::on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
@@ -14466,7 +14791,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 				break;
 			}
 		});
-		// Выполняем запуск события
+		// Запускаем событие
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
@@ -14481,11 +14806,14 @@ TEST_F(IoFixture, IoMulticast3Test){
 	 *          не проходит (замер на FreeBSD: 2 отказа из 8 прогонов набора, тогда как
 	 *          в одиночку проверка проходит за 9 мс). Отказывать тут нечему: недоставку
 	 *          рассылки решает место прогона, а не движок
+	 *
 	 */
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	}
 	/**
@@ -14498,6 +14826,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 	 *
 	 * @note Пропуск этот заменил собой отключение проверки именем: отключённая проверка
 	 *       молчит и там, где передача проходит, - на стенде MS Windows она проходит
+	 *
 	 */
 	if(!stop){
 		// Уничтожаем все события: пропуск прекращает проверку немедленно
@@ -14519,11 +14848,12 @@ TEST_F(IoFixture, IoTLSTest){
 	 *
 	 * @note Заслон стоит ПЕРВЫМ и назван своим доводом намеренно: без него отказ
 	 *       приходил бы из слоя шифрования и указывал не на причину
+	 *
 	 */
 	ASSERT_TRUE(::certificates()) << "каталог ../sh/certificates не найден: набор проверок запускать из каталога build";
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -14968,9 +15298,9 @@ TEST_F(IoFixture, IoTLSTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
-		// Выполняем прослушивание сервера
+		// Объявляем сервер слушающим
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -15333,9 +15663,9 @@ TEST_F(IoFixture, IoTLSTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -15351,7 +15681,9 @@ TEST_F(IoFixture, IoTLSTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -15362,6 +15694,7 @@ TEST_F(IoFixture, IoTLSTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ сервера TLS не расшифрован: опрос завершился, а событие дешифрования не пришло";
 	}
@@ -15379,11 +15712,12 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	 *
 	 * @note Заслон стоит ПЕРВЫМ и назван своим доводом намеренно: без него отказ
 	 *       приходил бы из слоя шифрования и указывал не на причину
+	 *
 	 */
 	ASSERT_TRUE(::certificates()) << "каталог ../sh/certificates не найден: набор проверок запускать из каталога build";
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -15417,6 +15751,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Регистрируем объекты транспортного уровня безопасности
 		awh::tls::coder::id_t cts1 = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
+		// Регистрируем второй объект транспортного уровня безопасности
 		awh::tls::coder::id_t cts2 = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::TCP);
 		// Проверяем, что идентификатор транспортного уровня больше нуля
 		ASSERT_GT(cts1, 0);
@@ -15845,9 +16180,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
-		// Выполняем прослушивание сервера
+		// Объявляем сервер слушающим
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -16210,9 +16545,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -16228,7 +16563,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -16239,6 +16576,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 		 *          одному лишь сроку признавала бы годным движок, переставший
 		 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+		 *
 		 */
 		EXPECT_TRUE(stop) << "ответ сервера TLS не расшифрован: опрос завершился, а событие дешифрования не пришло";
 	}
@@ -16256,11 +16594,12 @@ TEST_F(IoFixture, IoDTLSTest){
 	 *
 	 * @note Заслон стоит ПЕРВЫМ и назван своим доводом намеренно: без него отказ
 	 *       приходил бы из слоя шифрования и указывал не на причину
+	 *
 	 */
 	ASSERT_TRUE(::certificates()) << "каталог ../sh/certificates не найден: набор проверок запускать из каталога build";
 	// Флаг остановки теста
 	bool stop = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
@@ -16495,7 +16834,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						awh::log::print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 						// Записываем в лог информацию о DTLS соединении
 						std::cout << awh::tls::coder::peerInfo(id) << std::endl;
-						// Выполняем повторную передачу данных TLS
+						// Повторно передаём данные TLS
 						EXPECT_TRUE(awh::tls::coder::retransmit(id));
 					} break;
 				}
@@ -16707,7 +17046,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 		// Устанавливаем таймаут события на запись
 		awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -17070,9 +17409,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -17088,7 +17427,9 @@ TEST_F(IoFixture, IoDTLSTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -17102,7 +17443,7 @@ TEST_F(IoFixture, IoDTLSTest){
  */
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	/**
-	 * @brief Готово ли ЯДРО машины к работе по SCTP
+	 * @brief Функция проверки готовности ЯДРА машины к работе по SCTP
 	 *
 	 * @details Признак сборки говорит лишь о РОДЕ системы, но не о том, что протокол
 	 *          есть у работающего ядра. У FreeBSD 15.1 поддержка SCTP вынесена в
@@ -17125,14 +17466,14 @@ TEST_F(IoFixture, IoDTLSTest){
 	static bool sctpReady() noexcept {
 		// Признак готовности ядра, выясняемый ОДИН раз за процесс
 		static const bool result = [](void) noexcept -> bool {
-			// Выполняем заведение сокета SCTP
-			const int32_t fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+			// Заводим сокет SCTP
+			const int32_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 			// Если сокет завести не удалось
-			if(fd < 0)
+			if(sock < 0)
 				// Сообщаем о неготовности ядра
 				return false;
 			// Закрываем заведённый сокет
-			::close(fd);
+			::close(sock);
 			// Сообщаем о готовности ядра
 			return true;
 		}();
@@ -17196,7 +17537,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
 		// Флаг остановки теста
 		bool stop = false;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP Stream
 		const auto events = std::move(awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP));
@@ -17222,7 +17563,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -17623,9 +17964,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
 			awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
-			// Выполняем прослушивание сервера
+			// Объявляем сервер слушающим
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 			// Запускаем событие сервера
 			ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -17636,7 +17977,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -17722,7 +18063,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
 						// Записываем в лог сообщение об возрождении события
 						awh::log::print("Событие возрождено: ID=%u", awh::log::flag_t::INFO, eid);
-						// Выполняем подписку на SCTP события
+						// Подписываем сокет на SCTP события
 						awh::engine::sctp::subscription(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
 							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -17988,9 +18329,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -18006,7 +18347,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -18044,7 +18387,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		if(!::sctpReady())
 			// Пропускаем проверку
 			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP Stream
 		const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
@@ -18068,7 +18411,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(awh::engine::options::set(events[1], opts));
 			// Устанавливаем адрес события сервера
 			ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "0.0.0.0"));
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
 			// Переводим событие сервера в слушание
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -18087,7 +18430,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
 			// Устанавливаем порт назначения первого клиента
 			ASSERT_TRUE(awh::engine::target::port::set(events[0], port));
-			// Выполняем фиксацию настроек первого клиента
+			// Фиксируем настройки первого клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
 			// Устанавливаем опции второго клиента
 			ASSERT_TRUE(awh::engine::options::set(second, opts));
@@ -18097,17 +18440,23 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(awh::engine::target::set(second, "127.0.0.2"));
 			// Устанавливаем порт назначения второго клиента
 			ASSERT_TRUE(awh::engine::target::port::set(second, port));
-			// Выполняем фиксацию настроек второго клиента
+			// Фиксируем настройки второго клиента
 			ASSERT_TRUE(awh::engine::io::commit(second));
 		}
 		// Подаём заявку списком из двух узлов
 		ASSERT_TRUE(awh::engine::io::connect({events[0], second}));
+		/**
+		 * Для операционной системы illumos
+		 */
 		#if defined(__illumos__)
 			// У illumos нет sctp_connectx: заявка несёт все адреса пира, а пробуется
 			// адресом за адресом машинерией переподключения, оттого счётчик адресов
 			// несёт всё их число, как и у систем, где sctp_connectx есть
 			ASSERT_EQ(static_cast <uint8_t> (2), awh::engine::sctp::addresses(events[0]))
 			 << "у illumos заявка обязана нести все адреса для последовательного перебора";
+		/**
+		 * Для операционных систем отличных от illumos
+		 */
 		#else
 			// Число адресов заявки обязано стать двумя: список слился в одну заявку
 			ASSERT_EQ(static_cast <uint8_t> (2), awh::engine::sctp::addresses(events[0]))
@@ -18131,7 +18480,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
 		// Флаг остановки теста
 		bool stop = false;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP SEQPACKET
 		const auto events = std::move(awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::SEQPACKET, awh::event::protocol_t::SCTP));
@@ -18157,7 +18506,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -18558,7 +18907,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
 			awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
 			// Текст инициализационных сообщений SCTP
 			awh::net::sctp::initmsg_t initmsg;
@@ -18570,7 +18919,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			initmsg.istreams = 5;
 			// Инициализируем сообщения SCTP
 			awh::engine::sctp::initMessages(events[1], initmsg);
-			// Выполняем прослушивание сервера
+			// Объявляем сервер слушающим
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 			// Запускаем событие сервера
 			ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -18581,7 +18930,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -18667,7 +19016,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
 						// Записываем в лог сообщение об возрождении события
 						awh::log::print("Событие возрождено: ID=%u", awh::log::flag_t::INFO, eid);
-						// Выполняем подписку на SCTP события
+						// Подписываем сокет на SCTP события
 						awh::engine::sctp::subscription(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
 							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -18933,9 +19282,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -18951,7 +19300,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -18987,7 +19338,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		#endif
 		// Флаг остановки теста
 		bool stop = false;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP SEQPACKET
 		const auto events = std::move(awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::SEQPACKET, awh::event::protocol_t::SCTP));
@@ -19021,7 +19372,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(awh::engine::sctp::auth::algorithms(events[1], {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 			// Устанавливаем чанки аутентификации SCTP-сокета
 			ASSERT_TRUE(awh::engine::sctp::auth::chunks(events[1], {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -19031,7 +19382,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			});
 			// Извлекаем чанки аутентификации SCTP-сокета
 			std::vector <awh::net::sctp::auth_chunk_t> chunks;
-			// Выполняем извлечение чанков аутентификации SCTP-сокета
+			// Извлекаем чанки аутентификации SCTP-сокета
 			ASSERT_TRUE(awh::engine::sctp::auth::chunks(events[1], awh::event::origin_t::LOCAL, chunks));
 			/**
 			 * Перебираем все извлечённые чанки
@@ -19201,7 +19552,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
-				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				// Извлекаем чанки аутентификации SCTP-сокета
 				EXPECT_TRUE(awh::engine::sctp::auth::chunks(cid, awh::event::origin_t::REMOTE, chunks));
 				/**
 				 * Перебираем все извлечённые чанки
@@ -19452,7 +19803,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
 			awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
 			// Текст инициализационных сообщений SCTP
 			awh::net::sctp::initmsg_t initmsg;
@@ -19464,7 +19815,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			initmsg.istreams = 5;
 			// Инициализируем сообщения SCTP
 			awh::engine::sctp::initMessages(events[1], initmsg);
-			// Выполняем прослушивание сервера
+			// Объявляем сервер слушающим
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 			// Запускаем событие сервера
 			ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -19483,7 +19834,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			ASSERT_TRUE(awh::engine::sctp::auth::algorithms(events[0], {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 			// Устанавливаем чанки аутентификации SCTP-сокета
 			ASSERT_TRUE(awh::engine::sctp::auth::chunks(events[0], {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -19493,7 +19844,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			});
 			// Извлекаем чанки аутентификации SCTP-сокета
 			std::vector <awh::net::sctp::auth_chunk_t> chunks;
-			// Выполняем извлечение чанков аутентификации SCTP-сокета
+			// Извлекаем чанки аутентификации SCTP-сокета
 			ASSERT_TRUE(awh::engine::sctp::auth::chunks(events[0], awh::event::origin_t::LOCAL, chunks));
 			/**
 			 * Перебираем все извлечённые чанки
@@ -19590,7 +19941,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						EXPECT_TRUE(awh::engine::sctp::auth::algorithms(eid, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 						// Устанавливаем чанки аутентификации SCTP-сокета
 						EXPECT_TRUE(awh::engine::sctp::auth::chunks(eid, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
-						// Выполняем подписку на SCTP события
+						// Подписываем сокет на SCTP события
 						awh::engine::sctp::subscription(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
 							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -19600,7 +19951,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						});
 						// Извлекаем чанки аутентификации SCTP-сокета
 						std::vector <awh::net::sctp::auth_chunk_t> chunks;
-						// Выполняем извлечение чанков аутентификации SCTP-сокета
+						// Извлекаем чанки аутентификации SCTP-сокета
 						EXPECT_TRUE(awh::engine::sctp::auth::chunks(eid, awh::event::origin_t::LOCAL, chunks));
 						/**
 						 * Перебираем все извлечённые чанки
@@ -19716,7 +20067,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::cout << "  - Pending Data: " << status.penddata << std::endl;
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
-				// Выполняем извлечение чанков аутентификации SCTP-сокета
+				// Извлекаем чанки аутентификации SCTP-сокета
 				EXPECT_TRUE(awh::engine::sctp::auth::chunks(eid, awh::event::origin_t::REMOTE, chunks));
 				/**
 				 * Перебираем все извлечённые чанки
@@ -19881,9 +20232,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -19899,7 +20250,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -19919,7 +20272,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
 		// Флаг остановки теста
 		bool stop = false;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP SEQPACKET
 		const auto events = std::move(awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::SEQPACKET, awh::event::protocol_t::SCTP));
@@ -19951,6 +20304,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			 *       типа SEQPACKET передаёт сообщения целиком, поэтому поверх
 			 *       него работает DTLS - так же, как SCTP типа STREAM запрашивает
 			 *       контекст как TCP и работает поверх обычного TLS.
+			 *
 			 */
 			// Регистрируем объект транспортного уровня безопасности
 			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::SERVER, awh::event::protocol_t::UDP);
@@ -19971,7 +20325,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -20207,7 +20561,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							awh::log::print("Рукопожатие DTLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", awh::log::flag_t::INFO, id, awh::tls::coder::alpn(id));
 							// Записываем в лог информацию о DTLS соединении
 							std::cout << awh::tls::coder::peerInfo(id) << std::endl;
-							// Выполняем повторную передачу данных TLS
+							// Повторно передаём данные TLS
 							EXPECT_TRUE(awh::tls::coder::retransmit(id));
 						} break;
 					}
@@ -20474,7 +20828,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
 			awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
 			// Текст инициализационных сообщений SCTP
 			awh::net::sctp::initmsg_t initmsg;
@@ -20486,7 +20840,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			initmsg.istreams = 5;
 			// Инициализируем сообщения SCTP
 			awh::engine::sctp::initMessages(events[1], initmsg);
-			// Выполняем прослушивание сервера
+			// Объявляем сервер слушающим
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 			// Запускаем событие сервера
 			ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -20497,7 +20851,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -20510,6 +20864,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			 *       типа SEQPACKET передаёт сообщения целиком, поэтому поверх
 			 *       него работает DTLS - так же, как SCTP типа STREAM запрашивает
 			 *       контекст как TCP и работает поверх обычного TLS.
+			 *
 			 */
 			// Регистрируем объект транспортного уровня безопасности
 			awh::tls::coder::id_t cts = awh::tls::coder::context(awh::event::node_t::CLIENT, awh::event::protocol_t::UDP);
@@ -20706,7 +21061,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
 						// Записываем в лог сообщение об возрождении события
 						awh::log::print("Событие возрождено: ID=%u", awh::log::flag_t::INFO, eid);
-						// Выполняем подписку на SCTP события
+						// Подписываем сокет на SCTP события
 						awh::engine::sctp::subscription(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
 							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -20970,9 +21325,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -20988,7 +21343,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -21008,7 +21365,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
 		// Флаг остановки теста
 		bool stop = false;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP STREAM
 		const auto events = std::move(awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP));
@@ -21053,7 +21410,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
 				awh::log::print("Ошибка TLS: ID=%" PRIu64 ", Код=%u Сообщение=%s", awh::log::flag_t::CRITICAL, id, static_cast <uint8_t> (error), message.c_str());
 			});
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[1], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -21552,9 +21909,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[1], awh::event::action_t::READ, 3000);
 			// Устанавливаем таймаут события на запись
 			awh::engine::timer::timeout(events[1], awh::event::action_t::WRITE, 3000);
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(events[1]));
-			// Выполняем прослушивание сервера
+			// Объявляем сервер слушающим
 			ASSERT_TRUE(awh::engine::io::listen(events[1], 100));
 			// Запускаем событие сервера
 			ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -21565,7 +21922,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Устанавливаем опции событий
 			ASSERT_TRUE(awh::engine::options::set(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
-			// Выполняем подписку на SCTP события
+			// Подписываем сокет на SCTP события
 			awh::engine::sctp::subscription(events[0], {
 				awh::net::sctp::event_type_t::ASSOC_CHANGE,
 				awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -21767,7 +22124,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					case static_cast <uint8_t> (awh::event::status_t::REBIRTHED): {
 						// Записываем в лог сообщение об возрождении события
 						awh::log::print("Событие возрождено: ID=%u", awh::log::flag_t::INFO, eid);
-						// Выполняем подписку на SCTP события
+						// Подписываем сокет на SCTP события
 						awh::engine::sctp::subscription(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
 							awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
@@ -22031,9 +22388,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			awh::engine::timer::timeout(events[0], awh::event::action_t::WRITE, 3000);
 			// Устанавливаем таймаут события на подключение
 			awh::engine::timer::timeout(events[0], awh::event::action_t::CONNECT, 5000);
-			// Выполняем фиксацию настроек события клиента
+			// Фиксируем настройки события клиента
 			ASSERT_TRUE(awh::engine::io::commit(events[0]));
-			// Выполняем подключение к серверу
+			// Подключаемся к серверу
 			ASSERT_TRUE(awh::engine::io::connect(events[0]));
 			// Запускаем событие клиента
 			ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -22049,7 +22406,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		{
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-			// Выполняем опрос активных событий
+			/**
+			 * Опрашиваем активные события
+			 */
 			while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -22060,6 +22419,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			 *          вернувший ложь. Во втором случае срок НЕ вышел, и проверка по
 			 *          одному лишь сроку признавала бы годным движок, переставший
 			 *          опрашивать вовсе. Утверждать надо то, ради чего проверка написана
+			 *
 			 */
 			EXPECT_TRUE(stop) << "ответ сервера DTLS не расшифрован: опрос завершился, а событие дешифрования не пришло";
 		}
@@ -22091,7 +22451,7 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 	std::vector <std::string> received;
 	// Буфер ответов с идентификаторами принявших их клиентов
 	std::vector <std::pair <awh::event::id_t, std::string>> answers;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -22197,21 +22557,21 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 		// Останавливаем тест по истечении таймаута
 		stop = (stop || (status == awh::event::status_t::SUCCESS));
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	ASSERT_TRUE(awh::engine::io::commit(timer));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	ASSERT_TRUE(awh::engine::io::launch(timer));
 	/**
-	 * Выполняем подготовку и запуск событий клиентов
+	 * Подготавливаем и запускаем события клиентов
 	 */
 	for(auto & client : {first, second}){
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(client));
-		// Выполняем подключение события клиента к серверу
+		// Подключаем событие клиента к серверу
 		ASSERT_TRUE(awh::engine::io::connect(client));
-		// Выполняем запуск события клиента
+		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(client));
 	}
 	/**
@@ -22225,7 +22585,9 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -22310,7 +22672,7 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	awh::event::id_t session = 0;
 	// Количество датаграмм в пачке ответа
 	const size_t burst = 64;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -22361,9 +22723,10 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 			 *
 			 * @note В этом и опыт: ужатый буфер отправки принимает лишь первые, а
 			 *       остальные обязаны лечь в очередь узла и уйти отложенным путём
+			 *
 			 */
 			for(size_t i = 0; i < burst; i++)
-				// Выполняем отправку очередного ответа
+				// Отправляем очередной ответ
 				(void) awh::engine::io::send(sid, body.data(), body.size());
 		});
 	}));
@@ -22378,7 +22741,7 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	ASSERT_TRUE(awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0"));
 	// Устанавливаем адрес назначения события клиента
 	ASSERT_TRUE(awh::engine::target::set(client, "127.0.0.1"));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Ужимаем буфер отправки сервера ПОСЛЕ фиксации
@@ -22390,11 +22753,12 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	 *
 	 * @note Это и заводит отложенный путь: пачка ответов в ужатый буфер разом не входит,
 	 *       и ядро отвечает отказом по переполнению
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::buffer::size::set(server, awh::event::action_t::WRITE, 2048));
-	// Выполняем запуск события сервера
+	// Запускаем событие сервера
 	ASSERT_TRUE(awh::engine::io::launch(server));
-	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Фиксируем настройки, подключаем и запускаем событие клиента
 	// Признак того, что движок доложил о состоявшемся подключении
 	bool linked = false;
 	/**
@@ -22405,11 +22769,13 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
 	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
 	 *          порцию прямо из этого отклика
+	 *
 	 */
 	awh::engine::io::on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Запоминаем исход подключения
 		linked = ok;
 	}));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
 	ASSERT_TRUE(awh::engine::io::connect(client));
 	ASSERT_TRUE(awh::engine::io::launch(client));
@@ -22419,14 +22785,16 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto linking = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться: без него отправлять некуда
 	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
-	// Выполняем отправку запроса, заводящего сессию
+	// Отправляем запрос, заводящий сессию
 	(void) awh::engine::io::send(client, "KEY0request", 11);
 	/**
 	 * Крутим цикл, покуда пачка не придёт целиком либо не выйдет отведённое окно
@@ -22434,13 +22802,16 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answers < burst) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Сессия обязана быть заведена
 	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "сессия-источник не заведена";
+	// Проверяем, что узел сессии заведён
 	ASSERT_GT(session, 0u);
 	/**
 	 * Пачка обязана дойти хотя бы наполовину
@@ -22448,6 +22819,7 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	 * @note Порог долей, а не равенством: отброс переполненным буфером у UDP законен.
 	 *       Незаконно молчание отложенного пути - при нём пришли бы лишь те немногие,
 	 *       что вместились в ужатый буфер разом
+	 *
 	 */
 	ASSERT_GT(answers, (burst / 2)) << "принято ответов " << answers << " из " << burst
 	 << ": отложенная отправка у сессии-источника не работает";
@@ -22483,7 +22855,7 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	awh::event::id_t session = 0;
 	// Количество долей, отдаваемых источником
 	const size_t total = 16;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -22530,6 +22902,7 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 		 *
 		 * @note Источник ставится в отклике приёма: сессия заводится движком сама, и
 		 *       раньше этого мига её идентификатора у проверки нет
+		 *
 		 */
 		awh::engine::io::on(oid, static_cast <awh::engine::callback::source_t> ([&requests, &parts](
 			[[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size
@@ -22549,6 +22922,7 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 			 * @warning Отдать больше запрошенного нельзя: движок отвечает на это записью
 			 *          в журнал и обмен встаёт насовсем. Проверено соседней проверкой
 			 *          продолжения вытягивания, где ровно это и вставало
+			 *
 			 */
 			if(size < body.size()){
 				// Сообщаем движку, что доля в запрошенный размер не влезает
@@ -22578,10 +22952,10 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	// Устанавливаем адрес события клиента и адрес назначения
 	ASSERT_TRUE(awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0"));
 	ASSERT_TRUE(awh::engine::target::set(client, "127.0.0.1"));
-	// Выполняем фиксацию настроек и запуск события сервера
+	// Фиксируем настройки и запускаем событие сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	ASSERT_TRUE(awh::engine::io::launch(server));
-	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Фиксируем настройки, подключаем и запускаем событие клиента
 	// Признак того, что движок доложил о состоявшемся подключении
 	bool linked = false;
 	/**
@@ -22592,11 +22966,13 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
 	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
 	 *          порцию прямо из этого отклика
+	 *
 	 */
 	awh::engine::io::on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 		// Запоминаем исход подключения
 		linked = ok;
 	}));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
 	ASSERT_TRUE(awh::engine::io::connect(client));
 	ASSERT_TRUE(awh::engine::io::launch(client));
@@ -22606,14 +22982,16 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto linking = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Подключение обязано состояться: без него отправлять некуда
 	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
-	// Выполняем отправку запроса, заводящего сессию
+	// Отправляем запрос, заводящий сессию
 	(void) awh::engine::io::send(client, "KEY0request", 11);
 	/**
 	 * Крутим цикл, покуда доли не придут либо не выйдет отведённое окно
@@ -22621,19 +22999,23 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((answers < total) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Сессия обязана быть заведена
 	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "сессия-источник не заведена";
+	// Проверяем, что узел сессии заведён
 	ASSERT_GT(session, 0u);
 	/**
 	 * Обращений к источнику обязано быть много
 	 *
 	 * @note Это и есть утверждение о продолжении вытягивания: одно обращение означало бы,
 	 *       что движок спросил источник единожды и умолк, а доли ушли бы не вытягиванием
+	 *
 	 */
 	ASSERT_GT(requests, static_cast <size_t> (1)) << "движок обратился к источнику " << requests
 	 << " раз: продолжения вытягивания у сессии-источника не случилось";
@@ -22652,7 +23034,7 @@ TEST_F(IoFixture, IoOriginLimitTest){
 	size_t sessions = 0;
 	// Количество отказов в создании сессии
 	size_t cancelled = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -22738,17 +23120,17 @@ TEST_F(IoFixture, IoOriginLimitTest){
 		// Останавливаем тест по истечении таймаута
 		stop = (stop || (status == awh::event::status_t::SUCCESS));
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	ASSERT_TRUE(awh::engine::io::commit(timer));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	ASSERT_TRUE(awh::engine::io::launch(timer));
-	// Выполняем фиксацию настроек события клиента
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
-	// Выполняем подключение события клиента к серверу
+	// Подключаем событие клиента к серверу
 	ASSERT_TRUE(awh::engine::io::connect(client));
-	// Выполняем запуск события клиента
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(client));
 	/**
 	 *  Запускаем опрос событий
@@ -22761,7 +23143,9 @@ TEST_F(IoFixture, IoOriginLimitTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -22788,10 +23172,10 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	size_t first = 0;
 	// Количество созданных сессий второго сервера
 	size_t second = 0;
-	// Выполняем генерацию порта первого сервера
+	// Генерируем порт первого сервера
 	const uint16_t primary = ::port();
 	/**
-	 * Выполняем генерацию порта второго сервера
+	 * Генерируем порт второго сервера
 	 *
 	 * @warning Порт берётся у ОБЩЕГО раздатчика, а не выводится соседним числом от
 	 *          первого. Прежде тут стояло `(primary > 49152) ? (primary - 1) : (primary + 1)`,
@@ -22812,6 +23196,7 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	 *          Соседство портов проверке НЕ НУЖНО: совпадать обязана четвёрка
 	 *          ИСТОЧНИКА, за что отвечает единственный сокет отправителя ниже, а порты
 	 *          назначения обязаны лишь различаться
+	 *
 	 */
 	const uint16_t secondary = ::port();
 	// Добавляем событие первого сервера UDP
@@ -22830,7 +23215,7 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
-	 * Выполняем настройку событий серверов
+	 * Настраиваем события серверов
 	 */
 	for(auto & server : {alpha, beta}){
 		// Устанавливаем опции события сервера
@@ -22846,9 +23231,9 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 			// Останавливаем тест после создания сессий обоими серверами
 			stop = ((first > 0) && (second > 0));
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(server));
-		// Выполняем запуск события сервера
+		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(server));
 	}
 	// Устанавливаем таймаут принудительной остановки теста
@@ -22858,9 +23243,9 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 		// Останавливаем тест по истечении таймаута
 		stop = (stop || (status == awh::event::status_t::SUCCESS));
 	});
-	// Выполняем фиксацию настроек события таймера
+	// Фиксируем настройки события таймера
 	ASSERT_TRUE(awh::engine::io::commit(timer));
-	// Выполняем запуск события таймера
+	// Запускаем событие таймера
 	ASSERT_TRUE(awh::engine::io::launch(timer));
 	/**
 	 * Отправляем датаграммы обоим серверам одним сокетом: разные сокеты дали бы
@@ -22898,7 +23283,9 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -22929,7 +23316,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 	awh::event::id_t session = 0;
 	// Буфер принятых датаграмм с идентификаторами принявших их сессий
 	std::vector <std::pair <awh::event::id_t, std::string>> received;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -22982,10 +23369,10 @@ TEST_F(IoFixture, IoOriginBindTest){
 		// Останавливаем тест по истечении таймаута
 		stop = (stop || (status == awh::event::status_t::SUCCESS));
 	});
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	ASSERT_TRUE(awh::engine::io::commit(timer));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	ASSERT_TRUE(awh::engine::io::launch(timer));
 	// Создаём сокет отправителя датаграмм
@@ -23003,7 +23390,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 	// Отправляем датаграмму с исходным ключом сессии
 	ASSERT_GT(::sendto(sock, "AAAAfirst", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
 	/**
-	 * Выполняем опрос событий до создания сессии
+	 * Опрашиваем события до создания сессии
 	 */
 	/**
 	 * Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос ждал бы
@@ -23013,7 +23400,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (sessions == 0) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -23040,7 +23429,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 	// Отправляем датаграмму с дополнительным ключом маршрутизации
 	ASSERT_GT(::sendto(sock, "BBBBsecond", 10, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
 	/**
-	 *  Выполняем опрос событий до приёма датаграммы
+	 *  Опрашиваем события до приёма датаграммы
 	 */
 	/**
 	 * Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос ждал бы
@@ -23050,7 +23439,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -23077,7 +23468,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 	// Отправляем датаграмму со снятым с маршрутизации ключом
 	ASSERT_GT(::sendto(sock, "BBBBthird", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
 	/**
-	 *  Выполняем опрос событий до создания новой сессии
+	 *  Опрашиваем события до создания новой сессии
 	 */
 	/**
 	 * Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос ждал бы
@@ -23087,7 +23478,9 @@ TEST_F(IoFixture, IoOriginBindTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (sessions < 2) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -23155,6 +23548,7 @@ static constexpr int32_t BANDWIDTH_POLL = 100;
  *
  */
 static constexpr uint32_t BANDWIDTH_DEADLINE = ((BANDWIDTH_WINDOW + BANDWIDTH_DRAIN) * 3);
+// Размер доли данных, отправляемой за один заход
 static constexpr size_t BANDWIDTH_CHUNK = 16384;
 /**
  * @brief Глубина запаса очереди отправки тестов ограничения полосы
@@ -23219,6 +23613,7 @@ typedef struct Bandwidth_Consumer {
 	 * @note Отправка принимает данные ЧАСТИЧНО: сколько влезло в сокет и очередь, столько
 	 *       и принято. Продолжать со следующего блока, потеряв непринятый хвост, нельзя -
 	 *       поток на приёмнике перестанет совпадать с образцом
+	 *
 	 */
 	size_t offset;
 	// Флаг готовности отправителя к подаче данных
@@ -23274,6 +23669,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	 *
 	 * @note Различие блоков и делает поток самоопознаваемым: приёмник узнаёт своего
 	 *       потребителя по первому же принятому октету, не полагаясь на порядок приёма
+	 *
 	 */
 	for(size_t i = 0; i < consumers.size(); i++){
 		// Устанавливаем метку потребителя нагрузки
@@ -23287,7 +23683,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 			// Устанавливаем очередной октет образца
 			chunks[i][j] = ::sample(j, consumers[i].tag);
 	}
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t number = ::port();
 	// Набор опций событий прогона
 	const uint16_t options = (
@@ -23340,6 +23736,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	 *       `IoBandwidthGlobalDuplexTest` падает в одном прогоне группы из пяти
 	 *
 	 *       Потому владелец опознаётся по САМИМ ДАННЫМ, на первой прочитанной порции
+	 *
 	 */
 	awh::engine::io::on(server, static_cast <awh::engine::callback::accept_t> ([&consumers, &accepted, echo](
 		[[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid
@@ -23373,6 +23770,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 				 *       размера порции: упреждающий приём отдаёт первую порцию любой
 				 *       длины, вплоть до нескольких посылок разом. Сверка ниже тоже
 				 *       идёт по накопленному смещению в потоке, а не по границам порций
+				 *
 				 */
 				for(auto & candidate : consumers){
 					// Если поток уже закреплён за другим узлом, пропускаем потребителя
@@ -23403,6 +23801,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 				 * @note Предел ставится на первой порции, а не при приёме подключения:
 				 *       раньше владелец неизвестен. Задержка это одна порция, тогда как
 				 *       окно нагрузки идёт секунду
+				 *
 				 */
 				if(!consumer->ingress.empty())
 					// Устанавливаем предел пропускной способности на приём данных
@@ -23428,7 +23827,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 				awh::engine::io::send(eid, data, size);
 		});
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	awh::engine::io::commit(server);
 	// Переводим событие сервера в режим прослушивания
 	awh::engine::io::listen(server, 512);
@@ -23436,7 +23835,6 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	awh::engine::io::launch(server);
 	/**
 	 * Функция подачи данных в очередь отправителя
-	 *
 	 */
 	auto feed = [&ceased, &chunks](bandwidth_consumer_t & consumer) noexcept -> void {
 		// Если окно нагрузки истекло, данных больше не подаём
@@ -23509,11 +23907,11 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 			// Уменьшаем объём очереди, ожидающий записи
 			consumer.backlog -= ::std::min(consumer.backlog, size);
 		}));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		awh::engine::io::commit(client);
-		// Выполняем подключение события клиента к серверу
+		// Подключаем событие клиента к серверу
 		awh::engine::io::connect(client);
-		// Выполняем запуск события клиента
+		// Запускаем событие клиента
 		awh::engine::io::launch(client);
 	}
 	// Устанавливаем таймаут окончания окна нагрузки
@@ -23523,7 +23921,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 		// Прекращаем подачу данных по истечении окна нагрузки
 		ceased = (ceased || (status == awh::event::status_t::SUCCESS));
 	});
-	// Выполняем фиксацию настроек события таймера
+	// Фиксируем настройки события таймера
 	awh::engine::io::commit(timer);
 	// Запускаем событие таймера
 	awh::engine::io::launch(timer);
@@ -23541,6 +23939,7 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	 *
 	 * @warning Ожидание ОГРАНИЧЕНО намеренно: сроки прогона проверяются в теле
 	 *          цикла, и без пробуждения по времени они недостижимы
+	 *
 	 */
 	while(!stop && awh::engine::io::poll(BANDWIDTH_POLL)){
 		// Если прогон идёт дольше предельного срока
@@ -23584,9 +23983,12 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 		 * @note Без этого отказ выглядит просадкой скорости, и по нему не отличить
 		 *       «перенос глох и наверстал» от «перенос шёл ровно, но медленно».
 		 *       Отчёт печатается ОДИН раз, ровно на переходе через срок
+		 *
 		 */
 		if(overdue && !drained){
-			// Перебираем потребителей нагрузки
+			/**
+			 * Перебираем потребителей нагрузки
+			 */
 			for(const auto & consumer : consumers)
 				// Выводим состояние дослива потребителя
 				std::cout << "  дослив не завершён: поставлено " << consumer.queued << ", принято " << consumer.received
@@ -23610,9 +24012,12 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	 * @note Срок дослива вчетверо с лишком превышает нужный: у пределов, какими
 	 *       пользуются проверки помощника (8...100 Мбит/с), запас очереди в 128 КБ
 	 *       уходит меньше чем за секунду
+	 *
 	 */
 	if(starved){
-		// Записываем, чего именно не дождались
+		/**
+		 * Записываем, чего именно не дождались
+		 */
 		for(const auto & consumer : consumers)
 			// Выводим состояние дослива потребителя нагрузки
 			ADD_FAILURE() << "дослив очереди не завершён: поставлено " << consumer.queued
@@ -23624,7 +24029,9 @@ static bool bandwidth(std::vector <bandwidth_consumer_t> & consumers, const bool
 	 * Если прогон упёрся в предельный срок, отвечаем отказом
 	 */
 	if(expired){
-		// Записываем, чего именно не дождались
+		/**
+		 * Записываем, чего именно не дождались
+		 */
 		for(const auto & consumer : consumers)
 			// Выводим состояние дослива потребителя нагрузки
 			ADD_FAILURE() << "нагрузка не дослита за отведённый срок: поставлено " << consumer.queued << ", принято " << consumer.received;
@@ -23668,7 +24075,7 @@ static double limitBytes(const std::string & limit) noexcept {
 TEST_F(IoFixture, IoBandwidthEgressOnlyTest){
 	// Заводим единственного потребителя нагрузки с ограничением отправки
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("8Mbps", "")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Получаем заданный предел пропускной способности в октетах в секунду
 	const double limit = ::limitBytes(consumers[0].egress);
@@ -23691,7 +24098,7 @@ TEST_F(IoFixture, IoBandwidthEgressOnlyTest){
 TEST_F(IoFixture, IoBandwidthIngressOnlyTest){
 	// Заводим единственного потребителя нагрузки с ограничением приёма
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "8Mbps")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Получаем заданный предел пропускной способности в октетах в секунду
 	const double limit = ::limitBytes(consumers[0].ingress);
@@ -23719,7 +24126,7 @@ TEST_F(IoFixture, IoBandwidthIngressOnlyTest){
 TEST_F(IoFixture, IoBandwidthDuplexTest){
 	// Заводим потребителя нагрузки с ограничением обоих направлений
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("8Mbps", "8Mbps")};
-	// Выполняем прогон нагрузки со встречным потоком
+	// Прогоняем нагрузку со встречным потоком
 	ASSERT_TRUE(::bandwidth(consumers, true));
 	// Получаем заданный предел пропускной способности в октетах в секунду
 	const double limit = ::limitBytes(consumers[0].egress);
@@ -23753,7 +24160,7 @@ TEST_F(IoFixture, IoBandwidthPerNodeTest){
 		bandwidth_consumer_t("16Mbps", ""),
 		bandwidth_consumer_t("32Mbps", "")
 	};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	/**
 	 * Проверяем каждого потребителя нагрузки в отдельности
@@ -23788,7 +24195,7 @@ TEST_F(IoFixture, IoBandwidthPerNodeTest){
 TEST_F(IoFixture, IoBandwidthUnlimitedTest){
 	// Заводим потребителя нагрузки без ограничения
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Проверяем что передача состоялась
 	ASSERT_GT(consumers[0].received, 0u);
@@ -23814,7 +24221,7 @@ TEST_F(IoFixture, IoBandwidthGlobalEgressTest){
 	awh::engine::io::bandwidth(awh::event::limiting_t::EGRESS, "8Mbps");
 	// Заводим потребителя нагрузки без поузлового ограничения
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Снимаем глобальный предел пропускной способности
 	awh::engine::io::bandwidth(awh::event::limiting_t::EGRESS, "auto");
@@ -23839,7 +24246,7 @@ TEST_F(IoFixture, IoBandwidthGlobalIngressTest){
 	awh::engine::io::bandwidth(awh::event::limiting_t::INGRESS, "8Mbps");
 	// Заводим потребителя нагрузки без поузлового ограничения
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Снимаем глобальный предел пропускной способности
 	awh::engine::io::bandwidth(awh::event::limiting_t::INGRESS, "auto");
@@ -23893,7 +24300,9 @@ TEST_F(IoFixture, IoBandwidthGlobalIngressTest){
  *       одну ячейку, общий набор параметров у узлов без предела, потеря отметки
  *       о взводе ядра, тип таймера, снимок времени, перевзвод таймера и снятие
  *       готовности в самих воротах - последнее было проверено правкой и НЕ
- *       помогло, откачено */
+ *       помогло, откачено
+ *
+ */
 TEST_F(IoFixture, IoBandwidthGlobalDuplexTest){
 	// Устанавливаем глобальный предел пропускной способности на отправку
 	awh::engine::io::bandwidth(awh::event::limiting_t::EGRESS, "8Mbps");
@@ -23901,7 +24310,7 @@ TEST_F(IoFixture, IoBandwidthGlobalDuplexTest){
 	awh::engine::io::bandwidth(awh::event::limiting_t::INGRESS, "8Mbps");
 	// Заводим потребителя нагрузки без поузлового ограничения
 	std::vector <bandwidth_consumer_t> consumers = {bandwidth_consumer_t("", "")};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Снимаем глобальные пределы пропускной способности
 	awh::engine::io::bandwidth(awh::event::limiting_t::EGRESS, "auto");
@@ -23937,7 +24346,7 @@ TEST_F(IoFixture, IoBandwidthGlobalSharedTest){
 		bandwidth_consumer_t("", ""),
 		bandwidth_consumer_t("", "")
 	};
-	// Выполняем прогон нагрузки
+	// Прогоняем нагрузку
 	ASSERT_TRUE(::bandwidth(consumers));
 	// Снимаем глобальный предел пропускной способности
 	awh::engine::io::bandwidth(awh::event::limiting_t::EGRESS, "auto");
@@ -24017,7 +24426,7 @@ TEST_F(IoFixture, IoBandwidthServerKeepsReadingTest){
 	size_t received = 0;
 	// Количество октетов, принятых к промежуточному отсчёту
 	size_t middle = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -24041,6 +24450,7 @@ TEST_F(IoFixture, IoBandwidthServerKeepsReadingTest){
 	 * @note Датаграммы доходят не самому событию сервера, а ПРИНЯТОМУ узлу,
 	 *       заводимому на каждую встречную сторону. Отклик чтения, поставленный
 	 *       на само событие сервера, не позовётся ни разу
+	 *
 	 */
 	awh::engine::io::on(events[1], static_cast <awh::engine::callback::accept_t> ([ &received](
 		[[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid
@@ -24053,13 +24463,13 @@ TEST_F(IoFixture, IoBandwidthServerKeepsReadingTest){
 			received += size;
 		});
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(events[1]));
 	// Запускаем событие сервера
 	awh::engine::io::launch(events[1]);
 	// Устанавливаем адрес назначения события клиента
 	ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
-	// Выполняем фиксацию настроек события клиента
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(events[0]));
 	// Запускаем событие клиента
 	awh::engine::io::launch(events[0]);
@@ -24160,7 +24570,7 @@ static std::string deafAddress() noexcept {
 		// Источник обмена для опроса собственного адреса
 		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
 		// Объект работы с Ethernet для опроса собственного адреса
-		// Выполняем извлечение собственного адреса машины
+		// Извлекаем собственный адрес машины
 		awh::eth::addr::fillSource(source);
 		// Если устройство выхода найдено
 		if(!source.iface.empty()){
@@ -24188,6 +24598,7 @@ static std::string deafAddress() noexcept {
 				 *       сразу, и за один вызов счётчик накручивался до восьми: на
 				 *       верность это не влияло - адрес всё равно проверяется на месте, -
 				 *       но смысл его размывался
+				 *
 				 */
 				const uint32_t number = ((++count) * 2);
 				/**
@@ -24197,6 +24608,7 @@ static std::string deafAddress() noexcept {
 				 *       платить за него секундами нельзя. Не нашлось за восемь - падаем
 				 *       к канальному блоку, и проверка отступит ровно так же, как
 				 *       отступала прежде: хуже нынешнего не станет
+				 *
 				 */
 				for(uint32_t attempt = 0; attempt < 8; attempt++){
 					// Складываем номер узла из номера процесса, счётчика и оборота подбора
@@ -24215,6 +24627,7 @@ static std::string deafAddress() noexcept {
 					 *       к проверкам ради объявлений POSIX, а голые имена MS Windows
 					 *       через неё наружу не выходят - так задумано, и обходить это
 					 *       незачем, когда `net::socket_t` повторяет их поимённо
+					 *
 					 */
 					const awh::net::socket_t sock = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
 					// Если сокет завести не удалось, подбирать нечем
@@ -24223,7 +24636,7 @@ static std::string deafAddress() noexcept {
 						break;
 					// Переводим сокет в неблокирующий режим
 					u_long mode = 1;
-					// Выполняем перевод сокета в неблокирующий режим
+					// Переводим сокет в неблокирующий режим
 					::ioctlsocket(sock, FIONBIO, &mode);
 					// Адрес назначения проверки пригодности
 					struct sockaddr_in target{};
@@ -24235,7 +24648,7 @@ static std::string deafAddress() noexcept {
 					target.sin_addr.s_addr = ::htonl(candidate);
 					// Признак пригодности подобранного адреса
 					bool suitable = false;
-					// Выполняем подключение к подобранному адресу
+					// Подключаемся к подобранному адресу
 					if((::connect(sock, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) != 0) && (::WSAGetLastError() == WSAEWOULDBLOCK)){
 						// Набор описателей, готовых к записи
 						fd_set writable;
@@ -24244,24 +24657,24 @@ static std::string deafAddress() noexcept {
 						// Срок ожидания ответа: висящий адрес не ответит и за сутки,
 						// а живой отвечает за считанные миллисекунды
 						struct timeval timeout{0, 200000};
-						// Выполняем очистку набора готовых к записи
+						// Очищаем набор готовых к записи
 						FD_ZERO(&writable);
 						// Добавляем сокет в набор готовых к записи
 						FD_SET(sock, &writable);
-						// Выполняем очистку набора сообщивших об отказе
+						// Очищаем набор сообщивших об отказе
 						FD_ZERO(&failed);
 						// Добавляем сокет в набор сообщивших об отказе
 						FD_SET(sock, &failed);
 						// Адрес пригоден, если подключение осталось ОЖИДАЮЩИМ
 						suitable = (::select(0, nullptr, &writable, &failed, &timeout) == 0);
 					}
-					// Выполняем закрытие сокета проверки пригодности
+					// Закрываем сокет проверки пригодности
 					::closesocket(sock);
 					// Если адрес пригоден
 					if(suitable){
 						// Буфер под запись подобранного адреса
 						char buffer[INET_ADDRSTRLEN]{};
-						// Выполняем перевод адреса в запись
+						// Переводим адрес в запись
 						::inet_ntop(AF_INET, &target.sin_addr, buffer, sizeof(buffer));
 						// Выводим подобранный глухой адрес
 						return std::string(buffer);
@@ -24280,6 +24693,7 @@ static std::string deafAddress() noexcept {
 	 *       любом номере процесса, первая оставляла в ядре неудачную запись соседа,
 	 *       а вторая получала немедленный отказ и МОЛЧА пропускалась. Шаг в два
 	 *       сохраняет чётность, и склейки не происходит
+	 *
 	 */
 	return std::string("169.254.") + std::to_string(((pid >> 8) & 0xFF) | 0x01) + "." + std::to_string(((pid + ((++count) * 2)) & 0xFF) | 0x01);
 }
@@ -24305,20 +24719,28 @@ static std::string deafAddress() noexcept {
  *
  */
 TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
+	// Счётчики отказов, удач и истечений срока подключения
 	uint8_t failures = 0, successes = 0, expirations = 0;
+	// Заводим событие клиента TCP
 	const awh::event::id_t eid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 	ASSERT_TRUE(awh::engine::target::set(eid, deafAddress()));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, 8080));
+	// Взводим срок подключения узла в 500 миллисекунд
 	awh::engine::timer::timeout(eid, awh::event::action_t::CONNECT, 500);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 200);
+	// Подписываем узел на отклик о подключении
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::connect_t> (
 		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 			if(ok) successes++; else failures++;
@@ -24342,8 +24764,10 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	 * @warning Установлено на стенде Windows ARM64 (Apple Silicon, сеть через мост):
 	 *          там маршрута к 169.254.0.0/16 нет, и обе проверки падали, изображая
 	 *          дефект движка. На стендах с таким маршрутом они проходят
+	 *
 	 */
 	bool unreachable = false;
+	// Подписываем узел на отклик об ошибке
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::error_t> (
 		[&unreachable]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
 			/**
@@ -24354,6 +24778,7 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 			 *       host», «Network is unreachable», «Host is down»), и требовать
 			 *       дословного совпадения значило бы завести признак, мёртвый везде,
 			 *       кроме одной системы
+			 *
 			 */
 			unreachable = (unreachable ||
 			 (text.find("route to host") != std::string::npos) ||
@@ -24368,6 +24793,7 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 			return false;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	/**
@@ -24385,10 +24811,16 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 		// Пропускаем проверку
 		GTEST_SKIP() << "ядро отвергает подключение к глухому адресу немедленно";
 	}
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(eid));
 	ASSERT_TRUE(awh::engine::io::launch(tick));
+	// Запоминаем миг начала опроса
 	const auto start = std::chrono::steady_clock::now();
+	/**
+	 * Опрашиваем события три секунды, собирая опыт сроков и подключений
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) + " отказов=" + std::to_string(failures) + " удач=" + std::to_string(successes);
 	/**
 	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
@@ -24413,6 +24845,7 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	ASSERT_GE(failures, 1) << sign;
 	// Удачного подключения к глухому адресу быть не может ни разу
 	ASSERT_EQ(0, successes) << sign;
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -24449,11 +24882,14 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
  *
  */
 TEST_F(IoFixture, IoAddressOverloadsAgreeOnUnsetSourceTest){
+	// Заводим событие клиента TCP
 	const awh::event::id_t eid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
@@ -24463,10 +24899,15 @@ TEST_F(IoFixture, IoAddressOverloadsAgreeOnUnsetSourceTest){
 	const std::string text = awh::engine::address::get(eid, awh::event::address_t::IPV4);
 	// Запрашиваем тот же адрес строением
 	std::unique_ptr <awh::net::addr_t> value = nullptr;
+	// Получаем адрес источника строением
 	const bool taken = awh::engine::address::get(eid, awh::event::address_t::IPV4, value);
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("строкой=[") + text + "] строением=" + (taken ? "да" : "нет");
+	// Проверяем, что адрес строением отдан
 	ASSERT_TRUE(taken) << sign;
+	// Проверяем, что адрес отдан не пустым указателем
 	ASSERT_NE(nullptr, value) << sign;
+	// Проверяем, что длина адреса равна четырём октетам IPv4
 	ASSERT_EQ(4u, value->size) << sign;
 	/**
 	 * Источник события не задавали, значит обе перегрузки обязаны вывести адрес
@@ -24476,9 +24917,13 @@ TEST_F(IoFixture, IoAddressOverloadsAgreeOnUnsetSourceTest){
 	ASSERT_NE(0u, awh_cast <awh::net::addr_net_ipv4_t *> (value.get())->address) << sign;
 	// Сличаем ответы обеих перегрузок между собой
 	awh::net_addr_t addr;
+	// Переводим строение адреса в текст тем же порядком октетов
 	addr.source(value.get(), awh::net_addr_t::endian_t::LITTLE);
+	// Проверяем совпадение текстов обеих перегрузок
 	ASSERT_EQ(text, static_cast <std::string> (addr)) << sign;
+	// Уничтожаем событие клиента
 	awh::engine::io::destroy(eid);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -24502,10 +24947,13 @@ TEST_F(IoFixture, IoAddressOverloadsAgreeOnUnsetSourceTest){
  *
  */
 TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
+	// Счётчики удач подключения и возрождений события
 	uint8_t successes = 0, rebirths = 0;
 	// Заводим слушающий сокет на петле
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что слушающий сокет заведён
 	ASSERT_GT(listener, 0);
+	// Адрес, на котором слушающий сокет будет ожидать подключения
 	struct sockaddr_in host{};
 	/**
 	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
@@ -24513,13 +24961,19 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	 * вызовам отдельным доводом
 	 */
 	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		// Устанавливаем длину записи адреса BSD-систем
 		host.sin_len = sizeof(host);
 	#endif
+	// Устанавливаем семейство адресов слушающего сокета
 	host.sin_family = AF_INET;
+	// Устанавливаем порт, выдаваемый системой
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушающий сокет к адресу петли
 	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Длина записи адреса, которую вернёт опрос имени сокета
 	socklen_t length = sizeof(host);
+	// Получаем адрес, выданный слушающему сокету системой
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	ASSERT_EQ(0, ::listen(listener, 16));
 	// Заводим событие клиента и тикающий интервал
@@ -24527,15 +24981,21 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 	ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, ntohs(host.sin_port)));
+	// Взводим задержку переподключения узла в 200 миллисекунд
 	awh::engine::timer::timeout(eid, awh::event::action_t::RECONNECT, 200);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 100);
+	// Подписываем узел на отклик о смене состояния
 	awh::engine::io::on(eid, [&rebirths]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Считаем возрождения события, которыми движок объявляет о подъёме
 		if(status == awh::event::status_t::REBIRTHED) rebirths++;
@@ -24545,6 +25005,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 			if(ok) successes++;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	ASSERT_TRUE(awh::engine::io::connect(eid));
@@ -24552,7 +25013,11 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	ASSERT_TRUE(awh::engine::io::launch(tick));
 	// Дожидаемся подключения
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся первого подключения, опрашивая события до срока
+	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Проверяем, что первое подключение состоялось
 	ASSERT_EQ(1, successes);
 	// Уничтожаем событие по своей воле, не снимая опции самостоятельного переподключения
 	awh::engine::io::destroy(eid);
@@ -24560,7 +25025,11 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	const uint8_t reborn = rebirths, connected = successes;
 	// Крутим цикл заведомо дольше срока переподключения, давая подъёму случиться
 	start = std::chrono::steady_clock::now();
+	/**
+	 * Опрашиваем события дольше срока переподключения, давая подъёму случиться
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("возрождений=") + std::to_string(rebirths - reborn) +
 		" подключений=" + std::to_string(successes - connected);
 	// Уничтоженное по воле вызывающего событие не вправе подняться ни разу
@@ -24568,15 +25037,20 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	ASSERT_EQ(connected, successes) << sign;
 	// Закрываем слушающий сокет
 	::closesocket(listener);
+	// Уничтожаем событие интервала
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
 TEST_F(IoFixture, IoRebuildRevivesClientTest){
+	// Счётчики отказов и удач подключения
 	uint8_t failures = 0, successes = 0;
 	// Заводим слушающий сокет на петле
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что слушающий сокет заведён
 	ASSERT_GT(listener, 0);
+	// Адрес, на котором слушающий сокет будет ожидать подключения
 	struct sockaddr_in host{};
 	/**
 	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
@@ -24584,13 +25058,19 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	 * вызовам отдельным доводом
 	 */
 	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		// Устанавливаем длину записи адреса BSD-систем
 		host.sin_len = sizeof(host);
 	#endif
+	// Устанавливаем семейство адресов слушающего сокета
 	host.sin_family = AF_INET;
+	// Устанавливаем порт, выдаваемый системой
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушающий сокет к адресу петли
 	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Длина записи адреса, которую вернёт опрос имени сокета
 	socklen_t length = sizeof(host);
+	// Получаем адрес, выданный слушающему сокету системой
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	ASSERT_EQ(0, ::listen(listener, 16));
 	// Заводим событие клиента и тикающий интервал
@@ -24598,19 +25078,26 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 	ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, ntohs(host.sin_port)));
+	// Взводим интервал оборотов опроса в 100 миллисекунд
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 100);
+	// Подписываем узел на отклик о подключении
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::connect_t> (
 		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 			if(ok) successes++; else failures++;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	ASSERT_TRUE(awh::engine::io::connect(eid));
@@ -24618,25 +25105,38 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	ASSERT_TRUE(awh::engine::io::launch(tick));
 	// Дожидаемся первого подключения
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся первого подключения, опрашивая события до срока
+	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Проверяем, что первое подключение состоялось
 	ASSERT_EQ(1, successes);
 	// Возвращаем событие в работу перестройкой
 	const bool rebuilt = awh::engine::io::rebuild(eid);
+	// Подключаем перестроенное событие заново
 	const bool reconnected = (rebuilt && awh::engine::io::connect(eid));
+	// Запускаем перестроенное событие заново
 	const bool relaunched = (reconnected && awh::engine::io::launch(eid));
 	// Дожидаемся второго подключения
 	start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся второго подключения, опрашивая события до срока
+	 */
 	while((successes < 2) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
 		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
 		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
+	// Проверяем, что перестройка события состоялась
 	ASSERT_TRUE(rebuilt) << sign;
 	ASSERT_TRUE(reconnected) << sign;
 	ASSERT_TRUE(relaunched) << sign;
 	// Перестроенное событие обязано подключиться заново
 	ASSERT_EQ(2, successes) << sign;
+	// Уничтожаем событие клиента
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -24668,6 +25168,7 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 	uint8_t successes = 0, packets = 0;
 	// Заводим слушающий сокет на петле
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что слушающий сокет заведён
 	ASSERT_GT(listener, 0);
 	// Адрес, на котором слушающий сокет будет ожидать подключения
 	struct sockaddr_in host{};
@@ -24677,14 +25178,19 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 	 * вызовам отдельным доводом
 	 */
 	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		// Устанавливаем длину записи адреса BSD-систем
 		host.sin_len = sizeof(host);
 	#endif
+	// Устанавливаем семейство адресов слушающего сокета
 	host.sin_family = AF_INET;
+	// Устанавливаем порт, выдаваемый системой
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушающий сокет к адресу петли
 	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
 	// Длина записи адреса, которую вернёт опрос имени сокета
 	socklen_t length = sizeof(host);
+	// Получаем адрес, выданный слушающему сокету системой
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	ASSERT_EQ(0, ::listen(listener, 16));
 	// Заводим событие клиента и тикающий интервал
@@ -24692,13 +25198,18 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 	ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, ntohs(host.sin_port)));
+	// Взводим интервал оборотов опроса в 100 миллисекунд
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 100);
 	// Устанавливаем функцию обратного вызова на событие подключения
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::connect_t> (
@@ -24714,6 +25225,7 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 			packets++;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	ASSERT_TRUE(awh::engine::io::connect(eid));
@@ -24721,22 +25233,31 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 	ASSERT_TRUE(awh::engine::io::launch(tick));
 	// Дожидаемся подключения
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся подключения, опрашивая события до срока
+	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Проверяем, что подключение состоялось
 	ASSERT_EQ(1, successes);
 	// Принимаем подключение сырым встречным сокетом
 	const int32_t peer = ::accept(listener, nullptr, nullptr);
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(peer, 0);
-	// Выполняем переинициализацию движка: подключение обязано её пережить
+	// Переинициализируем движок: подключение обязано её пережить
 	const bool reinitialized = awh::engine::io::reinitialize();
 	// Отправляем встречной стороной сообщение уже ПОСЛЕ переинициализации
 	const bool sent = (::send(peer, "AWH", 3, 0) == 3);
 	// Дожидаемся прихода сообщения
 	start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся прихода сообщения, опрашивая события до срока
+	 */
 	while((packets < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("переинициализация=") + (reinitialized ? "да" : "нет") +
 		" отправка=" + (sent ? "да" : "нет") + " удач=" + std::to_string(successes) +
 		" пакетов=" + std::to_string(packets);
+	// Проверяем, что переинициализация движка состоялась
 	ASSERT_TRUE(reinitialized) << sign;
 	ASSERT_TRUE(sent) << sign;
 	// Пережившее переинициализацию подключение обязано принять сообщение
@@ -24747,6 +25268,7 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -24774,22 +25296,31 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
  *
  */
 TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
+	// Счётчики отказов, удач, истечений срока и переподключений
 	uint8_t failures = 0, successes = 0, expirations = 0, reconnects = 0;
+	// След состояний узла, собираемый откликом
 	std::string trace = "";
+	// Заводим событие клиента TCP
 	const awh::event::id_t eid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 	ASSERT_TRUE(awh::engine::target::set(eid, deafAddress()));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, 8080));
+	// Взводим срок подключения узла в 500 миллисекунд
 	awh::engine::timer::timeout(eid, awh::event::action_t::CONNECT, 500);
 	awh::engine::timer::timeout(eid, awh::event::action_t::RECONNECT, 500);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 200);
+	// Подписываем узел на отклик о смене состояния
 	awh::engine::io::on(eid, [&trace]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		trace.append(std::to_string(static_cast <uint16_t> (status))).append(" ");
 	});
@@ -24820,6 +25351,7 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 			return true;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	/**
@@ -24837,10 +25369,16 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 		// Пропускаем проверку
 		GTEST_SKIP() << "ядро отвергает подключение к глухому адресу немедленно";
 	}
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(eid));
 	ASSERT_TRUE(awh::engine::io::launch(tick));
+	// Запоминаем миг начала опроса
 	const auto start = std::chrono::steady_clock::now();
+	/**
+	 * Опрашиваем события четыре секунды, собирая опыт сроков и переподключений
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
 		" переподключений=" + std::to_string(reconnects) + " отказов=" + std::to_string(failures) +
 		" удач=" + std::to_string(successes) + " состояния: " + trace;
@@ -24862,6 +25400,7 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -24885,21 +25424,29 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
  *
  */
 TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
+	// Счётчики отказов, удач, истечений срока и возрождений
 	uint8_t failures = 0, successes = 0, expirations = 0, rebirths = 0;
+	// Заводим событие клиента TCP
 	const awh::event::id_t eid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 	ASSERT_TRUE(awh::engine::target::set(eid, deafAddress()));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, 8080));
+	// Взводим срок подключения узла в 500 миллисекунд
 	awh::engine::timer::timeout(eid, awh::event::action_t::CONNECT, 500);
 	awh::engine::timer::timeout(eid, awh::event::action_t::RECONNECT, 500);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 200);
+	// Подписываем узел на отклик о смене состояния
 	awh::engine::io::on(eid, [&rebirths]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 		// Считаем возрождения события, которыми движок объявляет о новой попытке
 		if(status == awh::event::status_t::REBIRTHED) rebirths++;
@@ -24923,6 +25470,7 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 			return false;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	/**
@@ -24940,11 +25488,18 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 		// Пропускаем проверку
 		GTEST_SKIP() << "ядро отвергает подключение к глухому адресу немедленно";
 	}
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(eid));
 	ASSERT_TRUE(awh::engine::io::launch(tick));
+	// Запоминаем миг начала опроса
 	const auto start = std::chrono::steady_clock::now();
+	// Наибольшая длительность оборота опроса в миллисекундах
 	uint32_t slowest = 0;
+	/**
+	 * Опрашиваем события четыре секунды, замеряя длительность каждого оборота
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000)){
+		// Запоминаем миг начала оборота опроса
 		const auto tock = std::chrono::steady_clock::now();
 		/**
 		 * Опрос с пределом по сроку самого цикла
@@ -24953,13 +25508,19 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 		 *          повис бы внутри одного оборота, не дойдя до собственного сторожа.
 		 *          Предел взят равным окну замера: события приходят много раньше, и на
 		 *          измеряемую величину он не влияет, а зависание отсекает
+		 *
 		 */
 		const bool ok = awh::engine::io::poll(4000);
+		// Снимаем длительность состоявшегося оборота опроса
 		const uint32_t spent = static_cast <uint32_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - tock).count());
+		// Запоминаем наибольшую длительность оборота
 		if(spent > slowest) slowest = spent;
+		// Прерываем цикл, если опрос оборван сроком
 		if(!ok) break;
 	}
+	// Снимаем полную длительность цикла опроса
 	const uint32_t looped = static_cast <uint32_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count());
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
 		" возрождений=" + std::to_string(rebirths) + " отказов=" + std::to_string(failures) +
 		" удач=" + std::to_string(successes) + " цикл=" + std::to_string(looped) + "мс дольший опрос=" + std::to_string(slowest) + "мс";
@@ -24981,6 +25542,7 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -25005,10 +25567,13 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
  *
  */
 TEST_F(IoFixture, IoRebuildDuringReconnectTest){
+	// Счётчики отказов и удач подключения
 	uint8_t failures = 0, successes = 0;
 	// Заводим слушающий сокет на петле
 	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Проверяем, что слушающий сокет заведён
 	ASSERT_GT(listener, 0);
+	// Адрес, на котором слушающий сокет будет ожидать подключения
 	struct sockaddr_in host{};
 	/**
 	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
@@ -25016,13 +25581,19 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 * вызовам отдельным доводом
 	 */
 	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		// Устанавливаем длину записи адреса BSD-систем
 		host.sin_len = sizeof(host);
 	#endif
+	// Устанавливаем семейство адресов слушающего сокета
 	host.sin_family = AF_INET;
+	// Устанавливаем порт, выдаваемый системой
 	host.sin_port = 0;
 	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушающий сокет к адресу петли
 	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Длина записи адреса, которую вернёт опрос имени сокета
 	socklen_t length = sizeof(host);
+	// Получаем адрес, выданный слушающему сокету системой
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	ASSERT_EQ(0, ::listen(listener, 16));
 	// Заводим событие клиента и тикающий интервал
@@ -25030,9 +25601,13 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 	ASSERT_TRUE(awh::engine::target::set(eid, "127.0.0.1"));
@@ -25044,6 +25619,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 */
 	awh::engine::timer::timeout(eid, awh::event::action_t::RECONNECT, 1000);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 100);
+	// Подписываем узел на отклик о подключении
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::connect_t> (
 		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 			if(ok) successes++; else failures++;
@@ -25055,6 +25631,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 			return true;
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	ASSERT_TRUE(awh::engine::io::connect(eid));
@@ -25062,7 +25639,11 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	ASSERT_TRUE(awh::engine::io::launch(tick));
 	// Дожидаемся первого подключения
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся первого подключения, опрашивая события до срока
+	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Проверяем, что первое подключение состоялось
 	ASSERT_EQ(1, successes);
 	/**
 	 * Рвём связь со стороны получателя: принимаем подключение и закрываем принятый
@@ -25073,35 +25654,51 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 * @note Отключением `disconnect()` такого положения не создать: оно переводит
 	 *       событие в отмену, не проходя уничтожением, а подъём назначает именно
 	 *       уничтожение. Проверка на отключении оказалась бы пустой
+	 *
 	 */
 	const int32_t peer = ::accept(listener, nullptr, nullptr);
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(peer, 0);
+	// Рвём связь закрытием принятого конца
 	ASSERT_EQ(0, ::closesocket(peer));
 	// Даём обрыву дойти и назначению состояться, не дожидаясь самого подъёма
 	start = std::chrono::steady_clock::now();
+	/**
+	 * Даём обрыву дойти и назначению состояться, опрашивая события до срока
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 400) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Возвращаем событие в работу перестройкой поверх назначенного переподключения
 	const bool rebuilt = awh::engine::io::rebuild(eid);
+	// Подключаем перестроенное событие заново
 	const bool reconnected = (rebuilt && awh::engine::io::connect(eid));
+	// Запускаем перестроенное событие заново
 	const bool relaunched = (reconnected && awh::engine::io::launch(eid));
 	/**
 	 * Опрос ведётся заведомо дольше задержки переподключения: сдвоенный подъём
 	 * проявился бы именно после её истечения
 	 */
 	start = std::chrono::steady_clock::now();
+	/**
+	 * Опрашиваем события дольше задержки переподключения, выявляя сдвоенный подъём
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2500) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
 		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
 		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
+	// Проверяем, что перестройка события состоялась
 	ASSERT_TRUE(rebuilt) << sign;
 	ASSERT_TRUE(reconnected) << sign;
 	ASSERT_TRUE(relaunched) << sign;
 	// Подключений обязано быть ровно два: сдвоенного подъёма быть не должно
 	ASSERT_EQ(2, successes) << sign;
 	::closesocket(listener);
+	// Снимаем опцию самостоятельного переподключения
 	awh::engine::options::set(eid, awh::event::options::AUTO_RECONNECT, false);
+	// Уничтожаем событие клиента
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -25126,20 +25723,26 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
  *
  */
 TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
+	// Счётчики отказов, удач и истечений срока подключения
 	uint8_t failures = 0, successes = 0, expirations = 0;
 	// Заводим событие клиента и тикающий интервал
 	const awh::event::id_t eid = awh::engine::io::event(
 		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
 		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
 	);
+	// Проверяем, что событие клиента заведено
 	ASSERT_GT(eid, 0u);
+	// Заводим событие интервала для оборотов опроса
 	const awh::event::id_t tick = awh::engine::io::event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие интервала заведено
 	ASSERT_GT(tick, 0u);
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 	// Первое подключение ведётся к глухому адресу, чтобы истёк срок ожидания
 	ASSERT_TRUE(awh::engine::target::set(eid, deafAddress()));
 	ASSERT_TRUE(awh::engine::target::port::set(eid, 8080));
+	// Взводим срок подключения узла в 500 миллисекунд
 	awh::engine::timer::timeout(eid, awh::event::action_t::CONNECT, 500);
 	awh::engine::timer::timeout(tick, awh::event::action_t::NONE, 100);
 	/**
@@ -25148,8 +25751,10 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	 * @note Довод тот же, что и у соседней проверки срока подключения: отказ бывает
 	 *       отложенным, и тогда срок не истекает никогда. Отступать по одному лишь
 	 *       факту отказа нельзя - только по названной ядром причине
+	 *
 	 */
 	bool unreachable = false;
+	// Подписываем узел на отклик об ошибке
 	awh::engine::io::on(eid, static_cast <awh::engine::callback::error_t> (
 		[&unreachable]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
 			/**
@@ -25160,6 +25765,7 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 			 *       host», «Network is unreachable», «Host is down»), и требовать
 			 *       дословного совпадения значило бы завести признак, мёртвый везде,
 			 *       кроме одной системы
+			 *
 			 */
 			unreachable = (unreachable ||
 			 (text.find("route to host") != std::string::npos) ||
@@ -25185,6 +25791,7 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 			return (expirations > 1);
 		}
 	));
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(eid));
 	ASSERT_TRUE(awh::engine::io::commit(tick));
 	/**
@@ -25202,10 +25809,14 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 		// Пропускаем проверку
 		GTEST_SKIP() << "ядро отвергает подключение к глухому адресу немедленно";
 	}
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(eid));
 	ASSERT_TRUE(awh::engine::io::launch(tick));
 	// Дожидаемся истечения срока ожидания подключения
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся истечения срока ожидания подключения, опрашивая события
+	 */
 	while((expirations < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	/**
 	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
@@ -25222,7 +25833,9 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 		// Пропускаем проверку
 		GTEST_SKIP() << "ядро отвечает отсутствием маршрута к глухому адресу";
 	}
+	// Проверяем, что срок ожидания подключения истёк
 	ASSERT_GE(expirations, 1);
+	// Проверяем, что удачного подключения не было
 	ASSERT_EQ(0, successes);
 	/**
 	 * Годность проверяется по живому дескриптору: размер буфера приёма читается с
@@ -25233,15 +25846,19 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	 *       принимает; подключаться же снова к глухому адресу бессмысленно: ядро
 	 *       держит неудачную запись соседа и отвечает отказом немедленно, так что
 	 *       проверялось бы его поведение, а не годность события
+	 *
 	 */
 	const size_t buffer = awh::engine::buffer::size::get(eid, awh::event::action_t::READ);
+	// Роспись опыта, выводимая при отказе
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
 		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures) +
 		" буфер=" + std::to_string(buffer);
 	// Дескриптор события обязан быть живым: движок вернул годность перестройкой
 	ASSERT_GT(buffer, 0u) << sign;
+	// Уничтожаем событие клиента
 	awh::engine::io::destroy(eid);
 	awh::engine::io::destroy(tick);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -25291,7 +25908,7 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	awh::engine::timer::timeout(prompt, awh::event::action_t::NONE, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(interval));
 	ASSERT_TRUE(awh::engine::io::commit(prompt));
 	// Устанавливаем функцию обратного вызова на событие интервала
@@ -25308,7 +25925,7 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 			// Увеличиваем количество срабатываний ближнего срока
 			prompts++;
 	});
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(interval));
 	ASSERT_TRUE(awh::engine::io::launch(prompt));
 	/**
@@ -25316,17 +25933,25 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	 * перезарядка интервала уже лежит в очереди изменений отложенным взводом
 	 */
 	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся первого срабатывания интервала, опрашивая события до срока
+	 */
 	while((intervals < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
+	// Проверяем, что интервал сработал хотя бы раз
 	ASSERT_GE(intervals, 1);
 	/**
 	 * Взводим ближний срок мгновенным путём
 	 *
 	 * @note Срок его короче периода интервала, то есть в куче дедлайнов он
 	 *       становится корнем, и наступить обязан прежде следующего интервала
+	 *
 	 */
 	const auto armed = std::chrono::steady_clock::now();
+	// Перевзводим ближний срок мгновенным путём
 	ASSERT_TRUE(awh::engine::timer::rearm(prompt, awh::event::action_t::NONE, PROMPT));
-	// Дожидаемся наступления ближнего срока
+	/**
+	 * Дожидаемся наступления ближнего срока
+	 */
 	while((prompts < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count() < 3000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Запоминаем время, за которое ближний срок наступил
 	const int64_t spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count();
@@ -25341,10 +25966,13 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	 * @note Верхняя граница взята с запасом на разброс планировщика, но заведомо
 	 *       меньше дальнего срока таймаута: отодвинься взвод до него, и разница
 	 *       была бы не в проценты, а в порядок
+	 *
 	 */
 	ASSERT_LT(spent, static_cast <int64_t> (PROMPT * 8)) << sign;
+	// Уничтожаем событие интервала
 	awh::engine::io::destroy(interval);
 	awh::engine::io::destroy(prompt);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -25417,6 +26045,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	 *       сроком всегда оказывается интервал, снятие срока чтения ближайший срок
 	 *       не трогает - и мгновенный взвод не выполняется вовсе, а с ним не
 	 *       случается и порядка, ради которого стенд заведён
+	 *
 	 */
 	awh::engine::timer::timeout(interval, awh::event::action_t::NONE, 100);
 	/**
@@ -25425,6 +26054,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	 * @note Срок этот и снимается мгновенным путём на каждом принятом пакете - ради
 	 *       него стенд и заведён. Величина взята заведомо большей шага потока: срок
 	 *       обязан сниматься приходом данных, а не истекать сам
+	 *
 	 */
 	awh::engine::timer::timeout(reader, awh::event::action_t::READ, 8);
 	// Инициализируем асинхронный движок ввода-вывода
@@ -25458,10 +26088,10 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	ASSERT_TRUE(awh::engine::target::port::set(reader, ntohs(origin.sin_port)));
 	// Устанавливаем опции события клиента
 	ASSERT_TRUE(awh::engine::options::set(reader, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
-	// Выполняем фиксацию настроек событий
+	// Фиксируем настройки событий
 	ASSERT_TRUE(awh::engine::io::commit(interval));
 	ASSERT_TRUE(awh::engine::io::commit(reader));
-	// Выполняем запуск событий
+	// Запускаем события
 	ASSERT_TRUE(awh::engine::io::launch(interval));
 	ASSERT_TRUE(awh::engine::io::launch(reader));
 	/**
@@ -25469,8 +26099,10 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	 *
 	 * @note Без неё источнику неоткуда узнать адрес клиента: сокет клиента
 	 *       подключённый, порт ему выдан ядром, и назвать его заранее нельзя
+	 *
 	 */
 	const uint8_t hello[4] = {0x41, 0x57, 0x48, 0x00};
+	// Отправляем приветственную порцию принимающим концом
 	ASSERT_GT(awh::engine::io::send(reader, hello, sizeof(hello)), static_cast <size_t> (0));
 	// Признак работы потока
 	std::atomic <bool> running(true);
@@ -25481,6 +26113,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	 *       приходом данных и наступить не успевает. Событие интервала при этом
 	 *       приходит от ядра одной пачкой с готовностью сокета многократно за
 	 *       время прогона
+	 *
 	 */
 	std::thread feed([&running, feeder]() noexcept -> void {
 		// Адрес клиента, узнаваемый из первой его дейтаграммы
@@ -25505,7 +26138,9 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	});
 	// Запоминаем время начала опроса событий
 	const auto start = std::chrono::steady_clock::now();
-	// Ведём опрос событий отведённое стенду время
+	/**
+	 * Ведём опрос событий отведённое стенду время
+	 */
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Останавливаем поток
 	running.store(false);
@@ -25526,10 +26161,13 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	 * @note Здесь и вскрылась бы перезапись взведённого срока: поток идёт шагом
 	 *       вдвое короче срока ожидания, и снимается срок на каждом пакете. Срок,
 	 *       наступивший при живом потоке, означает, что взвод до ядра не дошёл
+	 *
 	 */
 	ASSERT_EQ(expirations, 0u) << sign;
+	// Уничтожаем событие интервала
 	awh::engine::io::destroy(interval);
 	awh::engine::io::destroy(reader);
+	// Деинициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
@@ -25580,7 +26218,7 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 	const std::string message = "проверка объединения потоковых сокетов";
 	// Признак того, что объединение заведено успешно
 	bool spliced = false;
-	// Выполняем генерацию портов
+	// Генерируем порты
 	uint16_t portA = ::port(), portB = ::port();
 	/**
 	 * Добиваемся того, чтобы порты не совпали
@@ -25588,9 +26226,10 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 	 * @note Порты выдаются случайно, и совпадение хоть и редко, но возможно. Две
 	 *       пары на одном порту дали бы отказ занятости, а выглядело бы это
 	 *       плавающим отказом самой проверки
+	 *
 	 */
 	while(portB == portA)
-		// Выполняем повторную генерацию порта
+		// Повторно генерируем порт
 		portB = ::port();
 	// Добавляем события отправителя и сервера А
 	const auto pairA = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -25635,9 +26274,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 					stop = true;
 			});
 		}));
-		// Выполняем фиксацию настроек сервера Б
+		// Фиксируем настройки сервера Б
 		ASSERT_TRUE(awh::engine::io::commit(pairB[1]));
-		// Выполняем прослушивание сервера Б
+		// Объявляем сервер Б слушающим
 		ASSERT_TRUE(awh::engine::io::listen(pairB[1], 100));
 		// Запускаем сервер Б
 		ASSERT_TRUE(awh::engine::io::launch(pairB[1]));
@@ -25652,9 +26291,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		ASSERT_TRUE(awh::engine::target::set(pairB[0], "127.0.0.1"));
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(pairB[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек клиента Б
+		// Фиксируем настройки клиента Б
 		ASSERT_TRUE(awh::engine::io::commit(pairB[0]));
-		// Выполняем подключение клиента Б к серверу Б
+		// Подключаем клиента Б к серверу Б
 		ASSERT_TRUE(awh::engine::io::connect(pairB[0]));
 		// Запускаем клиента Б
 		ASSERT_TRUE(awh::engine::io::launch(pairB[0]));
@@ -25668,7 +26307,7 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		// Устанавливаем функцию обратного вызова на принятие подключения
 		awh::engine::io::on(pairA[1], static_cast <awh::engine::callback::accept_t> ([&]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			/**
-			 * Выполняем объединение принятого узла с клиентом Б
+			 * Объединяем принятый узел с клиентом Б
 			 *
 			 * @note Подписки на чтение принятому узлу не ставится намеренно: данные
 			 *       обязаны уйти приёмнику, минуя приложение. У движка io_uring это
@@ -25679,12 +26318,13 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 			 *       проверка gtest выходит из **окружающей** функции, а окружающая
 			 *       здесь - сама лямбда, и отказ объединения прошёл бы молча,
 			 *       обернувшись потом невнятным превышением времени
+			 *
 			 */
 			spliced = awh::engine::io::splice(cid, pairB[0]);
 		}));
-		// Выполняем фиксацию настроек сервера А
+		// Фиксируем настройки сервера А
 		ASSERT_TRUE(awh::engine::io::commit(pairA[1]));
-		// Выполняем прослушивание сервера А
+		// Объявляем сервер А слушающим
 		ASSERT_TRUE(awh::engine::io::listen(pairA[1], 100));
 		// Запускаем сервер А
 		ASSERT_TRUE(awh::engine::io::launch(pairA[1]));
@@ -25701,14 +26341,14 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		awh::engine::io::on(pairA[0], static_cast <awh::engine::callback::connect_t> ([&](const awh::event::id_t eid, const bool ok) noexcept -> void {
 			// Если подключение состоялось
 			if(ok)
-				// Выполняем отправку сообщения серверу А
+				// Отправляем сообщение серверу А
 				awh::engine::io::send(eid, message.c_str(), message.size());
 		}));
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(pairA[0], awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек отправителя
+		// Фиксируем настройки отправителя
 		ASSERT_TRUE(awh::engine::io::commit(pairA[0]));
-		// Выполняем подключение отправителя к серверу А
+		// Подключаем отправителя к серверу А
 		ASSERT_TRUE(awh::engine::io::connect(pairA[0]));
 		// Запускаем отправителя
 		ASSERT_TRUE(awh::engine::io::launch(pairA[0]));
@@ -25724,7 +26364,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(10000));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -25774,7 +26416,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 	// Тело, отдаваемое источником малыми долями
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (1024 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -25784,7 +26428,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 	size_t offset = 0, requests = 0;
 	// Признак завершения обмена и признак обмена под ограничителем полосы
 	bool stop = false, limited = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем события клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -25822,6 +26466,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 			 *          делает наличие полосы: без неё - `iocp.cpp:23961`, с нею -
 			 *          `iocp.cpp:23845`, где отправка режется вёдрами токенов. Один
 			 *          узел покрывает лишь один путь, оттого обмена и два
+			 *
 			 */
 			if(limited)
 				// Устанавливаем предел полосы отдачи принятого узла
@@ -25832,6 +26477,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 			 * @note Доля берётся малой НАМЕРЕННО: отдай источник всё разом, очередь до
 			 *       исчерпания источника не опустеет, и продолжение вытягивания не
 			 *       случится вовсе - ровно это и показало покрытие
+			 *
 			 */
 			awh::engine::io::on(cid, static_cast <awh::engine::callback::source_t> ([&body, &offset, &requests]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
 				// Учитываем обращение движка к источнику
@@ -25856,6 +26502,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 				 *          вставал НАСОВСЕМ. Отказ был редким и оттого долго сходил за
 				 *          разброс: случается он лишь на хвосте тела и лишь когда движок
 				 *          просит меньше остатка, а это зависит от занятости очереди
+				 *
 				 */
 				const size_t part = std::min(rest, std::min(size, static_cast <size_t> (4096)));
 				// Отдаём движку указатель прямо в своё тело, без копирования
@@ -25870,7 +26517,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 			// Заводим отправку вытягивающей моделью
 			(void) awh::engine::io::send(cid, nullptr, 0);
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -25894,22 +26541,24 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 				// Останавливаем проверку
 				stop = true;
 		});
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение события клиента
+		// Подключаем событие клиента
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда тело не придёт целиком
+	 * Крутим обороты цикла, покуда тело не придёт целиком
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Тело обязано прийти целиком и совпасть до последнего октета
@@ -25926,6 +26575,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 	 * @note Второй обмен нужен не ради повтора, а ради второго пути продолжения
 	 *       вытягивания: под полосой отправка режется вёдрами токенов, и источник
 	 *       спрашивается в ином месте тела
+	 *
 	 */
 	{
 		// Уничтожаем первого клиента
@@ -25934,7 +26584,9 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 		limited = true;
 		// Сбрасываем состояние обмена
 		offset = 0;
+		// Очищаем накопленное содержимое приёма
 		received.clear();
+		// Снимаем признак прихода содержимого
 		stop = false;
 		// Заводим событие второго клиента
 		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -25957,16 +26609,16 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 				// Останавливаем проверку
 				stop = true;
 		});
-		// Выполняем фиксацию настроек события второго клиента
+		// Фиксируем настройки события второго клиента
 		ASSERT_TRUE(awh::engine::io::commit(client));
-		// Выполняем подключение события второго клиента
+		// Подключаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::connect(client));
 		// Запускаем событие второго клиента
 		ASSERT_TRUE(awh::engine::io::launch(client));
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
 		/**
-		 * Выполняем обороты цикла, покуда тело не придёт целиком
+		 * Крутим обороты цикла, покуда тело не придёт целиком
 		 *
 		 * @note Срок взят с большим запасом НАМЕРЕННО: обмен идёт под ограничителем в
 		 *       100 Мбит/с, и мегабайт по нему занимает восемьдесят с лишним миллисекунд
@@ -25974,9 +26626,10 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
 		 *       прежнем тридцатисекундном сроке (30014 мс), - и это была теснота срока,
 		 *       а не отказ движка: проверка эта утверждает ДОСТАВКУ, а не скорость,
 		 *       и срок ей нужен лишь чтобы не висеть вечно
+		 *
 		 */
 		while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 120))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Тело обязано прийти целиком и под ограничителем полосы
 		ASSERT_EQ(received.size(), body.size()) << "под ограничителем полосы принято " << received.size() << " из " << body.size();
@@ -26024,7 +26677,7 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
  *
  */
 TEST_F(IoFixture, IoIpcBufferSizeContractTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -26038,9 +26691,9 @@ TEST_F(IoFixture, IoIpcBufferSizeContractTest){
 	 * Фиксируем и запускаем оба конца канала
 	 */
 	for(uint8_t i = 0; i < 2; i++){
-		// Выполняем фиксацию настроек конца канала
+		// Фиксируем настройки конца канала
 		ASSERT_TRUE(awh::engine::io::commit(channels[i]));
-		// Выполняем запуск конца канала
+		// Запускаем конец канала
 		ASSERT_TRUE(awh::engine::io::launch(channels[i]));
 	}
 	/**
@@ -26073,6 +26726,7 @@ TEST_F(IoFixture, IoIpcBufferSizeContractTest){
 			 * @note Утверждается не «равно 65536», а «больше подставки»: величину эту
 			 *       вправе выбрать заведение описателя, а вот вернуться к неспрошенному
 			 *       числу оно не вправе
+			 *
 			 */
 			ASSERT_GT(read, static_cast <size_t> (0x1000))
 			 << "конец канала " << static_cast <uint32_t> (i) << " отдал размер буфера чтения " << read << ": число это не спрошено у системы, а поставлено движком";
@@ -26087,6 +26741,7 @@ TEST_F(IoFixture, IoIpcBufferSizeContractTest){
 	 *       сокетными настройками не меняется, а просьба потребителя тем самым исполнена
 	 *       настолько, насколько исполнима. Отказ здесь означал бы сокетный вызов на
 	 *       описателе канала - ровно тот дефект, что и был исправлен
+	 *
 	 */
 	for(uint8_t i = 0; i < 2; i++){
 		// Настройка буфера чтения обязана быть принята
@@ -26226,8 +26881,12 @@ static size_t pipeCapacity() noexcept {
 		return result;
 	#endif
 }
+/**
+ * @brief Тест вытягивания данных из источника каналом
+ *
+ */
 TEST_F(IoFixture, IoDataSourcePullIpcTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -26258,6 +26917,7 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 	 *          Оттого берётся половина ЗАМЕРЕННОЙ вместимости, а доля считается от неё
 	 *          так, чтобы обращений к источнику вышло около двенадцати при требуемых
 	 *          свыше десяти
+	 *
 	 */
 	// Замеряем вместимость канала опытом
 	const size_t capacity = ::pipeCapacity();
@@ -26267,8 +26927,11 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 	const size_t volume = (capacity / 2);
 	// Доля отдачи, дающая около двенадцати обращений к источнику
 	const size_t portion = ((volume / 12) > 0 ? (volume / 12) : 1);
+	// Содержимое, собранное вытягиванием из источника
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < volume)
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -26287,9 +26950,9 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 			// Останавливаем проверку
 			stop = true;
 	});
-	// Выполняем фиксацию настроек принимающего конца канала
+	// Фиксируем настройки принимающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск принимающего конца канала
+	// Запускаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
 	// Устанавливаем источник данных отдающего конца канала
 	awh::engine::io::on(channels[1], static_cast <awh::engine::callback::source_t> ([&body, &offset, &requests, portion]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
@@ -26315,21 +26978,23 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 		// Выводим признак наличия данных в источнике
 		return true;
 	}));
-	// Выполняем фиксацию настроек отдающего конца канала
+	// Фиксируем настройки отдающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
-	// Выполняем запуск отдающего конца канала
+	// Запускаем отдающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	// Заводим отправку вытягивающей моделью
 	(void) awh::engine::io::send(channels[1], nullptr, 0);
 	/**
-	 * Выполняем обороты цикла, покуда тело не придёт целиком
+	 * Крутим обороты цикла, покуда тело не придёт целиком
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Тело обязано прийти целиком и совпасть до последнего октета
@@ -26370,7 +27035,7 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
  *
  */
 TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -26388,7 +27053,9 @@ TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
 		ASSERT_TRUE(awh::engine::options::set(channels[i], awh::event::options::NO_IO_BLOCK));
 	// Тело, отдаваемое по каналу
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -26399,13 +27066,13 @@ TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
 		// Дописываем принятое к уже полученному телу
 		received.append(reinterpret_cast <const char *> (buffer), size);
 	});
-	// Выполняем фиксацию настроек принимающего конца канала
+	// Фиксируем настройки принимающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск принимающего конца канала
+	// Запускаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
-	// Выполняем фиксацию настроек отдающего конца канала
+	// Фиксируем настройки отдающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
-	// Выполняем запуск отдающего конца канала
+	// Запускаем отдающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	// Запоминаем миг начала обмена
 	const auto start = std::chrono::steady_clock::now();
@@ -26417,14 +27084,14 @@ TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
 		const size_t part = (((body.size() - offset) < 4096) ? (body.size() - offset) : 4096);
 		// Отправляем очередную долю тела
 		(void) awh::engine::io::send(channels[1], reinterpret_cast <const uint8_t *> (body.data() + offset), part);
-		// Выполняем оборот цикла событий, чтобы встречный конец успевал вычитывать
+		// Опрашиваем события одним оборотом цикла, чтобы встречный конец успевал вычитывать
 		awh::engine::io::poll(0);
 	}
 	/**
 	 * Доводим обмен до конца оборотами цикла
 	 */
 	while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 30))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Тело обязано прийти целиком и совпасть до последнего октета
 	ASSERT_EQ(received.size(), body.size()) << "принято " << received.size() << " из " << body.size();
@@ -26473,7 +27140,7 @@ TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
  *
  */
 TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -26485,7 +27152,9 @@ TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
 		ASSERT_GT(channels[i], 0);
 	// Тело, отдаваемое по каналу
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -26503,6 +27172,7 @@ TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
 	 *          вычитывать принятое некому, и ::write в полный канал ждал бы вечно.
 	 *          Неблокирующим режимом опыт и становится тем, чем задуман: остаток
 	 *          обязан унести САМ движок очередью, без единой новой отправки
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
@@ -26514,13 +27184,13 @@ TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
 			// Останавливаем проверку
 			stop = true;
 	});
-	// Выполняем фиксацию настроек принимающего конца канала
+	// Фиксируем настройки принимающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск принимающего конца канала
+	// Запускаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
-	// Выполняем фиксацию настроек отдающего конца канала
+	// Фиксируем настройки отдающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
-	// Выполняем запуск отдающего конца канала
+	// Запускаем отдающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	/**
 	 * Отдаём тело долями по 4 КБ
@@ -26533,14 +27203,16 @@ TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
 		accepted += awh::engine::io::send(channels[1], reinterpret_cast <const uint8_t *> (body.data() + offset), part);
 	}
 	/**
-	 * Выполняем обороты цикла, покуда тело не придёт целиком
+	 * Крутим обороты цикла, покуда тело не придёт целиком
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл, покуда движок не унесёт весь ПРИНЯТЫЙ им объём
+		/**
+		 * Крутим цикл, покуда движок не унесёт весь ПРИНЯТЫЙ им объём
+		 */
 		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Тело обязано прийти целиком и совпасть до последнего октета
@@ -26589,6 +27261,7 @@ TEST_F(IoFixture, IoQueryApiTest){
 	 *
 	 * @note Сличается это с тем, что заказано заведением: ответ «какой-то непустой»
 	 *       прошёл бы и при перепутанных полях
+	 *
 	 */
 	ASSERT_EQ(awh::engine::io::type(client), awh::event::type_t::STREAM);
 	ASSERT_EQ(awh::engine::io::family(client), awh::event::family_t::IPV4);
@@ -26600,6 +27273,7 @@ TEST_F(IoFixture, IoQueryApiTest){
 	 *
 	 * @note Ответ по умолчанию - часть договора: потребителю он говорит «события нет»,
 	 *       и подменись он на ответ соседнего события, обнаружить это было бы нечем
+	 *
 	 */
 	{
 		// Заведомо негодный идентификатор события
@@ -26620,6 +27294,7 @@ TEST_F(IoFixture, IoQueryApiTest){
 	 * @note Метод `size` отвечает размером ФАЙЛА, а не длиной очереди отправки - очередь
 	 *       меряет `available`. Утверждение здесь именно о том, что сетевому узлу файла
 	 *       не назначено
+	 *
 	 */
 	ASSERT_EQ(awh::engine::file::size(client), static_cast <size_t> (0));
 	// Инициализируем асинхронный движок ввода-вывода
@@ -26639,13 +27314,14 @@ TEST_F(IoFixture, IoQueryApiTest){
 	 * @note Оттого проверка и утверждает ОБА состояния: и что снос сразу счёта не
 	 *       меняет, и что оборот цикла его меняет. Утверждай она лишь второе - подмена
 	 *       отложенного сноса немедленным прошла бы незамеченной
+	 *
 	 */
 	ASSERT_EQ(awh::engine::io::eventsCount(), static_cast <size_t> (2));
 	/**
-	 * Выполняем обороты цикла, чтобы уборка снесённого состоялась
+	 * Крутим обороты цикла, чтобы уборка снесённого состоялась
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Число событий обязано убыть вместе с уничтоженным
 	ASSERT_EQ(awh::engine::io::eventsCount(), static_cast <size_t> (1));
@@ -26654,15 +27330,17 @@ TEST_F(IoFixture, IoQueryApiTest){
 	 *
 	 * @note Метод этот от `deinitialize` отличается тем, что движок остаётся поднятым:
 	 *       события уходят, а цикл событий - нет
+	 *
 	 */
 	awh::engine::io::clear();
 	/**
-	 * Выполняем обороты цикла, чтобы уборка снесённого состоялась
+	 * Крутим обороты цикла, чтобы уборка снесённого состоялась
 	 *
 	 * @note Довод тот же, что и у одиночного сноса: снос отложен, покуда движок поднят
+	 *
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// После сноса всех событий их число обязано обнулиться
 	ASSERT_EQ(awh::engine::io::eventsCount(), static_cast <size_t> (0));
@@ -26698,7 +27376,7 @@ TEST_F(IoFixture, IoPauseResumeTest){
 	std::string received;
 	// Признак подключения собеседника
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем события клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -26734,7 +27412,7 @@ TEST_F(IoFixture, IoPauseResumeTest){
 			// Отмечаем подключение собеседника
 			connected = true;
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -26754,26 +27432,29 @@ TEST_F(IoFixture, IoPauseResumeTest){
 			// Дописываем принятое к уже полученному телу
 			received.append(reinterpret_cast <const char *> (buffer), size);
 		});
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение события клиента
+		// Подключаем событие клиента
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда собеседник не подключится
+	 * Крутим обороты цикла, покуда собеседник не подключится
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Собеседник обязан подключиться
 	ASSERT_TRUE(connected);
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(accepted, 0);
 	// Подключённое событие обязано числиться живым
 	ASSERT_TRUE(awh::engine::io::isAlive(events[0]));
@@ -26783,15 +27464,16 @@ TEST_F(IoFixture, IoPauseResumeTest){
 	 * Повторная приостановка обязана отказать
 	 *
 	 * @note Договор этот записан у метода: приостановить можно лишь ЗАПУЩЕННОЕ событие
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::pause(events[0]));
 	// Отправляем тело приостановленному собеседнику
 	ASSERT_GT(awh::engine::io::send(accepted, reinterpret_cast <const uint8_t *> (body.data()), body.size()), static_cast <size_t> (0));
 	/**
-	 * Выполняем обороты цикла, давая телу дойти, если приостановка не работает
+	 * Крутим обороты цикла, давая телу дойти, если приостановка не работает
 	 */
 	for(uint8_t i = 0; i < 30; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Приостановленное событие принять НИЧЕГО не обязано
 	ASSERT_TRUE(received.empty()) << "приостановленное событие приняло " << received.size() << " октетов";
@@ -26805,6 +27487,7 @@ TEST_F(IoFixture, IoPauseResumeTest){
 	 *
 	 * @note Целость связи доказывает поэтому не он, а приход тела после возобновления
 	 *       ниже: разорванная связь не отдала бы ничего
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::isAlive(events[0]));
 	// Возобновляем чтение у клиента
@@ -26820,13 +27503,16 @@ TEST_F(IoFixture, IoPauseResumeTest){
 	 *
 	 * @note Приход этот и доказывает целость связи, о чём сказано выше: разорванная
 	 *       связь не отдала бы ничего
+	 *
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		/**
+		 * Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Накопленное обязано подняться возобновлением
@@ -26857,7 +27543,7 @@ TEST_F(IoFixture, IoPauseResumeTest){
  *
  */
 TEST_F(IoFixture, IoResumeDeliversPendingTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -26874,13 +27560,13 @@ TEST_F(IoFixture, IoResumeDeliversPendingTest){
 		// Дописываем принятое к уже полученному телу
 		received.append(reinterpret_cast <const char *> (buffer), size);
 	});
-	// Выполняем фиксацию настроек принимающего конца канала
+	// Фиксируем настройки принимающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск принимающего конца канала
+	// Запускаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
-	// Выполняем фиксацию настроек отдающего конца канала
+	// Фиксируем настройки отдающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
-	// Выполняем запуск отдающего конца канала
+	// Запускаем отдающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	// Приостанавливаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::pause(channels[0]));
@@ -26892,7 +27578,7 @@ TEST_F(IoFixture, IoResumeDeliversPendingTest){
 	 * Даём циклу обороты: приостановленный конец принимать НЕ обязан
 	 */
 	for(uint8_t round = 0; round < 20; round++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(1);
 	// Приостановленный конец принимать не должен
 	ASSERT_TRUE(received.empty()) << "приостановленный конец принял " << received.size() << " октетов";
@@ -26905,13 +27591,16 @@ TEST_F(IoFixture, IoResumeDeliversPendingTest){
 	 *          том и состоит, что накопившееся поднимается само. Дописав сюда вторую
 	 *          порцию, проверка доказывала бы обратное - что накопленное ждёт чужой
 	 *          посылки, - и проходила бы при живом дефекте
+	 *
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл, покуда накопленное не поднимется
+		/**
+		 * Крутим цикл, покуда накопленное не поднимется
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(1);
 	}
 	// Накопленное обязано подняться возобновлением
@@ -26952,7 +27641,7 @@ TEST_F(IoFixture, IoActionSwitchTest){
 	std::string received;
 	// Признак подключения собеседника
 	bool connected = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем события клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -26988,7 +27677,7 @@ TEST_F(IoFixture, IoActionSwitchTest){
 			// Отмечаем подключение собеседника
 			connected = true;
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -27008,26 +27697,29 @@ TEST_F(IoFixture, IoActionSwitchTest){
 			// Дописываем принятое к уже полученному телу
 			received.append(reinterpret_cast <const char *> (buffer), size);
 		});
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем подключение события клиента
+		// Подключаем событие клиента
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда собеседник не подключится
+	 * Крутим обороты цикла, покуда собеседник не подключится
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Собеседник обязан подключиться
 	ASSERT_TRUE(connected);
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(accepted, 0);
 	// Действие чтения обязано быть включённым у работающего события
 	ASSERT_EQ(awh::engine::action::get(events[0], awh::event::action_t::READ), awh::event::mode_t::ENABLED);
@@ -27038,10 +27730,10 @@ TEST_F(IoFixture, IoActionSwitchTest){
 	// Отправляем тело собеседнику со снятым чтением
 	ASSERT_GT(awh::engine::io::send(accepted, reinterpret_cast <const uint8_t *> (body.data()), body.size()), static_cast <size_t> (0));
 	/**
-	 * Выполняем обороты цикла, давая телу дойти, если снятие не работает
+	 * Крутим обороты цикла, давая телу дойти, если снятие не работает
 	 */
 	for(uint8_t i = 0; i < 30; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Событие со снятым чтением принять НИЧЕГО не обязано
 	ASSERT_TRUE(received.empty()) << "со снятым действием чтения принято " << received.size() << " октетов";
@@ -27057,13 +27749,16 @@ TEST_F(IoFixture, IoActionSwitchTest){
 	 *          снят на порте завершений MS Windows и к POSIX не относился: на
 	 *          kqueue подписка чтения заводится по УРОВНЮ, без EV_CLEAR, и включение
 	 *          фильтра поднимает накопленное само. Проверено 08.09.2026 - приходит
+	 *
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		/**
+		 * Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Накопленное обязано подняться возвратом действия чтения
@@ -27088,7 +27783,7 @@ TEST_F(IoFixture, IoActionSwitchTest){
  *
  */
 TEST_F(IoFixture, IoActionSwitchDeliversPendingTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -27105,13 +27800,13 @@ TEST_F(IoFixture, IoActionSwitchDeliversPendingTest){
 		// Дописываем принятое к уже полученному телу
 		received.append(reinterpret_cast <const char *> (buffer), size);
 	});
-	// Выполняем фиксацию настроек принимающего конца канала
+	// Фиксируем настройки принимающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск принимающего конца канала
+	// Запускаем принимающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
-	// Выполняем фиксацию настроек отдающего конца канала
+	// Фиксируем настройки отдающего конца канала
 	ASSERT_TRUE(awh::engine::io::commit(channels[1]));
-	// Выполняем запуск отдающего конца канала
+	// Запускаем отдающий конец канала
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	// Снимаем действие чтения у принимающего конца
 	ASSERT_TRUE(awh::engine::action::set(channels[0], awh::event::action_t::READ, awh::event::mode_t::DISABLED));
@@ -27123,7 +27818,7 @@ TEST_F(IoFixture, IoActionSwitchDeliversPendingTest){
 	 * Даём циклу обороты: со снятым действием чтения принимать НЕ обязан
 	 */
 	for(uint8_t round = 0; round < 20; round++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(1);
 	// Со снятым действием чтения принимать не должен
 	ASSERT_TRUE(received.empty()) << "конец со снятым действием чтения принял " << received.size() << " октетов";
@@ -27135,13 +27830,16 @@ TEST_F(IoFixture, IoActionSwitchDeliversPendingTest){
 	 * @warning Ни одной новой отправки здесь нет намеренно: договор возврата действия
 	 *          тот же, что у возобновления, - накопившееся поднимается само. Дописав
 	 *          сюда вторую порцию, проверка проходила бы и при живом дефекте
+	 *
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Крутим цикл, покуда накопленное не поднимется
+		/**
+		 * Крутим цикл, покуда накопленное не поднимется
+		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(1);
 	}
 	// Накопленное обязано подняться возвратом действия чтения
@@ -27174,7 +27872,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 	bool connected = false;
 	// Признак узнанного собеседником разрыва
 	bool broken = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем события клиента и сервера TCP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -27206,6 +27904,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 		 *
 		 * @note Метод этот ничего не возвращает, и утверждать по нему нечего - утверждается
 		 *       он ПОСЛЕДСТВИЕМ: подключение после него обязано приниматься по-прежнему
+		 *
 		 */
 		awh::engine::connection::backlog(events[1], 32);
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
@@ -27220,7 +27919,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 					broken = true;
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -27235,7 +27934,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 		ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		/**
 		 * Устанавливаем поддержание связи проверочными пакетами
@@ -27251,6 +27950,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 		 *          Движок при этом отказал ЧЕСТНО, и это верно по тому же доводу, что
 		 *          записан у предела жизни: солгать согласием либо молча подменить
 		 *          заданное ему не позволено
+		 *
 		 */
 		/**
 		 * Срок в десять секунд принимают ВСЕ известные системы
@@ -27270,25 +27970,28 @@ TEST_F(IoFixture, IoDisconnectTest){
 		 *       ядро спрашивается напрямую по отдельному гнезду, и движок обязан
 		 *       ответить то же самое. Движку не позволено ни солгать согласием, ни
 		 *       отказать там, где ядро согласно
+		 *
 		 */
 		if(::keepIdleQueryable())
 			// Ответ движка обязан совпасть с ответом ядра
 			ASSERT_EQ(awh::engine::connection::keepalive(events[0], 3, 1, 1), ::keepIdleAccepted(1))
 			 << "ответ движка на срок в одну секунду разошёлся с ответом ядра";
-		// Выполняем подключение события клиента
+		// Подключаем событие клиента
 		ASSERT_TRUE(awh::engine::io::connect(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда собеседник не подключится
+	 * Крутим обороты цикла, покуда собеседник не подключится
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Собеседник обязан подключиться: глубина очереди приёму не помешала
@@ -27298,14 +28001,16 @@ TEST_F(IoFixture, IoDisconnectTest){
 	// Разрываем связь клиента
 	ASSERT_TRUE(awh::engine::io::disconnect(events[0]));
 	/**
-	 * Выполняем обороты цикла, покуда собеседник не узнает о разрыве
+	 * Крутим обороты цикла, покуда собеседник не узнает о разрыве
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!broken && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Собеседник обязан узнать о разрыве
@@ -27317,6 +28022,7 @@ TEST_F(IoFixture, IoDisconnectTest){
 	 *
 	 * @note У уничтоженного события опрос отвечает пустотой, и подмена разрыва
 	 *       уничтожением всплыла бы ровно здесь
+	 *
 	 */
 	ASSERT_EQ(awh::engine::io::family(events[0]), awh::event::family_t::IPV4);
 	ASSERT_EQ(awh::engine::io::type(events[0]), awh::event::type_t::STREAM);
@@ -27346,6 +28052,7 @@ TEST_F(IoFixture, IoFileSeekTest){
 	 *
 	 * @note Берётся он обращениями `stdio`, а не потоками: заголовка `<fstream>` в этом
 	 *       наборе нет, а тянуть его сюда ради одного размера незачем
+	 *
 	 */
 	FILE * source = ::fopen(path.c_str(), "rb");
 	// Проверяем, что файл источника открыт
@@ -27367,12 +28074,13 @@ TEST_F(IoFixture, IoFileSeekTest){
 	// Устанавливаем адрес файла события
 	ASSERT_TRUE(awh::engine::address::set(file, awh::event::address_t::FS, path));
 	/**
-	 * Выполняем фиксацию настроек события файла
+	 * Фиксируем настройки события файла
 	 *
 	 * @warning Фиксация здесь обязательна, и это не обряд: описатель файла заводится
 	 *          ею, а смещение спрашивается у системы ПО ОПИСАТЕЛЮ (`fstat`). Без
 	 *          фиксации опрос отвечает нулём - молча, отказа не давая. Установлено
 	 *          замером: первая редакция проверки ждала 32969, получала 0
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::commit(file));
 	/**
@@ -27380,6 +28088,7 @@ TEST_F(IoFixture, IoFileSeekTest){
 	 *
 	 * @note Это и есть сличение с внешней мерой: число берётся у файловой системы, а
 	 *       не у самого движка
+	 *
 	 */
 	ASSERT_EQ(awh::engine::file::seek::get(file, awh::event::seek_t::END), length);
 	// Определяем смещение, с которого файл читать
@@ -27429,6 +28138,7 @@ TEST_F(IoFixture, IoTargetByAddressTest){
 	std::unique_ptr <awh::net::addr_t> value = nullptr;
 	// Движок обязан отдать поставленный адрес обратно объектом
 	ASSERT_TRUE(awh::engine::target::get(client, value));
+	// Проверяем, что адрес отдан не пустым указателем
 	ASSERT_NE(nullptr, value);
 	// Отданный объектом адрес обязан совпасть с поставленным
 	ASSERT_EQ(awh_cast <awh::net::addr_net_ipv4_t *> (value.get())->address, htonl(INADDR_LOOPBACK));
@@ -27438,6 +28148,7 @@ TEST_F(IoFixture, IoTargetByAddressTest){
 	 * @note Вот это сличение и делает проверку доказательной: объектная перегрузка,
 	 *       положившая адрес мимо, отдала бы объектом своё же значение, а строковый
 	 *       путь показал бы пустоту либо чужое
+	 *
 	 */
 	ASSERT_EQ(awh::engine::target::get(client), "127.0.0.1");
 	// Уничтожаем событие клиента
@@ -27476,17 +28187,19 @@ TEST_F(IoFixture, IoDatagramSettingsTest){
 	 * Устанавливаем режим трансляции пакетов
 	 *
 	 * @note Ставится он до фиксации: режим этот решает, каким сокет заводить
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::delivery::set(server, awh::event::delivery_mode_t::BROADCAST));
 	// Опрос обязан отвечать установленным режимом трансляции
 	ASSERT_EQ(awh::engine::delivery::get(server), awh::event::delivery_mode_t::BROADCAST);
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Устанавливаем размер MTU сетевого устройства
 	 *
 	 * @note Ставится он ПОСЛЕ фиксации: настройка уходит ядру по описателю, а описатель
 	 *       заводится фиксацией - тот же порядок, что и у поддержания связи
+	 *
 	 */
 	if(awh::engine::mtu::set(server, 1400))
 		// Опрос обязан отвечать установленным размером MTU
@@ -27497,6 +28210,7 @@ TEST_F(IoFixture, IoDatagramSettingsTest){
 	 *
 	 * @note Отказ здесь свойство системы, а не движка: смена MTU устройства требует
 	 *       прав, и под обычным пользователем она законно отвергается
+	 *
 	 */
 	else ASSERT_GT(awh::engine::mtu::get(server), static_cast <uint32_t> (0));
 	// Размер отслеживаемого файла у сетевого узла нулевой: файла ему не назначено
@@ -27526,7 +28240,7 @@ TEST_F(IoFixture, IoDatagramSettingsTest){
 TEST_F(IoFixture, IoAccessListTest){
 	// Признак принятого сервером подключения
 	bool accepted = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -27545,6 +28259,7 @@ TEST_F(IoFixture, IoAccessListTest){
 	 *
 	 * @note Заносится он ДО фиксации: список спрашивается при принятии подключения, и
 	 *       порядок здесь тот же, что и у прочих настроек события
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::control_list::add(server, awh::event::control_list_t::BLACK, "127.0.0.1"));
 	// Занесённый адрес обязан в списке числиться
@@ -27554,7 +28269,7 @@ TEST_F(IoFixture, IoAccessListTest){
 		// Отмечаем принятое подключение
 		accepted = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -27573,12 +28288,17 @@ TEST_F(IoFixture, IoAccessListTest){
 		if(client > 0){
 			// Выставляем настройки события клиента
 			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			// Устанавливаем семейство адресов события клиента
 			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			// Устанавливаем адрес сервера, к которому подключаемся
 			(void) awh::engine::target::set(client, "127.0.0.1");
+			// Устанавливаем порт сервера
 			(void) awh::engine::target::port::set(client, port);
 			// Фиксируем, подключаем и запускаем событие клиента
 			(void) awh::engine::io::commit(client);
+			// Подключаем событие клиента к серверу
 			(void) awh::engine::io::connect(client);
+			// Запускаем событие клиента
 			(void) awh::engine::io::launch(client);
 		}
 		// Выводим идентификатор заведённого клиента
@@ -27586,12 +28306,13 @@ TEST_F(IoFixture, IoAccessListTest){
 	};
 	// Стучимся к серверу из чёрного списка
 	const awh::event::id_t first = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(first, 0);
 	/**
 	 * Крутим цикл отведённый срок
 	 */
 	for(uint8_t i = 0; i < 40; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение из чёрного списка принято быть НЕ должно
 	ASSERT_FALSE(accepted) << "подключение из чёрного списка принято";
@@ -27602,6 +28323,7 @@ TEST_F(IoFixture, IoAccessListTest){
 	 *
 	 * @note Изъятие проверяется отдельно от очистки: очистка сносит список целиком и
 	 *       прошла бы даже при вовсе неработающем изъятии
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::control_list::remove(server, awh::event::control_list_t::BLACK, "127.0.0.1"));
 	// Изъятый адрес в списке числиться не обязан
@@ -27612,6 +28334,7 @@ TEST_F(IoFixture, IoAccessListTest){
 	ASSERT_TRUE(awh::engine::control_list::get(server, awh::event::control_list_t::BLACK).empty());
 	// Стучимся к серверу с очищенным списком
 	const awh::event::id_t second = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(second, 0);
 	/**
 	 * Крутим цикл, покуда подключение не примут
@@ -27619,9 +28342,11 @@ TEST_F(IoFixture, IoAccessListTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -27629,6 +28354,7 @@ TEST_F(IoFixture, IoAccessListTest){
 	 *
 	 * @note Утверждение это и делает проверку доказательной: оно отделяет запрет от
 	 *       любой иной причины молчания сервера
+	 *
 	 */
 	ASSERT_TRUE(accepted) << "подключение с очищенным списком не принято: молчание первого обмена запретом не доказано";
 	// Уничтожаем события
@@ -27651,7 +28377,7 @@ TEST_F(IoFixture, IoAccessListTest){
 TEST_F(IoFixture, IoAccessListModeTest){
 	// Признак принятого сервером подключения
 	bool accepted = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -27673,6 +28399,7 @@ TEST_F(IoFixture, IoAccessListModeTest){
 	 * Отключаем режим активации чёрного списка
 	 *
 	 * @note Список остаётся наполненным, но проверка им не производится
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::control_list::mode(server, awh::event::control_list_t::BLACK, awh::event::mode_t::DISABLED));
 	// Отключённый режим обязан оставлять адрес в списке
@@ -27682,7 +28409,7 @@ TEST_F(IoFixture, IoAccessListModeTest){
 		// Отмечаем принятое подключение
 		accepted = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -27701,12 +28428,17 @@ TEST_F(IoFixture, IoAccessListModeTest){
 		if(client > 0){
 			// Выставляем настройки события клиента
 			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			// Устанавливаем семейство адресов события клиента
 			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			// Устанавливаем адрес сервера, к которому подключаемся
 			(void) awh::engine::target::set(client, "127.0.0.1");
+			// Устанавливаем порт сервера
 			(void) awh::engine::target::port::set(client, port);
 			// Фиксируем, подключаем и запускаем событие клиента
 			(void) awh::engine::io::commit(client);
+			// Подключаем событие клиента к серверу
 			(void) awh::engine::io::connect(client);
+			// Запускаем событие клиента
 			(void) awh::engine::io::launch(client);
 		}
 		// Выводим идентификатор заведённого клиента
@@ -27714,6 +28446,7 @@ TEST_F(IoFixture, IoAccessListModeTest){
 	};
 	// Стучимся к серверу при отключённом режиме чёрного списка
 	const awh::event::id_t first = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(first, 0);
 	/**
 	 * Крутим цикл, покуда подключение не примут
@@ -27721,9 +28454,11 @@ TEST_F(IoFixture, IoAccessListModeTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -27731,6 +28466,7 @@ TEST_F(IoFixture, IoAccessListModeTest){
 	 *
 	 * @note Утверждение это и делает проверку доказательной: оно отделяет снятие запрета
 	 *       от любой иной причины молчания сервера
+	 *
 	 */
 	ASSERT_TRUE(accepted) << "подключение при отключённом режиме чёрного списка не принято";
 	// Уничтожаем событие первого клиента
@@ -27741,12 +28477,13 @@ TEST_F(IoFixture, IoAccessListModeTest){
 	ASSERT_TRUE(awh::engine::control_list::mode(server, awh::event::control_list_t::BLACK, awh::event::mode_t::ENABLED));
 	// Стучимся к серверу при включённом режиме чёрного списка
 	const awh::event::id_t second = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(second, 0);
 	/**
 	 * Крутим цикл отведённый срок
 	 */
 	for(uint8_t i = 0; i < 40; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение при включённом режиме чёрного списка принято быть НЕ должно
 	ASSERT_FALSE(accepted) << "подключение при включённом режиме чёрного списка принято";
@@ -27773,7 +28510,7 @@ TEST_F(IoFixture, IoAccessListModeTest){
 TEST_F(IoFixture, IoAccessListWhiteTest){
 	// Признак принятого сервером подключения
 	bool accepted = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -27803,7 +28540,7 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 		// Отмечаем принятое подключение
 		accepted = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -27822,12 +28559,17 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 		if(client > 0){
 			// Выставляем настройки события клиента
 			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			// Устанавливаем семейство адресов события клиента
 			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			// Устанавливаем адрес сервера, к которому подключаемся
 			(void) awh::engine::target::set(client, "127.0.0.1");
+			// Устанавливаем порт сервера
 			(void) awh::engine::target::port::set(client, port);
 			// Фиксируем, подключаем и запускаем событие клиента
 			(void) awh::engine::io::commit(client);
+			// Подключаем событие клиента к серверу
 			(void) awh::engine::io::connect(client);
+			// Запускаем событие клиента
 			(void) awh::engine::io::launch(client);
 		}
 		// Выводим идентификатор заведённого клиента
@@ -27835,12 +28577,13 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 	};
 	// Стучимся к серверу, которого в белом списке нет
 	const awh::event::id_t first = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(first, 0);
 	/**
 	 * Крутим цикл отведённый срок
 	 */
 	for(uint8_t i = 0; i < 40; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение не из белого списка принято быть НЕ должно
 	ASSERT_FALSE(accepted) << "подключение не из белого списка принято";
@@ -27857,6 +28600,7 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::WHITE).count("127.0.0.1"), static_cast <size_t> (1));
 	// Стучимся к серверу из белого списка
 	const awh::event::id_t second = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(second, 0);
 	/**
 	 * Крутим цикл, покуда подключение не примут
@@ -27865,10 +28609,10 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
 		/**
-		 * Выполняем обороты цикла событий, покуда подключение не принято и срок не истёк
+		 * Крутим обороты цикла событий, покуда подключение не принято и срок не истёк
 		 */
 		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	/**
@@ -27898,7 +28642,7 @@ TEST_F(IoFixture, IoAccessListWhiteTest){
 TEST_F(IoFixture, IoAccessListPrecedenceTest){
 	// Признак принятого сервером подключения
 	bool accepted = false;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -27927,7 +28671,7 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 		// Отмечаем принятое подключение
 		accepted = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -27946,12 +28690,17 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 		if(client > 0){
 			// Выставляем настройки события клиента
 			(void) awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK);
+			// Устанавливаем семейство адресов события клиента
 			(void) awh::engine::address::set(client, awh::event::address_t::IPV4, "0.0.0.0");
+			// Устанавливаем адрес сервера, к которому подключаемся
 			(void) awh::engine::target::set(client, "127.0.0.1");
+			// Устанавливаем порт сервера
 			(void) awh::engine::target::port::set(client, port);
 			// Фиксируем, подключаем и запускаем событие клиента
 			(void) awh::engine::io::commit(client);
+			// Подключаем событие клиента к серверу
 			(void) awh::engine::io::connect(client);
+			// Запускаем событие клиента
 			(void) awh::engine::io::launch(client);
 		}
 		// Выводим идентификатор заведённого клиента
@@ -27959,6 +28708,7 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 	};
 	// Стучимся к серверу, когда адрес есть только в белом списке
 	const awh::event::id_t first = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(first, 0);
 	/**
 	 * Крутим цикл, покуда подключение не примут
@@ -27967,10 +28717,10 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
 		/**
-		 * Выполняем обороты цикла событий, покуда подключение не принято и срок не истёк
+		 * Крутим обороты цикла событий, покуда подключение не принято и срок не истёк
 		 */
 		while(!accepted && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Адрес из белого списка обязан быть принят, пока чёрный список пуст
@@ -27991,12 +28741,13 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
 	ASSERT_EQ(awh::engine::control_list::get(server, awh::event::control_list_t::BLACK).count("127.0.0.1"), static_cast <size_t> (1));
 	// Стучимся к серверу, когда адрес есть в обоих списках
 	const awh::event::id_t second = knock();
+	// Проверяем, что событие стука заведено
 	ASSERT_GT(second, 0);
 	/**
 	 * Крутим цикл отведённый срок
 	 */
 	for(uint8_t i = 0; i < 40; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Адрес из обоих списков принят быть НЕ должен: чёрный перевешивает белый
@@ -28025,7 +28776,7 @@ TEST_F(IoFixture, IoAccessListPrecedenceTest){
  *
  */
 TEST_F(IoFixture, IoClientAccessListTest){
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -28043,7 +28794,7 @@ TEST_F(IoFixture, IoClientAccessListTest){
 	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем порт события сервера
 	ASSERT_TRUE(awh::engine::source::port::set(server, port));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -28067,7 +28818,7 @@ TEST_F(IoFixture, IoClientAccessListTest){
 	ASSERT_TRUE(awh::engine::control_list::add(client, awh::event::control_list_t::BLACK, "127.0.0.1"));
 	// Занесённый адрес обязан в чёрном списке клиента числиться
 	ASSERT_EQ(awh::engine::control_list::get(client, awh::event::control_list_t::BLACK).count("127.0.0.1"), static_cast <size_t> (1));
-	// Выполняем фиксацию настроек события клиента
+	// Фиксируем настройки события клиента
 	ASSERT_TRUE(awh::engine::io::commit(client));
 	// Подключение к цели из чёрного списка клиента обязано быть отвергнуто
 	ASSERT_FALSE(awh::engine::io::connect(client)) << "подключение к цели из чёрного списка клиента прошло";
@@ -28152,10 +28903,10 @@ TEST_F(IoFixture, IoClientAccessListSCTPTest){
 		{"белый список на обратный порядок октетов", awh::event::control_list_t::WHITE, "1.0.0.127", false}
 	};
 	/**
-	 * Выполняем перебор ног
+	 * Перебираем ноги
 	 */
 	for(const auto & leg : legs){
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Добавляем новое событие клиента и сервера SCTP Stream
 		const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
@@ -28171,7 +28922,7 @@ TEST_F(IoFixture, IoClientAccessListSCTPTest){
 		ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем порт источника события сервера
 		ASSERT_TRUE(awh::engine::source::port::set(events[1], port));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Переводим событие сервера в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(events[1], 10));
@@ -28189,7 +28940,7 @@ TEST_F(IoFixture, IoClientAccessListSCTPTest){
 		ASSERT_TRUE(awh::engine::control_list::add(events[0], leg.list, leg.value));
 		// Занесённый адрес обязан в списке клиента числиться
 		ASSERT_EQ(awh::engine::control_list::get(events[0], leg.list).count(leg.value), static_cast <size_t> (1));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Подключение обязано дать исход, которого ждёт нога
 		if(leg.accepted)
@@ -28232,7 +28983,7 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 	awh::event::id_t accepted = 0;
 	// Число извещений об освобождении места и наибольший названный размер
 	size_t notices = 0, reported = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -28263,6 +29014,7 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 			 * очереди. Оттого цикл вычитывания не выполнялся НИ РАЗУ: условие его
 			 * входа уже было ложным, собеседник принятого не забирал, окно не
 			 * открывалось, и освобождения места не наступало по существу
+			 *
 			 */
 			if(status != awh::event::status_t::QUEUE_AVAILABLE)
 				// Выходим, извещение о переполнении здесь не считается
@@ -28277,7 +29029,7 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 		// Отмечаем подключение собеседника
 		connected = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -28302,17 +29054,18 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 		target.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
-	 * Выполняем обороты цикла, покуда подключение не примут
+	 * Крутим обороты цикла, покуда подключение не примут
 	 */
 	for(uint16_t round = 0; (round < 300) && !connected; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "сырой собеседник не подключился";
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(accepted, 0);
 	// Порция, которой набирается очередь отправки
 	const std::vector <uint8_t> chunk(8192, 0x5A);
@@ -28321,11 +29074,12 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 	 *
 	 * @note Объём взят с запасом - три с лишним мегабайта: у петли MS Windows буферы
 	 *       щедрые, и меньшим объёмом окно собеседника не закрывается
+	 *
 	 */
 	for(uint16_t round = 0; round < 400; ++round){
 		// Отправляем очередную порцию принятым узлом
 		(void) awh::engine::io::send(accepted, chunk.data(), chunk.size());
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(1);
 	}
 	/**
@@ -28342,7 +29096,7 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 		while((notices == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15)){
 			// Вычитываем принятое собеседником
 			(void) ::recv(stranger, reinterpret_cast <char *> (sink.data()), static_cast <int32_t> (sink.size()), 0);
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(1);
 		}
 	}
@@ -28385,7 +29139,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 	uint8_t traffics = 0;
 	// Идентификатор узла, принявшего датаграмму
 	awh::event::id_t receiver = 0;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Добавляем события клиента и сервера UDP
 	const auto events = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -28422,6 +29176,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 		 *          читает датаграмму, а принятое соединение здесь - лишь запись о
 		 *          собеседнике. Первая редакция проверки повесила её на принятый узел и
 		 *          не получила ни одних сведений
+		 *
 		 */
 		awh::engine::io::on(events[1], static_cast <awh::engine::callback::traffic_t> ([&noticed, &traffics]([[maybe_unused]] const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
 			// Запоминаем названные подпиской сведения
@@ -28439,7 +29194,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 				stop = true;
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(events[1]));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
@@ -28452,7 +29207,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 		ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(awh::engine::target::set(events[0], "127.0.0.1"));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
@@ -28460,22 +29215,25 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 		ASSERT_GT(awh::engine::io::send(events[0], reinterpret_cast <const uint8_t *> ("сведения"), 16), static_cast <size_t> (0));
 	}
 	/**
-	 * Выполняем обороты цикла, покуда датаграмма не придёт
+	 * Крутим обороты цикла, покуда датаграмма не придёт
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 	}
 	// Датаграмма обязана прийти вместе со сведениями о ней
 	ASSERT_TRUE(stop) << "датаграмма не пришла";
+	// Проверяем, что сведения о датаграмме пришли
 	ASSERT_GT(traffics, static_cast <uint8_t> (0)) << "сведений о датаграмме не пришло";
 	ASSERT_GT(receiver, 0);
 	// Узел, у которого спрашиваются сведения: читает датаграмму серверный узел
-	const awh::event::id_t asked_id = events[1];
+	const awh::event::id_t askedId = events[1];
 	// Предел жизни принятого пакета обязан быть ненулевым
 	ASSERT_GT(noticed.hops, static_cast <uint8_t> (0)) << "подписка назвала нулевой предел жизни";
 	/**
@@ -28483,7 +29241,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 	 */
 	{
 		// Сведения о датаграмме, снятые узловым опросом
-		const awh::net::dgram_info_t asked = awh::engine::io::trafficInfo(asked_id);
+		const awh::net::dgram_info_t asked = awh::engine::io::trafficInfo(askedId);
 		// Предел жизни обязан совпасть
 		ASSERT_EQ(asked.hops, noticed.hops) << "опрос и подписка разошлись пределом жизни";
 		// Семейство протоколов обязано совпасть
@@ -28491,7 +29249,7 @@ TEST_F(IoFixture, IoTrafficInfoGettersTest){
 		// Признак перегрузки пути обязан совпасть
 		ASSERT_EQ(asked.congestion, noticed.congestion) << "опрос и подписка разошлись признаком перегрузки";
 		// Отдельный опрос числа переходов обязан совпасть с ним же в сведениях
-		ASSERT_EQ(awh::engine::hops::count::get(asked_id), noticed.hops) << "опрос числа переходов разошёлся со сведениями";
+		ASSERT_EQ(awh::engine::hops::count::get(askedId), noticed.hops) << "опрос числа переходов разошёлся со сведениями";
 	}
 	// Сворачиваем движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -28526,7 +29284,7 @@ TEST_F(IoFixture, IoSpoolReturnTest){
 	size_t returns = 0, returned = 0;
 	// Признак того, что возвращённое совпало с отданным образцом
 	bool matched = true;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -28568,7 +29326,7 @@ TEST_F(IoFixture, IoSpoolReturnTest){
 		// Отмечаем подключение собеседника
 		connected = true;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 10));
@@ -28593,17 +29351,18 @@ TEST_F(IoFixture, IoSpoolReturnTest){
 		target.sin_port = htons(port);
 		// Устанавливаем адрес сервера
 		target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-		// Выполняем подключение собеседника к серверу
+		// Подключаем собеседника к серверу
 		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0) << "сырой собеседник не подключился к серверу";
 	}
 	/**
-	 * Выполняем обороты цикла, покуда подключение не примут
+	 * Крутим обороты цикла, покуда подключение не примут
 	 */
 	for(uint16_t round = 0; (round < 300) && !connected; ++round)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Подключение обязано состояться
 	ASSERT_TRUE(connected) << "сырой собеседник не подключился";
+	// Проверяем, что подключение принято встречным сокетом
 	ASSERT_GT(accepted, 0);
 	// Порция, которой набивается очередь отправки
 	const std::vector <uint8_t> chunk(8192, 0x5A);
@@ -28613,7 +29372,7 @@ TEST_F(IoFixture, IoSpoolReturnTest){
 	for(uint16_t round = 0; round < 400; ++round){
 		// Отправляем очередную порцию принятым узлом
 		(void) awh::engine::io::send(accepted, chunk.data(), chunk.size());
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(1);
 	}
 	/**
@@ -28632,16 +29391,18 @@ TEST_F(IoFixture, IoSpoolReturnTest){
 		::closesocket(stranger);
 	}
 	/**
-	 * Выполняем обороты цикла, покуда неотправленное не вернётся
+	 * Крутим обороты цикла, покуда неотправленное не вернётся
 	 */
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
+		/**
+		 * Крутим обороты цикла событий
+		 */
 		while((returns == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20)){
 			// Отправляем очередную порцию, вынуждая движок обнаружить обрыв
 			(void) awh::engine::io::send(accepted, chunk.data(), chunk.size());
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		}
 	}
@@ -28673,7 +29434,7 @@ TEST_F(IoFixture, IoSpoolReturnTest){
  *
  */
 TEST_F(IoFixture, IoMulticastMembershipByAddressTest){
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t port = ::port();
 	// Заводим событие сервера UDP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -28697,13 +29458,14 @@ TEST_F(IoFixture, IoMulticastMembershipByAddressTest){
 	awh_cast <awh::net::addr_net_ipv4_t *> (source.get())->address = htonl(INADDR_ANY);
 	// Движок обязан принять вступление в группу адресами-объектами
 	ASSERT_TRUE(awh::engine::multicast::membership(server, awh::event::mode_t::ENABLED, group.get(), source.get(), port)) << "вступление в группу объектами отвергнуто";
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Выход из группы обязан приниматься теми же объектами
 	 *
 	 * @note Утверждается он отдельно: вступление, не оставившее следа, вышло бы отказом
 	 *       именно здесь - выходить было бы неоткуда
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::multicast::membership(server, awh::event::mode_t::DISABLED, group.get(), source.get(), port)) << "выход из группы объектами отвергнут";
 	// Уничтожаем событие сервера
@@ -28727,7 +29489,9 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 	size_t offset = 0;
 	// Тело для отправки, заведомо крупнее очереди отправки движка
 	std::string body;
-	// Наполняем тело повторяющимся образцом
+	/**
+	 * Наполняем тело повторяющимся образцом
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем очередной образец в тело
 		body.append("0123456789ABCDEF");
@@ -28761,7 +29525,7 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 			stop = true;
 		}
 	});
-	// Выполняем фиксацию настроек ограничителя времени
+	// Фиксируем настройки ограничителя времени
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	// Запускаем ограничитель времени
 	ASSERT_TRUE(awh::engine::io::launch(guard));
@@ -28785,9 +29549,9 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 					stop = true;
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(sid));
-		// Выполняем прослушивание UNIX-доменного сокета
+		// Объявляем UNIX-доменный сокет слушающим
 		ASSERT_TRUE(awh::engine::io::listen(sid, 10));
 		// Запускаем событие сервера
 		ASSERT_TRUE(awh::engine::io::launch(sid));
@@ -28802,13 +29566,14 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 		ASSERT_TRUE(awh::engine::target::set(cid, socketPath));
 		// Устанавливаем таймаут события на подключение
 		awh::engine::timer::timeout(cid, awh::event::action_t::CONNECT, 5000);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(cid));
 		/**
 		 * Устанавливаем функцию обратного вызова на подключение
 		 *
 		 * @note Вытягивание заводится ИМЕННО отсюда, а не сразу после запуска события:
 		 *       до завершения подключения слать нечего и некуда
+		 *
 		 */
 		awh::engine::io::on(cid, static_cast <awh::engine::callback::connect_t> ([](const awh::event::id_t eid, const bool mode) noexcept -> void {
 			// Если подключение установлено
@@ -28816,7 +29581,7 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 				// Заводим отправку вытягивающей моделью
 				awh::engine::io::send(eid, nullptr, 0);
 		}));
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		ASSERT_TRUE(awh::engine::io::connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -28864,7 +29629,9 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(10000));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -28921,6 +29688,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	 *
 	 * @note Буфер живёт у источника, а не у движка: договор вытягивания отдаёт движку
 	 *       указатель на данные источника, поэтому копирования нет вовсе
+	 *
 	 */
 	std::vector <uint8_t> message(length, 0);
 	// Номера принятых сообщений в порядке приёма
@@ -28936,6 +29704,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	 *       на них отказом и прямо о том предупреждает. Проверка оттого ведётся по
 	 *       петле UDP: вытягивание от вида сокета не зависит, а без замены она
 	 *       молча не проверяла бы ничего
+	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Вид семейства адресов проверки
@@ -28983,7 +29752,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 			stop = true;
 		}
 	});
-	// Выполняем фиксацию настроек ограничителя времени
+	// Фиксируем настройки ограничителя времени
 	ASSERT_TRUE(awh::engine::io::commit(guard));
 	// Запускаем ограничитель времени
 	ASSERT_TRUE(awh::engine::io::launch(guard));
@@ -29007,6 +29776,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		 *
 		 * @note У дейтаграммного сервера данные приходят НЕ на сам слушающий узел: движок
 		 *       заводит отдельный узел на каждого встречного, и чтение вешается уже на него
+		 *
 		 */
 		awh::engine::io::on(sid, static_cast <awh::engine::callback::accept_t> ([ &received, &corrupted, &stop]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
 		// Устанавливаем функцию обратного вызова на чтение данных встречной стороны
@@ -29038,7 +29808,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 				stop = true;
 		});
 		}));
-		// Выполняем фиксацию настроек события сервера
+		// Фиксируем настройки события сервера
 		ASSERT_TRUE(awh::engine::io::commit(sid));
 		/**
 		 * Если проверка ведётся по петле UDP - расширяем буфер приёма сервера
@@ -29052,6 +29822,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		 * @note Зовётся ПОСЛЕ фиксации настроек намеренно: сокет заводится ею, и
 		 *       до неё расширять нечего - обращение отвечало отказом «объект не
 		 *       является сокетом»
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Расширяем буфер приёма сервера под всю пачку сообщений
@@ -29075,7 +29846,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 			// Устанавливаем порт, на который отправляются сообщения
 			ASSERT_TRUE(awh::engine::target::port::set(cid, port));
 		#endif
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		ASSERT_TRUE(awh::engine::io::commit(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -29093,6 +29864,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 				 *
 				 * @note Дробить сообщение НЕЛЬЗЯ: половина дейтаграммы смысла не имеет. Отвечаем
 				 *       «данных пока нет», и движок спросит снова, когда место освободится
+				 *
 				 */
 				if(size < length){
 					// Сообщаем движку, что записывать нечего
@@ -29133,7 +29905,9 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	{
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-		// Выполняем опрос активных событий
+		/**
+		 * Опрашиваем активные события
+		 */
 		while(!stop && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(10000));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
@@ -29188,7 +29962,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
  *
  */
 TEST_F(IoFixture, IoEmptyIpcNodeTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим пустой узел межпроцессного обмена, годный лишь под подъём снимка
 	const awh::event::id_t target = awh::engine::io::event(awh::event::node_t::IPC, awh::event::family_t::UDS, awh::event::type_t::STREAM);
@@ -29199,6 +29973,7 @@ TEST_F(IoFixture, IoEmptyIpcNodeTest){
 	 *
 	 * @note Отказ этот честный и с причиной: описателя у узла нет, и заводить его
 	 *       фиксации нечем
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::commit(target));
 	/**
@@ -29206,6 +29981,7 @@ TEST_F(IoFixture, IoEmptyIpcNodeTest){
 	 *
 	 * @note Проверяется следствие отказа фиксации: узел не становится работающим
 	 *       обходным путём
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::launch(target));
 	/**
@@ -29213,6 +29989,7 @@ TEST_F(IoFixture, IoEmptyIpcNodeTest){
 	 *
 	 * @note Обращение это обязано быть безвредным, а не падать: узел жив, и спросить
 	 *       его вправе всякий
+	 *
 	 */
 	const std::string message = "проверка";
 	// Проверяем, что отправка не отправила ни октета
@@ -29222,6 +29999,7 @@ TEST_F(IoFixture, IoEmptyIpcNodeTest){
 	 *
 	 * @note Описателя не приезжало, и подъёму нечего раздавать: отказ здесь говорит
 	 *       вызывающей стороне повторить подъём по приходе известия
+	 *
 	 */
 	const uint64_t label = 0;
 	// Проверяем, что подъём отвечает отказом
@@ -29231,7 +30009,7 @@ TEST_F(IoFixture, IoEmptyIpcNodeTest){
 }
 
 TEST_F(IoFixture, IoSnapshotRefusalTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена, годную переносчиком
 	auto pair = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
@@ -29248,6 +30026,7 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 	 * @note Признак повторного использования адреса здесь обязателен: порт проверки
 	 *       выдаётся общим для набора средством, и соседняя проверка того же прогона
 	 *       получает тот же самый номер
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем адрес привязки
@@ -29267,11 +30046,12 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 	 *          в обоих случаях, - но утверждение одно, а положений дел за ним два.
 	 *          Обратив его когда-нибудь в «снимок УДАЁТСЯ», надлежит помнить, что под
 	 *          той системой оно всё это время говорило не о том (замер от 09.09.2026)
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::snapshot(server, pair[0], snapshot));
 	// Проверяем, что буфер снимка остался пустым
 	ASSERT_TRUE(snapshot.empty());
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Снятие снимка с несуществующим событием-переносчиком
@@ -29284,6 +30064,7 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 	 *
 	 * @note Узел IP переносчиком не годен нигде: у POSIX описатели ходят лишь
 	 *       служебными данными домена UNIX, у MS Windows - лишь именованным каналом
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::snapshot(server, server, snapshot));
 	// Проверяем, что буфер снимка остался пустым
@@ -29307,12 +30088,14 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 	 *
 	 * @note У POSIX описатель не приезжал вовсе, у MS Windows описание устройства
 	 *       обмена метке не отвечает. Отказ обязан быть в обоих случаях
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::restore(target, &label, sizeof(label)));
 	/**
 	 * Подъём событием, у которого дескриптор уже заведён
 	 *
 	 * @note Подмена работающего дескриптора оставила бы прежний висеть
+	 *
 	 */
 	ASSERT_FALSE(awh::engine::io::restore(server, &label, sizeof(label)));
 	// Уничтожаем заведённые события
@@ -29347,7 +30130,7 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
 		GTEST_SKIP() << "ядро машины не поддерживает SCTP: протокол не встроен либо его модуль не загружен";
 	// Получаем порт, на котором слушает сервер
 	const uint16_t bind = port();
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём событие сервера SCTP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
@@ -29366,7 +30149,7 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
 		// Считаем принятое подключение
 		accepted++;
 	}));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 16));
@@ -29392,7 +30175,7 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
 		awh::engine::target::port::set(result, bind);
 		// Устанавливаем адрес удалённого узла
 		awh::engine::target::set(result, target);
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		awh::engine::io::commit(result);
 		// Выводим идентификатор созданного события
 		return result;
@@ -29414,15 +30197,17 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
 	const awh::event::id_t foreign = make(awh::event::family_t::IPV6, awh::event::protocol_t::SCTP, "::1");
 	// Создаём узел сервера, которому подключение не положено вовсе
 	const awh::event::id_t stranger = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
-	// Выполняем подключение списком, где годен лишь первый узел
+	// Подключаемся списком, где годен лишь первый узел
 	ASSERT_TRUE(awh::engine::io::connect({client, alien, foreign, stranger}));
-	// Выполняем запуск события клиента
+	// Запускаем событие клиента
 	ASSERT_TRUE(awh::engine::io::launch(client));
 	/**
-	 * Выполняем опрос событий, пока подключение не принято
+	 * Опрашиваем события, пока подключение не принято
 	 */
 	for(uint32_t i = 0; (accepted == 0) && (i < 5000) && awh::engine::io::poll(100); i += 100);
-	// Даём циклу довертеться: отчёты отброшенных событий приходили бы следом
+	/**
+	 * Даём циклу довертеться: отчёты отброшенных событий приходили бы следом
+	 */
 	for(uint32_t i = 0; (i < 1000) && awh::engine::io::poll(100); i += 100);
 	// Проверяем, что связь установлена ровно одна
 	ASSERT_EQ(1u, accepted);
@@ -29446,6 +30231,7 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
  *       описанием устройства обмена через WSADuplicateSocket. Проверка для той системы
  *       обязана быть своей - с порождением процесса и своим переносчиком, - и молча
  *       выдавать её за эту было бы неверно
+ *
  */
 #if !(defined(_WIN32) || defined(_WIN64))
 
@@ -29463,7 +30249,7 @@ TEST_F(IoFixture, IoConnectHeterogeneousListTest){
  *
  */
 TEST_F(IoFixture, IoSnapshotHandoffTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена, которой поедет описатель
 	auto pair = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
@@ -29482,13 +30268,14 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем порт привязки
 	ASSERT_TRUE(awh::engine::source::port::set(server, bind));
-	// Выполняем фиксацию настроек слушающего события
+	// Фиксируем настройки слушающего события
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Переводим событие в прослушивание
 	 *
 	 * @note Потоковый сервер заводится фиксацией И прослушиванием: у него запуск идёт
 	 *       не через launch, тот заведён под RAW, DATAGRAM и SEQPACKET
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::listen(server, 16));
 	// Устанавливаем идентификатор процесса
@@ -29513,9 +30300,10 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 *
 			 * @note Опрос событий ждёт их без срока, и не пришедшее подключение
 			 *       обернулось бы вечным ожиданием вместо отказа проверки
+			 *
 			 */
 			::alarm(15);
-			// Выполняем переинициализацию сетевого движка
+			// Переинициализируем сетевой движок
 			awh::engine::io::reinitialize();
 			// Уничтожаем отправляющий конец пары: работнику нужен лишь приёмный
 			awh::engine::io::destroy(pair[1]);
@@ -29528,6 +30316,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 				 *
 				 * @note Фиксация здесь НЕ зовётся намеренно: описатель уже заведён чужим
 				 *       процессом, и заводить второй означало бы занимать порт повторно
+				 *
 				 */
 				restored = awh::engine::io::restore(target, data, size);
 				/**
@@ -29535,6 +30324,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 				 *
 				 * @note Ставится он ПОСЛЕ подъёма намеренно: до него у события нет описателя,
 				 *       и проверка обязана убедиться, что подъём отклики не роняет
+				 *
 				 */
 				if(restored){
 					// Устанавливаем функцию обратного вызова на получение статуса поднятого события
@@ -29546,18 +30336,19 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 					});
 				}
 			});
-			// Выполняем фиксацию настроек приёмного конца пары
+			// Фиксируем настройки приёмного конца пары
 			awh::engine::io::commit(pair[0]);
-			// Выполняем запуск приёмного конца пары
+			// Запускаем приёмный конец пары
 			awh::engine::io::launch(pair[0]);
 			// Признак запущенного поднятого события
 			bool started = false;
 			/**
-			 * Выполняем опрос событий, пока подключение не принято
+			 * Опрашиваем события, пока подключение не принято
 			 *
 			 * @note Приём подключений включается ИМЕННО здесь, а не в отклике на приход
 			 *       снимка: отклик работает посреди разбора событий, а правка подписок
 			 *       принадлежит самому циклу опроса
+			 *
 			 */
 			/**
 			 * Срок, за какой подключение обязано быть принято
@@ -29565,14 +30356,19 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 * @warning Сторожа тут не было НИКАКОГО: не примись подключение - цикл не
 			 *          кончился бы никогда, и работник висел бы молча, а проверка ждала
 			 *          бы его до предела набора. Отсутствие сторожа хуже недостижимого
+			 *
 			 */
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+			/**
+			 * Опрашиваем события, покуда подключение не принято или не вышел срок
+			 */
 			while(!accepted && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__)){
 				/**
 				 * Если событие поднято, но приём подключений ещё не включён
 				 *
 				 * @note Порядок у потокового сервера обязателен: прослушивание переводит
 				 *       событие в состояние успеха, а приём подключений включает уже запуск
+				 *
 				 */
 				if(restored && !started)
 					// Переводим поднятое событие в прослушивание и включаем приём подключений
@@ -29589,7 +30385,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			std::vector <uint8_t> snapshot;
 			// Уничтожаем приёмный конец пары: он принадлежит работнику
 			ASSERT_TRUE(awh::engine::io::destroy(pair[0]));
-			// Выполняем фиксацию настроек отправляющего конца пары
+			// Фиксируем настройки отправляющего конца пары
 			ASSERT_TRUE(awh::engine::io::commit(pair[1]));
 			// Снимаем снимок слушающего события для передачи работнику
 			ASSERT_TRUE(awh::engine::io::snapshot(server, pair[1], snapshot));
@@ -29602,6 +30398,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 *
 			 * @note Держи его открытым обе стороны - подключение доставалось бы тому, кто
 			 *       спросит первым, и проверка стала бы гаданием вместо доказательства
+			 *
 			 */
 			ASSERT_TRUE(awh::engine::io::destroy(server));
 			/**
@@ -29610,6 +30407,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 * @note Клиент фасада здесь не нужен: подключение обслуживает ядро, а опрос
 			 *       событий у родителя не идёт - он ждёт работника. Проверяется приём
 			 *       работником, и стук обязан быть самым простым, какой есть
+			 *
 			 */
 			const int32_t knock = ::socket(AF_INET, SOCK_STREAM, 0);
 			// Проверяем, что сокет для стука создан
@@ -29622,7 +30420,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			endpoint.sin_port = htons(bind);
 			// Устанавливаем адрес петли
 			endpoint.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-			// Выполняем подключение к переданному работнику порту
+			// Подключаемся к переданному работнику порту
 			ASSERT_EQ(0, ::connect(knock, reinterpret_cast <struct sockaddr *> (&endpoint), sizeof(endpoint)));
 			// Состояние ожидания работника
 			int32_t state = 0;
@@ -29632,6 +30430,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 * @note Опрос событий здесь НЕ нужен: рукопожатие по петле ядро доводит
 			 *       само, и подключение ложится в очередь слушающего описателя, каким
 			 *       бы процессом тот ни опрашивался
+			 *
 			 */
 			ASSERT_EQ(pid, ::waitpid(pid, &state, 0));
 			// Закрываем сокет стука: своё дело он сделал
@@ -29664,7 +30463,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
  *
  */
 TEST_F(IoFixture, IoSnapshotSilenceTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена, которой поедет описатель
 	auto pair = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
@@ -29690,7 +30489,7 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 		// Считаем принятое подключение
 		accepted++;
 	}));
-	// Выполняем фиксацию настроек слушающего события
+	// Фиксируем настройки слушающего события
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 16));
@@ -29699,6 +30498,7 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 	 *
 	 * @note У потокового сервера прослушивание и приём разведены: `listen` открывает
 	 *       очередь ядру, а до движка подключения доходят лишь после запуска
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::launch(server));
 	// Устанавливаем идентификатор процесса
@@ -29719,15 +30519,16 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 			 *
 			 * @note Работник здесь ничего не делает: он нужен лишь тем, что держит
 			 *       встречный конец переносчика. Без предела он пережил бы родителя
+			 *
 			 */
 			::alarm(15);
-			// Выполняем переинициализацию сетевого движка
+			// Переинициализируем сетевой движок
 			awh::engine::io::reinitialize();
 			// Уничтожаем отправляющий конец пары: работнику нужен лишь приёмный
 			awh::engine::io::destroy(pair[1]);
-			// Выполняем фиксацию настроек приёмного конца пары
+			// Фиксируем настройки приёмного конца пары
 			awh::engine::io::commit(pair[0]);
-			// Выполняем запуск приёмного конца пары
+			// Запускаем приёмный конец пары
 			awh::engine::io::launch(pair[0]);
 			// Выходим из процесса: своё дело работник сделал самим своим существованием
 			::_exit(EXIT_SUCCESS);
@@ -29738,7 +30539,7 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 			std::vector <uint8_t> snapshot;
 			// Уничтожаем приёмный конец пары: он принадлежит работнику
 			ASSERT_TRUE(awh::engine::io::destroy(pair[0]));
-			// Выполняем фиксацию настроек отправляющего конца пары
+			// Фиксируем настройки отправляющего конца пары
 			ASSERT_TRUE(awh::engine::io::commit(pair[1]));
 			/**
 			 * @brief Функция стука по слушающему описателю обычным сокетом
@@ -29761,7 +30562,7 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 				endpoint.sin_port = htons(bind);
 				// Устанавливаем адрес петли
 				endpoint.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-				// Выполняем подключение к слушающему событию
+				// Подключаемся к слушающему событию
 				if(::connect(sock, reinterpret_cast <struct sockaddr *> (&endpoint), sizeof(endpoint)) != 0){
 					// Закрываем сокет стука: подключиться им не удалось
 					::close(sock);
@@ -29776,12 +30577,13 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 			 *
 			 * @note Он и делает молчание после снимка доказательным: без него нечем
 			 *       отличить снятую подписку от неё же, никогда не заведённой
+			 *
 			 */
 			const int32_t first = knock();
 			// Проверяем, что первый стук выполнен
 			ASSERT_GT(first, 0);
 			/**
-			 * Выполняем опрос событий, пока подключение не принято
+			 * Опрашиваем события, пока подключение не принято
 			 */
 			for(uint32_t i = 0; (accepted == 0) && (i < 3000) && awh::engine::io::poll(100); i += 100);
 			// Проверяем, что первое подключение принято
@@ -29795,12 +30597,13 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 			 *
 			 * @note Описатель после снимка ещё жив и ядром обслуживается, подключение
 			 *       ложится в его очередь. Дойти оно не должно именно до движка
+			 *
 			 */
 			const int32_t second = knock();
 			// Проверяем, что второй стук выполнен
 			ASSERT_GT(second, 0);
 			/**
-			 * Выполняем опрос событий, давая прежнему движку возможность отчитаться
+			 * Опрашиваем события, давая прежнему движку возможность отчитаться
 			 */
 			for(uint32_t i = 0; (i < 2000) && awh::engine::io::poll(100); i += 100);
 			// Проверяем, что после снимка ни одно завершение по описателю не пришло
@@ -29845,7 +30648,7 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 TEST_F(IoFixture, IoSubscriptionRejectedTest){
 	// Получаем порт, на котором слушает сервер
 	const uint16_t bind = port();
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * @brief Функция снятия перечня открытых описателей процесса
@@ -29887,13 +30690,13 @@ TEST_F(IoFixture, IoSubscriptionRejectedTest){
 		// Запоминаем, что потребителю сообщено об отказе события
 		failed = true;
 	});
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 16));
 	// Включаем приём подключений
 	ASSERT_TRUE(awh::engine::io::launch(server));
-	// Выполняем оборот опроса, чтобы подписка дошла до ядра
+	// Опрашиваем события, чтобы подписка дошла до ядра
 	awh::engine::io::poll(10);
 	// Описатель, заведённый событием сервера
 	int32_t sock = -1;
@@ -29918,6 +30721,7 @@ TEST_F(IoFixture, IoSubscriptionRejectedTest){
 	 *
 	 * @warning Ничего между закрытием и сносом узла открывать нельзя: система выдаёт
 	 *          освободившийся номер первому же просящему, и движок закрыл бы чужое
+	 *
 	 */
 	ASSERT_EQ(0, ::close(sock));
 	// Затребуем правку подписки, сокета не касаясь
@@ -29926,7 +30730,7 @@ TEST_F(IoFixture, IoSubscriptionRejectedTest){
 	 * Крутим обороты опроса, ожидая отказа события
 	 */
 	for(uint8_t attempt = 0; (attempt < 16) && !failed; attempt++)
-		// Выполняем оборот опроса
+		// Опрашиваем события одним оборотом
 		awh::engine::io::poll(10);
 	// Затребуем обратную правку подписки, если отказ ещё не сообщён
 	if(!failed)
@@ -29936,7 +30740,7 @@ TEST_F(IoFixture, IoSubscriptionRejectedTest){
 	 * Крутим обороты опроса, ожидая отказа события
 	 */
 	for(uint8_t attempt = 0; (attempt < 16) && !failed; attempt++)
-		// Выполняем оборот опроса
+		// Опрашиваем события одним оборотом
 		awh::engine::io::poll(10);
 	// Проверяем, что потребителю сообщено об отказе события
 	ASSERT_TRUE(failed);
@@ -29961,7 +30765,7 @@ TEST_F(IoFixture, IoSubscriptionRejectedTest){
 TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 	// Число дейтаграммных пар, заводимых проверкой
 	constexpr size_t COUNT = 150;
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Число принятых сообщений
 	size_t received = 0;
@@ -29986,6 +30790,7 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 		 * Устанавливаем опции обеим сторонам пары
 		 */
 		for(uint8_t index = 0; index < 2; index++)
+			// Устанавливаем опции события стороны обмена
 			ASSERT_TRUE(awh::engine::options::set(events[index], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
 		// Устанавливаем адрес привязки отправляющей стороны
 		ASSERT_TRUE(awh::engine::address::set(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
@@ -29999,6 +30804,7 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 		 * @note Дейтаграммная приёмная сторона выдаёт пришедшее не чтением самого события,
 		 *       а принятым узлом: движок разбирает отправителя и заводит ему свой узел,
 		 *       и сообщение читается уже с него
+		 *
 		 */
 		awh::engine::io::on(events[1], static_cast <awh::engine::callback::accept_t> ([&received]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем функцию обратного вызова на получение сообщения принятым узлом
@@ -30007,13 +30813,13 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 				received++;
 			});
 		}));
-		// Выполняем фиксацию настроек приёмной стороны
+		// Фиксируем настройки приёмной стороны
 		ASSERT_TRUE(awh::engine::io::commit(events[1])) << "пара " << i << ", порт " << number;
-		// Выполняем запуск приёмной стороны
+		// Запускаем приёмную сторону
 		ASSERT_TRUE(awh::engine::io::launch(events[1]));
-		// Выполняем фиксацию настроек отправляющей стороны
+		// Фиксируем настройки отправляющей стороны
 		ASSERT_TRUE(awh::engine::io::commit(events[0]));
-		// Выполняем запуск отправляющей стороны
+		// Запускаем отправляющую сторону
 		ASSERT_TRUE(awh::engine::io::launch(events[0]));
 		// Запоминаем заведённую пару
 		pairs.push_back(events);
@@ -30023,13 +30829,16 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 	 *
 	 * @note Опрос между отправками НЕ проворачивается намеренно: готовыми все стороны
 	 *       обязаны стать одним оборотом, иначе проверка мерила бы не то
+	 *
 	 */
 	for(auto & events : pairs)
 		// Отправляем сообщение приёмной стороне пары
 		ASSERT_TRUE(awh::engine::io::send(events[0], "x", 1));
 	// Срок, отведённый на приём всех сообщений
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-	// Выполняем опрос событий, пока не придут все сообщения либо не выйдет срок
+	/**
+	 * Опрашиваем события, пока не придут все сообщения либо не выйдет срок
+	 */
 	while((received < COUNT) && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(__AWH_TEST_POLL_SLICE__));
 	// Проверяем, что дошли все отправленные сообщения
 	ASSERT_EQ(COUNT, received) << "часть готовности потеряна: пришло " << received << " из " << COUNT;
@@ -30044,6 +30853,7 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
  *       системы нет, и работник проходит `main` с начала. Переносчиком годится лишь
  *       именованный канал: описатель едет описанием устройства обмена, снятым
  *       `WSADuplicateSocket` под номер процесса получателя
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 
@@ -30060,18 +30870,22 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
  *
  */
 TEST_F(IoFixture, IoPipeHandleReleaseTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Заводим и уничтожаем пару обмена вхолостую
 	 *
 	 * @note Первый заход тратит описатели на то, что заводится единожды на процесс, и
 	 *       в счёт идти не должен
+	 *
 	 */
 	{
+		// Заводим пару событий канала для прогрева
 		const auto & warmup = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+		// Проверяем, что первый конец прогрева заведён
 		ASSERT_GT(warmup[0], 0);
 		ASSERT_GT(warmup[1], 0);
+		// Уничтожаем первый конец прогрева
 		ASSERT_TRUE(awh::engine::io::destroy(warmup[0]));
 		ASSERT_TRUE(awh::engine::io::destroy(warmup[1]));
 		/**
@@ -30080,6 +30894,7 @@ TEST_F(IoFixture, IoPipeHandleReleaseTest){
 		 * @note Снесённый узел уничтожается не в миг сноса, а следующим оборотом опроса:
 		 *       разбор пачки событий вправе к нему ещё обратиться. Без оборота описатель
 		 *       остаётся жив по устройству, а не по недосмотру
+		 *
 		 */
 		awh::engine::io::poll(0);
 		awh::engine::io::poll(0);
@@ -30093,6 +30908,7 @@ TEST_F(IoFixture, IoPipeHandleReleaseTest){
 	 *
 	 * @note Повтор нужен затем, что утечка одного описателя тонет в собственном шуме
 	 *       процесса, а утечка десяти - уже нет
+	 *
 	 */
 	for(uint8_t i = 0; i < 10; i++){
 		// Заводим пару обмена именованным каналом
@@ -30116,6 +30932,7 @@ TEST_F(IoFixture, IoPipeHandleReleaseTest){
 	 *
 	 * @note Сличение идёт с запасом: процесс вправе завести описатель и сам по себе,
 	 *       а утечка двадцати описателей запас этот перекрывает многократно
+	 *
 	 */
 	ASSERT_LE(after, (before + 4)) << "описатели уничтоженных каналов остались жить: было " << before << ", стало " << after;
 	// Уничтожаем все события движка
@@ -30142,13 +30959,14 @@ TEST_F(IoFixture, IoPipeHandleReleaseTest){
  *
  */
 TEST_F(IoFixture, IoAcceptSocketReleaseTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * Заводим и уничтожаем слушающее событие вхолостую
 	 *
 	 * @note Первый заход тратит описатели на то, что заводится единожды на процесс, и в
 	 *       счёт идти не должен
+	 *
 	 */
 	for(uint8_t attempt = 0; attempt < 2; attempt++){
 		// Заводим слушающее событие
@@ -30161,7 +30979,7 @@ TEST_F(IoFixture, IoAcceptSocketReleaseTest){
 		ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем порт привязки
 		ASSERT_TRUE(awh::engine::source::port::set(server, port()));
-		// Выполняем фиксацию настроек слушающего события
+		// Фиксируем настройки слушающего события
 		ASSERT_TRUE(awh::engine::io::commit(server));
 		// Переводим событие в прослушивание: приём подаётся именно здесь
 		ASSERT_TRUE(awh::engine::io::listen(server, 16));
@@ -30191,7 +31009,7 @@ TEST_F(IoFixture, IoAcceptSocketReleaseTest){
 		ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем порт привязки
 		ASSERT_TRUE(awh::engine::source::port::set(server, port()));
-		// Выполняем фиксацию настроек слушающего события
+		// Фиксируем настройки слушающего события
 		ASSERT_TRUE(awh::engine::io::commit(server));
 		// Переводим событие в прослушивание
 		ASSERT_TRUE(awh::engine::io::listen(server, 16));
@@ -30239,14 +31057,15 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 	 *
 	 * @note Обращения `alarm` у MS Windows нет вовсе, а опрос событий ждёт их без
 	 *       срока: не пришедший снимок обернулся бы вечным ожиданием вместо отказа
+	 *
 	 */
 	std::thread([]() noexcept -> void {
-		// Ждём предельный срок работы
+		// Дожидаемся предельного срока работы
 		std::this_thread::sleep_for(std::chrono::seconds(20));
 		// Выходим отказом: за отведённый срок подключение принято не было
 		::_exit(EXIT_FAILURE);
 	}).detach();
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие канала обмена, которым приедет снимок
 	const awh::event::id_t channel = awh::engine::io::event(awh::event::node_t::IPC, awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -30269,6 +31088,7 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 		 *
 		 * @note Фиксация здесь НЕ зовётся намеренно: описатель уже заведён чужим
 		 *       процессом, и заводить второй означало бы занимать порт повторно
+		 *
 		 */
 		restored = awh::engine::io::restore(target, data, size);
 		// Если событие из снимка поднято
@@ -30282,11 +31102,11 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 			});
 		}
 	});
-	// Выполняем фиксацию настроек канала обмена
+	// Фиксируем настройки канала обмена
 	ASSERT_TRUE(awh::engine::io::commit(channel));
-	// Выполняем подключение канала обмена к родителю
+	// Подключаем канал обмена к родителю
 	ASSERT_TRUE(awh::engine::io::connect({channel}));
-	// Выполняем запуск канала обмена
+	// Запускаем канал обмена
 	ASSERT_TRUE(awh::engine::io::launch(channel));
 	/**
 	 * Докладываем родителю о готовности принять снимок
@@ -30295,16 +31115,18 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 	 *          когда встречный конец подключён - номер процесса получателя спрашивается
 	 *          у самого канала. Сообщение это и есть признак подключения, и тем же
 	 *          порядком работает кластер
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::send(channel, "R", 1));
 	// Признак запущенного поднятого события
 	bool started = false;
 	/**
-	 * Выполняем опрос событий, пока подключение не принято
+	 * Опрашиваем события, пока подключение не принято
 	 *
 	 * @note Приём подключений включается ИМЕННО здесь, а не в отклике на приход
 	 *       снимка: отклик работает посреди разбора событий, а правка подписок
 	 *       принадлежит самому циклу опроса
+	 *
 	 */
 	while(!accepted && awh::engine::io::poll(100)){
 		/**
@@ -30312,6 +31134,7 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 		 *
 		 * @note Порядок у потокового сервера обязателен: прослушивание переводит
 		 *       событие в состояние успеха, а приём подключений включает уже запуск
+		 *
 		 */
 		if(restored && !started)
 			// Переводим поднятое событие в прослушивание и включаем приём подключений
@@ -30339,7 +31162,7 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
  *
  */
 TEST_F(IoFixture, IoSnapshotHandoffTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом, которой поедет снимок
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -30352,6 +31175,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	 * @note Порождённый процесс описателя по наследству не получает - он проходит
 	 *       main заново, - зато имя канала переносимо и доходит до него окружением.
 	 *       Уничтоженное событие имени уже не отдаст
+	 *
 	 */
 	const std::string pipe = awh::engine::target::get(channels[1]);
 	// Проверяем, что имя канала обмена получено
@@ -30370,13 +31194,14 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем порт привязки
 	ASSERT_TRUE(awh::engine::source::port::set(server, bind));
-	// Выполняем фиксацию настроек слушающего события
+	// Фиксируем настройки слушающего события
 	ASSERT_TRUE(awh::engine::io::commit(server));
 	/**
 	 * Переводим событие в прослушивание
 	 *
 	 * @note Потоковый сервер заводится фиксацией И прослушиванием: у него запуск идёт
 	 *       не через launch, тот заведён под RAW, DATAGRAM и SEQPACKET
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::listen(server, 16));
 	// Признак доложившегося о готовности работника
@@ -30386,9 +31211,9 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 		// Отмечаем доложившегося работника: содержимое доклада значения не имеет
 		ready = true;
 	});
-	// Выполняем фиксацию настроек своего конца канала обмена
+	// Фиксируем настройки своего конца канала обмена
 	ASSERT_TRUE(awh::engine::io::commit(channels[0]));
-	// Выполняем запуск своего конца канала обмена
+	// Запускаем свой конец канала обмена
 	ASSERT_TRUE(awh::engine::io::launch(channels[0]));
 	// Буфер под путь к своему двоичному файлу
 	wchar_t executable[MAX_PATH]{0};
@@ -30404,7 +31229,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	startup.cb = sizeof(startup);
 	// Сведения о порождённом процессе
 	PROCESS_INFORMATION process{};
-	// Выполняем порождение работника
+	// Порождаем работника
 	const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process);
 	// Снимаем имя канала из окружения: своим процессам его передавать незачем
 	::SetEnvironmentVariableW(L"AWH_IO_SNAPSHOT_PIPE", nullptr);
@@ -30417,11 +31242,12 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	// Сокет, которым идёт стук в переданный работнику порт
 	SOCKET knock = INVALID_SOCKET;
 	/**
-	 * Выполняем опрос событий, пока работник не завершится
+	 * Опрашиваем события, пока работник не завершится
 	 *
 	 * @note Опрос здесь обязателен, в отличие от систем POSIX: обмен по именованному
 	 *       каналу наложенный, и отправка снимка уходит порту завершений, а не ядру
 	 *       напрямую
+	 *
 	 */
 	while(awh::engine::io::poll(100)){
 		// Если работник доложился о готовности, а снимок ему ещё не отправлен
@@ -30441,6 +31267,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 *          у отдающего означала бы перехват данных, предназначенных не ему.
 			 *          Оттого событие теряет подписки и переходит в состояние NONE, а
 			 *          дальнейшая работа с ним требует повторной фиксации и запуска
+			 *
 			 */
 			ASSERT_EQ(awh::event::status_t::NONE, awh::engine::io::status(server)) << "снятие снимка событие не охладило";
 			// Проверяем, что охлаждённое событие запуску не поддаётся
@@ -30450,6 +31277,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 *
 			 * @note Держи его открытым обе стороны - подключение доставалось бы тому, кто
 			 *       спросит первым, и проверка стала бы гаданием вместо доказательства
+			 *
 			 */
 			ASSERT_TRUE(awh::engine::io::destroy(server));
 			// Отмечаем переданный работнику снимок
@@ -30463,6 +31291,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 * @note Клиент фасада здесь не нужен: рукопожатие по петле ядро доводит само,
 			 *       и подключение ложится в очередь переданного описателя, каким бы
 			 *       процессом тот ни опрашивался
+			 *
 			 */
 			knock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			// Проверяем, что сокет для стука создан
@@ -30475,7 +31304,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			endpoint.sin_port = htons(bind);
 			// Устанавливаем адрес петли
 			endpoint.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-			// Выполняем подключение к переданному работнику порту
+			// Подключаемся к переданному работнику порту
 			ASSERT_EQ(0, ::connect(knock, reinterpret_cast <struct sockaddr *> (&endpoint), sizeof(endpoint)));
 		}
 		// Спрашиваем состояние работника, не дожидаясь его
@@ -30531,7 +31360,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	ASSERT_TRUE(awh::engine::source::port::set(events[1], ::port()));
 	// Устанавливаем адрес события сервера
 	ASSERT_TRUE(awh::engine::address::set(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(events[1]));
 	/**
 	 * Пары «заданное число - ожидаемый разряд»
@@ -30545,7 +31374,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		{static_cast <uint8_t> (255), awh::event::hops_t::WORLD}
 	};
 	/**
-	 * Выполняем перебор пар
+	 * Перебираем пары
 	 */
 	for(const auto & rank : ranks){
 		/**
@@ -30610,18 +31439,20 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	 * @warning Снимок оставляет исходное событие ХОЛОДНЫМ: описатель у него жив, а
 	 *          подписок, привязки к порту и состояния больше нет. Оттого обмен после
 	 *          снятия ведётся ТОЛЬКО поднятым событием
+	 *
 	 */
 	TEST_F(IoFixture, IoSnapshotRestoreTest){
 		// Принятое сервером подключение
 		awh::event::id_t peer = 0;
 		// Принятое сервером содержимое
 		std::string received;
-		// Выполняем генерацию порта
+		// Генерируем порт
 		const uint16_t port = ::port();
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим событие сервера TCP
 		const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что событие сервера заведено
 		ASSERT_GT(server, 0);
 		// Устанавливаем опции события сервера
 		ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
@@ -30644,6 +31475,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		ASSERT_TRUE(awh::engine::io::launch(server));
 		// Заводим событие клиента, чей описатель и будет передан снимком
 		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что событие клиента заведено
 		ASSERT_GT(client, 0);
 		// Выставляем настройки события клиента
 		ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
@@ -30660,9 +31492,11 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		{
 			// Запоминаем миг начала ожидания
 			const auto start = std::chrono::steady_clock::now();
-			// Выполняем обороты цикла событий
+			/**
+			 * Крутим обороты цикла событий
+			 */
 			while((peer == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		// Подключение обязано быть принято: без него передавать нечего
@@ -30687,6 +31521,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @note Спрашивается это ДО снятия настоящего снимка: снятие оставляет
 		 *       исходное событие холодным, и после него отказ был бы неотличим от
 		 *       отказа по разобранному событию
+		 *
 		 */
 		ASSERT_FALSE(awh::engine::io::snapshot(client, server, snapshot)) << "снимок снят через переносчик, каким система описателей не носит";
 		// Снимаем снимок живого подключения через канал-переносчик
@@ -30695,6 +31530,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		ASSERT_FALSE(snapshot.empty()) << "снимок снят пустым";
 		// Заводим событие того же устройства, куда снимок и будет поднят
 		const awh::event::id_t revived = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что возрождённое событие заведено
 		ASSERT_GT(revived, 0);
 		/**
 		 * Задаём поднимаемому событию адрес встречной стороны
@@ -30704,6 +31540,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 *       обычной фиксацией и наследует её требования целиком. К установке
 		 *       связи адрес отношения не имеет: подключение уже связано, адрес лишь
 		 *       описывает встречную сторону
+		 *
 		 */
 		ASSERT_TRUE(awh::engine::target::set(revived, "127.0.0.1"));
 		ASSERT_TRUE(awh::engine::target::port::set(revived, port));
@@ -30712,6 +31549,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 *
 		 * @note Утверждение это не о размере, а о разборчивости: приняв обрезанный
 		 *       снимок, движок поднял бы описатель по мусору в памяти
+		 *
 		 */
 		ASSERT_FALSE(awh::engine::io::restore(revived, snapshot.data(), snapshot.size() - 1)) << "принят обрезанный снимок";
 		// Незаведённому событию снимок доставаться не должен
@@ -30720,6 +31558,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Событию с живым описателем снимок доставаться не должен
 		 *
 		 * @note Подмена описателя у работающего события оставила бы прежний висеть
+		 *
 		 */
 		ASSERT_FALSE(awh::engine::io::restore(server, snapshot.data(), snapshot.size())) << "снимок достался событию с живым описателем";
 		// Поднимаем событие из снимка
@@ -30728,7 +31567,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		ASSERT_TRUE(awh::engine::io::launch(revived));
 		// Содержимое, отправляемое поднятым событием
 		const std::string body = "SNAPSHOT-RESTORE-PAYLOAD";
-		// Выполняем отправку содержимого поднятым событием
+		// Отправляем содержимое поднятым событием
 		ASSERT_GT(awh::engine::io::send(revived, body.data(), body.size()), static_cast <size_t> (0)) << "поднятое событие не приняло данные к отправке";
 		/**
 		 * Крутим цикл, покуда содержимое не придёт целиком
@@ -30736,9 +31575,11 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		{
 			// Запоминаем миг начала ожидания
 			const auto start = std::chrono::steady_clock::now();
-			// Выполняем обороты цикла событий
+			/**
+			 * Крутим обороты цикла событий
+			 */
 			while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		/**
@@ -30747,6 +31588,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @note Это и делает проверку доказательной: пришло оно принятому серверному
 		 *       подключению, заведённому ДО снятия снимка, - значит поднятое событие
 		 *       работает тем же самым описателем, а не новым сокетом
+		 *
 		 */
 		ASSERT_EQ(received, body) << "принято серверной стороной: " << received;
 		// Уничтожаем заведённые события
@@ -30761,6 +31603,9 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка сохранения границ сообщений узлом SEQPACKET
@@ -30776,7 +31621,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoIpcSeqpacketMessageBoundaryTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Создаём пару обмена именованным каналом в строе сообщений
 		const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -30819,7 +31664,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 			 */
 			while((std::accumulate(parts.begin(), parts.end(), static_cast <size_t> (0)) < std::accumulate(sizes.begin(), sizes.begin() + i + 1, static_cast <size_t> (0))) &&
 			 (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		// Откликов обязано быть ровно столько же, сколько отправок
@@ -30837,6 +31682,9 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 
 
 
+/**
+ * Для операционных систем POSIX
+ */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Проверка совпадения границ изображения вида SEQPACKET в домене UNIX
@@ -30859,7 +31707,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoUdsSeqpacketGuardBoundaryTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		/**
 		 * @brief Функция снятия перечня открытых описателей процесса
@@ -30887,7 +31735,6 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 *
 		 * @param before перечень описателей до заведения узла
 		 * @param after  перечень описателей после заведения узла
-		 *
 		 * @return вид описателя, отданный системой, либо -1
 		 *
 		 */
@@ -30943,6 +31790,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @details Пара обмена заводится первым из них, узел сервера вторым, и разойдись
 		 *          перечни систем - один и тот же заказанный вид лёг бы на сокеты разного
 		 *          устройства
+		 *
 		 */
 		ASSERT_EQ(server, pair) << "пара обмена заведена видом " << pair << ", а узел сервера видом " << server;
 		// Слушание объявляется движком в обоих случаях согласием
@@ -30953,6 +31801,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @note Сличается состояние ПОСЛЕ слушания, а не состояние слушающего узла:
 		 *       `LISTENING` выставляется запуском, а слушание объявляется состоянием
 		 *       `SUCCESS`. Дейтаграммный же путь возвращает узел к исходному состоянию
+		 *
 		 */
 		if(server == SOCK_DGRAM)
 			// Дейтаграммный сервер слушания не объявляет: состояние обязано остаться исходным
@@ -30969,6 +31818,9 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+/**
+ * Для операционных систем POSIX
+ */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Проверка отказа настройки сессии, живущей на сокете своего сервера
@@ -30991,7 +31843,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		awh::event::id_t peer = 0;
 		// Принятое сессией тело
 		std::string received;
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим событие сервера домена UNIX дейтаграммного вида
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
@@ -31017,6 +31869,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		ASSERT_TRUE(awh::engine::io::commit(sid)) << "узел сервера домена UNIX не зафиксирован";
 		/**
 		 * @note Слушание дейтаграммному серверу не объявляется: принятие он изображает сам
+		 *
 		 */
 		ASSERT_TRUE(awh::engine::io::launch(sid)) << "узел сервера домена UNIX не запущен";
 		// Тело, каким вызывается принятие
@@ -31030,6 +31883,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 				// Отдаём тело серверу
 				awh::engine::io::send(eid, body.data(), body.size());
 		}));
+		// Устанавливаем опции события клиента
 		ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		ASSERT_TRUE(awh::engine::io::commit(cid)) << "узел клиента домена UNIX не зафиксирован";
 		ASSERT_TRUE(awh::engine::io::connect(cid)) << "узел клиента домена UNIX не подключился";
@@ -31040,7 +31894,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Крутим цикл, покуда сервер не примет сессию
 		 */
 		while((peer == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сессия обязана быть принята, иначе настраивать нечего
 		ASSERT_GT(peer, 0u) << "сервер сессии не принял";
@@ -31057,6 +31911,9 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+/**
+ * Для операционных систем POSIX
+ */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Проверка полного круга обмена по домену UNIX видом SEQPACKET
@@ -31083,7 +31940,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		uint32_t serverReads = 0, clientReads = 0;
 		// Идентификатор принятого сервером узла
 		awh::event::id_t peer = 0;
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим событие сервера домена UNIX вида SEQPACKET
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31102,6 +31959,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 			 * @note Опции принятому узлу здесь НЕ выставляются: у изображённого вида принятая
 			 *       связь описателя своего не заводит и живёт на сокете сервера, настройки
 			 *       которого уже применены
+			 *
 			 */
 			// Устанавливаем функцию обратного вызова на чтение данных принятым узлом
 			awh::engine::io::on(pid, static_cast <awh::engine::callback::read_t> ([&fromClient, &serverReads]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
@@ -31117,6 +31975,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * @details Изображённый дейтаграммным узел принятия не заводит, и данные приходят
 		 *          ему самому: обе подписки нужны разом, чтобы проверка не зависела от того,
 		 *          каким путём система повела обмен
+		 *
 		 */
 		awh::engine::io::on(sid, static_cast <awh::engine::callback::read_t> ([&fromClient, &serverReads]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 			// Считаем отклик чтения
@@ -31145,6 +32004,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 *
 		 * @details Обмен узлу открыт не раньше, чем движок объявит подключение состоявшимся:
 		 *          отдача до того ложится в очередь нулём октет
+		 *
 		 */
 		awh::engine::io::on(cid, static_cast <awh::engine::callback::status_t> ([ &request, &requested](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Если узел клиента объявлен подключённым
@@ -31164,12 +32024,13 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Крутим цикл, покуда запрос не дойдёт до сервера
 		 */
 		while((fromClient.size() < request.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Запрос обязан быть принят очередью клиента целиком
 		ASSERT_EQ(requested, request.size()) << "запрос очередью принят не целиком";
 		// Запрос обязан дойти до сервера целиком и одним откликом
 		ASSERT_EQ(fromClient, request) << "сервер принял " << fromClient.size() << " из " << request.size();
+		// Проверяем, что запрос принят одним откликом
 		EXPECT_EQ(serverReads, 1u) << "запрос пришёл серверу " << serverReads << " откликами: границы сообщения потеряны";
 		// Ответ сервера, каким проверяется обратный путь
 		const std::string answer(256, 'A');
@@ -31185,10 +32046,11 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Крутим цикл, покуда ответ не дойдёт до клиента
 		 */
 		while((fromServer.size() < answer.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Ответ обязан дойти до клиента целиком и одним откликом
 		ASSERT_EQ(fromServer, answer) << "клиент принял " << fromServer.size() << " из " << answer.size();
+		// Проверяем, что ответ принят одним откликом
 		EXPECT_EQ(clientReads, 1u) << "ответ пришёл клиенту " << clientReads << " откликами: границы сообщения потеряны";
 		// Уничтожаем заведённые события
 		awh::engine::io::destroy(cid);
@@ -31199,6 +32061,9 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка обмена между сервером и клиентом домена UNIX видом SEQPACKET
@@ -31215,7 +32080,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	TEST_F(IoFixture, IoUdsDatagramServerTest){
 		// Принятое сервером тело
 		std::string received;
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим событие сервера домена UNIX дейтаграммного вида
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
@@ -31256,7 +32121,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Крутим цикл, покуда тело не дойдёт до сервера
 		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Тело обязано дойти до сервера целиком
 		ASSERT_EQ(received.size(), body.size()) << "сервер домена UNIX принял " << received.size() << " из " << body.size();
@@ -31269,7 +32134,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	TEST_F(IoFixture, IoUdsSeqpacketServerTest){
 		// Принятое сервером тело
 		std::string received;
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим событие сервера домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31310,7 +32175,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 		 * Крутим цикл, покуда тело не дойдёт до сервера
 		 */
 		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Тело обязано дойти до сервера целиком
 		ASSERT_EQ(received.size(), body.size()) << "сервер домена UNIX принял " << received.size() << " из " << body.size();
@@ -31338,7 +32203,7 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
  *
  */
 TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём пару обмена именованным каналом
 	const auto & channels = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
@@ -31365,7 +32230,9 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	ASSERT_TRUE(awh::engine::io::launch(channels[1]));
 	// Тело переноса: заведомо крупнее вместимости канала
 	std::string body;
-	// Наполняем тело узнаваемым содержимым
+	/**
+	 * Наполняем тело узнаваемым содержимым
+	 */
 	while(body.size() < (256 * 1024))
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
@@ -31381,11 +32248,12 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	 *
 	 * @note Насыщение меряется отказом очереди, а не числом октет: вместимость канала у
 	 *       систем разная - 65536 у Linux, macOS и MS Windows против 16384 у Solaris
+	 *
 	 */
 	for(size_t offset = 0; offset < body.size(); offset += 4096){
 		// Определяем размер очередной доли
 		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
-		// Выполняем отправку очередной доли
+		// Отправляем очередную долю
 		const size_t taken = awh::engine::io::send(channels[1], body.data() + offset, part);
 		// Складываем принятое очередью
 		accepted += taken;
@@ -31409,6 +32277,9 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	ASSERT_TRUE(awh::engine::io::deinitialize());
 }
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка занятости пути домена UNIX вторым сервером
@@ -31423,7 +32294,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoUdsServerPathCollisionTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим первый сервер домена UNIX
 		const awh::event::id_t first = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31455,6 +32326,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Утверждается это заведением ТРЕТЬЕГО сервера на том же пути: заведение
 		 *       удаётся лишь тогда, когда прежний освободил имя целиком
+		 *
 		 */
 		/**
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
@@ -31462,10 +32334,12 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * @note Снос лишь помечает узел и откладывает разбор на оборот цикла - у сокета
 		 *       ровно так же, и путь его освобождается тем же порядком. Требовать
 		 *       освобождения ДО оборота значило бы требовать иного устройства сноса
+		 *
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
+		// Заводим событие третьего сервера домена UNIX
 		const awh::event::id_t third = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
 		// Проверяем, что событие заведено
 		ASSERT_GT(third, 0u);
@@ -31482,6 +32356,9 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	}
 #endif
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка отделённости служебных приписок от выведенных имён
@@ -31500,7 +32377,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoUdsSuffixNamespaceTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		/**
 		 * Заводим узел, путь какого кончается служебной припиской
@@ -31537,13 +32414,16 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
 	}
 #endif
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка однозначности выведения имени канала из пути домена UNIX
@@ -31606,7 +32486,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsEmulatedRebuildTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("rebuild.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31626,18 +32506,18 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты до перестройки
 		 */
 		for(uint8_t i = 0; i < 3; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Собранные записи журнала уровня предупреждения
 		std::vector <std::string> warnings;
-		// Выполняем подписку на записи журнала
+		// Подписываемся на записи журнала
 		awh::log::subscribe([&warnings](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является предупреждением либо отказом
 			if((flag == awh::log::flag_t::WARNING) || (flag == awh::log::flag_t::CRITICAL))
 				// Запоминаем запись журнала
 				warnings.emplace_back(text);
 		});
-		// Выполняем перестройку описателя сервера
+		// Перестраиваем описатель сервера
 		ASSERT_TRUE(awh::engine::io::rebuild(sid)) << "перестройка изображённого сервера отвергнута";
 		// Снимаем подписку на записи журнала
 		awh::log::subscribe(nullptr);
@@ -31648,13 +32528,14 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *       значением `NONE`, ответа у системы не имеет и отвечает предупреждением о
 		 *       том, чего никто не просил. У местного узла обнаружения MTU нет и быть не
 		 *       может вовсе
+		 *
 		 */
 		ASSERT_TRUE(warnings.empty()) << "перестройка дала " << warnings.size() << " запись(ей), первая: " << (warnings.empty() ? std::string() : warnings.front());
 		/**
 		 * Даём циклу обороты после перестройки
 		 */
 		for(uint8_t i = 0; i < 3; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Заводим клиента домена UNIX
 		const awh::event::id_t cid = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31670,7 +32551,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сносим оба узла
 		awh::engine::io::destroy(cid);
@@ -31709,7 +32590,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsEmulatedSecondClientTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("second.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31743,7 +32624,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 * Даём циклу обороты на приём подключения
 			 */
 			for(uint8_t i = 0; i < 10; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		// Сворачиваем движок
@@ -31753,7 +32634,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsEmulatedClientRebuildTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("clirebuild.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31784,18 +32665,18 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты до перестройки
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Собранные записи журнала уровня предупреждения и отказа
 		std::vector <std::string> records;
-		// Выполняем подписку на записи журнала
+		// Подписываемся на записи журнала
 		awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является предупреждением либо отказом
 			if((flag == awh::log::flag_t::WARNING) || (flag == awh::log::flag_t::CRITICAL))
 				// Запоминаем запись журнала
 				records.emplace_back(text);
 		});
-		// Выполняем перестройку описателя клиента
+		// Перестраиваем описатель клиента
 		ASSERT_TRUE(awh::engine::io::rebuild(cid)) << "перестройка изображённого клиента отвергнута";
 		// Снимаем подписку на записи журнала
 		awh::log::subscribe(nullptr);
@@ -31805,7 +32686,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты после перестройки
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Тело, отдаваемое перестроенным клиентом
 		const std::string body = "перестроенный клиент";
@@ -31816,7 +32697,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на отдачу
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сносим оба узла
 		awh::engine::io::destroy(cid);
@@ -31846,7 +32727,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsNotListeningRefusesTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("notlisten.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31873,7 +32754,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты
 		 */
 		for(uint8_t i = 0; i < 3; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Запоминаем миг начала подключения
 		const auto start = std::chrono::steady_clock::now();
@@ -31892,6 +32773,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Различает их отдельный опорный конец, заводимый ОБЪЯВЛЕНИЕМ СЛУШАНИЯ: есть
 		 *       он - сервер слушает, и стоит подождать; нет его - ждать нечего
+		 *
 		 */
 		ASSERT_LT(spent, 200) << "отказ пришёл за " << spent << " мс: заходы выгорали впустую, тогда как сервер заведомо не слушает";
 		// Сносим оба узла
@@ -31920,7 +32802,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		const std::string path = ::uds("notice.sock");
 		// Признак того, что извещение о подключении пришло
 		bool connected = false;
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -31957,7 +32839,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Извещение о подключении обязано прийти потребителю
 		ASSERT_TRUE(connected) << "изображённый клиент подключился молча: потребителю извещения не пришло";
@@ -32007,7 +32889,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		auto handles = []() noexcept -> uint32_t {
 			// Число открытых описателей процесса
 			DWORD result = 0;
-			// Выполняем снятие числа открытых описателей процесса
+			// Снимаем число открытых описателей процесса
 			::GetProcessHandleCount(::GetCurrentProcess(), &result);
 			// Выводим число открытых описателей процесса
 			return static_cast <uint32_t> (result);
@@ -32021,7 +32903,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 */
 		auto round = [this, &path](const uint32_t round) noexcept -> void {
-			// Выполняем инициализацию сетевого движка
+			// Инициализируем сетевой движок
 			ASSERT_TRUE(awh::engine::io::initialize()) << "круг " << round << ": движок не поднялся";
 			// Заводим сервер домена UNIX
 			const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -32036,13 +32918,14 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 *
 			 * @note Это и есть признак состава: путь один на все круги, и отказ занятости
 			 *       означает, что предыдущий круг описателя не закрыл
+			 *
 			 */
 			ASSERT_TRUE(awh::engine::io::commit(sid)) << "круг " << round << ": путь занят - описатель предыдущего круга не закрыт";
 			// Сервер обязан встать на слушание
 			ASSERT_TRUE(awh::engine::io::listen(sid, 16)) << "круг " << round << ": слушание не объявлено";
 			// Запускаем сервер
 			ASSERT_TRUE(awh::engine::io::launch(sid)) << "круг " << round << ": сервер не запущен";
-			// Выполняем оборот цикла, чтобы подписка дошла до ядра
+			// Опрашиваем события одним оборотом, чтобы подписка дошла до ядра
 			awh::engine::io::poll(1);
 			// Сносим узел
 			awh::engine::io::destroy(sid);
@@ -32050,28 +32933,28 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 * Даём циклу обороты: окончательное уничтожение узла отложено
 			 */
 			for(uint8_t i = 0; i < 3; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(1);
 			// Сворачиваем движок
 			ASSERT_TRUE(awh::engine::io::deinitialize()) << "круг " << round << ": движок не свёрнут";
 		};
-		// Выполняем прогрев: разовые описатели средств сокетов не должны лечь в счёт
+		// Прогреваем учёт: разовые описатели средств сокетов не должны лечь в счёт
 		round(0);
 		// Снимаем число описателей до кругов
 		const uint32_t before = handles();
 		/**
-		 * Выполняем малое число кругов
+		 * Прогоняем малое число кругов
 		 */
 		for(uint32_t i = 1; i <= 20; i++)
-			// Выполняем круг подъёма и сноса движка
+			// Прогоняем круг подъёма и сноса движка
 			round(i);
 		// Снимаем прирост после малого числа кругов
 		const int64_t twenty = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
 		/**
-		 * Выполняем остальные круги
+		 * Прогоняем остальные круги
 		 */
 		for(uint32_t i = 21; i <= 200; i++)
-			// Выполняем круг подъёма и сноса движка
+			// Прогоняем круг подъёма и сноса движка
 			round(i);
 		// Снимаем прирост после всех кругов
 		const int64_t hundreds = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
@@ -32082,6 +32965,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *       двумя снятиями. Половина от неё взята оберегом, а не порогом опыта: мера
 		 *       здесь - СВОЙСТВО (прирост от числа кругов не зависит), и всякий исход
 		 *       вблизи девяноста означал бы утечку, а не свойство машины
+		 *
 		 */
 		ASSERT_LT(hundreds - twenty, 90)
 		 << "описатели растут с числом кругов: после 20 кругов прирост " << twenty << ", после 200 - " << hundreds;
@@ -32111,7 +32995,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		auto handles = []() noexcept -> uint32_t {
 			// Число открытых описателей процесса
 			DWORD result = 0;
-			// Выполняем снятие числа открытых описателей процесса
+			// Снимаем число открытых описателей процесса
 			::GetProcessHandleCount(::GetCurrentProcess(), &result);
 			// Выводим число открытых описателей процесса
 			return static_cast <uint32_t> (result);
@@ -32125,7 +33009,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 */
 		auto round = [this, &path](const uint32_t round) noexcept -> void {
-			// Выполняем инициализацию сетевого движка
+			// Инициализируем сетевой движок
 			ASSERT_TRUE(awh::engine::io::initialize()) << "круг " << round << ": движок не поднялся";
 			// Заводим сервер домена UNIX
 			const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -32155,7 +33039,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 * Даём циклу обороты на приём подключения сервером
 			 */
 			for(uint8_t i = 0; i < 5; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(1);
 			// Сносим клиента
 			awh::engine::io::destroy(cid);
@@ -32165,28 +33049,28 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 * Даём циклу обороты: окончательное уничтожение узла отложено
 			 */
 			for(uint8_t i = 0; i < 3; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(1);
 			// Сворачиваем движок
 			ASSERT_TRUE(awh::engine::io::deinitialize()) << "круг " << round << ": движок не свёрнут";
 		};
-		// Выполняем прогрев: разовые описатели средств сокетов не должны лечь в счёт
+		// Прогреваем учёт: разовые описатели средств сокетов не должны лечь в счёт
 		round(0);
 		// Снимаем число описателей до кругов
 		const uint32_t before = handles();
 		/**
-		 * Выполняем малое число кругов
+		 * Прогоняем малое число кругов
 		 */
 		for(uint32_t i = 1; i <= 20; i++)
-			// Выполняем круг подключения и сноса
+			// Прогоняем круг подключения и сноса
 			round(i);
 		// Снимаем прирост после малого числа кругов
 		const int64_t twenty = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
 		/**
-		 * Выполняем остальные круги
+		 * Прогоняем остальные круги
 		 */
 		for(uint32_t i = 21; i <= 200; i++)
-			// Выполняем круг подключения и сноса
+			// Прогоняем круг подключения и сноса
 			round(i);
 		// Снимаем прирост после всех кругов
 		const int64_t hundreds = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
@@ -32195,6 +33079,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Довод порога тот же, что и у опыта с сервером: утечка по одному описателю на
 		 *       круг дала бы разницу в сто восемьдесят, и половина от неё взята обережом
+		 *
 		 */
 		ASSERT_LT(hundreds - twenty, 90)
 		 << "описатели растут с числом кругов подключения: после 20 кругов прирост " << twenty << ", после 200 - " << hundreds;
@@ -32204,7 +33089,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsEmulatedAddressTest){
 		// Путь, каким задаётся узел домена UNIX
 		const std::string path = ::uds("address.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -32241,7 +33126,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сносим оба узла
 		awh::engine::io::destroy(cid);
@@ -32253,14 +33138,14 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	TEST_F(IoFixture, IoUdsServerLifecycleIsQuietTest){
 		// Собранные записи журнала уровня отказа
 		std::vector <std::string> failures;
-		// Выполняем подписку на записи журнала
+		// Подписываемся на записи журнала
 		awh::log::subscribe([&failures](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является отказом
 			if(flag == awh::log::flag_t::CRITICAL)
 				// Запоминаем запись журнала
 				failures.emplace_back(text);
 		});
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -32276,7 +33161,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сносим сервер
 		ASSERT_TRUE(awh::engine::io::destroy(sid));
@@ -32284,7 +33169,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -32295,7 +33180,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	}
 
 	TEST_F(IoFixture, IoUdsPathMappingIsInjectiveTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Пары путей, сходившихся прежде в одно имя канала
 		const std::pair <std::string, std::string> pairs[2] = {
@@ -32330,7 +33215,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 * Даём циклу обороты: окончательное уничтожение узла отложено
 			 */
 			for(uint8_t i = 0; i < 5; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		// Сворачиваем движок
@@ -32351,6 +33236,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
  *          UNIX SEQPACKET не несёт вовсе, там он подменяется датаграммным, а `listen` к
  *          датаграммам неприменим - и проверка отказала бы НЕ ПО ПРЕДМЕТУ. Разрешать это
  *          общей заменой вида нельзя: развилка по системам здесь дешевле потери предмета
+ *
  */
 	/**
 	 * @brief Проверка молчания журнала при обычном ПОДКЛЮЧЕНИИ к изображённому серверу
@@ -32385,17 +33271,21 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *          устройства. Первая её редакция шла по границе io::coherence
 		 *          (три системы kqueue), и это оказалось неверно: отказали и Solaris,
 		 *          и OpenIndiana, и Linux. Меняя её, мерить заново, а не рассуждать
+		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Вид сокета, изображаемый именованным каналом, - он и есть предмет проверки
 			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// Вид сокета, каким домен UNIX слушается у систем POSIX
 			const awh::event::type_t kind = awh::event::type_t::STREAM;
 		#endif
 		// Собранные записи журнала уровня отказа
 		std::vector <std::string> failures;
-		// Выполняем подписку на записи журнала
+		// Подписываемся на записи журнала
 		awh::log::subscribe([&failures](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является отказом либо предупреждением
 			if((flag == awh::log::flag_t::CRITICAL) || (flag == awh::log::flag_t::WARNING))
@@ -32404,7 +33294,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		});
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("cliquiet.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
@@ -32429,6 +33319,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *          связь хуже лишней записи в журнале: потребитель не узнаёт о разрыве вовсе
 		 *          и ждёт данных от собеседника, какого уже нет. Утверждать надлежит и то,
 		 *          что движок промолчал, и то, что он ИЗВЕСТИЛ
+		 *
 		 */
 		awh::engine::io::on(sid, static_cast <awh::engine::callback::accept_t> ([&closed, &reclaimed, &taken]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Отмечаем подключение принятым
@@ -32449,6 +33340,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			 *          выдаётся самим сносом узла, а `DESTROYED` - изъятием его, и между
 			 *          ними проходят обороты цикла. Потребитель вправе опереться на любой,
 			 *          и оба обязаны дойти
+			 *
 			 */
 			awh::engine::io::on(cid, static_cast <awh::engine::callback::status_t> ([&reclaimed]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				// Если состояние сообщает об изъятии узла
@@ -32486,7 +33378,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на приём подключения сервером
 		 */
 		for(uint8_t i = 0; i < 10; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Снимаем подписку на записи журнала
 		awh::log::subscribe(nullptr);
@@ -32495,6 +33387,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Снятие подписки стоит ДО сноса намеренно: разрыв связи - свойство своё, и
 		 *       мерить его вместе с подключением значило бы не узнать, какое из двух нарушено
+		 *
 		 */
 		ASSERT_TRUE(failures.empty()) << "обычное подключение к изображённому серверу дало " << failures.size() << " запись(ей), первая: " << (failures.empty() ? std::string() : failures.front());
 		/**
@@ -32505,6 +33398,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *          не бывает. Изображение обязано отвечать тем же: о закрытии встречного конца
 		 *          канал сообщает СВОИМ кодом, и обратись тот отказом обмена - потребитель
 		 *          получил бы отклик ОШИБКИ там, где случилось лишь окончание связи
+		 *
 		 */
 		awh::log::subscribe([&failures](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является отказом либо предупреждением
@@ -32518,6 +33412,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * @note Утверждение это - оберег от пустоты: без него признак закрытия мог бы
 		 *       оказаться поднятым чем угодно прежде, и проверка прошла бы, ничего не
 		 *       проверив. Здесь он обязан быть опущен, а поднять его обязан РАЗРЫВ
+		 *
 		 */
 		ASSERT_FALSE(closed) << "принятая сторона объявила связь закрытой ДО разрыва";
 		// Сносим клиента, обрывая связь
@@ -32526,7 +33421,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты, считая их до изъятия узла принятой стороны
 		 */
 		for(uint32_t i = 0; i < 100; i++){
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 			// Если узел принятой стороны уже изъят - считать дальше нечего
 			if(reclaimed)
@@ -32546,6 +33441,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Утверждение это - пара к молчанию, а не довесок к нему. Молчание без него
 		 *       выполнялось бы и молчаливой потерей связи, а это хуже лишней записи
+		 *
 		 */
 		ASSERT_TRUE(closed) << "принятая сторона о разрыве связи не узнала: движок промолчал вовсе";
 		/**
@@ -32557,6 +33453,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Число оборотов между признаками печатается намеренно: задержка эта -
 		 *       свойство движка, и потребителю её знать нужно
+		 *
 		 */
 		ASSERT_TRUE(reclaimed) << "узел принятой стороны за 100 оборотов не изъят: признак DESTROYED не пришёл";
 		// Печатаем число оборотов, прошедших от разрыва до изъятия узла
@@ -32567,7 +33464,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -32602,6 +33499,9 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		#if defined(_WIN32) || defined(_WIN64)
 			// Вид сокета, изображаемый именованным каналом
 			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// Вид сокета, каким домен UNIX слушается у систем POSIX
 			const awh::event::type_t kind = awh::event::type_t::STREAM;
@@ -32610,7 +33510,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		std::vector <std::string> trail;
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("cliorder.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
@@ -32653,6 +33553,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * @note Роды складываются в ОДИН список намеренно: порядок между ними и есть
 		 *       предмет сличения. Разложи их по двум спискам - и чередование родов,
 		 *       какое потребитель как раз и видит, пропало бы из замера
+		 *
 		 */
 		awh::engine::io::on(cid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 			// Запоминаем в следе пришедшее извещение о действии
@@ -32673,13 +33574,14 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на приём подключения
 		 */
 		for(uint8_t i = 0; (i < 50) && !taken; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		/**
 		 * ОБЕРЕГ ПЕРВЫЙ: до предмета дошли, подключение состоялось
 		 *
 		 * @warning Без него след мог бы оказаться пустым по той причине, что клиент не
 		 *          подключился вовсе, - и печать пустого следа прошла бы зелёной
+		 *
 		 */
 		ASSERT_TRUE(taken) << "подключение не состоялось: след круга жизни снят не с того";
 		// Сносим принятый сервером узел, разрывая связь с клиентом
@@ -32688,7 +33590,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на разрыв и изъятие узла клиента
 		 */
 		for(uint8_t i = 0; i < 20; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сносим клиента
 		awh::engine::io::destroy(cid);
@@ -32696,11 +33598,13 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное изъятие узла отложено
 		 */
 		for(uint8_t i = 0; i < 10; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Собранный след извещений одной строкой
 		std::string line;
-		// Переходим по всему следу извещений
+		/**
+		 * Переходим по всему следу извещений
+		 */
 		for(const auto & item : trail){
 			// Если строка следа не пуста
 			if(!line.empty())
@@ -32716,6 +33620,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Утверждение о составе никогда не полно в одиночку: пустой след означал бы
 		 *       движок, не сказавший потребителю ничего, и печать его прошла бы зелёной
+		 *
 		 */
 		ASSERT_FALSE(trail.empty()) << "движок не прислал клиенту ни одного извещения за круг его жизни";
 		// Сносим сервер
@@ -32724,7 +33629,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -32757,6 +33662,9 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		#if defined(_WIN32) || defined(_WIN64)
 			// Вид сокета, изображаемый именованным каналом
 			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// Вид сокета, каким домен UNIX слушается у систем POSIX
 			const awh::event::type_t kind = awh::event::type_t::STREAM;
@@ -32765,7 +33673,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		std::vector <std::string> trail;
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("srvorder.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
@@ -32792,6 +33700,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *
 		 * @note Подписка на принятый узел иначе невозможна: до приёма его не существует, и
 		 *       именно оттого след приёма и след принятого узла ведутся одним списком
+		 *
 		 */
 		awh::engine::io::on(sid, static_cast <awh::engine::callback::accept_t> ([&trail, &taken]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Отмечаем подключение принятым
@@ -32835,13 +33744,14 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на приём подключения
 		 */
 		for(uint8_t i = 0; (i < 50) && !taken; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		/**
 		 * ОБЕРЕГ ПЕРВЫЙ: до предмета дошли, подключение принято
 		 *
 		 * @warning Без него след мог бы оказаться снятым с сервера, не принявшего никого, -
 		 *          и печать такого следа прошла бы зелёной
+		 *
 		 */
 		ASSERT_TRUE(taken) << "подключение не было принято: след приёма снят не с того";
 		/**
@@ -32853,11 +33763,13 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты на разрыв и изъятие принятого узла
 		 */
 		for(uint8_t i = 0; i < 20; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Собранный след извещений одной строкой
 		std::string line;
-		// Переходим по всему следу извещений
+		/**
+		 * Переходим по всему следу извещений
+		 */
 		for(const auto & item : trail){
 			// Если строка следа не пуста
 			if(!line.empty())
@@ -32878,7 +33790,7 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -32935,7 +33847,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	// Ставим слушателя на приём
 	ASSERT_EQ(0, ::listen(listener, 16));
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие клиента
 	const awh::event::id_t eid = awh::engine::io::event(
@@ -32959,6 +33871,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 *
 	 * @note Отказ тот стоит помнить как образец: проверка утверждала ДОГОВОР, какого не
 	 *       заводила. Прежде чем звать отказ находкой, спросить, поставлено ли условие
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::options::set(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 	// Устанавливаем клиенту адрес подключения
@@ -33000,7 +33913,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 * Дожидаемся первого подключения
 	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	/**
 	 * ОБЕРЕГ ПЕРВЫЙ: первая жизнь состоялась
@@ -33013,6 +33926,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 *
 	 * @note Обрыв учиняется ВСТРЕЧНОЙ стороной намеренно: возврат клиента обязан
 	 *       заводиться внешним обрывом, как оно и бывает в жизни
+	 *
 	 */
 	{
 		// Принимаем подключение, заведённое клиентом движка
@@ -33025,6 +33939,9 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 			#if defined(_WIN32) || defined(_WIN64)
 				// Закрываем принятое подключение
 				::closesocket(static_cast <SOCKET> (taken));
+			/**
+			 * Для операционных систем POSIX
+			 */
 			#else
 				// Закрываем принятое подключение
 				::close(taken);
@@ -33038,11 +33955,13 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 * Дожидаемся возврата клиента
 	 */
 	while((successes <= before) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 20000))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	// Собранный след извещений одной строкой
 	std::string line;
-	// Переходим по всему следу извещений
+	/**
+	 * Переходим по всему следу извещений
+	 */
 	for(const auto & item : trail){
 		// Если строка следа не пуста
 		if(!line.empty())
@@ -33058,6 +33977,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 *
 	 * @warning Без него проверка прошла бы зелёной и у движка, не возвращающегося вовсе:
 	 *          след одной жизни выглядит правдоподобно, и печать его никого бы не насторожила
+	 *
 	 */
 	ASSERT_GT(successes, before) << "возврат не состоялся: движок не переподключил клиента после обрыва";
 	// Сносим клиента
@@ -33068,7 +33988,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	 * Даём циклу обороты: окончательное изъятие узлов отложено
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Закрываем сырого слушателя
@@ -33076,6 +33996,9 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	#if defined(_WIN32) || defined(_WIN64)
 		// Закрываем слушающий сокет
 		::closesocket(static_cast <SOCKET> (listener));
+	/**
+	 * Для операционных систем POSIX
+	 */
 	#else
 		// Закрываем слушающий сокет
 		::close(listener);
@@ -33133,7 +34056,7 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	// Ставим слушателя на приём
 	ASSERT_EQ(0, ::listen(listener, 16));
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие клиента
 	const awh::event::id_t eid = awh::engine::io::event(
@@ -33177,7 +34100,7 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	 * Дожидаемся подключения
 	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	/**
 	 * ОБЕРЕГ ПЕРВЫЙ: подключение состоялось
@@ -33190,13 +34113,14 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	 *
 	 * @warning Без него след мог бы оказаться следом непрерывной жизни узла, какой у
 	 *          движка, паузы не делающего вовсе, выглядит совершенно правдоподобно
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::pause(eid)) << "движок не принял паузу: мерить нечего";
 	/**
 	 * Даём циклу обороты на разбор паузы
 	 */
 	for(uint8_t i = 0; i < 10; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Отмечаем в следе саму подачу возобновления
 	trail.emplace_back("--возобновление--");
@@ -33208,11 +34132,13 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	 * Даём циклу обороты на разбор возобновления
 	 */
 	for(uint8_t i = 0; i < 10; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Собранный след извещений одной строкой
 	std::string line;
-	// Переходим по всему следу извещений
+	/**
+	 * Переходим по всему следу извещений
+	 */
 	for(const auto & item : trail){
 		// Если строка следа не пуста
 		if(!line.empty())
@@ -33233,7 +34159,7 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	 * Даём циклу обороты: окончательное изъятие узла отложено
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Закрываем сырого слушателя
@@ -33241,6 +34167,9 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	#if defined(_WIN32) || defined(_WIN64)
 		// Закрываем слушающий сокет
 		::closesocket(static_cast <SOCKET> (listener));
+	/**
+	 * Для операционных систем POSIX
+	 */
 	#else
 		// Закрываем слушающий сокет
 		::close(listener);
@@ -33281,6 +34210,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	 *
 	 * @note Способ этот надёжнее выдуманного номера порта: выдуманный может оказаться
 	 *       занят чужой службой, и тогда проверка мерила бы удавшееся подключение
+	 *
 	 */
 	uint16_t port = 0;
 	{
@@ -33317,6 +34247,9 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 		#if defined(_WIN32) || defined(_WIN64)
 			// Закрываем сокет добычи порта
 			::closesocket(static_cast <SOCKET> (probe));
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// Закрываем сокет добычи порта
 			::close(probe);
@@ -33324,7 +34257,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	}
 	// Проверяем, что порт добыт
 	ASSERT_GT(port, 0);
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие клиента
 	const awh::event::id_t eid = awh::engine::io::event(
@@ -33372,11 +34305,13 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	 * Дожидаемся отказа подключения
 	 */
 	while(!refused && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 10000))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	// Собранный след извещений одной строкой
 	std::string line;
-	// Переходим по всему следу извещений
+	/**
+	 * Переходим по всему следу извещений
+	 */
 	for(const auto & item : trail){
 		// Если строка следа не пуста
 		if(!line.empty())
@@ -33393,6 +34328,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	 * @warning Без него утверждение о молчании было бы пустым: у движка, не подавшего
 	 *          подключения вовсе, `INITIAL` тоже не придёт - и проверка прошла бы зелёной,
 	 *          ничего не проверив. Утверждение о молчании никогда не полно в одиночку
+	 *
 	 */
 	ASSERT_TRUE(refused) << "отказ подключения не дошёл до потребителя: след снят не с того";
 	/**
@@ -33401,7 +34337,9 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	{
 		// Признак того, что состояние отказа дошло до потребителя
 		bool failed = false;
-		// Переходим по следу от мгновения подачи
+		/**
+		 * Переходим по следу от мгновения подачи
+		 */
 		for(size_t i = border; i < trail.size(); i++)
 			// Если извещение сообщает об отказе операции
 			if(trail.at(i) == (std::string("status:") + std::to_string(static_cast <uint16_t> (awh::event::status_t::FAILURE))))
@@ -33416,6 +34354,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	 * @note Это и есть закрепляемое молчание. Присвоения `INITIAL` на путях отказа суть
 	 *       возврат узла к исходному состоянию после неудавшейся смены, а не вход в него,
 	 *       и извещать о них нельзя: потребитель принял бы откат за успешное заведение
+	 *
 	 */
 	for(size_t i = border; i < trail.size(); i++)
 		// Состояние исходное после подачи подключения приходить не обязано
@@ -33427,7 +34366,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 	 * Даём циклу обороты: окончательное изъятие узла отложено
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Сворачиваем движок
 	ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -33482,7 +34421,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
 	// Ставим слушателя на приём
 	ASSERT_EQ(0, ::listen(listener, 16));
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Заводим событие клиента
 	const awh::event::id_t eid = awh::engine::io::event(
@@ -33526,7 +34465,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	 * Дожидаемся подключения
 	 */
 	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(__AWH_TEST_POLL_SLICE__);
 	/**
 	 * ОБЕРЕГ ПЕРВЫЙ: подключение состоялось
@@ -33539,17 +34478,20 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	 *
 	 * @warning Без него след оборванной на полпути жизни выглядел бы правдоподобно, и
 	 *          печать его никого бы не насторожила
+	 *
 	 */
 	ASSERT_TRUE(awh::engine::io::disconnect(eid)) << "движок не принял разрыв по своей воле: мерить нечего";
 	/**
 	 * Даём циклу обороты на разбор разрыва
 	 */
 	for(uint8_t i = 0; i < 20; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	// Собранный след извещений одной строкой
 	std::string line;
-	// Переходим по всему следу извещений
+	/**
+	 * Переходим по всему следу извещений
+	 */
 	for(const auto & item : trail){
 		// Если строка следа не пуста
 		if(!line.empty())
@@ -33570,7 +34512,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	 * Даём циклу обороты: окончательное изъятие узла отложено
 	 */
 	for(uint8_t i = 0; i < 5; i++)
-		// Выполняем оборот цикла событий
+		// Опрашиваем события одним оборотом цикла
 		awh::engine::io::poll(10);
 	/**
 	 * Закрываем сырого слушателя
@@ -33578,6 +34520,9 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	#if defined(_WIN32) || defined(_WIN64)
 		// Закрываем слушающий сокет
 		::closesocket(static_cast <SOCKET> (listener));
+	/**
+	 * Для операционных систем POSIX
+	 */
 	#else
 		// Закрываем слушающий сокет
 		::close(listener);
@@ -33602,6 +34547,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
  *          БЫЛО ВОВСЕ - ни зелёной, ни красной. Установлено опросом двоичного
  *          файла (`--gtest_list_tests`), а не чтением. Вывод общий: ограждение писать НА
  *          проверке, а не полагаться на то, в какую область файла она дописана
+ *
  */
 	/**
 	 * @brief Проверка возврата счёта подключений сервера при разрыве связи
@@ -33649,7 +34595,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	TEST_F(IoFixture, IoUdsServerTeardownIsQuietTest){
 		// Собранные записи журнала уровня отказа
 		std::vector <std::string> failures;
-		// Выполняем подписку на записи журнала
+		// Подписываемся на записи журнала
 		awh::log::subscribe([&failures](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является отказом либо предупреждением
 			if((flag == awh::log::flag_t::CRITICAL) || (flag == awh::log::flag_t::WARNING))
@@ -33664,13 +34610,16 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		#if defined(_WIN32) || defined(_WIN64)
 			// Вид сокета, изображаемый именованным каналом
 			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// Вид сокета, каким домен UNIX слушается у систем POSIX
 			const awh::event::type_t kind = awh::event::type_t::STREAM;
 		#endif
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("srvquiet.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
@@ -33703,7 +34652,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		// Клиент обязан подключиться
 		ASSERT_TRUE(awh::engine::io::commit(cid));
-		// Выполняем подключение клиента
+		// Подключаем клиента
 		ASSERT_TRUE(awh::engine::io::connect(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(awh::engine::io::launch(cid));
@@ -33711,12 +34660,13 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты на приём подключения сервером
 		 */
 		for(uint8_t i = 0; i < 10; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		/**
 		 * ОБЕРЕГ: до сноса сервер обязан принимать
 		 *
 		 * @note Без него молчание журнала выполнялось бы и сервером, не поднявшимся вовсе
+		 *
 		 */
 		ASSERT_GT(accepted, 0u) << "сервер подключения не принял: опыт о его жизни не поставлен";
 		// Сносим клиента
@@ -33727,7 +34677,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 10; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Снимаем подписку на записи журнала
 		awh::log::subscribe(nullptr);
@@ -33740,6 +34690,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 *
 		 * @note Это пара к молчанию, а не довесок. Молча снести подписки и оставить
 		 *       сокет слушающим - беда куда худшая лишней записи: узла нет, а порт занят
+		 *
 		 */
 		{
 			// Число принятых подключений до опыта
@@ -33763,7 +34714,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 			 * Даём циклу обороты: приём, случись он, успел бы пройти
 			 */
 			for(uint8_t i = 0; i < 10; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 			// Сносим второго клиента
 			awh::engine::io::destroy(late);
@@ -33803,7 +34754,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		TEST_F(IoFixture, IoUdsSeqpacketServerAcceptsTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("seqsrv.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX вида SEQPACKET
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -33822,6 +34773,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * @note Принятие приходит ДВУМЯ путями, и считать надо оба: у связного узла -
 		 *       откликом приёма с опознавателем принятого узла, у изображённого
 		 *       дейтаграммного - состоянием ACCEPTED, ибо принимать там нечего
+		 *
 		 */
 		awh::engine::io::on(sid, [&accepted]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Если сервер сообщил о принятии
@@ -33850,7 +34802,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		ASSERT_TRUE(awh::engine::options::set(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		// Клиент обязан подключиться
 		ASSERT_TRUE(awh::engine::io::commit(cid));
-		// Выполняем подключение клиента
+		// Подключаем клиента
 		ASSERT_TRUE(awh::engine::io::connect(cid))
 		 << "клиент домена UNIX вида SEQPACKET не подключился";
 		/**
@@ -33861,6 +34813,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 *       самом подключении. Слать надо из отклика подключения, а не сразу после
 		 *       запуска: до подключения слать некуда. У систем со связным видом посылка
 		 *       безвредна
+		 *
 		 */
 		awh::engine::io::on(cid, [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Если клиент подключился
@@ -33877,7 +34830,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты на приём подключения сервером
 		 */
 		for(uint8_t i = 0; (accepted == 0) && (i < 40); i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		/**
 		 * ПРЕДМЕТ: сервер обязан ПРИНЯТЬ подключение
@@ -33885,6 +34838,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * @note Утверждается приём, а не согласие listen: согласие без приёма означало бы,
 		 *       что слушание объявлено, но сбито, - и у изображённых систем именно это и
 		 *       случилось бы, ответь изображение согласием, ничего не изобразив
+		 *
 		 */
 		ASSERT_GT(accepted, 0u) << "сервер домена UNIX вида SEQPACKET подключения не принял";
 		// Сносим клиента
@@ -33895,7 +34849,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -33910,11 +34864,14 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		#if defined(_WIN32) || defined(_WIN64)
 			// У MS Windows домен UNIX этого вида изображается именованным каналом
 			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		/**
+		 * Для операционных систем POSIX
+		 */
 		#else
 			// У наречий POSIX слушание домена UNIX несёт лишь потоковый вид
 			const awh::event::type_t kind = awh::event::type_t::STREAM;
 		#endif
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
@@ -33941,6 +34898,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Повторное объявление слушания на том же узле
 		 *
 		 * @note Предел здесь иной - именно сменой предела обращение это у POSIX и служит
+		 *
 		 */
 		/**
 		 * Повторное объявление слушания движок ОТВЕРГАЕТ, и отвергает одинаково у всех пяти
@@ -33969,6 +34927,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * @note Утверждается ровно измеренное: обращение отвечает отказом. Изменится решение -
 		 *       изменится и это утверждение, но менять его надлежит ВМЕСТЕ с движками, а не
 		 *       подгонкой одного наречия под другое
+		 *
 		 */
 		// Число откликов ошибки, полученных потребителем
 		uint32_t errors = 0;
@@ -33979,6 +34938,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 			// Считаем отклик и запоминаем его текст
 			errors++; reason = text;
 		}));
+		// Проверяем отказ повторного объявления слушания
 		ASSERT_FALSE(awh::engine::io::listen(sid, 16)) << "повторное объявление слушания принято: поведение разошлось с прочими наречиями";
 		/**
 		 * Отказ обязан ДОЙТИ ДО ПОТРЕБИТЕЛЯ откликом
@@ -33986,6 +34946,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * @note Отказ сам по себе - половина договора. Вторая половина в том, что потребитель
 		 *       о нём узнаёт: возвращаемое значение есть удача либо неудача, а ПРИЧИНУ несёт
 		 *       отклик, установленный потребителем
+		 *
 		 */
 		ASSERT_GT(errors, 0u) << "повторное объявление отвергнуто, но отклик ошибки потребителю не пришёл";
 		// Печатаем текст отклика: он и есть довод отказа
@@ -34010,7 +34971,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты на приём подключения сервером
 		 */
 		for(uint8_t i = 0; i < 10; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Приём обязан состояться: согласие без приёма означало бы сбитое слушание
 		/**
@@ -34019,6 +34980,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * @note Это и есть предмет проверки. Отказ сам по себе беды не означает, а вот отказ,
 		 *       сбивший слушание, означал бы: узел перестал бы принимать, и ни одного отказа
 		 *       о том потребитель не получил бы. Утверждается потому не отказ, а ПРИЁМ после него
+		 *
 		 */
 		ASSERT_GT(accepted, 0u) << "после отвергнутого повторного объявления сервер подключения не принял: отказ сбил слушание";
 		// Сносим клиента
@@ -34029,7 +34991,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
@@ -34038,7 +35000,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	TEST_F(IoFixture, IoServerBacklogReturnsOnCloseTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("backlog.sock");
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим сервер домена UNIX
 		const awh::event::id_t sid = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::STREAM);
@@ -34066,7 +35028,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		// Запускаем сервер
 		ASSERT_TRUE(awh::engine::io::launch(sid));
 		/**
-		 * Выполняем круги подключения и разрыва, числом втрое больше предела
+		 * Прогоняем круги подключения и разрыва, числом втрое больше предела
 		 */
 		for(uint32_t round = 1; round <= 12; round++){
 			// Число принятых подключений до круга
@@ -34093,13 +35055,14 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 			 * Даём циклу обороты на приём подключения сервером
 			 */
 			for(uint8_t i = 0; i < 10; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 			/**
 			 * Сервер обязан ПРИНЯТЬ подключение на каждом круге
 			 *
 			 * @note Это и есть предмет проверки: не вернись счёт подключений, круги с
 			 *       пятого приёма не давали бы вовсе, а клиент подключался бы по-прежнему
+			 *
 			 */
 			ASSERT_GT(accepted, before) << "круг " << round << ": сервер подключения не принял - счёт подключений не вернулся (предел 4)";
 			// Сносим принятый узел
@@ -34112,7 +35075,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 			 * Даём циклу обороты: окончательное уничтожение узла отложено
 			 */
 			for(uint8_t i = 0; i < 5; i++)
-				// Выполняем оборот цикла событий
+				// Опрашиваем события одним оборотом цикла
 				awh::engine::io::poll(10);
 		}
 		// Сносим сервер
@@ -34121,12 +35084,15 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 		 * Даём циклу обороты: окончательное уничтожение узла отложено
 		 */
 		for(uint8_t i = 0; i < 5; i++)
-			// Выполняем оборот цикла событий
+			// Опрашиваем события одним оборотом цикла
 			awh::engine::io::poll(10);
 		// Сворачиваем движок
 		ASSERT_TRUE(awh::engine::io::deinitialize());
 	}
 
+/**
+ * Для операционной системы MS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка отказа клиента домена UNIX на пути, где сервера нет
@@ -34142,7 +35108,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoUdsClientNoServerTest){
-		// Выполняем инициализацию сетевого движка
+		// Инициализируем сетевой движок
 		ASSERT_TRUE(awh::engine::io::initialize());
 		// Заводим клиента домена UNIX
 		const awh::event::id_t cid = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
@@ -34175,6 +35141,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
  *       описатели там своего рода и перечисляются иначе (`GetProcessHandleCount`
  *       либо перебор HANDLE) - способ не переносится ни строчкой, и опыт этот для
  *       той системы ставится отдельной проверкой в её блоке
+ *
  */
 #if !(defined(_WIN32) || defined(_WIN64))
 /**
@@ -34186,6 +35153,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
  *       пары домена UNIX у той системы не передаётся вовсе: снимок снимается
  *       `WSADuplicateSocketW`, а канал сокетом не является. Сокетный же спрос `SO_TYPE`
  *       отвечает там 10038 `WSAENOTSOCK` - то есть проверке этой нечего утверждать
+ *
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 /**
@@ -34209,7 +35177,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
  *
  */
 TEST_F(IoFixture, IoHandoverSeqpacketSubstitutionTest){
-	// Выполняем инициализацию сетевого движка
+	// Инициализируем сетевой движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	/**
 	 * @brief Функция снятия перечня открытых описателей процесса
@@ -34236,8 +35204,11 @@ TEST_F(IoFixture, IoHandoverSeqpacketSubstitutionTest){
 	const std::set <int32_t> before = descriptors();
 	// Заводим пару переносчика: по ней и поедет описатель
 	const auto carrier = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::SEQPACKET, awh::event::protocol_t::NONE);
-	// Проверяем, что пара переносчика создана
+	/**
+	 * Проверяем, что пара переносчика создана
+	 */
 	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что конец переносчика заведён
 		ASSERT_GT(carrier[i], 0);
 	// Снимок, приехавший встречным концом переносчика
 	std::vector <uint8_t> arrived;
@@ -34246,18 +35217,27 @@ TEST_F(IoFixture, IoHandoverSeqpacketSubstitutionTest){
 		// Запоминаем приехавший снимок
 		arrived.assign(buffer, buffer + size);
 	});
-	// Выполняем фиксацию настроек и запуск обоих концов переносчика
+	/**
+	 * Фиксируем настройки и запускаем оба конца переносчика
+	 */
 	for(uint8_t i = 0; i < 2; i++){
+		// Фиксируем настройки конца переносчика
 		ASSERT_TRUE(awh::engine::io::commit(carrier[i]));
 		ASSERT_TRUE(awh::engine::io::launch(carrier[i]));
 	}
 	// Заводим пару, ОДИН конец которой и будет передан
 	const auto moved = awh::engine::io::events(awh::event::family_t::UDS, awh::event::type_t::SEQPACKET, awh::event::protocol_t::NONE);
-	// Проверяем, что передаваемая пара создана
+	/**
+	 * Проверяем, что передаваемая пара создана
+	 */
 	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что конец передаваемой пары заведён
 		ASSERT_GT(moved[i], 0);
-	// Выполняем фиксацию настроек и запуск обоих концов передаваемой пары
+	/**
+	 * Фиксируем настройки и запускаем оба конца передаваемой пары
+	 */
 	for(uint8_t i = 0; i < 2; i++){
+		// Фиксируем настройки конца передаваемой пары
 		ASSERT_TRUE(awh::engine::io::commit(moved[i]));
 		ASSERT_TRUE(awh::engine::io::launch(moved[i]));
 	}
@@ -34267,6 +35247,7 @@ TEST_F(IoFixture, IoHandoverSeqpacketSubstitutionTest){
 	 * @note Вид описателя снимается У ЯДРА, а не берётся из заказанного: три системы
 	 *       подменяют упорядоченные сообщения дейтаграммными, и настоящий вид известен
 	 *       только системе
+	 *
 	 */
 	int32_t native = -1;
 	/**
@@ -34292,6 +35273,7 @@ TEST_F(IoFixture, IoHandoverSeqpacketSubstitutionTest){
 	ASSERT_NE(native, -1) << "вид описателя у системы снять не удалось";
 	// Снимаем снимок передаваемого узла для встречного конца переносчика
 	std::vector <uint8_t> snapshot;
+	// Снимаем снимок передаваемого узла
 	ASSERT_TRUE(awh::engine::io::snapshot(moved[0], carrier[0], snapshot))
 	 << "снимок передаваемого узла не снят";
 	// Снимок обязан быть непустым
@@ -34408,17 +35390,17 @@ TEST_F(IoFixture, IoEngineRecreateCyclesTest){
 			ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 			// Устанавливаем порт привязки события сервера
 			ASSERT_TRUE(awh::engine::source::port::set(server, port()));
-			// Выполняем фиксацию настроек события сервера
+			// Фиксируем настройки события сервера
 			ASSERT_TRUE(awh::engine::io::commit(server)) << "Настройки события не приняты на круге " << i;
 			// Переводим событие сервера в прослушивание
 			ASSERT_TRUE(awh::engine::io::listen(server, 16)) << "Прослушивание не включено на круге " << i;
 			// Включаем приём подключений
 			ASSERT_TRUE(awh::engine::io::launch(server)) << "Приём подключений не включён на круге " << i;
-			// Выполняем оборот опроса, чтобы подписка дошла до ядра
+			// Опрашиваем события, чтобы подписка дошла до ядра
 			awh::engine::io::poll(1);
 			// Опускаем движок круга, закрывая очередь ядра
 			awh::engine::io::clear();
-			// Выполняем деинициализацию движка круга
+			// Деинициализируем движок круга
 			awh::engine::io::deinitialize();
 		}
 		/**
@@ -34430,6 +35412,7 @@ TEST_F(IoFixture, IoEngineRecreateCyclesTest){
 		 *
 		 * @note Цена снятия замерена, а не прикинута: перебор 1024 описателей на круг
 		 *       добавляет к проверке единицы миллисекунд при двухстах кругах
+		 *
 		 */
 		{
 			// Снимаем состав описателей на промежуточном круге
@@ -34572,15 +35555,15 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 				// Сведения о процессе ядра
 				psinfo_t info{};
 				// Описатель сведений собственного процесса
-				const int32_t ps = ::open("/proc/self/psinfo", O_RDONLY);
+				const int32_t psfile = ::open("/proc/self/psinfo", O_RDONLY);
 				// Если сведения открыть не удалось, ряд не снимается
-				if(ps < 0)
+				if(psfile < 0)
 					// Выводим отсутствие учёта
 					return 0;
 				// Читаем сведения о собственном процессе
-				const ssize_t size = ::read(ps, &info, sizeof(info));
+				const ssize_t size = ::read(psfile, &info, sizeof(info));
 				// Закрываем описатель сведений
-				::close(ps);
+				::close(psfile);
 				// Если сведения прочитаны не целиком, ряд не снимается
 				if(size != static_cast <ssize_t> (sizeof(info)))
 					// Выводим отсутствие учёта
@@ -34618,7 +35601,7 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 	const size_t step = (((soak / 20) < 1) ? 1 : (((soak / 20) > 60) ? 60 : (soak / 20)));
 	// Число долгоживущих клиентов-носителей обмена
 	const uint8_t carriers = 0x06;
-	// Выполняем генерацию порта
+	// Генерируем порт
 	const uint16_t listenPort = ::port();
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(awh::engine::io::initialize());
@@ -34632,7 +35615,7 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 	ASSERT_TRUE(awh::engine::address::set(server, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем порт привязки события сервера
 	ASSERT_TRUE(awh::engine::source::port::set(server, listenPort));
-	// Выполняем фиксацию настроек события сервера
+	// Фиксируем настройки события сервера
 	ASSERT_TRUE(awh::engine::io::commit(server)) << "Настройки события сервера не приняты";
 	// Переводим событие сервера в прослушивание
 	ASSERT_TRUE(awh::engine::io::listen(server, 64)) << "Прослушивание не включено";
@@ -34688,11 +35671,11 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 			// Подсчитываем полученный отклик
 			echoes++;
 		}));
-		// Выполняем фиксацию настроек события клиента
+		// Фиксируем настройки события клиента
 		if(!awh::engine::io::commit(id))
 			// Выводим отказ заведения
 			return 0;
-		// Выполняем подключение к серверу
+		// Подключаемся к серверу
 		if(!awh::engine::io::connect(id))
 			// Выводим отказ заведения
 			return 0;
@@ -34738,7 +35721,7 @@ TEST_F(IoFixture, IoSoakPlateauTest){
 	 * Ведём обмен до конца выдержки
 	 */
 	while(std::chrono::steady_clock::now() < deadline){
-		// Выполняем оборот опроса событий
+		// Опрашиваем события одним оборотом
 		if(!awh::engine::io::poll(__AWH_TEST_POLL_SLICE__))
 			// Прерываем выдержку: опрос отказал, ряды далее не снялись бы честно
 			break;
@@ -34888,7 +35871,7 @@ TEST_F(IoFixture, IoSoakPlateauTest){
  *
  */
 TEST_F(IoFixture, IoDescriptorExhaustionTest){
-	// Выполняем порождение дочернего процесса
+	// Порождаем дочерний процесс
 	const pid_t pid = ::fork();
 	// Если породить процесс не удалось
 	ASSERT_NE(pid, -1) << "Породить процесс опыта не удалось";
@@ -34907,6 +35890,7 @@ TEST_F(IoFixture, IoDescriptorExhaustionTest){
 		 *          отменяет. Установлено замером: при мягком пределе 64 и жёстком
 		 *          неограниченном движок заводил события тысячами, не встретив предела
 		 *          вовсе, - опыт не доходил до искомого состояния и молчал об этом
+		 *
 		 */
 		// Считаем описатели, УЖЕ открытые процессом набора и унаследованные опытом
 		rlim_t opened = 0;
@@ -34932,6 +35916,7 @@ TEST_F(IoFixture, IoDescriptorExhaustionTest){
 		 *
 		 * @note Запас в 24 описателя даёт движку подняться и оставляет десятки заведений
 		 *       до исчерпания - довольно, чтобы отказ наступил заведомо
+		 *
 		 */
 		limit.rlim_cur = (opened + 24);
 		// Урезаем жёсткий предел, чтобы поднять мягкий было нечем
@@ -34989,6 +35974,7 @@ TEST_F(IoFixture, IoDescriptorExhaustionTest){
 		 *
 		 * @note Описатели отдаёт сама система при выходе процесса, поэтому уборка тут
 		 *       не нужна вовсе
+		 *
 		 */
 		::_exit(refused ? 0 : 1);
 	}
@@ -35045,10 +36031,11 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 	} cleanup{};
 	// Порт слушающего события
 	const uint16_t number = ::port();
-	// Выполняем инициализацию движка
+	// Инициализируем движок
 	ASSERT_TRUE(awh::engine::io::initialize());
 	// Создаём слушающее событие TCP
 	const awh::event::id_t server = awh::engine::io::event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что событие сервера заведено
 	ASSERT_GT(server, 0u);
 	// Настраиваем неблокирующее слушающее событие
 	ASSERT_TRUE(awh::engine::options::set(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
@@ -35085,11 +36072,15 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 	for(size_t cycle = 0; cycle < 4; cycle++){
 		// Сбрасываем состояние завершённой пары
 		peer = 0;
+		// Сбрасываем признаки настройки и закрытия
 		configured = closed = false;
+		// Очищаем накопленное содержимое приёма
 		received.clear();
+		// Очищаем накопленное содержимое отдачи
 		answered.clear();
 		// Создаём новое клиентское событие
 		const awh::event::id_t client = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что событие клиента заведено
 		ASSERT_GT(client, 0u);
 		// Настраиваем неблокирующее подключение
 		ASSERT_TRUE(awh::engine::options::set(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
@@ -35114,10 +36105,15 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 		ASSERT_TRUE(awh::engine::io::launch(client));
 		// Ограничиваем ожидание принятия подключения
 		const auto connected = std::chrono::steady_clock::now();
+		/**
+		 * Дожидаемся принятия подключения, разбирая сетевые события до срока
+		 */
 		while((peer == 0) && ((std::chrono::steady_clock::now() - connected) < std::chrono::seconds(10)))
 			// Разбираем сетевые события
 			ASSERT_TRUE(awh::engine::io::poll(10));
+		// Проверяем, что подключение принято сервером
 		ASSERT_GT(peer, 0u);
+		// Проверяем, что принятое событие настроено
 		ASSERT_TRUE(configured);
 		// Ожидаемое содержимое обоих направлений
 		std::string expected, reverse;
@@ -35131,13 +36127,18 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 			for(size_t round = 0; round < rounds[phase]; round++){
 				// Формируем различимое содержимое с нулевыми байтами
 				std::string forward(sizes[phase], '\0'), backward(sizes[phase], '\0');
+				/**
+				 * Заполняем содержимое сообщений различимыми байтами обоих направлений
+				 */
 				for(size_t index = 0; index < sizes[phase]; index++){
 					// Содержимое зависит от направления, фазы, круга и позиции
 					forward[index] = static_cast <char> ((index * 29 + round * 17 + phase * 11 + cycle) & 0xFF);
+					// Заполняем содержимое встречного направления
 					backward[index] = static_cast <char> ((index * 43 + round * 31 + phase * 7 + cycle + 127) & 0xFF);
 				}
 				// Дополняем ожидаемый поток до выполнения отправок
 				expected.append(forward);
+				// Дополняем ожидаемый встречный поток
 				reverse.append(backward);
 				// Число байт, принятых отправкой каждого направления
 				size_t sent = 0, returned = 0;
@@ -35145,21 +36146,30 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 				size_t piece = round;
 				// Ограничиваем время обмена одним сообщением
 				const auto started = std::chrono::steady_clock::now();
+				/**
+				 * Ведём обмен фрагментами в обоих направлениях, покуда всё не дойдёт или не выйдет срок
+				 */
 				while(((sent < forward.size()) || (returned < backward.size()) || (received.size() < expected.size()) || (answered.size() < reverse.size())) && ((std::chrono::steady_clock::now() - started) < std::chrono::seconds(10))){
 					// Передаём очередной фрагмент к серверу
 					if(sent < forward.size()){
 						// Размер меняется между сообщениями и не совпадает с границами приёма
 						const size_t offered = std::min(pieces[piece % 5], forward.size() - sent);
+						// Отправляем долю прямого направления клиентом
 						const size_t accepted = awh::engine::io::send(client, forward.data() + sent, offered);
+						// Проверяем, что принято не больше предложенного
 						ASSERT_LE(accepted, offered);
+						// Сдвигаем счётчик отправленного прямого направления
 						sent += accepted;
 					}
 					// Передаём очередной фрагмент к клиенту
 					if(returned < backward.size()){
 						// Встречное направление использует другой размер фрагмента
 						const size_t offered = std::min(pieces[(piece + 2) % 5], backward.size() - returned);
+						// Отправляем долю встречного направления принятым узлом
 						const size_t accepted = awh::engine::io::send(peer, backward.data() + returned, offered);
+						// Проверяем, что принято не больше предложенного
 						ASSERT_LE(accepted, offered);
+						// Сдвигаем счётчик отправленного встречного направления
 						returned += accepted;
 					}
 					// Разбираем завершения и освобождаем место в очередях
@@ -35178,12 +36188,16 @@ TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
 		ASSERT_TRUE(awh::engine::io::poll(0));
 		// Закрываем подключения и запрещаем позднюю доставку
 		closed = true;
+		// Уничтожаем событие клиента
 		ASSERT_TRUE(awh::engine::io::destroy(client));
 		ASSERT_TRUE(awh::engine::io::destroy(peer));
-		// Разбираем завершения отменённых операций
+		/**
+		 * Разбираем завершения отменённых операций
+		 */
 		for(size_t pass = 0; pass < 16; pass++)
 			// Следующее подключение создаётся только после разбора этой пачки
 			ASSERT_TRUE(awh::engine::io::poll(1));
+		// Проверяем, что поздней доставки не случилось
 		ASSERT_EQ(late, 0u);
 	}
 	// Освобождаем слушающее событие и движок до разрушения захваченных данных

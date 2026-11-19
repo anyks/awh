@@ -177,9 +177,13 @@ class Executor {
 		 * @param fgp     объект отпечатка браузера
 		 *
 		 */
-		void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
+		void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const nts::fingerprint::profile_t & browser, nts::fingerprint::Store * fgp) noexcept {
 			// Записываем в лог информацию о браузере клиента, который подключился к серверу
-			log::print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log::flag_t::INFO, id, eid, fgp->print(browser).c_str());
+			// Текст профиля отпечатка
+			string text = "";
+			// Печатаем профиль отпечатка в текст
+			nts::fingerprint::print(browser, text);
+			log::print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log::flag_t::INFO, id, eid, text.c_str());
 		}
 	public:
 		/**
@@ -206,7 +210,7 @@ int32_t main(){
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor;
 	// Создаём объект отпечатка браузера
-	tls::fgp_t fgp;
+	nts::fingerprint::Store fgp;
 	// Устанавливаем объект для работы с отпечатками TLS
 	tls::coder::fingerprint(&fgp);
 	// Создаём объект DNS-резолвера
@@ -327,7 +331,7 @@ int32_t main(){
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
 		server.on <void (const tls::coder::id_t, const tls::coder::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие TLS fingerprint клиента
-		server.on <void (const tls::coder::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", &Executor::fingerprintTLS, &executor, _1, _2, _3, &fgp);
+		server.on <void (const tls::coder::id_t, const event::id_t, const nts::fingerprint::profile_t &)> ("fingerprint_tls", &Executor::fingerprintTLS, &executor, _1, _2, _3, &fgp);
 		// Запускаем событие сервера
 		server.start();
 	}

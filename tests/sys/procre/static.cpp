@@ -129,9 +129,9 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 		// Запоминаем идентификатор самого проверяемого процесса
 		self = ::getpid();
 		// Создаём собственный сокет UDP
-		const int32_t fd = static_cast <int32_t> (::socket(AF_INET, SOCK_DGRAM, 0));
+		const int32_t probe = static_cast <int32_t> (::socket(AF_INET, SOCK_DGRAM, 0));
 		// Если собственный сокет создан
-		if(fd >= 0){
+		if(probe >= 0){
 			// Адрес собственного сокета проверки
 			struct sockaddr_in addr{};
 			// Устанавливаем семейство адресов собственного сокета
@@ -141,11 +141,11 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			// Устанавливаем порт, выдаваемый системой
 			addr.sin_port = 0;
 			// Если собственный сокет привязан к адресу
-			if(::bind(fd, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) == 0){
+			if(::bind(probe, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) == 0){
 				// Длина адреса собственного сокета
 				socklen_t length = sizeof(addr);
 				// Если адрес собственного сокета получен
-				if(::getsockname(fd, reinterpret_cast <struct sockaddr *> (&addr), &length) == 0)
+				if(::getsockname(probe, reinterpret_cast <struct sockaddr *> (&addr), &length) == 0)
 					// Запоминаем порт собственного сокета
 					port = ntohs(addr.sin_port);
 			}
@@ -335,9 +335,9 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если собственный сокет создан
-		if(fd >= 0)
+		if(probe >= 0)
 			// Закрываем собственный сокет
-			::closesocket(fd);
+			::closesocket(probe);
 	#endif
 	// Проверяем, что обход вернул хотя бы одну запись о сокете
 	ASSERT_GT(calls, static_cast <size_t> (0));

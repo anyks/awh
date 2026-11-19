@@ -59,7 +59,7 @@ struct ssl_ctx_st;
  * Подключаем заголовочные файлы проекта
  */
 #include "tls.hpp"
-#include "fingerprint.hpp"
+#include <fingerprint/fingerprint.hpp>
 #include "../../net/addr.hpp"
 #include "../../net/event.hpp"
 #include "../../compressor/block.hpp"
@@ -477,7 +477,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using fingerprint_callback_t = function <void (const id_t, const fgp_t::browser_t &)>;
+			using fingerprint_callback_t = function <void (const id_t, const nts::fingerprint::profile_t &)>;
 			/**
 			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при чтении
@@ -566,7 +566,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void fingerprint(const fgp_t * fgp) noexcept;
+			__AWH_SHARED_EXPORT__ void fingerprint(const nts::fingerprint::Store * fgp) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения общей информации о TLS соединении
@@ -1395,7 +1395,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void browser(const id_t id, const fgp_t::id_t fid) noexcept;
+			__AWH_SHARED_EXPORT__ void browser(const id_t id, const uint8_t fid) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения списка поддерживаемых ALPN-протоколов

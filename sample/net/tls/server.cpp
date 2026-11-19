@@ -33,7 +33,6 @@
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 #include <cryptography/tls/coder.hpp>
-#include <cryptography/tls/fingerprint.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -60,7 +59,7 @@ int32_t main(){
 	 */
 	fmk::initialize();
 	// Создаём объект отпечатка браузера
-	tls::fgp_t fgp;
+	nts::fingerprint::Store fgp;
 	// Устанавливаем объект для работы с отпечатками TLS
 	tls::coder::fingerprint(&fgp);
 	// Добавляем новое событие сервера TCP
@@ -267,9 +266,13 @@ int32_t main(){
 				// Создаём идентификатор транспортного уровня DTLS
 				tls::coder::id_t ctl = tls::coder::transport(cts);
 				// Регистрируем функцию обратного вызова на получение снимка браузера приславшего ClientHello
-				tls::coder::on(ctl, [&fgp](const tls::coder::id_t id, const tls::fgp_t::browser_t & browser) noexcept -> void {
+				tls::coder::on(ctl, [&fgp](const tls::coder::id_t id, const nts::fingerprint::profile_t & browser) noexcept -> void {
 					// Записываем в лог информацию о браузере, который прислал ClientHello
-					log::print("Отпечаток браузера TLS: ID=%" PRIu64 ", Сообщение:\n%s", log::flag_t::INFO, id, fgp.print(browser).c_str());
+					// Текст профиля отпечатка
+					string text = "";
+					// Печатаем профиль отпечатка в текст
+					nts::fingerprint::print(browser, text);
+					log::print("Отпечаток браузера TLS: ID=%" PRIu64 ", Сообщение:\n%s", log::flag_t::INFO, id, text.c_str());
 				});
 				// Регистрируем функцию обратного вызова на получение ошибок TLS
 				tls::coder::on(ctl, [](const tls::coder::id_t id, [[maybe_unused]] const tls::coder::error_t error, const string & message) noexcept -> void {

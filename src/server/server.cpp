@@ -1046,11 +1046,11 @@ void awh::Server::stateTLS(const tls::coder::id_t id, const event::id_t eid, con
  * @param browser информация о браузере для отпечатка TLS
  *
  */
-void awh::Server::fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept {
+void awh::Server::fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const nts::fingerprint::profile_t & browser) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active())
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const tls::coder::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
+		this->_callback.call <void (const tls::coder::id_t, const event::id_t, const nts::fingerprint::profile_t &)> ("fingerprint_tls", id, eid, browser);
 }
 /**
  * @brief Метод обработки ошибок TLS

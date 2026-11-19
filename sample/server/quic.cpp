@@ -197,7 +197,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor;
 	// Создаём объект отпечатка браузера
-	tls::fgp_t fgp;
+	nts::fingerprint::Store fgp;
 	// Устанавливаем объект для работы с отпечатками TLS
 	tls::coder::fingerprint(&fgp);
 	// Регистрируем шаблон контекста безопасности для транспорта QUIC

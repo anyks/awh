@@ -869,7 +869,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
+			virtual void fingerprintTLS(const tls::coder::id_t id, const event::id_t eid, const nts::fingerprint::profile_t & browser) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки ошибок TLS

@@ -1205,6 +1205,11 @@ def check_file(path, lines, members, report, fixes=None):
                 # `return i;` — возврат счётчика цикла, а не объявление переменной
                 if vm.group(1) in ("return", "throw", "goto", "co_return", "co_yield"):
                     continue
+                # Метка switch или спецификатор доступа перед именем — не тип
+                # объявления: `default: i = nodes.erase(i);` продолжает счётчик
+                # цикла, а не объявляет переменную (равно `case`, `public:` и пр.)
+                if vm.group(1).endswith(":"):
+                    continue
                 # SLICE * i внутри выражения (перед совпадением стоит =) - произведение
                 # константы, а не объявление: объявления параметров и переменных
                 # объявляются в начале инструкции, без знака равенства до имени типа
@@ -1239,6 +1244,12 @@ def check_file(path, lines, members, report, fixes=None):
                 continue
             before = code[:mm.start()]
             after = code[mm.end():]
+            # Член в списке инициализации конструктора («…() noexcept : _a(…), _key{…}»)
+            # пишется без this-> по синтаксису языка: двоеточие списка распознано, за именем
+            # «{» либо «(», а тернарник («?») и присваивание («=») до двоеточия исключают список
+            cm = INIT_COLON.search(before)
+            if cm is not None and re.match(r"^\s*[({]", after) and "?" not in before[:cm.end()] and "=" not in before[:cm.end()]:
+                continue
             if re.search(r"(this\s*->|->|::|\.\s*)$", before.rstrip()) or re.search(r"^(?:\s*(?:\+=|-=|\*=|/=|\+\+|--|;|\)|,|\.|->|\[|&&|\|\||\?|\())", after):
                 continue
             if re.search(r"(?:const\s+)?[\w:<>]+(?:[*&]\s*)?\s+$", before) or re.search(r"^[*\s]+[\w:<>]+\s+" + re.escape(name) + r"$", before.strip() + name):

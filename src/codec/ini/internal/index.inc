@@ -379,7 +379,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Slot() noexcept : occupied(false), first(0), length(0), value(0) {}
+				explicit Slot() noexcept : occupied(false), first(0), length(0), value(0), key{} {}
 			};
 			/**
 			 * @brief Класс слота указателя свойств
@@ -504,7 +504,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Slot() noexcept : state(FREE), count(0), length(0), section(0) {}
+					explicit Slot() noexcept : state(FREE), count(0), length(0), section(0), items{}, key{} {}
 			};
 			/**
 			 * @brief Очистка указателя разделов
@@ -512,18 +512,15 @@ namespace awh {
 			 */
 			void Index::clear() noexcept {
 				/**
-				 * Выполняем перебор всех слотов указателя разделов
+				 * Перебираем все слоты указателя разделов
 				 */
-				for(size_t i = 0; i < this->capacity; i++)
-					// Выполняем освобождение перенесённых данных очередного слота
+				for(size_t i = 0; i < this->capacity; i++){
+					// Освобождаем перенесённые данные очередного слота
 					this->slots[i].release();
-				/**
-				 * Если таблица слотов заведена
-				 */
-				if(this->slots != nullptr)
-					// Выполняем опустошение слотов таблицы
-					::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
-				// Выполняем сброс занятости указателя разделов
+					// Опустошаем очередной слот присваиванием пустого
+					this->slots[i] = Slot();
+				}
+				// Сбрасываем занятость указателя разделов
 				this->occupied = 0;
 			}
 			/**
@@ -541,10 +538,8 @@ namespace awh {
 				while(capacity < wanted)
 					// Выполняем удвоение количества слотов
 					capacity <<= 1;
-				// Слоты пересобранной таблицы
+				// Слоты пересобранной таблицы, каждый слот конструируется пустым
 				Slot * slots = new Slot[capacity];
-				// Выполняем опустошение слотов пересобранной таблицы
-				::memset(slots, 0, (capacity * sizeof(Slot)));
 				// Количество занятых слотов пересобранной таблицы
 				size_t occupied = 0;
 				/**
@@ -893,20 +888,17 @@ namespace awh {
 			 */
 			void Records::clear() noexcept {
 				/**
-				 * Выполняем перебор всех слотов указателя свойств
+				 * Перебираем все слоты указателя свойств
 				 */
-				for(size_t i = 0; i < this->capacity; i++)
-					// Выполняем освобождение перенесённых данных очередного слота
+				for(size_t i = 0; i < this->capacity; i++){
+					// Освобождаем перенесённые данные очередного слота
 					this->slots[i].release();
-				/**
-				 * Если таблица слотов заведена
-				 */
-				if(this->slots != nullptr)
-					// Выполняем опустошение слотов таблицы
-					::memset(this->slots, 0, (this->capacity * sizeof(Slot)));
-				// Выполняем сброс занятости указателя свойств
+					// Опустошаем очередной слот присваиванием пустого
+					this->slots[i] = Slot();
+				}
+				// Сбрасываем занятость указателя свойств
 				this->occupied = 0;
-				// Выполняем сброс количества могильников указателя свойств
+				// Сбрасываем количество могильников указателя свойств
 				this->buried = 0;
 			}
 			/**
@@ -924,10 +916,8 @@ namespace awh {
 				while(capacity < wanted)
 					// Выполняем удвоение количества слотов
 					capacity <<= 1;
-				// Слоты пересобранной таблицы
+				// Слоты пересобранной таблицы, каждый слот конструируется пустым
 				Slot * slots = new Slot[capacity];
-				// Выполняем опустошение слотов пересобранной таблицы
-				::memset(slots, 0, (capacity * sizeof(Slot)));
 				// Количество занятых слотов пересобранной таблицы
 				size_t occupied = 0;
 				/**
