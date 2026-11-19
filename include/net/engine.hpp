@@ -1096,7 +1096,14 @@ namespace awh {
 				 * @details Пробует завести узел AF_XDP в нативном режиме с нулевым
 				 *          копированием на поданном устройстве и очереди и сразу его
 				 *          уничтожает: успех означает, что драйвер несёт zero-copy.
-				 *          Трафик не перенаправляется. Требует привилегии CAP_NET_ADMIN
+				 *          Трафик не перенаправляется. Требует привилегии CAP_NET_ADMIN.
+				 *          Проба не безобидна: заведение и уничтожение нативного сокета
+				 *          сбрасывает очередь устройства, и ближайшая привязка к той же
+				 *          очереди может получить EBUSY — окно до ~50 мс измерено на igb,
+				 *          create() повторяет привязку с паузой и переживает его. Привязка
+				 *          в нативном режиме роняет несущую устройства на 1–3 с (измерено
+				 *          на igb), поэтому на живом аплинке проба обрывает действующие
+				 *          подключения этой очереди, включая управляющие.
 				 *
 				 * @param iface название сетевого устройства
 				 * @param queue номер очереди устройства
@@ -1108,7 +1115,14 @@ namespace awh {
 				 * @details Tries to create an AF_XDP node in the native mode with the zero
 				 *          copying on the given device and queue and destroys it at once:
 				 *          the success means that the driver carries zero-copy. The traffic
-				 *          is not redirected. Requires the CAP_NET_ADMIN privilege
+				 *          is not redirected. Requires the CAP_NET_ADMIN privilege.
+				 *          The probe is not harmless: creating and destroying the native
+				 *          socket resets the device queue, and the nearest binding to the
+				 *          same queue can get EBUSY — a window of up to ~50 ms was measured
+				 *          on igb, create() retries the binding with a pause and survives it.
+				 *          The binding in the native mode drops the device carrier for 1–3 s
+				 *          (measured on igb), so on a live uplink the probe breaks the active
+				 *          connections of this queue, including the managing ones.
 				 *
 				 * @param iface name of the network device
 				 * @param queue number of the device queue

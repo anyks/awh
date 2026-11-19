@@ -294,6 +294,6 @@ SUMMARY (informative, not part of the License)
 
   NOTE:         all of the above concerns the code written by the author
                 of AWH only. Bundled third-party libraries (zlib, LZ4,
-                BoringSSL, PCRE2 and so on) keep their own licenses and
-                are not restricted by this one in any way.
+                BZip2, ZSTD, LZMA, Brotli and so on) keep their own
+                licenses and are not restricted by this one in any way.
 -------------------------------------------------------------------------

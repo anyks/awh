@@ -36,19 +36,16 @@
 #include <unordered_map>
 
 /**
- * Заголовочные файлы OpenSSL
+ * Заголовочные файлы библиотеки A-NTS
  */
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/x509v3.h>
-
-/**
- * Если BoringSSL используется в качестве криптографической библиотеки
- */
-#include <openssl/hpke.h>
+#include <pem/pem.hpp>
+#include <hpke/hpke.hpp>
+#include <x509/x509.hpp>
+#include <x509/crl.hpp>
+#include <client/client.hpp>
+#include <server/server.hpp>
+#include <protect/protect.hpp>
+#include <extension/extension.hpp>
 
 /**
  * Для операционной системы MS Windows
@@ -161,11 +158,6 @@ namespace {
 	 */
 	static members_t __awh_ssl_members__;
 	/**
-	 * @brief Флаг инициализации библиотеки OpenSSL
-	 *
-	 */
-	static bool __awh_ssl_initialized__ = false;
-	/**
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
 	 */
@@ -175,11 +167,6 @@ namespace {
 	 *
 	 */
 	static map <pair <event::protocol_t, string>, ::tls::coder::id_t> __awh_ssl_splice_map__;
-	/**
-	 * @brief Индексы для хранения состояний проверки куков
-	 *
-	 */
-	static int32_t __awh_ssl_index__[7] = {-1, -1, -1, -1, -1, -1, -1};
 
 	/**
 	 * @brief Объект работы с сетевыми адресами
@@ -394,97 +381,6 @@ namespace ssl {
 			// Возвращаем идентификатор контекста TLS
 			return i->second;
 		}
-		/**
-		 * @brief Функция выполнения инициализации OpenSSL
-		 *
-		 * @return флаг необходимости инициализации OpenSSL
-		 *
-		 */
-		[[maybe_unused]] static __AWH_INLINE__ bool acquireInit() noexcept {
-			// Выполняем эксклюзивную блокировку глобального реестра TLS
-			const global_lock_t lock = globalExclusive();
-			// Если библиотека OpenSSL ещё не инициализирована
-			if(!::__awh_ssl_initialized__){
-				// Устанавливаем флаг инициализации библиотеки OpenSSL
-				::__awh_ssl_initialized__ = true;
-				// Сообщаем о необходимости инициализации OpenSSL
-				return true;
-			}
-			// Сообщаем об отсутствии необходимости инициализации OpenSSL
-			return false;
-		}
-	}
-	/**
-	 * @brief Функция одноразовой инициализации OpenSSL для TLS-модуля
-	 *
-	 */
-	[[maybe_unused]] static __AWH_INLINE__ void initOpenSSL() noexcept {
-		/**
-		 * Для операционной системы не являющейся MS Windows
-		 *
-		 * @note Сигнала SIGPIPE у MS Windows не существует: запись в закрытое соединение
-		 *       отвечает там кодом ошибки, а не сигналом, и гасить нечего
-		 *
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем игнорирование сигналов SIGPIPE
-		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Failed to ignore signal SIGPIPE", log::flag_t::CRITICAL);
-			#endif
-		}
-		#endif
-		// Выполняем инициализацию OpenSSL
-		::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
-		// Выполняем загрузки описаний ошибок SSL
-		::ERR_load_SSL_strings();
-		// Выполняем загрузки описаний ошибок шифрования
-		::ERR_load_crypto_strings();
-		// Выполняем загрузки описаний ошибок OpenSSL
-		::SSL_load_error_strings();
-		// Добавляем все алгоритмы шифрования
-		::OpenSSL_add_all_algorithms();
-		// Активируем рандомный генератор
-		if(::RAND_poll() != 1){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("Rand poll is not allowed", log::flag_t::CRITICAL);
-			#endif
-			// Продолжаем инициализацию; без энтропии TLS может быть небезопасен
-		}
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
-		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
-		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
-		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта компрессора AWH в структуре SSL
-		::__awh_ssl_index__[3] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL_CTX
-		::__awh_ssl_index__[4] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL_CTX
-		::__awh_ssl_index__[5] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
-		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 	}
 	/**
 	 * @brief Функция одноразовой инициализации TLS-модуля
@@ -499,10 +395,31 @@ namespace ssl {
 		std::call_once(::__awh_ssl_init_once__, []() noexcept {
 			// Активируем работу мьютекса блокировки глобального состояния TLS
 			::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-			// Если библиотека OpenSSL ещё не инициализирована
-			if(::ssl::registry::acquireInit())
-				// Выполняем одноразовую инициализацию OpenSSL
-				::ssl::initOpenSSL();
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 *
+			 * @note Сигнала SIGPIPE у MS Windows не существует: запись в закрытое соединение
+			 *       отвечает там кодом ошибки, а не сигналом, и гасить нечего
+			 *
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем игнорирование сигналов SIGPIPE
+			if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log::print("Failed to ignore signal SIGPIPE", log::flag_t::CRITICAL);
+				#endif
+			}
+			#endif
 		});
 	}
 };
@@ -527,36 +444,6 @@ namespace {
 		CTL  = 0x02  // Уровень транспортной передачи данных (Context Transfer Layer)
 	};
 
-	/**
-	 * @brief Структура буферов BIO
-	 *
-	 */
-	typedef struct BufferIO {
-		BIO * read;  // Объект буфера BIO для чтения
-		BIO * write; // Объект буфера BIO для записи
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit BufferIO() noexcept :
-		 read(nullptr), write(nullptr) {}
-	} bio_t;
-	/**
-	 * @brief Структура cookie SSL
-	 *
-	 */
-	typedef struct Cookie {
-		// Буфер секретного слова cookie
-		uint8_t buffer[16];
-		// Флаг инициализации cookie SSL
-		atomic_bool initialized;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		explicit Cookie() noexcept :
-		 buffer{0}, initialized(false) {}
-	} cookie_t;
 	/**
 	 * @brief Структура хоста
 	 *
@@ -692,67 +579,85 @@ namespace {
 	 *
 	 */
 	typedef struct Contex_Template_Security : public member_t {
-		SSL_CTX * ctx;                           // Объект SSL контекста
-		X509_CRL * crl;                          // Объект CRL-файла сертификата
-		string host;                             // Объект хоста сервера
-		alpn_t alpn;                             // Объект ALPN-протоколов
-		callback_t callback;                     // Функции обратных вызовов
-		vector <uint8_t> ech;                    // ECHConfigList для клиентов / байты приватного HPKE ключа для серверов
-		unordered_map <string, string> sessions; // Кэш билетов возобновления сессии по ключу сервера (SNI/адрес)
+		// Наименьшее дозволенное издание протокола
+		uint16_t lowest;
+		// Наибольшее дозволенное издание протокола
+		uint16_t highest;
+		// Наборы шифрования от предпочтительного к запасному
+		vector <nts::protect::suite_t> suites;
+		// Кривые обмена ключами
+		vector <nts::extension::group_t> groups;
+		// Группы, по которым приветствием шлются доли ключа
+		vector <nts::extension::group_t> shares;
+		// Схемы подписи
+		vector <nts::extension::scheme_t> schemes;
+		// Алгоритмы сжатия цепочки сертификатов
+		vector <nts::context::codec_t> codecs;
+		// Подлинность своей стороны связи
+		nts::context::credential_t credential;
+		// Запас доверенных центров и списков отзыва
+		nts::trust::store_t store;
+		// ECHConfigList для клиентов
+		vector <uint8_t> ech;
+		// Объект хоста сервера
+		string host;
+		// Объект ALPN-протоколов
+		alpn_t alpn;
+		// Функции обратных вызовов
+		callback_t callback;
+		// Признак вставки значений GREASE
+		bool grease;
+		// Признак перемешивания расширений
+		bool permute;
+		// Признак выработки следующего протокола NPN
+		bool npn;
+		// Кэш билетов возобновления сессии по ключу сервера
+		unordered_map <string, string> sessions;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Contex_Template_Security() noexcept :
 		 member_t(layer_t::CTS),
-		 ctx(nullptr), crl(nullptr), host{""} {}
+		 lowest(0x0303), highest(0x0304), host{""},
+		 grease(false), permute(false), npn(false) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		~Contex_Template_Security() noexcept {
-			// Если CRL-файл сертификата уже создан
-			if(this->crl != nullptr)
-				// Выполняем освобождение памяти
-				::X509_CRL_free(this->crl);
-			// Если объект SSL контекста существует
-			if(this->ctx != nullptr)
-				// Удаляем объект SSL контекста
-				::SSL_CTX_free(this->ctx);
-		}
+		~Contex_Template_Security() noexcept = default;
 	} cts_t;
 	/**
 	 * @brief Структура транспортного уровня передачи
 	 *
 	 */
 	typedef struct Content_Transfer_Layer : public member_t {
-		SSL * ssl;                    // Объект SSL
-		SSL_CTX * ctx;                // Объект шаблона контекста SSL
-		X509_CRL ** crl;              // Объект CRL-файла сертификата
-		bio_t bio;                    // Объект буферов BIO
-		host_t host;                  // Объект хоста сервера
-		alpn_t alpn;                  // Объект ALPN-протоколов
-		cookie_t cookie;              // Объект cookie SSL
-		callback_transfer_t callback; // Объект обратных вызовов
-		vector <uint8_t> ech;         // ECHConfigList (копия из CTS при создании CTL)
-		vector <uint8_t> hello;       // Буфер сборки TLS/DTLS record для apply()
+		// Связь клиента протокола TLS
+		unique_ptr <nts::client::context_t> client;
+		// Связь сервера протокола TLS
+		unique_ptr <nts::server::context_t> server;
+		// Объект хоста сервера
+		host_t host;
+		// Объект ALPN-протоколов
+		alpn_t alpn;
+		// Объект обратных вызовов
+		callback_transfer_t callback;
+		// ECHConfigList (копия из CTS при создании CTL)
+		vector <uint8_t> ech;
+		// Буфер сборки TLS/DTLS record для apply()
+		vector <uint8_t> hello;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Content_Transfer_Layer() noexcept :
 		 member_t(layer_t::CTL),
-		 ssl(nullptr), ctx(nullptr), crl(nullptr) {}
+		 client(nullptr), server(nullptr) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		~Content_Transfer_Layer() noexcept {
-			// Если объект SSL существует
-			if(this->ssl != nullptr)
-				// Удаляем объект SSL
-				::SSL_free(this->ssl);
-		}
+		~Content_Transfer_Layer() noexcept = default;
 	} ctl_t;
 };
 
@@ -797,17 +702,6 @@ namespace state {
 	 *
 	 */
 	static constexpr uint8_t RELEASED_MODE = 0x20;
-	/**
-	 * @brief Флаг проверки режима безсостояния TLS
-	 *
-	 * @details Признак и обе работы с куками (generate, verify) заведены заделом под
-	 *          DTLS и покуда не зовутся: настройка их идёт через
-	 *          SSL_CTX_set_stateless_cookie_*_cb, а у BoringSSL этого API нет вовсе
-	 *          (см. отбор по протоколу подключения). Пометка объявляет неупотребление
-	 *          намеренным - снимать задел ради предупреждения не следует.
-	 *
-	 */
-	[[maybe_unused]] static constexpr uint8_t STATELESS_MODE = 0x04;
 };
 
 /**
@@ -1092,70 +986,44 @@ namespace ssl {
 		switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
 			// Если уровень является шаблонным контекстом безопасности
 			case static_cast <uint8_t> (layer_t::CTS):
-				// Записываем в лог сообщение об ошибка как оно передано
+				// Записываем в лог сообщение об ошибке как оно передано
 				return string{message};
 			// Если уровень является транспортной передачей данных
 			case static_cast <uint8_t> (layer_t::CTL): {
-				// Если в очереди OpenSSL нет ошибок — возвращаем только переданное сообщение
-				if((::ERR_peek_error() == 0) && !message.empty())
-					// Записываем в лог сообщение об ошибка как оно передано
-					return string{message};
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				/**
-				 * Выполняем перехват ошибок
-				 */
-				try {
-					// Получаем данные описание ошибки
-					uint64_t error = ::ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
-						// Буфер данных для получения сообщения об ошибке
-						char buffer[0xFF];
-						// Получаем текст общего сообщения
-						const string state = ::SSL_state_string(member->ssl);
-						/**
-						 * Выполняем извлечение остальных ошибок
-						 */
-						do {
-							// Зануляем буфер данных
-							::memset(buffer, 0, sizeof(buffer));
-							// Получаем сообщение об ошибке
-							::ERR_error_string_n(static_cast <uint32_t> (error), buffer, sizeof(buffer));
-							// Если результат уже сформирован
-							if(!result.empty())
-								// Добавляем разделитель
-								result.append("\n\n");
-							// Если получено состояние SSL
-							if(!state.empty())
-								// Добавляем информацию об ошибке в результат
-								result.append(awh::fmk::format("%s: %s", state.c_str(), buffer));
-							// Если получено дополнительное сообщение
-							else if(!message.empty())
-								// Добавляем информацию об ошибке в результат
-								result.append(awh::fmk::format("%s: %s", message.data(), buffer));
-							// Если не получено ни состояние SSL, ни дополнительное сообщение
-							else result.append(buffer);
-						/**
-						 * Если ещё есть ошибки
-						 */
-						} while((error = ::ERR_get_error()));
-					// Если получено дополнительное сообщение
-					} else if(!message.empty())
-						// Записываем в лог сообщение об ошибка как оно передано
-						return string{message};
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					// Если получено дополнительное сообщение
-					if(!message.empty())
-						// Добавляем информацию об ошибке в результат
-						result.append(awh::fmk::format("%s: %s", message.data(), error.what()));
-					// Если не получено ни состояние SSL, ни дополнительное сообщение
-					else result.append(error.what());
+				// Если сообщение об ошибке передано
+				if(!message.empty())
+					// Добавляем сообщение об ошибке в результат
+					result.append(message.data(), message.size());
+				// Если узел является клиентом и связь заведена
+				if((member->node == event::node_t::CLIENT) && (member->client != nullptr)){
+					// Получаем отказ связи
+					const nts::context::error_t code = member->client->error();
+					// Если отказ получен
+					if(code != nts::context::error_t::NONE){
+						// Если результат уже сформирован
+						if(!result.empty())
+							// Добавляем разделитель
+							result.append(": ");
+						// Добавляем код отказа в результат
+						result.append(awh::fmk::format("code %u", static_cast <uint8_t> (code)));
+					}
+				// Если узел является сервером и связь заведена
+				} else if((member->node == event::node_t::SERVER) && (member->server != nullptr)){
+					// Получаем отказ связи
+					const nts::context::error_t code = member->server->error();
+					// Если отказ получен
+					if(code != nts::context::error_t::NONE){
+						// Если результат уже сформирован
+						if(!result.empty())
+							// Добавляем разделитель
+							result.append(": ");
+						// Добавляем код отказа в результат
+						result.append(awh::fmk::format("code %u", static_cast <uint8_t> (code)));
+					}
 				}
 			} break;
 		}
@@ -1163,35 +1031,60 @@ namespace ssl {
 		return result;
 	}
 	/**
-	 * @brief Функция отправки данных из BIO буфера записи через callback
+	 * @brief Функция выдачи накопленных байтов отправки через callback
 	 *
 	 * @param member объект транспортного уровня передачи
 	 * @param id     идентификатор события
-	 * @return       результат выполнения отправки
+	 * @return       результат выполнения выдачи
 	 *
 	 */
-	static bool emitWriteBio(::ctl_t * member, const ::tls::coder::id_t id) noexcept {
-		// Количество прочитанных данных
-		int32_t bytes = 0;
-		// Количество ожидающих данных для чтения
-		size_t pending = 0;
-		/**
-		 * Читаем все ожидающие данные из BIO буфера записи
-		 */
-		while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-			// Читаем данные из BIO буфера записи
-			bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <int32_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-			// Если данные не прочитаны (SSL_get_error здесь неприменим — это BIO, не SSL)
-			if(bytes <= 0)
-				// Выходим из цикла
-				return false;
-			// Если функция обратного вызова чтения данных установлена
-			if(member->callback.read != nullptr)
-				// Вызываем функцию обратного вызова чтения данных
-				member->callback.read(id, ::tls::coder::event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+	static bool emitOutput(::ctl_t * member, const ::tls::coder::id_t id) noexcept {
+		// Если узел является клиентом и связь заведена
+		if((member->node == event::node_t::CLIENT) && (member->client != nullptr)){
+			/**
+			 * Выдаём накопленные байты из накопителя связи
+			 */
+			while(true){
+				// Получаем накопленные байты отправки
+				const nts::view_t view = member->client->output();
+				// Если байтов для отправки нет
+				if(view.size == 0)
+					// Выходим из цикла
+					break;
+				// Если функция обратного вызова чтения данных установлена
+				if(member->callback.read != nullptr)
+					// Вызываем функцию обратного вызова чтения данных
+					member->callback.read(id, ::tls::coder::event_t::ENCRYPTION, view.data, view.size);
+				// Снимаем отправленные байты с накопителя
+				member->client->consume(view.size);
+			}
+			// Возвращаем положительный результат
+			return true;
 		}
-		// Возвращаем результат
-		return true;
+		// Если узел является сервером и связь заведена
+		if((member->node == event::node_t::SERVER) && (member->server != nullptr)){
+			/**
+			 * Выдаём накопленные байты из накопителя связи
+			 */
+			while(true){
+				// Получаем накопленные байты отправки
+				const nts::view_t view = member->server->output();
+				// Если байтов для отправки нет
+				if(view.size == 0)
+					// Выходим из цикла
+					break;
+				// Если функция обратного вызова чтения данных установлена
+				if(member->callback.read != nullptr)
+					// Вызываем функцию обратного вызова чтения данных
+					member->callback.read(id, ::tls::coder::event_t::ENCRYPTION, view.data, view.size);
+				// Снимаем отправленные байты с накопителя
+				member->server->consume(view.size);
+			}
+			// Возвращаем положительный результат
+			return true;
+		}
+		// Возвращаем отрицательный результат
+		return false;
 	}
 	/**
 	 * Обращение это заведено ТОЛЬКО под отладку, оттого и определение его целиком
@@ -2188,288 +2081,6 @@ namespace compressor {
 	}
 };
 
-/**
- * @brief Инкапсулируем функции работы с cookie в пространство имён
- *
- */
-namespace cookie {
-	/**
-	 * Используем пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Функция проверки наличия адреса однорангового узла для DTLS cookie
-	 *
-	 * @param ssl    объект SSL
-	 * @param member объект транспортного уровня передачи
-	 * @return       результат проверки
-	 *
-	 */
-	static int32_t requirePeer([[maybe_unused]] SSL * ssl, ::ctl_t * member) noexcept {
-		// Если адрес однорангового узла установлен
-		if((member->host.peer != nullptr) && (member->host.peer->ip != nullptr))
-			// Выходим из функции с удачей
-			return 1;
-		// Выполняем получение идентификатора контекста TLS
-		const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
-		// Если функция обратного вызова состояния установлена
-		if(member->callback.state != nullptr)
-			// Вызываем функцию обратного вызова состояния
-			member->callback.state(id, ::tls::coder::state_t::FAILED);
-		// Получаем текст ошибки
-		const string error = ::ssl::error(id, "Peer address is not set for DTLS cookie");
-		// Если функция обратного вызова ошибки установлена
-		if(member->callback.error != nullptr)
-			// Вызываем функцию обратного вызова ошибки
-			member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
-		// Если функция обратного вызова ошибки не установлена
-		else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("%s", log::flag_t::CRITICAL, error.c_str());
-			#endif
-		}
-		// Выходим из функции с неудачей
-		return 0;
-	}
-
-	/**
-	 * @brief Функция обратного вызова для генерации куков
-	 *
-	 * @param ssl    объект SSL
-	 * @param cookie данные куков
-	 * @param size   количество символов
-	 * @return       результат проверки
-	 *
-	 */
-	[[maybe_unused]] static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
-		// Получаем объект уровня защищённых сокетов
-		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-		// Создаём охранника участника обмена защищёнными данными
-		::local::guard_t guard(member);
-		// Если cookie еще не проинициализированы
-		if(!member->cookie.initialized){
-			// Выполняем произвольно генерацию байт в буфере cookie
-			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
-				// Выполняем получение идентификатора контекста TLS
-				const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
-				// Если функция обратного вызова состояния установлена
-				if(member->callback.state != nullptr)
-					// Вызываем функцию обратного вызова состояния
-					member->callback.state(id, ::tls::coder::state_t::FAILED);
-				// Получаем текст ошибки
-				const string error = ::ssl::error(id, "Setting random cookie secret");
-				// Если функция обратного вызова ошибки установлена
-				if(member->callback.error != nullptr)
-					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
-				// Если функция обратного вызова ошибки не установлена
-				else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Записываем ошибку в лог
-						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log::print("%s", log::flag_t::CRITICAL, error.c_str());
-					#endif
-				}
-				// Выходим и сообщаем, что генерация куков не удалась
-				return 0;
-			}
-		}
-		// Если адрес однорангового узла не установлен
-		if(::cookie::requirePeer(ssl, member) != 1)
-			// Выходим и сообщаем, что генерация куков не удалась
-			return 0;
-		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
-		// Размер буфера и длина сгенерированных cookie
-		uint32_t bytes = (address->ip->size + 2), length = 0;
-		// Выполняем выделение память для буфера данных
-		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
-		// Если память для буфера данных не выделена
-		if(buffer == nullptr){
-			// Выполняем получение идентификатора контекста TLS
-			const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
-			// Если функция обратного вызова состояния установлена
-			if(member->callback.state != nullptr)
-				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, ::tls::coder::state_t::FAILED);
-			// Получаем текст ошибки
-			const string error = ::ssl::error(id, "Out of memory cookie");
-			// Если функция обратного вызова ошибки установлена
-			if(member->callback.error != nullptr)
-				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
-			// Если функция обратного вызова ошибки не установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в log
-					log::print("%s", log::flag_t::CRITICAL, error.c_str());
-				#endif
-			}
-			// Выходим и сообщаем, что генерация куков не удалась
-			return 0;
-		}
-		// Выполняем чтение в буфер данных данные порта
-		::memcpy(buffer, &address->port, 2);
-		/**
-		 * Определяем тип адреса
-		 */
-		switch(address->ip->size){
-			// Если адрес является IPv4
-			case 4:
-				// Выполняем чтение в буфер данных данные структуры подключения
-				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address, 4);
-			break;
-			// Если адрес является IPv6
-			case 16:
-				// Выполняем чтение в буфер данных данные структуры подключения
-				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
-			break;
-			// Если производится работа с другими протоколами, выходим
-			default:
-				// Очищаем ранее выделенную память
-				::OPENSSL_free(buffer);
-				// Выходим и сообщаем, что генерация куков не удалась
-				return 0;
-		}
-		// Буфер под генерацию cookie
-		uint8_t result[EVP_MAX_MD_SIZE];
-		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
-		// Очищаем ранее выделенную память
-		::OPENSSL_free(buffer);
-		// Выполняем копирование полученного результата в буфер cookie
-		::memcpy(cookie, result, length);
-		// Устанавливаем размер буфера cookie
-		(* size) = length;
-		// Возвращаем положительный результат
-		return 1;
-	}
-	/**
-	 * @brief Функция обратного вызова для проверки куков
-	 *
-	 * @param ssl    объект SSL
-	 * @param cookie данные куков
-	 * @param size   количество символов
-	 * @return       результат проверки
-	 *
-	 */
-	[[maybe_unused]] static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
-		// Получаем объект уровня защищённых сокетов
-		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-		// Создаём охранника участника обмена защищёнными данными
-		::local::guard_t guard(member);
-		// Если cookie не проинициализированы, значит cookie не валидные
-		if(!member->cookie.initialized)
-			// Выходим из функции
-			return 0;
-		// Если адрес однорангового узла не установлен
-		if(::cookie::requirePeer(ssl, member) != 1)
-			// Выходим из функции с неудачей
-			return 0;
-		// Получаем объект хоста IPv4-адреса
-		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
-		// Размер буфера и длина сгенерированных cookie
-		uint32_t bytes = (address->ip->size + 2), length = 0;
-		// Выполняем выделение память для буфера данных
-		uint8_t * buffer = reinterpret_cast <uint8_t *> (::OPENSSL_malloc(bytes));
-		// Если память для буфера данных не выделена
-		if(buffer == nullptr){
-			// Выполняем получение идентификатора контекста TLS
-			const ::tls::coder::id_t id = static_cast <::tls::coder::id_t> (reinterpret_cast <uintptr_t> (member));
-			// Если функция обратного вызова состояния установлена
-			if(member->callback.state != nullptr)
-				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, ::tls::coder::state_t::FAILED);
-			// Получаем текст ошибки
-			const string error = ::ssl::error(id, "Out of memory cookie");
-			// Если функция обратного вызова ошибки установлена
-			if(member->callback.error != nullptr)
-				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, ::tls::coder::error_t::COOKIE_FAILED, error);
-			// Если функция обратного вызова ошибки не установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("%s", log::flag_t::CRITICAL, error.c_str());
-				#endif
-			}
-			// Выходим и сообщаем, что генерация куков не удалась
-			return 0;
-		}
-		// Выполняем чтение в буфер данных данные порта
-		::memcpy(buffer, &address->port, 2);
-		/**
-		 * Определяем тип адреса
-		 */
-		switch(address->ip->size){
-			// Если адрес является IPv4
-			case 4:
-				// Выполняем чтение в буфер данных данные структуры подключения
-				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv4_t *> (address->ip.get())->address, 4);
-			break;
-			// Если адрес является IPv6
-			case 16:
-				// Выполняем чтение в буфер данных данные структуры подключения
-				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
-			break;
-			// Если производится работа с другими протоколами, выходим
-			default:
-				// Очищаем ранее выделенную память
-				::OPENSSL_free(buffer);
-				// Выходим из функции с неудачей
-				return 0;
-		}
-		// Буфер под генерацию cookie
-		uint8_t result[EVP_MAX_MD_SIZE];
-		// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
-		::HMAC(::EVP_sha1(), reinterpret_cast <void *> (member->cookie.buffer), sizeof(member->cookie.buffer), buffer, bytes, result, &length);
-		// Очищаем ранее выделенную память
-		::OPENSSL_free(buffer);
-		// Выполняем проверку cookie, если cookie совпадают, значит всё хорошо
-		if((size == length) && (::memcmp(result, cookie, length) == 0))
-			// Выходим из функции с удачей
-			return 1;
-		// Выходим из функции с неудачей
-		return 0;
-	}
-};
 
 /**
  * @brief Инкапсулируем функции проверки сертификата в пространство имён
