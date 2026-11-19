@@ -385,7 +385,7 @@ namespace {
 	 * @return          позиция возможного начала совпадения
 	 *
 	 */
-	static size_t seeking(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t __awh_seeking__(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим позицию возможного начала совпадения
 		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->search(string_view(text, size), pos);
 	}
@@ -403,7 +403,7 @@ namespace {
 	 * @return     позиция отобранного байта либо размер текста
 	 *
 	 */
-	static size_t scattering(const char * text, const size_t size, const size_t pos, const void * set) noexcept {
+	static size_t __awh_scattering__(const char * text, const size_t size, const size_t pos, const void * set) noexcept {
 		// Получаем адрес набора допустимых начальных байтов
 		const uint8_t * bytes = reinterpret_cast <const uint8_t *> (set);
 		// Выводим позицию отобранного байта либо размер текста
@@ -426,7 +426,7 @@ namespace {
 	 * @return      позиция завершения прохода ряда
 	 *
 	 */
-	static size_t scanning(const char * text, const size_t size, const size_t pos, const void * limit) noexcept {
+	static size_t __awh_scanning__(const char * text, const size_t size, const size_t pos, const void * limit) noexcept {
 		// Получаем значение байта, ряд ограничивающее
 		const uint8_t letter = (* reinterpret_cast <const uint8_t *> (limit));
 		/**
@@ -450,7 +450,7 @@ namespace {
 	 * @return          результат проверки возможности совпадения
 	 *
 	 */
-	static size_t feasible(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t __awh_feasible__(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Проверка возможности совпадения
 		return (reinterpret_cast <const regex::prefilter_t *> (prefilter)->possible(string_view(text, size), pos) ? 1 : 0);
 	}
@@ -464,7 +464,7 @@ namespace {
 	 * @return          позиция возможного начала совпадения либо размер текста
 	 *
 	 */
-	static size_t bounding(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t __awh_bounding__(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим позицию возможного начала совпадения
 		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->bounded(string_view(text, size), pos);
 	}
@@ -484,7 +484,7 @@ namespace {
 	 * @return      результат проверки привязки к позиции в тексте
 	 *
 	 */
-	static size_t asserting(const char * text, const size_t size, const size_t pos, const void * guard) noexcept {
+	static size_t __awh_asserting__(const char * text, const size_t size, const size_t pos, const void * guard) noexcept {
 		// Получаем примету проверяемой привязки к позиции в тексте
 		const uint64_t packed = (* reinterpret_cast <const uint64_t *> (guard));
 		// Выводим результат проверки привязки к позиции в тексте
@@ -508,7 +508,7 @@ namespace {
 	 * @param argument номер места обстановки, передаваемого подпрограмме доводом
 	 *
 	 */
-	static void invoke(regex::Emitter & emitter, const size_t slot, const size_t spill, const regex::Emitter::reg_t pos, const size_t argument) noexcept {
+	static void __awh_invoke__(regex::Emitter & emitter, const size_t slot, const size_t spill, const regex::Emitter::reg_t pos, const size_t argument) noexcept {
 		/**
 		 * Подписываемся на перечисление регистров соглашения о вызове
 		 */
@@ -585,20 +585,20 @@ namespace {
 	 *          но последняя ветвь его пуста, отчего разбор для них един.
 	 *
 	 * @param program программа регулярного выражения
-	 * @param pc      адрес перехода по двум ветвям, цепочку возглавляющего
+	 * @param programCounter      адрес перехода по двум ветвям, цепочку возглавляющего
 	 * @param result  разобранная цепочка ветвей выбора
 	 * @return        результат разбора цепочки ветвей выбора
 	 *
 	 */
-	static bool chaining(const regex::program_t & program, const regex::address_t pc, chain_t & result) noexcept {
+	static bool __awh_chaining__(const regex::program_t & program, const regex::address_t programCounter, chain_t & result) noexcept {
 		// Получаем адрес разбираемого перехода по двум ветвям
-		regex::address_t current = pc;
+		regex::address_t current = programCounter;
 		/**
 		 * Разбираем цепочкю переходов по двум ветвям
 		 */
 		while(static_cast <size_t> (current) < program.instructions.size()){
 			// Получаем очередной разбираемый переход по двум ветвям
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (current));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (current));
 			/**
 			 * Если очередная инструкция переходом по двум ветвям не является
 			 */
@@ -627,7 +627,7 @@ namespace {
 			// Получаем конец области очередной ветви выбора
 			regex::address_t finish = rest;
 			// Получаем инструкцию, областью ветви завершающую
-			const regex::instruction_t & last = program.instructions.at(static_cast <size_t> (rest - 1));
+			const regex::instruction_t & last = program.instructions.item(static_cast <size_t> (rest - 1));
 			// Признак завершения области ветви переходом к общему продолжению
 			const bool joined = ((last.type == regex::opcode_t::JUMP) && (last.jump.target >= rest));
 			/**
@@ -742,7 +742,7 @@ namespace {
 	 *          не попадает вовсе.
 	 *
 	 * @param program программа регулярного выражения
-	 * @param pc      адрес перехода по двум ветвям, повторение возглавляющего
+	 * @param programCounter      адрес перехода по двум ветвям, повторение возглавляющего
 	 * @param body    адрес начала тела повторения
 	 * @param ending  адрес перехода назад, тело завершающего
 	 * @param exit    адрес продолжения сопоставления за повторением
@@ -750,9 +750,9 @@ namespace {
 	 * @return        результат разбора повторения над областью
 	 *
 	 */
-	static bool looping(const regex::program_t & program, const regex::address_t pc, regex::address_t & body, regex::address_t & ending, regex::address_t & exit, bool & greedy) noexcept {
+	static bool __awh_looping__(const regex::program_t & program, const regex::address_t programCounter, regex::address_t & body, regex::address_t & ending, regex::address_t & exit, bool & greedy) noexcept {
 		// Получаем разбираемый переход по двум ветвям
-		const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+		const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 		/**
 		 * Если инструкция переходом по двум ветвям не является
 		 */
@@ -781,15 +781,15 @@ namespace {
 			 *          а продолжение - за телом.
 			 *
 			 */
-			if((head <= pc) || (rest <= head) || (static_cast <size_t> (rest) > program.instructions.size()))
+			if((head <= programCounter) || (rest <= head) || (static_cast <size_t> (rest) > program.instructions.size()))
 				// Переходим к ветви следующей
 				continue;
 			// Получаем инструкцию, тело повторения завершающую
-			const regex::instruction_t & last = program.instructions.at(static_cast <size_t> (rest - 1));
+			const regex::instruction_t & last = program.instructions.item(static_cast <size_t> (rest - 1));
 			/**
 			 * Если тело повторения переходом назад не завершается
 			 */
-			if((last.type != regex::opcode_t::JUMP) || (last.jump.target != pc))
+			if((last.type != regex::opcode_t::JUMP) || (last.jump.target != programCounter))
 				// Переходим к ветви следующей
 				continue;
 			// Устанавливаем адрес начала тела повторения
@@ -833,13 +833,13 @@ namespace {
 	 * @return        результат проверки отсутствия точек возврата
 	 *
 	 */
-	static bool plainly(const regex::program_t & program, const regex::address_t from, const regex::address_t to) noexcept {
+	static bool __awh_plainly__(const regex::program_t & program, const regex::address_t from, const regex::address_t to) noexcept {
 		/**
 		 * Обходим инструкций проверяемой области
 		 */
-		for(regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++){
+		for(regex::address_t programCounter = from; (programCounter < to) && (static_cast <size_t> (programCounter) < program.instructions.size()); programCounter++){
 			// Получаем очередную инструкцию проверяемой области
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Определяем код операции инструкции проверяемой области
 			 */
@@ -877,7 +877,7 @@ namespace {
 	 * @return        результат проверки прямоты всех ветвей цепочки
 	 *
 	 */
-	static bool straight(const regex::program_t & program, const chain_t & chain) noexcept {
+	static bool __awh_straight__(const regex::program_t & program, const chain_t & chain) noexcept {
 		/**
 		 * Обходим областей ветвей выбора одной из них
 		 */
@@ -885,7 +885,7 @@ namespace {
 			/**
 			 * Если ветвь выбора прямою не является
 			 */
-			if(!plainly(program, branch.first, branch.second))
+			if(!__awh_plainly__(program, branch.first, branch.second))
 				// Выводим отсутствие прямоты у цепочки ветвей выбора
 				return false;
 		}
@@ -915,7 +915,7 @@ namespace {
 	 * @return         результат разбора цепочки по первому байту
 	 *
 	 */
-	static bool deciding(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
+	static bool __awh_deciding__(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
 		// Сбрасываем набор первых байтов ветвей выбора
 		result.clear();
 		/**
@@ -933,9 +933,9 @@ namespace {
 			/**
 			 * Обходим инструкций области очередной ветви выбора
 			 */
-			for(regex::address_t pc = branch.first; pc < branch.second; pc++){
+			for(regex::address_t programCounter = branch.first; programCounter < branch.second; programCounter++){
 				// Получаем очередную инструкцию области ветви выбора
-				const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+				const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 				/**
 				 * Если инструкция записывает границу группы захвата
 				 */
@@ -1002,15 +1002,15 @@ namespace {
 	 * @param result  набор собираемых ячеек захвата
 	 *
 	 */
-	static void journal(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <uint32_t> & result) noexcept {
+	static void __awh_journal__(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <uint32_t> & result) noexcept {
 		// Очищаем набор собираемых ячеек захвата
 		result.clear();
 		/**
 		 * Обходим областю цепочки ветвей выбора
 		 */
-		for(regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++){
+		for(regex::address_t programCounter = from; (programCounter < to) && (static_cast <size_t> (programCounter) < program.instructions.size()); programCounter++){
 			// Получаем очередную инструкцию области цепочки ветвей
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Если инструкция границы захватывающей группы не записывает
 			 */
@@ -1034,7 +1034,7 @@ namespace {
 	 * @return     результат проверки принадлежности инструкции
 	 *
 	 */
-	static constexpr bool singular(const regex::opcode_t type) noexcept {
+	static constexpr bool __awh_singular__(const regex::opcode_t type) noexcept {
 		// Проверка принадлежности инструкции
 		return (
 			(type == regex::opcode_t::CHAR) ||
@@ -1067,7 +1067,7 @@ namespace {
 	 * @return        результат проверки поглощения текста телом
 	 *
 	 */
-	static bool consuming(const regex::program_t & program, const regex::address_t address, vector <regex::address_t> & visited, const size_t depth = 0) noexcept {
+	static bool __awh_consuming__(const regex::program_t & program, const regex::address_t address, vector <regex::address_t> & visited, const size_t depth = 0) noexcept {
 		/**
 		 * Если глубина обхода путей тела исчерпана
 		 *
@@ -1093,7 +1093,7 @@ namespace {
 		// Запоминаем пройденного адреса инструкции
 		visited.push_back(address);
 		// Получаем разбираемую инструкцию программы
-		const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (address));
+		const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (address));
 		/**
 		 * Определяем код операции разбираемой инструкции
 		 */
@@ -1116,14 +1116,14 @@ namespace {
 				// Набор адресов, пройденных ветвью второй
 				vector <regex::address_t> second = visited;
 				// Выводим поглощение текста обеими ветвями перехода
-				return (consuming(program, instruction.split.first, first, (depth + 1)) && consuming(program, instruction.split.second, second, (depth + 1)));
+				return (__awh_consuming__(program, instruction.split.first, first, (depth + 1)) && __awh_consuming__(program, instruction.split.second, second, (depth + 1)));
 			}
 			/**
 			 * Если инструкция выполняет безусловный переход
 			 */
 			case static_cast <uint8_t> (regex::opcode_t::JUMP):
 				// Выводим поглощение текста телом за переходом
-				return consuming(program, instruction.jump.target, visited, (depth + 1));
+				return __awh_consuming__(program, instruction.jump.target, visited, (depth + 1));
 			/**
 			 * Если инструкция текста не поглощает и хода не ветвит
 			 *
@@ -1139,7 +1139,7 @@ namespace {
 			case static_cast <uint8_t> (regex::opcode_t::CUT):
 			case static_cast <uint8_t> (regex::opcode_t::PROGRESS):
 				// Выводим поглощение текста инструкцией следующей
-				return consuming(program, static_cast <regex::address_t> (address + 1), visited, (depth + 1));
+				return __awh_consuming__(program, static_cast <regex::address_t> (address + 1), visited, (depth + 1));
 		}
 		// Выводим отсутствие поглощения текста телом
 		return false;
@@ -1167,23 +1167,23 @@ namespace {
 	 * @return        результат определения постоянной длины тела
 	 *
 	 */
-	static bool stretching(const regex::program_t & program, const regex::address_t from, const regex::address_t to, size_t & length) noexcept {
+	static bool __awh_stretching__(const regex::program_t & program, const regex::address_t from, const regex::address_t to, size_t & length) noexcept {
 		// Сбрасываем длину тела повторения в байтах
 		length = 0;
 		// Получаем адрес разбираемой инструкции программы
-		regex::address_t pc = from;
+		regex::address_t programCounter = from;
 		/**
 		 * Обходим инструкций тела повторения
 		 */
-		while(pc != to){
+		while(programCounter != to){
 			/**
 			 * Если инструкция за пределы тела повторения выходит
 			 */
-			if((pc < from) || (pc > to))
+			if((programCounter < from) || (programCounter > to))
 				// Выводим неприменимость разбора постоянной длины тела
 				return false;
 			// Получаем разбираемую инструкцию программы
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 *
@@ -1192,11 +1192,11 @@ namespace {
 			 *          сопоставляющих инструкций её.
 			 *
 			 */
-			if(singular(instruction.type)){
+			if(__awh_singular__(instruction.type)){
 				// Увеличиваем длину тела повторения в байтах
 				length++;
 				// Переходим к инструкции следующей
-				pc++;
+				programCounter++;
 				// Продолжаем обход инструкций тела повторения
 				continue;
 			}
@@ -1211,11 +1211,11 @@ namespace {
 				 *          а длины постоянной у такого тела нет.
 				 *
 				 */
-				if(instruction.jump.target <= pc)
+				if(instruction.jump.target <= programCounter)
 					// Выводим неприменимость разбора постоянной длины тела
 					return false;
 				// Переходим к цели выполняемого перехода
-				pc = instruction.jump.target;
+				programCounter = instruction.jump.target;
 				// Продолжаем обход инструкций тела повторения
 				continue;
 			}
@@ -1230,13 +1230,13 @@ namespace {
 				/**
 				 * Если ветви перехода вперёд не ведут
 				 */
-				if((instruction.split.first <= pc) || (instruction.split.second <= pc))
+				if((instruction.split.first <= programCounter) || (instruction.split.second <= programCounter))
 					// Выводим неприменимость разбора постоянной длины тела
 					return false;
 				/**
 				 * Если длина хотя бы одной из ветвей перехода не постоянна
 				 */
-				if(!stretching(program, instruction.split.first, to, first) || !stretching(program, instruction.split.second, to, second))
+				if(!__awh_stretching__(program, instruction.split.first, to, first) || !__awh_stretching__(program, instruction.split.second, to, second))
 					// Выводим неприменимость разбора постоянной длины тела
 					return false;
 				/**
@@ -1278,7 +1278,7 @@ namespace {
 	 * @return        результат сбора инструкций, тело возглавляющих
 	 *
 	 */
-	static bool heading(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result) noexcept {
+	static bool __awh_heading__(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result) noexcept {
 		// Создаём набор адресов инструкций, обход какие ещё не получили
 		vector <regex::address_t> pending(1, from);
 		// Создаём набор адресов инструкций, обход уже получивших
@@ -1288,31 +1288,31 @@ namespace {
 		 */
 		while(!pending.empty()){
 			// Получаем адрес разбираемой инструкции программы
-			const regex::address_t pc = pending.back();
+			const regex::address_t programCounter = pending.back();
 			// Снимаем адрес разбираемой инструкции с набора
 			pending.pop_back();
 			/**
 			 * Если инструкция за пределы тела повторения выходит
 			 */
-			if((pc < from) || (pc >= to))
+			if((programCounter < from) || (programCounter >= to))
 				// Выводим неприменимость отбора прохода по первому байту
 				return false;
 			/**
 			 * Если инструкция обход уже получила
 			 */
-			if(find(passed.begin(), passed.end(), pc) != passed.end())
+			if(find(passed.begin(), passed.end(), programCounter) != passed.end())
 				// Переходим к инструкции следующей
 				continue;
 			// Запоминаем адрес инструкции, обход получившей
-			passed.push_back(pc);
+			passed.push_back(programCounter);
 			// Получаем разбираемую инструкцию программы
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)){
+			if(__awh_singular__(instruction.type)){
 				// Собираем инструкции, тело повторения возглавляющей
-				result.push_back(pc);
+				result.push_back(programCounter);
 				// Переходим к инструкции следующей
 				continue;
 			}
@@ -1325,7 +1325,7 @@ namespace {
 				 */
 				case static_cast <uint8_t> (regex::opcode_t::SAVE):
 					// Ставим инструкцию следующей на обход
-					pending.push_back(pc + 1);
+					pending.push_back(programCounter + 1);
 				break;
 				/**
 				 * Если инструкция выполняет переход к инструкции иной
@@ -1375,7 +1375,7 @@ namespace {
 	 * @return        результат сбора инструкций, области начало дающих
 	 *
 	 */
-	static bool pioneer(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result, const size_t depth = 0) noexcept {
+	static bool __awh_pioneer__(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result, const size_t depth = 0) noexcept {
 		// Создаём набор адресов инструкций, обход какие ещё не получили
 		vector <regex::address_t> pending(1, from);
 		// Создаём набор адресов инструкций, обход уже получивших
@@ -1385,31 +1385,31 @@ namespace {
 		 */
 		while(!pending.empty()){
 			// Получаем адрес разбираемой инструкции программы
-			const regex::address_t pc = pending.back();
+			const regex::address_t programCounter = pending.back();
 			// Снимаем адрес разбираемой инструкции с набора
 			pending.pop_back();
 			/**
 			 * Если инструкция за пределы разбираемой области выходит
 			 */
-			if((pc < from) || (pc >= to))
+			if((programCounter < from) || (programCounter >= to))
 				// Выводим неприменимость сбора инструкций начала
 				return false;
 			/**
 			 * Если инструкция обход уже получила
 			 */
-			if(find(passed.begin(), passed.end(), pc) != passed.end())
+			if(find(passed.begin(), passed.end(), programCounter) != passed.end())
 				// Переходим к инструкции следующей
 				continue;
 			// Запоминаем адрес инструкции, обход получившей
-			passed.push_back(pc);
+			passed.push_back(programCounter);
 			// Получаем разбираемую инструкцию программы
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)){
+			if(__awh_singular__(instruction.type)){
 				// Собираем инструкции, области начало дающей
-				result.push_back(pc);
+				result.push_back(programCounter);
 				// Переходим к инструкции следующей
 				continue;
 			}
@@ -1422,7 +1422,7 @@ namespace {
 				 */
 				case static_cast <uint8_t> (regex::opcode_t::SAVE):
 					// Ставим инструкцию следующей на обход
-					pending.push_back(pc + 1);
+					pending.push_back(programCounter + 1);
 				break;
 				/**
 				 * Если инструкция выполняет переход к инструкции иной
@@ -1465,7 +1465,7 @@ namespace {
 					/**
 					 * Если инструкции, телу вызываемого начало дающие, не собраны
 					 */
-					if(!pioneer(program, body, static_cast <regex::address_t> (program.instructions.size()), result, depth + 1))
+					if(!__awh_pioneer__(program, body, static_cast <regex::address_t> (program.instructions.size()), result, depth + 1))
 						// Выводим неприменимость сбора инструкций начала
 						return false;
 				} break;
@@ -1493,7 +1493,7 @@ namespace {
 	 * @return            результат проверки принадлежности значения байта
 	 *
 	 */
-	static bool belonging(const regex::instruction_t & instruction, const regex::program_t & program, const uint32_t letter) noexcept {
+	static bool __awh_belonging__(const regex::instruction_t & instruction, const regex::program_t & program, const uint32_t letter) noexcept {
 		/**
 		 * Определяем код операции сопоставляющей инструкции
 		 */
@@ -1549,7 +1549,7 @@ namespace {
 	 * @return        результат разбора цепочки с ведущей ветвью одиночного символа
 	 *
 	 */
-	static bool foremost(const regex::program_t & program, const chain_t & chain, regex::address_t & head) noexcept {
+	static bool __awh_foremost__(const regex::program_t & program, const chain_t & chain, regex::address_t & head) noexcept {
 		/**
 		 * Если ветвей выбора меньше двух
 		 */
@@ -1565,11 +1565,11 @@ namespace {
 			// Выводим неприменимость разбора ведущей ветви
 			return false;
 		// Получаем инструкцию ветви выбора ведущей
-		const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (first.first));
+		const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (first.first));
 		/**
 		 * Если ветвь ведущая одиночного символа не сопоставляет
 		 */
-		if(!singular(instruction.type))
+		if(!__awh_singular__(instruction.type))
 			// Выводим неприменимость разбора ведущей ветви
 			return false;
 		// Создаём набор инструкций, ветвям прочим начало дающих
@@ -1585,7 +1585,7 @@ namespace {
 			 *          вовсе: пересечения с нею не исключить, и разбор отменяется.
 			 *
 			 */
-			if(!pioneer(program, chain.branches.at(i).first, chain.branches.at(i).second, leaders))
+			if(!__awh_pioneer__(program, chain.branches.at(i).first, chain.branches.at(i).second, leaders))
 				// Выводим неприменимость разбора ведущей ветви
 				return false;
 		}
@@ -1596,7 +1596,7 @@ namespace {
 			/**
 			 * Если значение байта ветви ведущей не принадлежит
 			 */
-			if(!belonging(instruction, program, letter))
+			if(!__awh_belonging__(instruction, program, letter))
 				// Переходим к значению байта следующему
 				continue;
 			/**
@@ -1606,7 +1606,7 @@ namespace {
 				/**
 				 * Если значение байта принадлежит и ветви иной
 				 */
-				if(belonging(program.instructions.at(static_cast <size_t> (address)), program, letter))
+				if(__awh_belonging__(program.instructions.item(static_cast <size_t> (address)), program, letter))
 					// Выводим неприменимость разбора ведущей ветви
 					return false;
 			}
@@ -1632,7 +1632,7 @@ namespace {
 	 * @return        результат разбора повторения с ведущей ветвью
 	 *
 	 */
-	static bool hastening(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & head) noexcept {
+	static bool __awh_hastening__(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & head) noexcept {
 		/**
 		 * Если повторение ленивое либо границы групп записывающее
 		 *
@@ -1650,7 +1650,7 @@ namespace {
 		/**
 		 * Если разбор цепочки ветвей выбора не выполнен
 		 */
-		if(!chaining(program, opening, chain))
+		if(!__awh_chaining__(program, opening, chain))
 			// Выводим неприменимость разбора повторения с ведущей ветвью
 			return false;
 		/**
@@ -1660,7 +1660,7 @@ namespace {
 			// Выводим неприменимость разбора повторения с ведущей ветвью
 			return false;
 		// Разбор цепочки с ведущей ветвью одиночного символа
-		return foremost(program, chain, head);
+		return __awh_foremost__(program, chain, head);
 	}
 	/**
 	 * @brief Функция получения адреса тела ряда повторения одиночного символа
@@ -1677,12 +1677,12 @@ namespace {
 	 *          воедино, и всякое место, ряду подвластное, берёт тело отсюда.
 	 *
 	 * @param program     программа регулярного выражения
-	 * @param pc          адрес перехода по двум ветвям
+	 * @param programCounter          адрес перехода по двум ветвям
 	 * @param instruction инструкция перехода по двум ветвям
 	 * @return            адрес тела ряда либо недействительный адрес
 	 *
 	 */
-	static regex::address_t repetend(const regex::program_t & program, const regex::address_t pc, const regex::instruction_t & instruction) noexcept {
+	static regex::address_t __awh_repetend__(const regex::program_t & program, const regex::address_t programCounter, const regex::instruction_t & instruction) noexcept {
 		/**
 		 * Если переход возглавляет ряд безграничный
 		 */
@@ -1697,12 +1697,12 @@ namespace {
 		 *
 		 */
 		if((instruction.split.most == 0) || (instruction.split.most > CHAIN_UNROLL) ||
-		   (static_cast <size_t> (instruction.split.first) != (static_cast <size_t> (pc) + 1)) ||
-		   ((static_cast <size_t> (pc) + 1) >= program.instructions.size()))
+		   (static_cast <size_t> (instruction.split.first) != (static_cast <size_t> (programCounter) + 1)) ||
+		   ((static_cast <size_t> (programCounter) + 1) >= program.instructions.size()))
 			// Выводим недействительный адрес
 			return regex::INVALID_ADDRESS;
 		// Выводим адрес тела цепочки, за переходом следующего
-		return static_cast <regex::address_t> (pc + 1);
+		return static_cast <regex::address_t> (programCounter + 1);
 	}
 	/**
 	 * @brief Функция проверки прохода ряда повторения без отдачи
@@ -1733,11 +1733,11 @@ namespace {
 	 * @return            результат проверки прохода ряда без отдачи
 	 *
 	 */
-	static bool sealing(const regex::program_t & program, const regex::instruction_t & instruction, const regex::address_t body) noexcept {
+	static bool __awh_sealing__(const regex::program_t & program, const regex::instruction_t & instruction, const regex::address_t body) noexcept {
 		// Наибольшее количество переходов, разбором проходимых
 		constexpr size_t HOPS = 16;
 		// Получаем адрес продолжения сопоставления вслед за рядом
-		regex::address_t pc = instruction.split.second;
+		regex::address_t programCounter = instruction.split.second;
 		/**
 		 * Обходим инструкций, текста не поглощающих
 		 */
@@ -1745,11 +1745,11 @@ namespace {
 			/**
 			 * Если адрес продолжения программе не принадлежит
 			 */
-			if((pc == regex::INVALID_ADDRESS) || (static_cast <size_t> (pc) >= program.instructions.size()))
+			if((programCounter == regex::INVALID_ADDRESS) || (static_cast <size_t> (programCounter) >= program.instructions.size()))
 				// Выводим неприменимость прохода ряда без отдачи
 				return false;
 			// Получаем очередную инструкцию продолжения сопоставления
-			const regex::instruction_t & following = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & following = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Определяем код операции инструкции продолжения сопоставления
 			 */
@@ -1757,12 +1757,12 @@ namespace {
 				// Запись границы захвата текста не поглощает вовсе
 				case static_cast <uint8_t> (regex::opcode_t::SAVE):
 					// Переходим к инструкции, за нею следующей
-					pc++;
+					programCounter++;
 				break;
 				// Безусловный переход позиции сопоставления не двигает
 				case static_cast <uint8_t> (regex::opcode_t::JUMP):
 					// Переходим по адресу безусловного перехода
-					pc = following.jump.target;
+					programCounter = following.jump.target;
 				break;
 				/**
 				 * Сопоставление одиночного символа продолжение определяет
@@ -1770,7 +1770,7 @@ namespace {
 				case static_cast <uint8_t> (regex::opcode_t::CHAR):
 				case static_cast <uint8_t> (regex::opcode_t::CLASS): {
 					// Получаем инструкцию тела ряда повторения
-					const regex::instruction_t & repeated = program.instructions.at(static_cast <size_t> (body));
+					const regex::instruction_t & repeated = program.instructions.item(static_cast <size_t> (body));
 					/**
 					 * Обходим пространств значений байта
 					 */
@@ -1778,7 +1778,7 @@ namespace {
 						/**
 						 * Если значение байта принадлежит обеим инструкциям
 						 */
-						if(belonging(repeated, program, letter) && belonging(following, program, letter))
+						if(__awh_belonging__(repeated, program, letter) && __awh_belonging__(following, program, letter))
 							// Выводим неприменимость прохода ряда без отдачи
 							return false;
 					}
@@ -1817,7 +1817,7 @@ namespace {
 	 * @return        результат разбора тела, отдаче обратным проходом поддающегося
 	 *
 	 */
-	static bool retracing(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & row, size_t & tail) noexcept {
+	static bool __awh_retracing__(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & row, size_t & tail) noexcept {
 		/**
 		 * Если повторение ленивое либо границы групп записывающее
 		 */
@@ -1825,7 +1825,7 @@ namespace {
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Получаем адрес разбираемой инструкции программы
-		regex::address_t pc = opening;
+		regex::address_t programCounter = opening;
 		/**
 		 * Пропускаем обязательной части тела повторения
 		 *
@@ -1835,17 +1835,17 @@ namespace {
 		 *          принадлежность эту надлежит проверить.
 		 *
 		 */
-		while((pc < closing) && singular(program.instructions.at(static_cast <size_t> (pc)).type))
+		while((programCounter < closing) && __awh_singular__(program.instructions.item(static_cast <size_t> (programCounter)).type))
 			// Переходим к инструкции следующей
-			pc++;
+			programCounter++;
 		/**
 		 * Если тело повторения рядом не продолжается
 		 */
-		if(pc >= closing)
+		if(programCounter >= closing)
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Получаем инструкцию перехода по двум ветвям тела повторения
-		const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+		const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 		/**
 		 * Если инструкция рядом повторения одиночного символа не является
 		 */
@@ -1861,17 +1861,17 @@ namespace {
 		 *          и мест на них у повторения без записи нет.
 		 *
 		 */
-		if(!sealing(program, instruction, instruction.split.run))
+		if(!__awh_sealing__(program, instruction, instruction.split.run))
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Получаем инструкцию тела ряда повторения
-		const regex::instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
+		const regex::instruction_t & repeated = program.instructions.item(static_cast <size_t> (instruction.split.run));
 		/**
 		 * Обходим инструкций обязательной части тела повторения
 		 */
-		for(regex::address_t address = opening; address < pc; address++){
+		for(regex::address_t address = opening; address < programCounter; address++){
 			// Получаем инструкцию обязательной части тела повторения
-			const regex::instruction_t & mandatory = program.instructions.at(static_cast <size_t> (address));
+			const regex::instruction_t & mandatory = program.instructions.item(static_cast <size_t> (address));
 			/**
 			 * Обходим пространств значений байта
 			 */
@@ -1884,7 +1884,7 @@ namespace {
 				 *          начала прохода.
 				 *
 				 */
-				if(belonging(mandatory, program, letter) && !belonging(repeated, program, letter))
+				if(__awh_belonging__(mandatory, program, letter) && !__awh_belonging__(repeated, program, letter))
 					// Выводим неприменимость отдачи обратным проходом
 					return false;
 			}
@@ -1894,7 +1894,7 @@ namespace {
 		/**
 		 * Если хвост тела повторения за рядом не следует
 		 */
-		if((following <= pc) || (following > closing))
+		if((following <= programCounter) || (following > closing))
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Сбрасываем длину хвоста тела повторения
@@ -1906,7 +1906,7 @@ namespace {
 			/**
 			 * Если инструкция хвоста одиночного символа не сопоставляет
 			 */
-			if(!singular(program.instructions.at(static_cast <size_t> (address)).type))
+			if(!__awh_singular__(program.instructions.item(static_cast <size_t> (address)).type))
 				// Выводим неприменимость отдачи обратным проходом
 				return false;
 			// Увеличиваем длину хвоста тела повторения
@@ -1923,7 +1923,7 @@ namespace {
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Получаем инструкцию хвоста, проход завершающую
-		const regex::instruction_t & last = program.instructions.at(static_cast <size_t> (closing - 1));
+		const regex::instruction_t & last = program.instructions.item(static_cast <size_t> (closing - 1));
 		/**
 		 * Обходим пространств значений байта
 		 */
@@ -1935,7 +1935,7 @@ namespace {
 			 *          он набору ряда - проход ушёл бы в проход предыдущий.
 			 *
 			 */
-			if(belonging(last, program, letter) && belonging(repeated, program, letter))
+			if(__awh_belonging__(last, program, letter) && __awh_belonging__(repeated, program, letter))
 				// Выводим неприменимость отдачи обратным проходом
 				return false;
 		}
@@ -1962,7 +1962,7 @@ namespace {
 	 * @return            результат проверки сопоставления одних лишь символов ASCII
 	 *
 	 */
-	static bool restricted(const regex::instruction_t & instruction, const regex::program_t & program) noexcept {
+	static bool __awh_restricted__(const regex::instruction_t & instruction, const regex::program_t & program) noexcept {
 		// Получаем признак сопоставления символов без учёта регистра
 		const bool caseless = regex::hasFlag(instruction.flags, regex::flag_t::CASELESS);
 		/**
@@ -2113,7 +2113,7 @@ namespace {
 	 * @return        результат проверки применимости разбора цепочки
 	 *
 	 */
-	static bool dispatching(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
+	static bool __awh_dispatching__(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
 		// Размещаем таблицу соответствия байта номеру ветви
 		result.assign(TABLE, 0);
 		/**
@@ -2137,9 +2137,9 @@ namespace {
 			/**
 			 * Обходим инструкций области очередной ветви выбора
 			 */
-			for(regex::address_t pc = branch.first; pc < branch.second; pc++){
+			for(regex::address_t programCounter = branch.first; programCounter < branch.second; programCounter++){
 				// Получаем очередную инструкцию области ветви выбора
-				const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+				const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 				/**
 				 * Если инструкция записывает границу группы захвата
 				 *
@@ -2156,7 +2156,7 @@ namespace {
 				 */
 				if((instruction.type == regex::opcode_t::CHAR) || (instruction.type == regex::opcode_t::CLASS))
 					// Запоминаем адрес инструкции, ветвь возглавляющей
-					leader = pc;
+					leader = programCounter;
 				// Выходим из обхода инструкций области ветви выбора
 				break;
 			}
@@ -2167,7 +2167,7 @@ namespace {
 				// Выводим неприменимость разбора цепочки по набору первых байтов
 				return false;
 			// Получаем сопоставляющую инструкцию, ветвь возглавляющую
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (leader));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (leader));
 			/**
 			 * Проверки сопоставления одних лишь символов ASCII здесь нет
 			 * намеренно
@@ -2191,7 +2191,7 @@ namespace {
 				/**
 				 * Если значение байта набору ветви не принадлежит
 				 */
-				if(!belonging(instruction, program, letter))
+				if(!__awh_belonging__(instruction, program, letter))
 					// Переходим к значению байта следующему
 					continue;
 				/**
@@ -2234,7 +2234,7 @@ namespace {
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	static bool walk(const regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds, size_t & bounded) noexcept {
+	static bool __awh_walk__(const regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds, size_t & bounded) noexcept {
 		// Сбрасываем количество рядов повторения
 		runs = 0;
 		// Сбрасываем количество проверок окружения
@@ -2355,7 +2355,7 @@ namespace {
 		// Устанавливаем обход области инструкций программы
 		region = [&](const regex::address_t from, const regex::address_t to) noexcept -> bool {
 		// Получаем адрес исполняемой инструкции программы
-		regex::address_t pc = from;
+		regex::address_t programCounter = from;
 		/**
 		 * Обходим инструкций области программы
 		 */
@@ -2363,13 +2363,13 @@ namespace {
 			/**
 			 * Если область инструкций исчерпана
 			 */
-			if((to != regex::INVALID_ADDRESS) && (pc >= to))
+			if((to != regex::INVALID_ADDRESS) && (programCounter >= to))
 				// Выводим применимость кодогенерации к области
 				return true;
 			/**
 			 * Если адрес инструкции находится за пределами программы
 			 */
-			if(static_cast <size_t> (pc) >= program.instructions.size())
+			if(static_cast <size_t> (programCounter) >= program.instructions.size())
 				// Выводим неприменимость кодогенерации к программе
 				return false;
 			/**
@@ -2379,25 +2379,25 @@ namespace {
 			 *          проходом рядов не описываемый.
 			 *
 			 */
-			if(visited.at(static_cast <size_t> (pc)))
+			if(visited.at(static_cast <size_t> (programCounter)))
 				// Выводим неприменимость кодогенерации к программе
 				return false;
 			// Помечаем посещени инструкции по адресу
-			visited.at(static_cast <size_t> (pc)) = true;
+			visited.at(static_cast <size_t> (programCounter)) = true;
 			// Получаем исполняемую инструкцию программы
-			const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+			const regex::instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)){
+			if(__awh_singular__(instruction.type)){
 				/**
 				 * Если инструкция в режиме разбора UTF-8 сопоставляет символы вне ASCII
 				 */
-				if(utf && !restricted(instruction, program))
+				if(utf && !__awh_restricted__(instruction, program))
 					// Выводим неприменимость кодогенерации к программе
 					return false;
 				// Переходим к следующей инструкции программы
-				pc++;
+				programCounter++;
 				// Продолжаем обход инструкций программы
 				continue;
 			}
@@ -2445,12 +2445,12 @@ namespace {
 							// Выводим неприменимость кодогенерации к программе
 							return false;
 						// Переходим к следующей инструкции программы
-						pc++;
+						programCounter++;
 						// Прекращаем разбор инструкции программы
 						break;
 					}
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция запоминает состояние возврата
@@ -2488,7 +2488,7 @@ namespace {
 						// Устанавливаем наибольшей глубины вложения групп
 						grounds = nesting;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция отказывается от точек возврата
@@ -2501,7 +2501,7 @@ namespace {
 						// Уменьшаем глубину вложения атомарных групп
 						nesting--;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция проверяет окружение позиции сопоставления
@@ -2564,7 +2564,7 @@ namespace {
 					/**
 					 * Если тело проверки окружения инструкцией возврата не завершается
 					 */
-					if(program.instructions.at(static_cast <size_t> (ending)).type != regex::opcode_t::RETURN)
+					if(program.instructions.item(static_cast <size_t> (ending)).type != regex::opcode_t::RETURN)
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -2576,7 +2576,7 @@ namespace {
 					// Создаём набор ячеек захвата, телом проверки записываемых
 					vector <uint32_t> records;
 					// Собираем ячеек захвата, телом проверки записываемых
-					journal(program, instruction.look.body, ending, records);
+					__awh_journal__(program, instruction.look.body, ending, records);
 					/**
 					 * Если тело проверки окружения границы групп записывает
 					 *
@@ -2601,7 +2601,7 @@ namespace {
 					// Уменьшаем глубину вложения проверок окружения
 					watching--;
 					// Переходим к продолжению сопоставления за проверкой окружения
-					pc = target;
+					programCounter = target;
 				} break;
 				/**
 				 * Если инструкция сопоставляет текст, захваченный группой
@@ -2636,7 +2636,7 @@ namespace {
 					// Устанавливаем признак наличия ссылок на захваченный текст
 					referring = true;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция сопоставляет якорь 
@@ -2649,7 +2649,7 @@ namespace {
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция выполняет переход по двум ветвям
@@ -2658,7 +2658,7 @@ namespace {
 					// Получаем признак ленивого повторения одиночного символа
 					const bool lazily = (instruction.split.lazily != 0);
 					// Получаем адрес тела повторения одиночного символа
-					const regex::address_t body = repetend(program, pc, instruction);
+					const regex::address_t body = __awh_repetend__(program, programCounter, instruction);
 					/**
 					 * Если переход возглавляет цепочку ветвей выбора одной из них
 					 */
@@ -2679,7 +2679,7 @@ namespace {
 						 *          его, а число проходов при порождении не известно.
 						 *
 						 */
-						if(looping(program, pc, opening, closing, leaving, eager)){
+						if(__awh_looping__(program, programCounter, opening, closing, leaving, eager)){
 							/**
 							 * Если повторение за пределы обходимой области выходит
 							 */
@@ -2707,7 +2707,7 @@ namespace {
 							// Создаём набор ячеек захвата, повторением записываемых
 							vector <uint32_t> written;
 							// Собираем ячеек захвата, повторением записываемых
-							journal(program, opening, closing, written);
+							__awh_journal__(program, opening, closing, written);
 							// Создаём длину тела повторения в байтах
 							size_t length = 0;
 							/**
@@ -2736,9 +2736,9 @@ namespace {
 							 *          восстанавливается проходом вспять по набору S.
 							 *
 							 */
-							const bool retraced = retracing(program, opening, closing, eager, written, backward, trailing);
+							const bool retraced = __awh_retracing__(program, opening, closing, eager, written, backward, trailing);
 							// Получаем признак отвода кадра записи
-							const bool framing = (!written.empty() || (eager && !retraced && (!stretching(program, opening, closing, length) || (length > regex::MAX_STRETCH))));
+							const bool framing = (!written.empty() || (eager && !retraced && (!__awh_stretching__(program, opening, closing, length) || (length > regex::MAX_STRETCH))));
 							/**
 							 * Если повторение, записи кадра на проход требующее,
 							 * лежит внутри атомарной группы
@@ -2796,7 +2796,7 @@ namespace {
 								 *          и отдача ряда есть убавление его.
 								 *
 								 */
-								if(hastening(program, opening, closing, eager, written, header))
+								if(__awh_hastening__(program, opening, closing, eager, written, header))
 									// Увеличиваем количество рядов повторения уровня
 									rows++;
 								// Увеличиваем количество мест запоминания границ групп
@@ -2876,7 +2876,7 @@ namespace {
 								rows = marked[4];
 							}
 							// Переходим к продолжению сопоставления за повторением
-							pc = leaving;
+							programCounter = leaving;
 							// Выходим из определения кода операции инструкции
 							break;
 						}
@@ -2885,7 +2885,7 @@ namespace {
 						/**
 						 * Если разбор цепочки ветвей выбора не выполнен
 						 */
-						if(!chaining(program, pc, branching))
+						if(!__awh_chaining__(program, programCounter, branching))
 							// Выводим неприменимость кодогенерации к программе
 							return false;
 						/**
@@ -2901,7 +2901,7 @@ namespace {
 						// Создаём набор ячеек захвата, цепочкой записываемых
 						vector <uint32_t> records;
 						// Собираем ячеек захвата, цепочкой записываемых
-						journal(program, pc, branching.join, records);
+						__awh_journal__(program, programCounter, branching.join, records);
 						/**
 						 * Получаем допустимость разбора цепочки по первому байту
 						 *
@@ -2931,7 +2931,7 @@ namespace {
 						 *          ячейкой кадра.
 						 *
 						 */
-						if(!sorting || !straight(program, branching) || (!deciding(program, branching, letters) && !dispatching(program, branching, routes))){
+						if(!sorting || !__awh_straight__(program, branching) || (!__awh_deciding__(program, branching, letters) && !__awh_dispatching__(program, branching, routes))){
 							/**
 							 * Если допустимое количество цепочек ветвей исчерпано
 							 */
@@ -2971,14 +2971,14 @@ namespace {
 								return false;
 						}
 						// Переходим к общему продолжению цепочки ветвей выбора
-						pc = branching.join;
+						programCounter = branching.join;
 						// Выходим из определения кода операции инструкции
 						break;
 					}
 					/**
 					 * Если тело повторения одиночного символа не сопоставляет
 					 */
-					if((static_cast <size_t> (body) >= program.instructions.size()) || !singular(program.instructions.at(static_cast <size_t> (body)).type))
+					if((static_cast <size_t> (body) >= program.instructions.size()) || !__awh_singular__(program.instructions.item(static_cast <size_t> (body)).type))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -2989,7 +2989,7 @@ namespace {
 					 *          отчего проверка тела ведётся здесь.
 					 *
 					 */
-					if(utf && !restricted(program.instructions.at(static_cast <size_t> (body)), program))
+					if(utf && !__awh_restricted__(program.instructions.item(static_cast <size_t> (body)), program))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -3031,7 +3031,7 @@ namespace {
 					 *          ветви его переставлены.
 					 *
 					 */
-					pc = (lazily ? instruction.split.first : instruction.split.second);
+					programCounter = (lazily ? instruction.split.first : instruction.split.second);
 				} break;
 				/**
 				 * Если инструкция завершает сопоставление с успехом
@@ -3083,7 +3083,7 @@ namespace {
 					/**
 					 * Если тело вызываемое текста не поглощает
 					 */
-					if(!consuming(program, body, passed))
+					if(!__awh_consuming__(program, body, passed))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Увеличиваем количество мест рекурсивного вызова подвыражения
@@ -3093,7 +3093,7 @@ namespace {
 					 */
 					if(find(bodies.begin(), bodies.end(), body) != bodies.end()){
 						// Переходим к следующей инструкции программы
-						pc++;
+						programCounter++;
 						// Прекращаем разбор инструкции программы
 						break;
 					}
@@ -3102,7 +3102,7 @@ namespace {
 					// Создаём набор ячеек захвата, телом вызываемым записываемых
 					vector <uint32_t> records;
 					// Собираем ячеек захвата, телом вызываемым записываемых
-					journal(program, body, regex::INVALID_ADDRESS, records);
+					__awh_journal__(program, body, regex::INVALID_ADDRESS, records);
 					/**
 					 * Если тело вызываемое границы групп записывает
 					 */
@@ -3116,7 +3116,7 @@ namespace {
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция проверяет продвижение повторения по тексту
@@ -3137,7 +3137,7 @@ namespace {
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 				} break;
 				/**
 				 * Если инструкция кодогенерации не получает
@@ -3169,7 +3169,7 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Опознание набора команд порождённого машинного кода
+	 * @brief Функция опознания набора команд порождённого машинного кода
 	 *
 	 * @details Порождённый код годен лишь набору команд, для какого порождён,
 	 *          поэтому запись несёт его опознание. Восстановление на машине
@@ -3217,7 +3217,7 @@ namespace {
 	 *          бы щель между сличением и переносом.
 	 *
 	 */
-	static uint64_t imprint(const void * code, const size_t length) noexcept {
+	static uint64_t __awh_imprint__(const void * code, const size_t length) noexcept {
 		// Накопленная примета порождённого машинного кода
 		uint64_t result = 0xCBF29CE484222325ull;
 		// Получаем обзор порождённого машинного кода
@@ -3241,7 +3241,7 @@ namespace {
 	 * @param result запись порождённого сопоставителя
 	 *
 	 */
-	static void writeSize(uint64_t value, string & result) noexcept {
+	static void __awh_write_size__(uint64_t value, string & result) noexcept {
 		/**
 		 * Записываем числ долями по семь разрядов
 		 */
@@ -3263,7 +3263,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	static bool readSize(string_view data, size_t & offset, uint64_t & value) noexcept {
+	static bool __awh_read_size__(string_view data, size_t & offset, uint64_t & value) noexcept {
 		// Сбрасываем прочитанного числа
 		value = 0;
 		/**
@@ -3318,7 +3318,7 @@ size_t awh::regex::Codegen::table(const instruction_t & instruction, const progr
 	 */
 	for(uint32_t letter = 0; letter < TABLE; letter++)
 		// Устанавливаем принадлежность значения байта
-		members[letter] = (belonging(instruction, program, letter) ? 1 : 0);
+		members[letter] = (__awh_belonging__(instruction, program, letter) ? 1 : 0);
 	// Выводим номер заведённой таблицы принадлежности байтов
 	return result;
 }
@@ -3348,7 +3348,7 @@ size_t awh::regex::Codegen::masking(const vector <address_t> & leaders, const pr
 	 */
 	for(auto & leader : leaders){
 		// Получаем сопоставляющую инструкцию, тело возглавляющую
-		const instruction_t & instruction = program.instructions.at(static_cast <size_t> (leader));
+		const instruction_t & instruction = program.instructions.item(static_cast <size_t> (leader));
 		/**
 		 * Обходим пространств значений байта
 		 */
@@ -3356,7 +3356,7 @@ size_t awh::regex::Codegen::masking(const vector <address_t> & leaders, const pr
 			/**
 			 * Если значение байта инструкции сопоставления принадлежит
 			 */
-			if(belonging(instruction, program, letter))
+			if(__awh_belonging__(instruction, program, letter))
 				// Устанавливаем принадлежность значения байта
 				members[letter] = 1;
 		}
@@ -3548,7 +3548,7 @@ void awh::regex::Codegen::binding() noexcept {
 	// Устанавливаем адрес предварительного отбора позиций
 	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
 	// Устанавливаем адрес подпрограммы отбора позиций
-	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
+	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&__awh_seeking__);
 	/**
 	 * Если короткий ведущий литерал поддерживает отдельный проход
 	 */
@@ -3561,15 +3561,15 @@ void awh::regex::Codegen::binding() noexcept {
 			this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (selected);
 	#endif
 	// Устанавливаем адрес подпрограммы проверки возможности совпадения
-	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
+	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&__awh_feasible__);
 	// Устанавливаем адрес подпрограммы отбора позиции по литералу
-	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
+	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&__awh_bounding__);
 	// Устанавливаем адрес подпрограммы проверки привязки к позиции
-	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
+	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&__awh_asserting__);
 	// Устанавливаем адрес подпрограммы прохода ряда повторения
-	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&scanning);
+	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&__awh_scanning__);
 	// Устанавливаем адрес подпрограммы отбора по набору начальных байтов
-	this->_context.at(SLOT_SCATTERING) = reinterpret_cast <const void *> (&scattering);
+	this->_context.at(SLOT_SCATTERING) = reinterpret_cast <const void *> (&__awh_scattering__);
 }
 /**
  * @brief Метод проверки применимости кодогенерации к программе
@@ -3635,7 +3635,7 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 	/**
 	 * Если обход программы применимости не выявил
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
+	if(!__awh_walk__(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
 		// Выводим неприменимость кодогенерации к программе
 		return false;
 	// Выводим применимость кодогенерации к программе
@@ -3706,7 +3706,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если кодогенерация к программе неприменима
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
+	if(!__awh_walk__(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
 		// Порождение сопоставителя: отказ
 		return false;
 	/**
@@ -3795,9 +3795,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Обходим инструкций начальных программы выражения
 		 */
-		for(size_t pc = 0; pc < program.instructions.size(); pc++){
+		for(size_t programCounter = 0; programCounter < program.instructions.size(); programCounter++){
 			// Получаем очередную инструкцию программы выражения
-			const instruction_t & instruction = program.instructions.at(pc);
+			const instruction_t & instruction = program.instructions.item(programCounter);
 			/**
 			 * Если инструкция записывает границу группы захвата
 			 */
@@ -4351,7 +4351,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Расставляем меткю отбора позиции начала попытки по литералу
 		emitter.aligned(narrower);
 		// Зовём подпрограмму отбора позиции по обязательному литералу
-		invoke(emitter, SLOT_BOUNDING, spill, reg_t::KEEPER, SLOT_PREFILTER);
+		__awh_invoke__(emitter, SLOT_BOUNDING, spill, reg_t::KEEPER, SLOT_PREFILTER);
 		// Устанавливаем отобранной позиции начала попытки
 		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
 		// Сравниваем позицию начала попытки с размером текста
@@ -4388,9 +4388,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Заводим значение единственного допустимого байта
 			const size_t marker = this->limiter(static_cast <uint8_t> (this->_prefilter.letter));
 			// Зовём подпрограмму поиска единственного допустимого байта
-			invoke(emitter, SLOT_SCANNING, spill, reg_t::KEEPER, marker);
+			__awh_invoke__(emitter, SLOT_SCANNING, spill, reg_t::KEEPER, marker);
 		// Зовём подпрограмму отбора позиции начала попытки
-		} else invoke(emitter, SLOT_SEEKING, spill, reg_t::KEEPER, SLOT_PREFILTER);
+		} else __awh_invoke__(emitter, SLOT_SEEKING, spill, reg_t::KEEPER, SLOT_PREFILTER);
 		// Устанавливаем отобранной позиции начала попытки
 		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
 		// Сравниваем позицию начала попытки с размером текста
@@ -4434,7 +4434,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Переходим к попытке сопоставления в начале строки
 		emitter.branch(cond_t::EQUAL, entry);
 		// Зовём подпрограмму поиска перевода строки
-		invoke(emitter, SLOT_SCANNING, spill, reg_t::KEEPER, newline);
+		__awh_invoke__(emitter, SLOT_SCANNING, spill, reg_t::KEEPER, newline);
 		// Устанавливаем позицию найденного перевода строки
 		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
 		// Сравниваем позицию перевода строки с размером текста
@@ -4527,9 +4527,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		if(wide)
 			// Зовём подпрограмму отбора позиции начала попытки
-			invoke(emitter, SLOT_SEEKING, spill, reg_t::KEEPER, SLOT_PREFILTER);
+			__awh_invoke__(emitter, SLOT_SEEKING, spill, reg_t::KEEPER, SLOT_PREFILTER);
 		// Зовём подпрограмму отбора позиции по набору байтов
-		else invoke(emitter, SLOT_SCATTERING, spill, reg_t::KEEPER, number);
+		else __awh_invoke__(emitter, SLOT_SCATTERING, spill, reg_t::KEEPER, number);
 		// Устанавливаем отобранной позиции начала попытки
 		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
 		// Сравниваем позицию начала попытки с размером текста
@@ -4942,7 +4942,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Устанавливаем порождени области инструкций программы
 	region = [&](const address_t from, const address_t to) noexcept -> bool {
 	// Получаем адрес исполняемой инструкции программы
-	address_t pc = from;
+	address_t programCounter = from;
 	/**
 	 * Обходим инструкций области программы
 	 */
@@ -4950,17 +4950,17 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если область инструкций исчерпана
 		 */
-		if((to != INVALID_ADDRESS) && (pc >= to))
+		if((to != INVALID_ADDRESS) && (programCounter >= to))
 			// Порождение области инструкций: успех
 			return true;
 		/**
 		 * Если адрес инструкции находится за пределами программы
 		 */
-		if(static_cast <size_t> (pc) >= program.instructions.size())
+		if(static_cast <size_t> (programCounter) >= program.instructions.size())
 			// Выводим отказ порождения области инструкций
 			return false;
 		// Получаем исполняемую инструкцию программы
-		const instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
+		const instruction_t & instruction = program.instructions.item(static_cast <size_t> (programCounter));
 		/**
 		 * Получаем годность байта, прежде прочитанного, для этой инструкции
 		 *
@@ -5026,7 +5026,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Переходим к атомарной группе следующей
 			atomic++;
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем порождение области инструкций
 			continue;
 		}
@@ -5081,7 +5081,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				guarding.pop_back();
 			}
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем порождение области инструкций
 			continue;
 		}
@@ -5099,7 +5099,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 */
 			if(instruction.save.slot >= ((static_cast <uint32_t> (program.captures) + 1) * 2)){
 				// Переходим к следующей инструкции программы
-				pc++;
+				programCounter++;
 				// Продолжаем обход инструкций программы
 				continue;
 			}
@@ -5124,7 +5124,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.store(reg_t::CURSOR, reg_t::BOUNDS, instruction.save.slot);
 			}
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций программы
 			continue;
 		}
@@ -5162,7 +5162,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Переходим к завершению повторения без продвижения
 			emitter.branch(cond_t::EQUAL, pacings.back());
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций программы
 			continue;
 		}
@@ -5330,7 +5330,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 */
 				default: {
 					// Зовём подпрограмму проверки привязки к позиции
-					invoke(emitter, SLOT_ASSERTING, spill, reg_t::CURSOR, this->guard(instruction));
+					__awh_invoke__(emitter, SLOT_ASSERTING, spill, reg_t::CURSOR, this->guard(instruction));
 					// Сравниваем итог проверки привязки с нулём
 					emitter.compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
 					// Переходим к отказу при невыполнении привязки
@@ -5338,7 +5338,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				}
 			}
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций программы
 			continue;
 		}
@@ -5349,7 +5349,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		   !hasFlag(instruction.flags, flag_t::CASELESS) &&
 		   (instruction.letter.code == static_cast <uint32_t> (static_cast <uint8_t> (this->_prefilter.leading.at(consumed))))){
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Увеличиваем количество символов, продвижение на какие не размещено
 			elided++;
 			// Увеличиваем длину участка, ряду первому предшествующего
@@ -5569,14 +5569,14 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Расставляем меткю продолжения сопоставления вслед за вызовом
 			emitter.place(following);
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций области программы
 			continue;
 		}
 		/**
 		 * Если инструкция сопоставляет одиночный символ
 		 */
-		if(singular(instruction.type)){
+		if(__awh_singular__(instruction.type)){
 			/**
 			 * Получаем признак сопоставления литералом ASCII напрямую
 			 *
@@ -5617,13 +5617,13 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			size_t copies = 1;
 			{
 				// Получаем количество инструкций от разбираемой до конца программы
-				size_t limit = (program.instructions.size() - static_cast <size_t> (pc));
+				size_t limit = (program.instructions.size() - static_cast <size_t> (programCounter));
 				/**
 				 * Если область инструкций кончается прежде конца программы
 				 */
-				if((to != INVALID_ADDRESS) && ((static_cast <size_t> (to) - static_cast <size_t> (pc)) < limit))
+				if((to != INVALID_ADDRESS) && ((static_cast <size_t> (to) - static_cast <size_t> (programCounter)) < limit))
 					// Ограничиваем ряд границей области
-					limit = (static_cast <size_t> (to) - static_cast <size_t> (pc));
+					limit = (static_cast <size_t> (to) - static_cast <size_t> (programCounter));
 				/**
 				 * Если пометка ряда короче остатка области
 				 */
@@ -5633,7 +5633,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Сверяем копии ряда с инструкцией разбираемой
 				 */
-				while((copies < limit) && identical(instruction, program.instructions.at(static_cast <size_t> (pc) + copies)))
+				while((copies < limit) && identical(instruction, program.instructions.item(static_cast <size_t> (programCounter) + copies)))
 					// Увеличиваем количество копий ряда
 					copies++;
 			}
@@ -5701,7 +5701,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Увеличиваем длину участка, ряду первому предшествующего
 				prefix += copies;
 				// Переходим к инструкции, за рядом следующей
-				pc += static_cast <address_t> (copies);
+				programCounter += static_cast <address_t> (copies);
 				// Продолжаем обход инструкций программы
 				continue;
 			}
@@ -5749,7 +5749,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Увеличиваем длину участка, ряду первому предшествующего
 			prefix++;
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций программы
 			continue;
 		}
@@ -5850,7 +5850,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Расставляем меткю завершения сличения
 			emitter.place(settled);
 			// Переходим к следующей инструкции программы
-			pc++;
+			programCounter++;
 			// Продолжаем обход инструкций области программы
 			continue;
 		}
@@ -6125,14 +6125,14 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Восстанавливаем отказа, при входе в проверку действующего
 			failure = saved;
 			// Переходим к продолжению сопоставления за проверкой окружения
-			pc = instruction.look.target;
+			programCounter = instruction.look.target;
 			// Продолжаем обход инструкций области программы
 			continue;
 		}
 		/**
 		 * Если инструкция выбирает одну из ветвей выражения
 		 */
-		if((instruction.type == opcode_t::SPLIT) && (repetend(program, pc, instruction) == INVALID_ADDRESS)){
+		if((instruction.type == opcode_t::SPLIT) && (__awh_repetend__(program, programCounter, instruction) == INVALID_ADDRESS)){
 			// Адрес начала тела повторения над областью
 			address_t opening = INVALID_ADDRESS;
 			// Адрес перехода назад, тело повторения завершающего
@@ -6152,11 +6152,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          сопоставление продолжению.
 			 *
 			 */
-			if(looping(program, pc, opening, closing, leaving, eager)){
+			if(__awh_looping__(program, programCounter, opening, closing, leaving, eager)){
 				// Создаём набор ячеек захвата, повторением записываемых
 				vector <uint32_t> keepers;
 				// Собираем ячеек захвата, повторением записываемых
-				journal(program, opening, closing, keepers);
+				__awh_journal__(program, opening, closing, keepers);
 				// Создаём длину тела повторения в байтах
 				size_t length = 0;
 				/**
@@ -6280,7 +6280,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Устанавливаем меткю отказа сопоставления вслед за повторением
 					failure = (cellular ? miss : iterating);
 					// Переходим к продолжению сопоставления за повторением
-					pc = leaving;
+					programCounter = leaving;
 					// Продолжаем обход инструкций области программы
 					continue;
 				}
@@ -6289,7 +6289,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Длина хвоста тела повторения, отдаче обратным проходом подлежащего
 				size_t trailing = 0;
 				// Получаем применимость отдачи прохода обратным ходом
-				const bool retraced = retracing(program, opening, closing, eager, keepers, backward, trailing);
+				const bool retraced = __awh_retracing__(program, opening, closing, eager, keepers, backward, trailing);
 				/**
 				 * Если повторение записи кадра на проход не требует
 				 *
@@ -6298,7 +6298,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          оба обходятся тремя местами кадра на всё повторение.
 				 *
 				 */
-				if(eager && keepers.empty() && (retraced || (stretching(program, opening, closing, length) && (length <= MAX_STRETCH)))){
+				if(eager && keepers.empty() && (retraced || (__awh_stretching__(program, opening, closing, length) && (length <= MAX_STRETCH)))){
 					// Заводим метку входа в очередной проход повторения
 					const size_t entering = emitter.label();
 					// Заводим метку исчерпания проходов повторения
@@ -6461,7 +6461,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 						// Заводим метку завершения прохода вспять
 						const size_t tracked = emitter.label();
 						// Заводим таблицу принадлежности байтов ряда
-						const size_t number = this->table(program.instructions.at(static_cast <size_t> (backward)), program);
+						const size_t number = this->table(program.instructions.item(static_cast <size_t> (backward)), program);
 						// Сохраняем начал повторения во втором промежуточном
 						emitter.move(reg_t::SPARE, reg_t::SCRATCH);
 						// Отступаем на длину хвоста тела повторения
@@ -6506,7 +6506,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Устанавливаем меткю отказа сопоставления вслед за повторением
 					failure = (cellular ? miss : giving);
 					// Переходим к продолжению сопоставления за повторением
-					pc = leaving;
+					programCounter = leaving;
 					// Продолжаем обход инструкций области программы
 					continue;
 				}
@@ -6531,11 +6531,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          прежде всякого сопоставления тела.
 				 *
 				 */
-				const bool sorting = (eager && heading(program, opening, closing, leaders));
+				const bool sorting = (eager && __awh_heading__(program, opening, closing, leaders));
 				// Создаём набор ячеек захвата, повторением записываемых
 				vector <uint32_t> written;
 				// Собираем ячеек захвата, повторением записываемых
-				journal(program, opening, closing, written);
+				__awh_journal__(program, opening, closing, written);
 				/**
 				 * Отметка счётчиков мест, до отведения повторению снятая
 				 *
@@ -6578,7 +6578,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          с длины ряда до единицы.
 				 *
 				 */
-				const bool hastened = hastening(program, opening, closing, eager, written, header);
+				const bool hastened = __awh_hastening__(program, opening, closing, eager, written, header);
 				// Заводим метку прохода ряда ведущей ветви выбора
 				const size_t hurrying = (hastened ? emitter.label() : 0);
 				// Заводим метку завершения прохода ряда ведущей ветви
@@ -6668,7 +6668,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 */
 				if(hastened){
 					// Заводим таблицу принадлежности байтов ветви ведущей
-					const size_t number = this->table(program.instructions.at(static_cast <size_t> (header)), program);
+					const size_t number = this->table(program.instructions.item(static_cast <size_t> (header)), program);
 					// Читаем адрес таблицы принадлежности байтов
 					emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 					// Расставляем меткю прохода ряда ведущей ветви
@@ -6866,7 +6866,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Устанавливаем меткю отказа сопоставления вслед за повторением
 				failure = miss;
 				// Переходим к продолжению сопоставления за повторением
-				pc = leaving;
+				programCounter = leaving;
 				// Продолжаем обход инструкций области программы
 				continue;
 			}
@@ -6875,7 +6875,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если разбор цепочки ветвей выбора не выполнен
 			 */
-			if(!chaining(program, pc, branching))
+			if(!__awh_chaining__(program, programCounter, branching))
 				// Выводим отказ порождения области инструкций
 				return false;
 			/**
@@ -6900,9 +6900,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 */
 			vector <uint32_t> keeps;
 			// Собираем ячеек захвата, цепочкой записываемых
-			journal(program, pc, branching.join, keeps);
+			__awh_journal__(program, programCounter, branching.join, keeps);
 			// Получаем применимость разбора цепочки по одному байту на ветвь
-			const bool sorted = deciding(program, branching, letters);
+			const bool sorted = __awh_deciding__(program, branching, letters);
 			/**
 			 * Получаем применимость разбора цепочки по набору первых байтов
 			 *
@@ -6911,7 +6911,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          разбор таблицей берётся лишь по неприменимости его.
 			 *
 			 */
-			const bool routed = (!sorted && dispatching(program, branching, routes));
+			const bool routed = (!sorted && __awh_dispatching__(program, branching, routes));
 			/**
 			 * Получаем допустимость передачи отказа цепочки меткой
 			 *
@@ -6932,7 +6932,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          дорога.
 			 *
 			 */
-			const bool labelled = ((sorted || routed) && keeps.empty() && straight(program, branching));
+			const bool labelled = ((sorted || routed) && keeps.empty() && __awh_straight__(program, branching));
 			/**
 			 * Если цепочка ветвей различается уже первым байтом каждой из них
 			 *
@@ -7070,7 +7070,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 */
 				failure = outer;
 				// Переходим к общему продолжению цепочки ветвей выбора
-				pc = branching.join;
+				programCounter = branching.join;
 				// Продолжаем обход инструкций области программы
 				continue;
 			}
@@ -7097,7 +7097,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Создаём набор ячеек захвата, цепочкой записываемых
 			vector <uint32_t> written;
 			// Собираем ячеек захвата, цепочкой записываемых
-			journal(program, pc, branching.join, written);
+			__awh_journal__(program, programCounter, branching.join, written);
 			// Получаем смещение мест запоминания границ групп цепочки
 			const size_t keeping = (keeper() + recording);
 			// Получаем регистр, места цепочки ветвей несущий
@@ -7236,7 +7236,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Устанавливаем меткю отказа сопоставления вслед за выбором
 			failure = miss;
 			// Переходим к общему продолжению цепочки ветвей выбора
-			pc = branching.join;
+			programCounter = branching.join;
 			// Продолжаем обход инструкций области программы
 			continue;
 		}
@@ -7252,7 +7252,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		if(instruction.split.lazily != 0){
 			// Получаем инструкцию тела ленивого повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
+			const instruction_t & repeated = program.instructions.item(static_cast <size_t> (instruction.split.run));
 			// Заводим таблицу принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			/**
@@ -7270,7 +7270,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			int32_t following = -1;
 			{
 				// Получаем инструкцию продолжения сопоставления вслед за рядом
-				const instruction_t & next = program.instructions.at(static_cast <size_t> (instruction.split.first));
+				const instruction_t & next = program.instructions.item(static_cast <size_t> (instruction.split.first));
 				/**
 				 * Если продолжение начинается сопоставлением одиночного символа ASCII
 				 */
@@ -7376,7 +7376,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Переходим к следующей позиции текста сопоставления
 				emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
 				// Зовём подпрограмму поиска байта продолжения
-				invoke(emitter, SLOT_SCANNING, spill, reg_t::CURSOR, marker);
+				__awh_invoke__(emitter, SLOT_SCANNING, spill, reg_t::CURSOR, marker);
 				// Устанавливаем позицию найденного байта продолжения
 				emitter.move(reg_t::CURSOR, reg_t::SCRATCH);
 				// Сравниваем позицию сопоставления с размером текста
@@ -7512,7 +7512,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Переходим к следующему месту ряда в разметке уровня
 			rowed++;
 			// Переходим к ветви завершения ленивого повторения
-			pc = instruction.split.first;
+			programCounter = instruction.split.first;
 			// Продолжаем обход инструкций области программы
 			continue;
 		}
@@ -7526,9 +7526,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		{
 			// Получаем адрес тела повторения одиночного символа
-			const address_t body = repetend(program, pc, instruction);
+			const address_t body = __awh_repetend__(program, programCounter, instruction);
 			// Получаем инструкцию тела повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (body));
+			const instruction_t & repeated = program.instructions.item(static_cast <size_t> (body));
 			/**
 			 * Получаем количество копий цепочки ограниченного повторения
 			 *
@@ -7552,7 +7552,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          отставание от эталона с 2.27 до 1.05.
 			 *
 			 */
-			const bool sealed = sealing(program, instruction, body);
+			const bool sealed = __awh_sealing__(program, instruction, body);
 			// Заводим таблицу принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			// Заводим метку прохода ряда подходящих символов
@@ -7666,7 +7666,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Заводим значение байта, ряд ограничивающего
 				const size_t number = this->limiter(limit);
 				// Зовём подпрограмму прохода ряда поиском предела
-				invoke(emitter, SLOT_SCANNING, spill, reg_t::CURSOR, number);
+				__awh_invoke__(emitter, SLOT_SCANNING, spill, reg_t::CURSOR, number);
 				// Устанавливаем позицию завершения прохода ряда
 				emitter.move(reg_t::CURSOR, reg_t::SCRATCH);
 				// Расставляем меткю завершения прохода ряда
@@ -7769,7 +7769,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Переходим к следующему месту ряда в разметке уровня
 				rowed++;
 				// Переходим к ветви завершения повторения
-				pc = instruction.split.second;
+				programCounter = instruction.split.second;
 				// Продолжаем обход инструкций области программы
 				continue;
 			}
@@ -7831,7 +7831,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Переходим к следующему месту ряда в разметке уровня
 			rowed++;
 			// Переходим к ветви завершения повторения
-			pc = instruction.split.second;
+			programCounter = instruction.split.second;
 		}
 	}
 	};
@@ -8056,11 +8056,11 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 	 */
 	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0) | (static_cast <uint8_t> (this->_filter) << 2)));
 	// Записываем размер записи кадра порождённого сопоставителя
-	writeSize(static_cast <uint64_t> (this->_frame), result);
+	__awh_write_size__(static_cast <uint64_t> (this->_frame), result);
 	// Записываем наибольшего количества записей кадра
-	writeSize(static_cast <uint64_t> (this->_levels), result);
+	__awh_write_size__(static_cast <uint64_t> (this->_levels), result);
 	// Записываем размер порождённого машинного кода
-	writeSize(static_cast <uint64_t> (this->_assembly.length()), result);
+	__awh_write_size__(static_cast <uint64_t> (this->_assembly.length()), result);
 	// Записываем порождённого машинного кода
 	result.append(reinterpret_cast <const char *> (this->_assembly.entry()), this->_assembly.length());
 	/**
@@ -8071,9 +8071,9 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 	 *          порождения, а не исполнением испорченных команд.
 	 *
 	 */
-	writeSize(imprint(this->_assembly.entry(), this->_assembly.length()), result);
+	__awh_write_size__(__awh_imprint__(this->_assembly.entry(), this->_assembly.length()), result);
 	// Записываем размер хранилища значений обстановки
-	writeSize(static_cast <uint64_t> (this->_members.size()), result);
+	__awh_write_size__(static_cast <uint64_t> (this->_members.size()), result);
 	/**
 	 * Если хранилище значений обстановки не пусто
 	 */
@@ -8081,13 +8081,13 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 		// Записываем хранилищ значений обстановки
 		result.append(reinterpret_cast <const char *> (this->_members.data()), this->_members.size());
 	// Записываем количество смещений значений хранилища
-	writeSize(static_cast <uint64_t> (this->_offsets.size()), result);
+	__awh_write_size__(static_cast <uint64_t> (this->_offsets.size()), result);
 	/**
 	 * Перебираем смещений значений хранилища
 	 */
 	for(const auto & offset : this->_offsets)
 		// Записываем очередного смещения значения хранилища
-		writeSize(static_cast <uint64_t> (offset), result);
+		__awh_write_size__(static_cast <uint64_t> (offset), result);
 	// Запись порождённого сопоставителя: успех
 	return true;
 }
@@ -8153,7 +8153,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если чтение размеров области записей не выполнено
 	 */
-	if(!readSize(data, offset, sizing) || !readSize(data, offset, levels))
+	if(!__awh_read_size__(data, offset, sizing) || !__awh_read_size__(data, offset, levels))
 		// Восстановление сопоставителя: отказ
 		return false;
 	/**
@@ -8174,7 +8174,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если чтение размера порождённого кода не выполнено
 	 */
-	if(!readSize(data, offset, length))
+	if(!__awh_read_size__(data, offset, length))
 		// Восстановление сопоставителя: отказ
 		return false;
 	/**
@@ -8192,7 +8192,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если чтение приметы порождённого кода не выполнено
 	 */
-	if(!readSize(data, offset, mark))
+	if(!__awh_read_size__(data, offset, mark))
 		// Восстановление сопоставителя: отказ
 		return false;
 	// Размер хранилища значений обстановки исполнения
@@ -8200,7 +8200,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если чтение размера хранилища значений не выполнено
 	 */
-	if(!readSize(data, offset, members))
+	if(!__awh_read_size__(data, offset, members))
 		// Восстановление сопоставителя: отказ
 		return false;
 	/**
@@ -8218,7 +8218,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если чтение количества смещений не выполнено
 	 */
-	if(!readSize(data, offset, count))
+	if(!__awh_read_size__(data, offset, count))
 		// Восстановление сопоставителя: отказ
 		return false;
 	/**
@@ -8240,7 +8240,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 		/**
 		 * Если чтение смещения значения хранилища не выполнено
 		 */
-		if(!readSize(data, offset, value))
+		if(!__awh_read_size__(data, offset, value))
 			// Восстановление сопоставителя: отказ
 			return false;
 		/**
@@ -8307,7 +8307,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	 *          проверкой и переносом в память не остаётся вовсе.
 	 *
 	 */
-	if(imprint(this->_assembly.image(), static_cast <size_t> (length)) != mark){
+	if(__awh_imprint__(this->_assembly.image(), static_cast <size_t> (length)) != mark){
 		// Очищаем порождённого сопоставителя
 		this->clear();
 		// Восстановление сопоставителя: отказ

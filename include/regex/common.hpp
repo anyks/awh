@@ -895,13 +895,13 @@ namespace awh {
 				 * @return      извлечённая запись набора
 				 *
 				 */
-				const T & at(const size_t index) const {
+				const T & item(const size_t index) const {
 					/**
 					 * Если номер записи набору не принадлежит
 					 */
 					if(index >= static_cast <size_t> (this->_count))
 						// Выбрасываем исключени выхода за границы набора
-						throw out_of_range("regex::Sequence::at");
+						throw out_of_range("regex::Sequence::item");
 					// Выводим извлечённую запись набора
 					return this->_records[index];
 				}
@@ -926,13 +926,13 @@ namespace awh {
 				 * @return      извлечённая запись набора
 				 *
 				 */
-				T & at(const size_t index) {
+				T & item(const size_t index) {
 					/**
 					 * Если номер записи набору не принадлежит
 					 */
 					if(index >= static_cast <size_t> (this->_count))
 						// Выбрасываем исключени выхода за границы набора
-						throw out_of_range("regex::Sequence::at");
+						throw out_of_range("regex::Sequence::item");
 					// Обращаемся набор обозревающего во владеющий
 					this->detach();
 					// Выводим извлечённую запись набора

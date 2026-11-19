@@ -30,6 +30,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -54,8 +58,8 @@ namespace {
 	 * @return         длина разобранной записи либо нулевое значение при отказе
 	 *
 	 */
-	inline size_t extract(string_view text, const size_t pos, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, uint32_t & code) noexcept {
-		// Выполняем сброс кодового значения разобранного символа
+	inline size_t __awh_extract__(string_view text, const size_t pos, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, uint32_t & code) noexcept {
+		// Сброс кодового значения разобранного символа
 		code = 0;
 		/**
 		 * Если положение начала записи находится за пределами текста
@@ -81,7 +85,7 @@ namespace {
 			if(byte > 0x7F)
 				// Выводим отказ разбора записи символа
 				return 0;
-			// Выполняем получение кодового значения символа
+			// Получение кодового значения символа
 			code = byte;
 			// Выводим длину разобранной записи символа
 			return 1;
@@ -100,7 +104,7 @@ namespace {
 		if(value == awh::charset::UNMAPPED)
 			// Выводим отказ разбора записи символа
 			return 0;
-		// Выполняем получение кодового значения символа
+		// Получение кодового значения символа
 		code = value;
 		// Выводим длину разобранной записи символа
 		return 1;
@@ -115,14 +119,14 @@ namespace {
 	 * @return         результат выполнения записи символа
 	 *
 	 */
-	inline bool insert(const uint32_t code, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, string & result) noexcept {
+	inline bool __awh_insert__(const uint32_t code, const awh::charset::table_t * codepage, const awh::charset::encoding_t encoding, string & result) noexcept {
 		/**
 		 * Если текст записывается в кодировке UTF-8
 		 */
 		if(encoding == awh::charset::encoding_t::UTF8) {
-			// Выполняем создание буфера записи символа
+			// Создание буфера записи символа
 			char buffer[awh::utf8::MAX_LENGTH];
-			// Выполняем представление кодового значения записью UTF-8
+			// Представление кодового значения записью UTF-8
 			const size_t length = awh::utf8::encode(code, buffer);
 			/**
 			 * Если представить кодовое значение записью не вышло
@@ -130,7 +134,7 @@ namespace {
 			if(length == 0)
 				// Выводим результат выполнения записи символа
 				return false;
-			// Выполняем присоединение записи символа к тексту
+			// Присоединение записи символа к тексту
 			result.append(buffer, length);
 			// Выводим результат выполнения записи символа
 			return true;
@@ -145,7 +149,7 @@ namespace {
 			if(code > 0x7F)
 				// Выводим результат выполнения записи символа
 				return false;
-			// Выполняем присоединение записи символа к тексту
+			// Присоединение записи символа к тексту
 			result.append(1, static_cast <char> (code));
 			// Выводим результат выполнения записи символа
 			return true;
@@ -166,7 +170,7 @@ namespace {
 		// Получаем наибольший индекс просматриваемого участка таблицы
 		size_t upper = codepage->count;
 		/**
-		 * Выполняем двоичный поиск кодового значения в таблице соответствия
+		 * Двоичный поиск кодового значения в таблице соответствия
 		 */
 		while(lower < upper) {
 			// Получаем индекс середины просматриваемого участка
@@ -184,10 +188,10 @@ namespace {
 				// Продолжаем поиск в правой половине участка
 				lower = (middle + 1);
 			/**
-			 * Выполняем присоединение записи символа к тексту
+			 * Присоединение записи символа к тексту
 			 */
 			else {
-				// Выполняем присоединение байта кодировки к тексту
+				// Присоединение байта кодировки к тексту
 				result.append(1, static_cast <char> (codepage->mappings[middle].byte));
 				// Выводим результат выполнения записи символа
 				return true;
@@ -209,7 +213,7 @@ awh::charset::encoding_t awh::charset::encoding(string_view name) noexcept {
 	// Приведённое к нормальному виду имя кодировки
 	string key;
 	/**
-	 * Выполняем приведение имени кодировки к нормальному виду
+	 * Приведение имени кодировки к нормальному виду
 	 */
 	for(auto & letter : name) {
 		/**
@@ -218,7 +222,7 @@ awh::charset::encoding_t awh::charset::encoding(string_view name) noexcept {
 		if(ascii::isSpace(letter))
 			// Переходим к следующему символу имени кодировки
 			continue;
-		// Выполняем добавление символа имени кодировки в нижнем регистре
+		// Добавление символа имени кодировки в нижнем регистре
 		key.append(1, ascii::toLower(letter));
 	}
 	// Получаем наименьший индекс просматриваемого участка таблицы имён
@@ -226,12 +230,12 @@ awh::charset::encoding_t awh::charset::encoding(string_view name) noexcept {
 	// Получаем наибольший индекс просматриваемого участка таблицы имён
 	size_t upper = LABELS_COUNT;
 	/**
-	 * Выполняем двоичный поиск имени кодировки в таблице соответствия
+	 * Двоичный поиск имени кодировки в таблице соответствия
 	 */
 	while(lower < upper) {
 		// Получаем индекс середины просматриваемого участка
 		const size_t middle = (lower + ((upper - lower) / 2));
-		// Выполняем сличение искомого имени с именем таблицы
+		// Сличение искомого имени с именем таблицы
 		const int32_t result = key.compare(LABELS[middle].name);
 		/**
 		 * Если искомое имя предшествует имени таблицы
@@ -268,7 +272,7 @@ string_view awh::charset::label(const encoding_t encoding) noexcept {
 		// Выводим имя кодировки ASCII
 		case static_cast <uint8_t> (encoding_t::ASCII): return "US-ASCII";
 	}
-	// Выполняем извлечение таблицы соответствия кодировки Юникоду
+	// Извлечение таблицы соответствия кодировки Юникоду
 	const table_t * item = table(encoding);
 	/**
 	 * Если таблица соответствия кодировки обнаружена
@@ -288,7 +292,7 @@ string_view awh::charset::label(const encoding_t encoding) noexcept {
  */
 const awh::charset::table_t * awh::charset::table(const encoding_t encoding) noexcept {
 	/**
-	 * Выполняем обход набора таблиц соответствия кодировок
+	 * Обход набора таблиц соответствия кодировок
 	 */
 	for(size_t i = 0; i < CODEPAGES_COUNT; i++) {
 		/**
@@ -313,7 +317,7 @@ const awh::charset::table_t * awh::charset::table(const encoding_t encoding) noe
  *
  */
 bool awh::charset::transcode(string_view text, const encoding_t from, const encoding_t to, string & result, const replace_t replace) noexcept {
-	// Выполняем очистку результата перекодировки текста
+	// Очистка результата перекодировки текста
 	result.clear();
 	/**
 	 * Если кодировка текста либо кодировка результата не установлена
@@ -327,9 +331,9 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 	if(text.empty())
 		// Выводим результат выполнения перекодировки текста
 		return true;
-	// Выполняем извлечение таблицы соответствия кодировки текста
+	// Извлечение таблицы соответствия кодировки текста
 	const table_t * source = table(from);
-	// Выполняем извлечение таблицы соответствия кодировки результата
+	// Извлечение таблицы соответствия кодировки результата
 	const table_t * target = table(to);
 	/**
 	 * Если кодировка текста задана таблицей соответствия, которая не обнаружена
@@ -344,7 +348,7 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 		// Выводим результат выполнения перекодировки текста
 		return false;
 	/**
-	 * Выполняем предварительное выделение памяти под результат перекодировки
+	 * Предварительное выделение памяти под результат перекодировки
 	 *
 	 * @details Запись символа в кодировке UTF-8 занимает до четырёх байтов,
 	 *          тогда как в однобайтовой кодировке — ровно один.
@@ -354,11 +358,11 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 	// Кодовое значение очередного разобранного символа
 	uint32_t code = 0;
 	/**
-	 * Выполняем обход записей символов перекодируемого текста
+	 * Обход записей символов перекодируемого текста
 	 */
 	for(size_t pos = 0; pos < text.size();) {
-		// Выполняем разбор записи очередного символа текста
-		const size_t length = extract(text, pos, source, from, code);
+		// Разбор записи очередного символа текста
+		const size_t length = __awh_extract__(text, pos, source, from, code);
 		/**
 		 * Если запись очередного символа разобрать не вышло
 		 */
@@ -367,31 +371,31 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 			 * Определяем порядок обращения с символами, кодировке не представимыми
 			 */
 			switch(static_cast <uint8_t> (replace)) {
-				// Выполняем отклонение перекодировки текста целиком
+				// Отклонение перекодировки текста целиком
 				case static_cast <uint8_t> (replace_t::STRICT): {
-					// Выполняем очистку результата перекодировки текста
+					// Очистка результата перекодировки текста
 					result.clear();
 					// Выводим результат выполнения перекодировки текста
 					return false;
 				}
 				/**
-				 * Выполняем пропуск байта, записью символа не являющегося
+				 * Пропуск байта, записью символа не являющегося
 				 */
 				case static_cast <uint8_t> (replace_t::SKIP): {
-					// Выполняем переход к следующему байту текста
+					// Переход к следующему байту текста
 					pos++;
 					// Продолжаем перекодировку текста
 					continue;
 				}
 				/**
-				 * Выполняем замену байта, записью символа не являющегося
+				 * Замена байта, записью символа не являющегося
 				 */
 				case static_cast <uint8_t> (replace_t::REPLACE): {
-					// Выполняем запись символа замены в кодировке результата
-					if(!insert(REPLACEMENT, target, to, result))
-						// Выполняем запись знака вопроса взамен символа замены
+					// Запись символа замены в кодировке результата
+					if(!__awh_insert__(REPLACEMENT, target, to, result))
+						// Запись знака вопроса взамен символа замены
 						result.append(1, '?');
-					// Выполняем переход к следующему байту текста
+					// Переход к следующему байту текста
 					pos++;
 					// Продолжаем перекодировку текста
 					continue;
@@ -401,26 +405,26 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 		/**
 		 * Если записать разобранный символ в кодировке результата не вышло
 		 */
-		if(!insert(code, target, to, result)) {
+		if(!__awh_insert__(code, target, to, result)) {
 			/**
 			 * Определяем порядок обращения с символами, кодировке не представимыми
 			 */
 			switch(static_cast <uint8_t> (replace)) {
-				// Выполняем отклонение перекодировки текста целиком
+				// Отклонение перекодировки текста целиком
 				case static_cast <uint8_t> (replace_t::STRICT): {
-					// Выполняем очистку результата перекодировки текста
+					// Очистка результата перекодировки текста
 					result.clear();
 					// Выводим результат выполнения перекодировки текста
 					return false;
 				}
-				// Выполняем замену символа, кодировке результата не представимого
+				// Замена символа, кодировке результата не представимого
 				case static_cast <uint8_t> (replace_t::REPLACE):
-					// Выполняем запись знака вопроса взамен непредставимого символа
+					// Запись знака вопроса взамен непредставимого символа
 					result.append(1, '?');
 				break;
 			}
 		}
-		// Выполняем переход к записи следующего символа текста
+		// Переход к записи следующего символа текста
 		pos += length;
 	}
 	// Выводим результат выполнения перекодировки текста
@@ -439,7 +443,7 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 string awh::charset::transcode(string_view text, const encoding_t from, const encoding_t to, const replace_t replace) noexcept {
 	// Результат перекодировки текста
 	string result = "";
-	// Выполняем перекодировку текста из одной кодировки в другую
+	// Перекодировка текста из одной кодировки в другую
 	transcode(text, from, to, result, replace);
 	// Выводим получившийся в результате текст
 	return result;

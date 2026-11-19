@@ -49,6 +49,10 @@
  *
  */
 #if !defined(AWH_COMPRESSOR_LZMA_MEMLIMIT)
+	/**
+	 * @brief Значение предела памяти распаковки LZMA по умолчанию
+	 *
+	 */
 	#define AWH_COMPRESSOR_LZMA_MEMLIMIT (128ull * 1024ull * 1024ull)
 #endif
 
@@ -63,6 +67,10 @@
  *
  */
 #if !defined(AWH_COMPRESSOR_MAX_OUTPUT)
+	/**
+	 * @brief Значение предела объёма одной подачи распаковки по умолчанию
+	 *
+	 */
 	#define AWH_COMPRESSOR_MAX_OUTPUT (1ull << 30)
 #endif
 

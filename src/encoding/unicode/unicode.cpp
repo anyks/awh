@@ -35,6 +35,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -53,13 +57,13 @@ namespace {
 	 * @return       индекс обнаруженного диапазона либо количество диапазонов
 	 *
 	 */
-	inline size_t search(const awh::unicode::interval_t * table, const size_t count, const uint32_t code, const size_t begin, const size_t length) noexcept {
+	inline size_t __awh_search__(const awh::unicode::interval_t * table, const size_t count, const uint32_t code, const size_t begin, const size_t length) noexcept {
 		// Получаем наименьший индекс просматриваемого участка таблицы
 		size_t lower = begin;
 		// Получаем наибольший индекс просматриваемого участка таблицы
 		size_t upper = (begin + length);
 		/**
-		 * Выполняем двоичный поиск диапазона в таблице
+		 * Двоичный поиск диапазона в таблице
 		 */
 		while(lower < upper) {
 			// Получаем индекс середины просматриваемого участка
@@ -90,43 +94,43 @@ namespace {
 	 * @return         результат проверки принадлежности категории группе
 	 *
 	 */
-	inline bool grouped(const uint16_t category, const uint16_t group) noexcept {
+	inline bool __awh_grouped__(const uint16_t category, const uint16_t group) noexcept {
 		/**
 		 * Определяем идентификатор проверяемой группы категорий
 		 */
 		switch(group) {
-			// Выполняем проверку принадлежности группе прочих символов
+			// Проверка принадлежности группе прочих символов
 			case static_cast <uint16_t> (awh::unicode::property_id_t::C):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Cc)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Cs)));
-			// Выполняем проверку принадлежности группе букв
+			// Проверка принадлежности группе букв
 			case static_cast <uint16_t> (awh::unicode::property_id_t::L):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Ll)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Lu)));
 			/**
-			 * Выполняем проверку принадлежности группе букв, изменяющих регистр
+			 * Проверка принадлежности группе букв, изменяющих регистр
 			 */
 			case static_cast <uint16_t> (awh::unicode::property_id_t::L_AMP):
 				return ((category == static_cast <uint16_t> (awh::unicode::property_id_t::Ll)) ||
 				 (category == static_cast <uint16_t> (awh::unicode::property_id_t::Lt)) ||
 				 (category == static_cast <uint16_t> (awh::unicode::property_id_t::Lu)));
-			// Выполняем проверку принадлежности группе знаков
+			// Проверка принадлежности группе знаков
 			case static_cast <uint16_t> (awh::unicode::property_id_t::M):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Mc)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Mn)));
-			// Выполняем проверку принадлежности группе чисел
+			// Проверка принадлежности группе чисел
 			case static_cast <uint16_t> (awh::unicode::property_id_t::N):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Nd)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::No)));
-			// Выполняем проверку принадлежности группе знаков пунктуации
+			// Проверка принадлежности группе знаков пунктуации
 			case static_cast <uint16_t> (awh::unicode::property_id_t::P):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Pc)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Ps)));
-			// Выполняем проверку принадлежности группе символов
+			// Проверка принадлежности группе символов
 			case static_cast <uint16_t> (awh::unicode::property_id_t::S):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Sc)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::So)));
-			// Выполняем проверку принадлежности группе разделителей
+			// Проверка принадлежности группе разделителей
 			case static_cast <uint16_t> (awh::unicode::property_id_t::Z):
 				return ((category >= static_cast <uint16_t> (awh::unicode::property_id_t::Zl)) &&
 				 (category <= static_cast <uint16_t> (awh::unicode::property_id_t::Zs)));
@@ -149,7 +153,6 @@ namespace {
  * @param code   кодовое значение символа
  * @param output набор номеров письменностей символа
  * @param size   размер набора номеров письменностей
- *
  * @return       количество письменностей, в набор выведенных
  *
  */
@@ -162,8 +165,8 @@ size_t awh::unicode::scripts(const uint32_t code, uint16_t * output, const size_
 	if((output == nullptr) || (size == 0))
 		// Выводим количество письменностей, в набор выведенных
 		return result;
-	// Выполняем поиск диапазона расширений, содержащего кодовое значение
-	const size_t index = search(EXTENSIONS, EXTENSIONS_COUNT, code, 0, EXTENSIONS_COUNT);
+	// Поиск диапазона расширений, содержащего кодовое значение
+	const size_t index = __awh_search__(EXTENSIONS, EXTENSIONS_COUNT, code, 0, EXTENSIONS_COUNT);
 	/**
 	 * Если диапазон расширений, содержащий кодовое значение, обнаружен
 	 */
@@ -171,7 +174,7 @@ size_t awh::unicode::scripts(const uint32_t code, uint16_t * output, const size_
 		// Получаем смещение набора письменностей расширения
 		const uint32_t * offset = (EXTENSION_OFFSETS + EXTENSIONS[index].value);
 		/**
-		 * Выполняем обход набора письменностей расширения
+		 * Обход набора письменностей расширения
 		 */
 		for(size_t i = (* offset); EXTENSION_SETS[i] != EXTENSION_END; i++) {
 			/**
@@ -180,19 +183,19 @@ size_t awh::unicode::scripts(const uint32_t code, uint16_t * output, const size_
 			if(result >= size)
 				// Выводим количество письменностей, в набор выведенных
 				return result;
-			// Выполняем добавление письменности расширения в набор
+			// Добавление письменности расширения в набор
 			output[result++] = EXTENSION_SETS[i];
 		}
 		// Выводим количество письменностей, в набор выведенных
 		return result;
 	}
-	// Выполняем поиск диапазона письменностей, содержащего кодовое значение
-	const size_t spot = search(SCRIPTS, SCRIPTS_COUNT, code, 0, SCRIPTS_COUNT);
+	// Поиск диапазона письменностей, содержащего кодовое значение
+	const size_t spot = __awh_search__(SCRIPTS, SCRIPTS_COUNT, code, 0, SCRIPTS_COUNT);
 	/**
 	 * Если диапазон письменностей, содержащий кодовое значение, обнаружен
 	 */
 	if(spot < SCRIPTS_COUNT)
-		// Выполняем добавление письменности символа в набор
+		// Добавление письменности символа в набор
 		output[result++] = SCRIPTS[spot].value;
 	/**
 	 * Если письменность символа не задана вовсе
@@ -206,9 +209,16 @@ size_t awh::unicode::scripts(const uint32_t code, uint16_t * output, const size_
 	// Выводим количество письменностей, в набор выведенных
 	return result;
 }
+/**
+ * @brief Функция получения общей категории символа
+ *
+ * @param code кодовое значение символа
+ * @return     номер общей категории символа
+ *
+ */
 uint16_t awh::unicode::general(const uint32_t code) noexcept {
-	// Выполняем поиск диапазона, содержащего кодовое значение символа
-	const size_t index = search(CATEGORIES, CATEGORIES_COUNT, code, 0, CATEGORIES_COUNT);
+	// Поиск диапазона, содержащего кодовое значение символа
+	const size_t index = __awh_search__(CATEGORIES, CATEGORIES_COUNT, code, 0, CATEGORIES_COUNT);
 	/**
 	 * Если диапазон, содержащий кодовое значение, обнаружен
 	 */
@@ -229,7 +239,7 @@ uint16_t awh::unicode::property(string_view name) noexcept {
 	// Приведённое к нормальному виду имя свойства Юникода
 	string key;
 	/**
-	 * Выполняем приведение имени свойства Юникода к нормальному виду
+	 * Приведение имени свойства Юникода к нормальному виду
 	 */
 	for(auto & letter : name) {
 		/**
@@ -238,7 +248,7 @@ uint16_t awh::unicode::property(string_view name) noexcept {
 		if((letter == '_') || (letter == '-') || (letter == ' '))
 			// Переходим к следующему символу имени свойства
 			continue;
-		// Выполняем добавление символа имени свойства в нижнем регистре
+		// Добавление символа имени свойства в нижнем регистре
 		key.append(1, ascii::toLower(letter));
 	}
 	// Получаем наименьший индекс просматриваемого участка таблицы имён
@@ -246,12 +256,12 @@ uint16_t awh::unicode::property(string_view name) noexcept {
 	// Получаем наибольший индекс просматриваемого участка таблицы имён
 	size_t upper = NAMES_COUNT;
 	/**
-	 * Выполняем двоичный поиск имени свойства в таблице соответствия
+	 * Двоичный поиск имени свойства в таблице соответствия
 	 */
 	while(lower < upper) {
 		// Получаем индекс середины просматриваемого участка
 		const size_t middle = (lower + ((upper - lower) / 2));
-		// Выполняем сличение искомого имени с именем таблицы
+		// Сличение искомого имени с именем таблицы
 		const int32_t result = key.compare(NAMES[middle].name);
 		/**
 		 * Если искомое имя предшествует имени таблицы
@@ -284,8 +294,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 	 * Если проверяется класс двунаправленности символа
 	 */
 	if(id >= BIDI_BASE) {
-		// Выполняем поиск диапазона, содержащего кодовое значение символа
-		const size_t index = search(BIDIRECTIONAL, BIDIRECTIONAL_COUNT, code, 0, BIDIRECTIONAL_COUNT);
+		// Поиск диапазона, содержащего кодовое значение символа
+		const size_t index = __awh_search__(BIDIRECTIONAL, BIDIRECTIONAL_COUNT, code, 0, BIDIRECTIONAL_COUNT);
 		/**
 		 * Если диапазон, содержащий кодовое значение, не обнаружен
 		 */
@@ -312,7 +322,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 		// Получаем количество диапазонов проверяемого двоичного свойства
 		const size_t length = BINARY_SPANS[(number * 2) + 1];
 		// Выводим результат поиска кодового значения в диапазонах свойства
-		return (search(BINARIES, BINARIES_COUNT, code, offset, length) < BINARIES_COUNT);
+		return (__awh_search__(BINARIES, BINARIES_COUNT, code, offset, length) < BINARIES_COUNT);
 	}
 	/**
 	 * Если проверяется расширение письменности символа
@@ -320,8 +330,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 	if(id >= EXTENDED_BASE) {
 		// Получаем номер проверяемой письменности
 		const uint16_t number = (id - EXTENDED_BASE);
-		// Выполняем поиск диапазона расширений, содержащего кодовое значение
-		const size_t index = search(EXTENSIONS, EXTENSIONS_COUNT, code, 0, EXTENSIONS_COUNT);
+		// Поиск диапазона расширений, содержащего кодовое значение
+		const size_t index = __awh_search__(EXTENSIONS, EXTENSIONS_COUNT, code, 0, EXTENSIONS_COUNT);
 		/**
 		 * Если диапазон расширений, содержащий кодовое значение, обнаружен
 		 */
@@ -329,7 +339,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			// Получаем смещение набора письменностей расширения
 			const uint32_t * offset = (EXTENSION_OFFSETS + EXTENSIONS[index].value);
 			/**
-			 * Выполняем обход набора письменностей расширения
+			 * Обход набора письменностей расширения
 			 */
 			for(size_t i = (* offset); EXTENSION_SETS[i] != EXTENSION_END; i++) {
 				/**
@@ -343,7 +353,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			return false;
 		}
 		/**
-		 * Выполняем проверку письменности символа
+		 * Проверка письменности символа
 		 *
 		 * @details Расширение письменности, не заданное для символа явно, совпадает
 		 *          с его письменностью, поэтому проверка выполняется по ней.
@@ -372,8 +382,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 	if(id >= SCRIPT_BASE) {
 		// Получаем номер проверяемой письменности
 		const uint16_t number = (id - SCRIPT_BASE);
-		// Выполняем поиск диапазона, содержащего кодовое значение символа
-		const size_t index = search(SCRIPTS, SCRIPTS_COUNT, code, 0, SCRIPTS_COUNT);
+		// Поиск диапазона, содержащего кодовое значение символа
+		const size_t index = __awh_search__(SCRIPTS, SCRIPTS_COUNT, code, 0, SCRIPTS_COUNT);
 		/**
 		 * Если диапазон, содержащий кодовое значение, не обнаружен
 		 *
@@ -400,8 +410,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			// Получаем общую категорию проверяемого символа
 			const uint16_t category = general(code);
 			// Выводим результат проверки принадлежности буквам либо числам
-			return (grouped(category, static_cast <uint16_t> (property_id_t::L)) ||
-			 grouped(category, static_cast <uint16_t> (property_id_t::N)));
+			return (__awh_grouped__(category, static_cast <uint16_t> (property_id_t::L)) ||
+			 __awh_grouped__(category, static_cast <uint16_t> (property_id_t::N)));
 		}
 		/**
 		 * Выводим результат проверки символов слова режима соответствия Юникоду
@@ -426,8 +436,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 				// Выводим результат проверки обладания символом свойством
 				return true;
 			// Выводим результат проверки принадлежности буквам либо числам
-			return (grouped(category, static_cast <uint16_t> (property_id_t::L)) ||
-			 grouped(category, static_cast <uint16_t> (property_id_t::N)));
+			return (__awh_grouped__(category, static_cast <uint16_t> (property_id_t::L)) ||
+			 __awh_grouped__(category, static_cast <uint16_t> (property_id_t::N)));
 		}
 		/**
 		 * Выводим результат проверки пробельных символов режима соответствия Юникоду
@@ -453,7 +463,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 				// Выводим результат проверки обладания символом свойством
 				return true;
 			// Выводим результат проверки принадлежности разделителям
-			return grouped(general(code), static_cast <uint16_t> (property_id_t::Z));
+			return __awh_grouped__(general(code), static_cast <uint16_t> (property_id_t::Z));
 		}
 		/**
 		 * Выводим результат проверки знаков пунктуации класса POSIX режима «UCP»
@@ -472,7 +482,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			/**
 			 * Если символ принадлежит знакам пунктуации
 			 */
-			if(grouped(category, static_cast <uint16_t> (property_id_t::P)))
+			if(__awh_grouped__(category, static_cast <uint16_t> (property_id_t::P)))
 				// Выводим результат проверки обладания символом свойством
 				return true;
 			/**
@@ -482,7 +492,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 				// Выводим результат проверки обладания символом свойством
 				return false;
 			// Выводим результат проверки принадлежности символам
-			return grouped(category, static_cast <uint16_t> (property_id_t::S));
+			return __awh_grouped__(category, static_cast <uint16_t> (property_id_t::S));
 		}
 		/**
 		 * Выводим результат проверки видимых символов класса POSIX режима «UCP»
@@ -499,13 +509,13 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			/**
 			 * Если символ принадлежит разделителям
 			 */
-			if(grouped(category, static_cast <uint16_t> (property_id_t::Z)))
+			if(__awh_grouped__(category, static_cast <uint16_t> (property_id_t::Z)))
 				// Выводим результат проверки обладания символом свойством
 				return false;
 			/**
 			 * Если символ прочим символам не принадлежит
 			 */
-			if(!grouped(category, static_cast <uint16_t> (property_id_t::C)))
+			if(!__awh_grouped__(category, static_cast <uint16_t> (property_id_t::C)))
 				// Выводим результат проверки обладания символом свойством
 				return true;
 			/**
@@ -539,7 +549,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 			/**
 			 * Если символ прочим символам не принадлежит
 			 */
-			if(!grouped(category, static_cast <uint16_t> (property_id_t::C)))
+			if(!__awh_grouped__(category, static_cast <uint16_t> (property_id_t::C)))
 				// Выводим результат проверки обладания символом свойством
 				return true;
 			/**
@@ -574,7 +584,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 		 * Выводим результат проверки расширенного класса символов имён
 		 */
 		/**
-		 * Выполняем проверку принадлежности символа набору ASCII
+		 * Проверка принадлежности символа набору ASCII
 		 */
 		case static_cast <uint16_t> (property_id_t::ASCII): {
 			// Выводим результат проверки принадлежности символа набору ASCII
@@ -586,7 +596,7 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
 		}
 	}
 	// Выводим результат проверки принадлежности символа категории либо её группе
-	return grouped(general(code), id);
+	return __awh_grouped__(general(code), id);
 }
 /**
  * @brief Функция извлечения класса двунаправленности символа
@@ -596,8 +606,8 @@ bool awh::unicode::holds(const uint32_t code, const uint16_t id) noexcept {
  *
  */
 uint16_t awh::unicode::bidirectional(const uint32_t code) noexcept {
-	// Выполняем поиск диапазона, содержащего кодовое значение символа
-	const size_t index = search(BIDIRECTIONAL, BIDIRECTIONAL_COUNT, code, 0, BIDIRECTIONAL_COUNT);
+	// Поиск диапазона, содержащего кодовое значение символа
+	const size_t index = __awh_search__(BIDIRECTIONAL, BIDIRECTIONAL_COUNT, code, 0, BIDIRECTIONAL_COUNT);
 	/**
 	 * Если диапазон, содержащий кодовое значение, обнаружен
 	 */
@@ -620,7 +630,7 @@ uint32_t awh::unicode::casefold(const uint32_t code) noexcept {
 	// Получаем наибольший индекс просматриваемого участка таблицы
 	size_t upper = FOLDING_COUNT;
 	/**
-	 * Выполняем двоичный поиск диапазона приведения регистра
+	 * Двоичный поиск диапазона приведения регистра
 	 */
 	while(lower < upper) {
 		// Получаем индекс середины просматриваемого участка
@@ -654,10 +664,10 @@ uint32_t awh::unicode::casefold(const uint32_t code) noexcept {
  *
  */
 bool awh::unicode::variants(const uint32_t code, vector <uint32_t> & result) noexcept {
-	// Выполняем очистку набора символов, приводимых к одному значению
+	// Очистка набора символов, приводимых к одному значению
 	result.clear();
-	// Выполняем поиск размещения набора приведения регистра символа
-	const size_t index = search(ORBITS, ORBITS_COUNT, code, 0, ORBITS_COUNT);
+	// Поиск размещения набора приведения регистра символа
+	const size_t index = __awh_search__(ORBITS, ORBITS_COUNT, code, 0, ORBITS_COUNT);
 	/**
 	 * Если размещение набора приведения регистра не обнаружено
 	 */
@@ -665,10 +675,10 @@ bool awh::unicode::variants(const uint32_t code, vector <uint32_t> & result) noe
 		// Выводим результат наличия набора приведения регистра
 		return false;
 	/**
-	 * Выполняем извлечение набора символов, приводимых к одному значению
+	 * Извлечение набора символов, приводимых к одному значению
 	 */
 	for(size_t i = ORBITS[index].value; ORBIT_SETS[i] != 0; i++)
-		// Выполняем добавление очередного символа набора
+		// Добавление очередного символа набора
 		result.push_back(ORBIT_SETS[i]);
 	// Выводим результат наличия набора приведения регистра
 	return !result.empty();
@@ -681,8 +691,8 @@ bool awh::unicode::variants(const uint32_t code, vector <uint32_t> & result) noe
  *
  */
 awh::unicode::cluster_t awh::unicode::cluster(const uint32_t code) noexcept {
-	// Выполняем поиск диапазона, содержащего кодовое значение символа
-	const size_t index = search(CLUSTERS, CLUSTERS_COUNT, code, 0, CLUSTERS_COUNT);
+	// Поиск диапазона, содержащего кодовое значение символа
+	const size_t index = __awh_search__(CLUSTERS, CLUSTERS_COUNT, code, 0, CLUSTERS_COUNT);
 	/**
 	 * Если диапазон, содержащий кодовое значение, обнаружен
 	 */
@@ -700,8 +710,8 @@ awh::unicode::cluster_t awh::unicode::cluster(const uint32_t code) noexcept {
  *
  */
 awh::unicode::indic_t awh::unicode::indic(const uint32_t code) noexcept {
-	// Выполняем поиск диапазона, содержащего кодовое значение символа
-	const size_t index = search(INDIC, INDIC_COUNT, code, 0, INDIC_COUNT);
+	// Поиск диапазона, содержащего кодовое значение символа
+	const size_t index = __awh_search__(INDIC, INDIC_COUNT, code, 0, INDIC_COUNT);
 	/**
 	 * Если диапазон, содержащий кодовое значение, обнаружен
 	 */

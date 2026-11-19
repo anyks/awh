@@ -249,7 +249,7 @@ namespace {
 	 * @return      номер младшего установленного разряда
 	 *
 	 */
-	static constexpr size_t trailing(const uint64_t value) noexcept {
+	static size_t __awh_trailing__(const uint64_t value) noexcept {
 		/**
 		 * Если компилятор является Visual Studio
 		 */
@@ -286,7 +286,7 @@ namespace {
 	 * @return       результат выбора байта, в пробе не встреченного
 	 *
 	 */
-	bool solitary(const string_view text, const string_view what, const size_t pos, size_t & anchor) noexcept {
+	bool __awh_solitary__(const string_view text, const string_view what, const size_t pos, size_t & anchor) noexcept {
 		// Создаём набор счёта байтов пробы текста
 		uint8_t counts[256];
 		// Сбрасываем набор счёта байтов пробы текста
@@ -334,7 +334,7 @@ namespace {
 	 * @param second смещение второго байта выбранной пары
 	 *
 	 */
-	void couple(const string_view text, const string_view what, const size_t pos, size_t & first, size_t & second) noexcept {
+	void __awh_couple__(const string_view text, const string_view what, const size_t pos, size_t & first, size_t & second) noexcept {
 		// Устанавливаем пару байтов по умолчанию
 		first = 0;
 		// Устанавливаем второго байта пары по умолчанию
@@ -459,7 +459,7 @@ namespace awh {
 			// Получаем адрес начала текста сопоставления
 			const char * base = text.data();
 			// Получаем положение поиска первого байта пары
-			size_t at = (pos + first);
+			size_t cursor = (pos + first);
 			/**
 			 * Получаем предел положения поиска первого байта пары
 			 *
@@ -473,9 +473,9 @@ namespace awh {
 			 */
 			#if defined(AWH_REGEX_NEON)
 				// Размножаем первого байта пары по вектору
-				const uint8x16_t leading = ::vdupq_n_u8(static_cast <uint8_t> (what[first]));
+				const uint8x16_t leading = vdupq_n_u8(static_cast <uint8_t> (what[first]));
 				// Размножаем второго байта пары по вектору
-				const uint8x16_t trailer = ::vdupq_n_u8(static_cast <uint8_t> (what[second]));
+				const uint8x16_t trailer = vdupq_n_u8(static_cast <uint8_t> (what[second]));
 				/**
 				 * Проходим текст сопоставления парой векторов
 				 *
@@ -501,19 +501,19 @@ namespace awh {
 				 *          и самому нынешнему.
 				 *
 				 */
-				while((at + 32 + spacing) <= size){
+				while((cursor + 32 + spacing) <= size){
 					// Читаем первого участка текста под первый байт пары
-					const uint8x16_t heading = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at));
+					const uint8x16_t heading = vld1q_u8(reinterpret_cast <const uint8_t *> (base + cursor));
 					// Читаем первого участка текста под второй байт пары
-					const uint8x16_t following = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at + spacing));
+					const uint8x16_t following = vld1q_u8(reinterpret_cast <const uint8_t *> (base + cursor + spacing));
 					// Читаем второго участка текста под первый байт пары
-					const uint8x16_t heading2 = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at + 16));
+					const uint8x16_t heading2 = vld1q_u8(reinterpret_cast <const uint8_t *> (base + cursor + 16));
 					// Читаем второго участка текста под второй байт пары
-					const uint8x16_t following2 = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at + 16 + spacing));
+					const uint8x16_t following2 = vld1q_u8(reinterpret_cast <const uint8_t *> (base + cursor + 16 + spacing));
 					// Сравниваем первого участка текста с байтами пары
-					const uint8x16_t equal = ::vandq_u8(::vceqq_u8(heading, leading), ::vceqq_u8(following, trailer));
+					const uint8x16_t equal = vandq_u8(vceqq_u8(heading, leading), vceqq_u8(following, trailer));
 					// Сравниваем второго участка текста с байтами пары
-					const uint8x16_t equal2 = ::vandq_u8(::vceqq_u8(heading2, leading), ::vceqq_u8(following2, trailer));
+					const uint8x16_t equal2 = vandq_u8(vceqq_u8(heading2, leading), vceqq_u8(following2, trailer));
 					/**
 					 * Если встреч пары байтов в участках текста нет
 					 *
@@ -522,9 +522,9 @@ namespace awh {
 					 *          сужение вектора сдвигом пришлось бы вести порознь.
 					 *
 					 */
-					if(::vmaxvq_u8(::vorrq_u8(equal, equal2)) == 0){
+					if(vmaxvq_u8(vorrq_u8(equal, equal2)) == 0){
 						// Переходим к следующему участку текста сопоставления
-						at += 32;
+						cursor += 32;
 						// Продолжаем проход текста сопоставления
 						continue;
 					}
@@ -552,15 +552,15 @@ namespace awh {
 					 */
 					for(size_t half = 0; half < 2; half++){
 						// Сводим итог сравнения половины к слову
-						uint64_t hits = vget_lane_u64(::vreinterpret_u64_u8(vshrn_n_u16(::vreinterpretq_u16_u8((half == 0) ? equal : equal2), 4)), 0);
+						uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8((half == 0) ? equal : equal2), 4)), 0);
 						// Получаем положение начала разбираемой половины участка
-						const size_t offset = (at + (half << 4));
+						const size_t offset = (cursor + (half << 4));
 						/**
 						 * Разбираем встреч пары байтов в половине участка
 						 */
 						while(hits != 0){
 							// Получаем номер байта участка, паре отвечающего
-							const size_t lane = (::trailing(hits) >> 2);
+							const size_t lane = (::__awh_trailing__(hits) >> 2);
 							// Получаем положение возможного начала совпадения
 							const size_t start = ((offset + lane) - first);
 							/**
@@ -580,7 +580,7 @@ namespace awh {
 						}
 					}
 					// Переходим к следующему участку текста сопоставления
-					at += 32;
+					cursor += 32;
 				}
 			/**
 			 * Если поиск ведётся набором команд SSE2
@@ -600,15 +600,15 @@ namespace awh {
 				 *          набором команд NEON.
 				 *
 				 */
-				while((at + 32 + spacing) <= size){
+				while((cursor + 32 + spacing) <= size){
 					// Читаем первого участка текста под первый байт пары
-					const __m128i heading = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+					const __m128i heading = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 					// Читаем первого участка текста под второй байт пары
-					const __m128i following = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + spacing));
+					const __m128i following = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + spacing));
 					// Читаем второго участка текста под первый байт пары
-					const __m128i heading2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+					const __m128i heading2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 16));
 					// Читаем второго участка текста под второй байт пары
-					const __m128i following2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16 + spacing));
+					const __m128i following2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 16 + spacing));
 					// Сравниваем первого участка текста с байтами пары
 					const __m128i equal = ::_mm_and_si128(::_mm_cmpeq_epi8(heading, leading), ::_mm_cmpeq_epi8(following, trailer));
 					// Сравниваем второго участка текста с байтами пары
@@ -637,13 +637,13 @@ namespace awh {
 					 */
 					while(hits != 0){
 						// Получаем номер байта участка, паре отвечающего
-						const size_t lane = ::trailing(static_cast <uint64_t> (hits));
+						const size_t lane = ::__awh_trailing__(static_cast <uint64_t> (hits));
 						// Получаем положение возможного начала совпадения
-						const size_t start = ((at + lane) - first);
+						const size_t start = ((cursor + lane) - first);
 						/**
 						 * Если совпадение в остаток текста не помещается
 						 */
-						if((at + lane) >= limit)
+						if((cursor + lane) >= limit)
 							// Выводим признак отсутствия искомой последовательности
 							return {string_view::npos, rejects};
 						/**
@@ -656,7 +656,7 @@ namespace awh {
 						hits &= (hits - 1);
 					}
 					// Переходим к следующему участку текста сопоставления
-					at += 32;
+					cursor += 32;
 				}
 			/**
 			 * Если поиск ведётся словом в восемь байтов
@@ -669,15 +669,15 @@ namespace awh {
 				/**
 				 * Проходим текст сопоставления словом
 				 */
-				while((at + 8 + spacing) <= size){
+				while((cursor + 8 + spacing) <= size){
 					// Участок текста под первый байт пары
 					uint64_t heading = 0;
 					// Участок текста под второй байт пары
 					uint64_t following = 0;
 					// Читаем участок текста под первый байт пары
-					::memcpy(&heading, (base + at), sizeof(heading));
+					::memcpy(&heading, (base + cursor), sizeof(heading));
 					// Читаем участок текста под второй байт пары
-					::memcpy(&following, (base + at + spacing), sizeof(following));
+					::memcpy(&following, (base + cursor + spacing), sizeof(following));
 					// Обращаемся совпавших байтов участков в нулевые
 					heading ^= leading;
 					// Обращаемся совпавших байтов участков в нулевые
@@ -717,7 +717,7 @@ namespace awh {
 							/**
 							 * Получаем номер байта участка при порядке от старшего к младшему
 							 */
-							const size_t lane = (7 - (::trailing(hits) >> 3));
+							const size_t lane = (7 - (::__awh_trailing__(hits) >> 3));
 						/**
 						 * Иначе получаем номер при порядке от младшего к старшему
 						 */
@@ -725,14 +725,14 @@ namespace awh {
 							/**
 							 * Получаем номер байта участка при порядке от младшего к старшему
 							 */
-							const size_t lane = (::trailing(hits) >> 3);
+							const size_t lane = (::__awh_trailing__(hits) >> 3);
 						#endif
 						// Получаем положение возможного начала совпадения
-						const size_t start = ((at + lane) - first);
+						const size_t start = ((cursor + lane) - first);
 						/**
 						 * Если совпадение в остаток текста не помещается
 						 */
-						if((at + lane) >= limit)
+						if((cursor + lane) >= limit)
 							// Выводим признак отсутствия искомой последовательности
 							return {string_view::npos, rejects};
 						/**
@@ -745,7 +745,7 @@ namespace awh {
 						hits &= (hits - 1);
 					}
 					// Переходим к следующему участку текста сопоставления
-					at += 8;
+					cursor += 8;
 				}
 			#endif
 			/**
@@ -756,7 +756,7 @@ namespace awh {
 			 *          десятков байтов, отчего способ прохода его на скорость не влияет.
 			 *
 			 */
-			return {text.find(what, (at - first)), rejects};
+			return {text.find(what, (cursor - first)), rejects};
 		}
 	};
 };
@@ -786,7 +786,7 @@ namespace awh {
 		 * @return       позиция первого вхождения либо признак его отсутствия
 		 *
 		 */
-		AWH_REGEX_NOINLINE size_t doublet(const string_view text, const char * needle, const size_t pos) noexcept {
+		AWH_REGEX_NOINLINE size_t __awh_doublet__(const string_view text, const char * needle, const size_t pos) noexcept {
 			// Получаем размер текста поиска
 			const size_t size = text.size();
 			// Если литерал в остаток текста не помещается
@@ -814,20 +814,20 @@ namespace awh {
 			// Получаем вектор второго байта пары
 			const __m128i second = ::_mm_set1_epi8(needle[1]);
 			// Текущая позиция поиска
-			size_t at = pos;
+			size_t cursor = pos;
 			/**
 			 * Ищем тридцатю двух позиций пары за один оборот
 			 */
-			while((size - at) >= 33){
+			while((size - cursor) >= 33){
 				// Читаем участки под оба байта двух половин окна
 				// Первая половина: головной участок
-				const __m128i head = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i head = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 				// Первая половина: хвостовой участок
-				const __m128i tail = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 1));
+				const __m128i tail = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 1));
 				// Вторая половина: головной участок
-				const __m128i head2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				const __m128i head2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 16));
 				// Вторая половина: хвостовой участок
-				const __m128i tail2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 17));
+				const __m128i tail2 = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 17));
 				/**
 				 * Получаем признаки полного совпадения пары в обеих половинах
 				 * Первая половина: совпадение обоих байтов
@@ -843,21 +843,21 @@ namespace awh {
 				// Если окно содержит полное совпадение
 				if(hits != 0)
 					// Выводим первую совпавшую позицию
-					return (at + ::trailing(hits));
+					return (cursor + ::__awh_trailing__(hits));
 				// Переходим к следующему окну
-				at += 32;
+				cursor += 32;
 			}
 			/**
 			 * Если остаток содержит ровно два полных вектора
 			 */
-			if((size - at) == 32){
+			if((size - cursor) == 32){
 				/**
 				 * Читаем обе половины без выхода за конец текста
 				 * Первая половина: 16 байтов от текущей позиции
 				 */
-				const __m128i head = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i head = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 				// Вторая половина: 16 байтов со сдвигом 16
-				const __m128i tail = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				const __m128i tail = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 16));
 				/**
 				 * Собираем признаки первого и второго байтов в порядке текста
 				 * Формируем маску для первого байта пары
@@ -874,14 +874,14 @@ namespace awh {
 				// Сдвиг учитывает также пару на стыке двух половин
 				const uint32_t hits = (leading & (following >> 1));
 				// Выводим первое совпадение либо его отсутствие
-				return ((hits != 0) ? (at + ::trailing(hits)) : string_view::npos);
+				return ((hits != 0) ? (cursor + ::__awh_trailing__(hits)) : string_view::npos);
 			}
 			/**
 			 * Ищем пятнадцатю позиций в одном векторе
 			 */
-			while((size - at) >= 16){
+			while((size - cursor) >= 16){
 				// Читаем шестнадцать доступных байтов
-				const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 				// Сдвигаем признаки второго байта к позиции первого
 				const uint32_t hits = (
 					static_cast <uint32_t> (::_mm_movemask_epi8(::_mm_cmpeq_epi8(chunk, first))) &
@@ -890,16 +890,16 @@ namespace awh {
 				// Если вектор содержит полное совпадение
 				if(hits != 0)
 					// Выводим первую совпавшую позицию
-					return (at + ::trailing(hits));
+					return (cursor + ::__awh_trailing__(hits));
 				// Сохраняем последний байт для пары следующего окна
-				at += 15;
+				cursor += 15;
 			}
 			/**
 			 * Если текст позволяет прочитать последний вектор целиком
 			 */
 			if(size >= 16){
 				// Если остались непроверенные начальные позиции
-				if(at < limit){
+				if(cursor < limit){
 					// Получаем начало последнего полного вектора
 					const size_t begin = (size - 16);
 					// Читаем вектор, заканчивающийся точно на границе текста
@@ -910,11 +910,11 @@ namespace awh {
 						(static_cast <uint32_t> (::_mm_movemask_epi8(::_mm_cmpeq_epi8(chunk, second))) >> 1)
 					);
 					// Исключаем позиции перед заданным началом остатка
-					hits &= (static_cast <uint32_t> (0x7FFF) << (at - begin));
+					hits &= (static_cast <uint32_t> (0x7FFF) << (cursor - begin));
 					// Если остаток содержит полное совпадение
 					if(hits != 0)
 						// Выводим первую допустимую позицию
-						return (begin + ::trailing(hits));
+						return (begin + ::__awh_trailing__(hits));
 				}
 				// Выводим отсутствие пары в проверенном тексте
 				return string_view::npos;
@@ -926,9 +926,9 @@ namespace awh {
 				/**
 				 * Ищем семю позиций в восьми доступных байтах
 				 */
-				while((size - at) >= 8){
+				while((size - cursor) >= 8){
 					// Читаем только нижние восемь байтов вектора
-					const __m128i chunk = ::_mm_loadl_epi64(reinterpret_cast <const __m128i *> (base + at));
+					const __m128i chunk = ::_mm_loadl_epi64(reinterpret_cast <const __m128i *> (base + cursor));
 					// Исключаем нули, которыми команда заполнила верхнюю половину
 					const uint32_t hits = (
 						(static_cast <uint32_t> (::_mm_movemask_epi8(::_mm_cmpeq_epi8(chunk, first))) &
@@ -937,12 +937,12 @@ namespace awh {
 					// Если половина вектора содержит полную пару
 					if(hits != 0)
 						// Выводим первую совпавшую позицию
-						return (at + ::trailing(hits));
+						return (cursor + ::__awh_trailing__(hits));
 					// Сохраняем последний байт для следующей пары
-					at += 7;
+					cursor += 7;
 				}
 				// Если остались непроверенные позиции
-				if(at < limit){
+				if(cursor < limit){
 					/**
 					 * Читаем последние восемь байтов точно до границы текста
 					 * Получаем смещение последних восьми байтов
@@ -956,11 +956,11 @@ namespace awh {
 						(static_cast <uint32_t> (::_mm_movemask_epi8(::_mm_cmpeq_epi8(chunk, second))) >> 1)
 					);
 					// Оставляем только полные пары не раньше начала остатка
-					hits &= ((static_cast <uint32_t> (0x7F) << (at - begin)) & 0x7F);
+					hits &= ((static_cast <uint32_t> (0x7F) << (cursor - begin)) & 0x7F);
 					// Если остаток содержит полную пару
 					if(hits != 0)
 						// Выводим первую допустимую позицию
-						return (begin + ::trailing(hits));
+						return (begin + ::__awh_trailing__(hits));
 				}
 				// Выводим отсутствие пары в коротком тексте
 				return string_view::npos;
@@ -968,15 +968,15 @@ namespace awh {
 			/**
 			 * Ищем в остатке без чтения за пределами текста
 			 */
-			while(at < limit){
+			while(cursor < limit){
 				// Читаем ровно два доступных байта
-				::memcpy(&current, (base + at), sizeof(current));
+				::memcpy(&current, (base + cursor), sizeof(current));
 				// Если очередная пара совпадает с искомой
 				if(current == wanted)
 					// Выводим позицию первого совпадения
-					return at;
+					return cursor;
 				// Переходим к следующей паре
-				at++;
+				cursor++;
 			}
 			// Выводим отсутствие литерала
 			return string_view::npos;
@@ -1021,7 +1021,7 @@ namespace awh {
 		 * @return         позиция найденной последовательности либо признак отсутствия
 		 *
 		 */
-		AWH_REGEX_ALIGNED AWH_REGEX_NOINLINE size_t compact(const string_view text, const char * needle, const size_t pos, size_t & rejected) noexcept {
+		AWH_REGEX_ALIGNED AWH_REGEX_NOINLINE size_t __awh_compact__(const string_view text, const char * needle, const size_t pos, size_t & rejected) noexcept {
 			// Получаем размеры текста и искомого
 			const size_t size = text.size(), length = LENGTH;
 			// Счёт участков с кандидатами
@@ -1040,7 +1040,7 @@ namespace awh {
 			const auto finish = [&rejected, &rejects](const size_t position) noexcept -> size_t {
 				// Передаём число участков с кандидатами
 				rejected = rejects;
-				// Поиск
+				// Выводим положение найденного участка
 				return position;
 			};
 			// Если искомое в остаток текста не помещается
@@ -1076,19 +1076,19 @@ namespace awh {
 			// Размножаем второй байт пары
 			const __m128i trailer = ::_mm_set1_epi8(needle[spacing]);
 			// Текущая позиция поиска
-			size_t at = pos;
+			size_t cursor = pos;
 			/**
 			 * Ищем пару байтов двумя векторами
 			 */
-			while((size - at) >= (32 + spacing)){
+			while((size - cursor) >= (32 + spacing)){
 				// Читаем первый участок под первый байт пары
-				const __m128i first = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i first = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 				// Читаем второй участок под первый байт пары
-				const __m128i second = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				const __m128i second = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + 16));
 				// Читаем первый участок под второй байт пары
-				const __m128i next = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + spacing));
+				const __m128i next = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + spacing));
 				// Читаем второй участок под второй байт пары
-				const __m128i last = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + spacing + 16));
+				const __m128i last = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor + spacing + 16));
 				// Сличаем пару байтов в первом участке
 				const __m128i equal = ::_mm_and_si128(_mm_cmpeq_epi8(first, leading), ::_mm_cmpeq_epi8(next, trailer));
 				// Сличаем пару байтов во втором участке
@@ -1104,7 +1104,7 @@ namespace awh {
 				 */
 				while(hits != 0){
 					// Получаем позицию кандидата
-					const size_t start = (at + ::trailing(static_cast <uint64_t> (hits)));
+					const size_t start = (cursor + ::__awh_trailing__(static_cast <uint64_t> (hits)));
 					// Если кандидат выходит за предел начала совпадения
 					if(start >= limit)
 						// Выводим отсутствие совпадения
@@ -1136,16 +1136,16 @@ namespace awh {
 					hits &= (hits - 1);
 				}
 				// Переходим к следующей паре участков
-				at += 32;
+				cursor += 32;
 			}
 			/**
 			 * Проверяем остаток текста словами без выхода за его границу
 			 */
-			for(; at < limit; at++){
+			for(; cursor < limit; cursor++){
 				// Слово начала кандидата
 				uint32_t first = 0;
 				// Читаем начало кандидата
-				::memcpy(&first, (base + at), sizeof(first));
+				::memcpy(&first, (base + cursor), sizeof(first));
 				/**
 				 * При длине литерала в четыре байта сверять конец не нужно:
 				 * он совпадает с началом (см. заведение выше)
@@ -1154,15 +1154,15 @@ namespace awh {
 					// Слово конца кандидата
 					uint32_t second = 0;
 					// Читаем конец кандидата
-					::memcpy(&second, (base + at + offset), sizeof(second));
+					::memcpy(&second, (base + cursor + offset), sizeof(second));
 					// Если оба слова совпали
 					if((first == head) && (second == tail))
 						// Выводим найденную позицию
-						return finish(at);
+						return finish(cursor);
 				// Иначе довольно сравнения по одному слову
 				} else if(first == head)
 					// Выводим найденную позицию
-					return finish(at);
+					return finish(cursor);
 			}
 			// Выводим отсутствие совпадения
 			return finish(string_view::npos);
@@ -1189,7 +1189,7 @@ namespace awh {
 		 * @return          позиция первого вхождения либо размер текста
 		 *
 		 */
-		size_t selecting(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+		size_t __awh_selecting__(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 			// Если литерал в остаток текста не помещается
 			if((size < LENGTH) || (pos > (size - LENGTH)))
 				// Выводим конец текста признаком отсутствия совпадения
@@ -1205,7 +1205,7 @@ namespace awh {
 			// Счёт участков с кандидатами
 			size_t rejected = 0;
 			// Ищем в первом окне с постоянной длиной литерала
-			const size_t found = compact <LENGTH> (source.substr(0, ((bound + LENGTH) - 1)), needle, pos, rejected);
+			const size_t found = __awh_compact__ <LENGTH> (source.substr(0, ((bound + LENGTH) - 1)), needle, pos, rejected);
 			// Если литерал обнаружен в первом окне
 			if(found != string_view::npos)
 				// Выводим положение первого вхождения
@@ -1255,21 +1255,21 @@ namespace awh {
 		 */
 		#if defined(AWH_REGEX_NEON)
 			// Размножаем искомое значение по вектору
-			const uint8x16_t wanted = ::vdupq_n_u8(letter);
+			const uint8x16_t wanted = vdupq_n_u8(letter);
 			/**
 			 * Обходим полных векторов без чтения за пределами участка
 			 */
 			while((size - pos) >= 16){
 				// Сравниваем шестнадцать байтов с искомым значением
-				const uint8x16_t equal = ::vceqq_u8(::vld1q_u8(source + pos), wanted);
+				const uint8x16_t equal = vceqq_u8(vld1q_u8(source + pos), wanted);
 				// Получаем маску совпадений, по четыре разряда на каждый байт
-				const uint64_t hits = ::vget_lane_u64(::vreinterpret_u64_u8(::vshrn_n_u16(::vreinterpretq_u16_u8(equal), 4)), 0);
+				const uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(equal), 4)), 0);
 				/**
 				 * Если вектор содержит искомое значение
 				 */
 				if(hits != 0)
 					// Выводим адрес первого совпадения
-					return (source + pos + (::trailing(hits) >> 2));
+					return (source + pos + (::__awh_trailing__(hits) >> 2));
 				// Переходим к следующему вектору
 				pos += 16;
 			}
@@ -1292,7 +1292,7 @@ namespace awh {
 				 */
 				if(hits != 0)
 					// Выводим адрес первого совпадения
-					return (source + pos + ::trailing(hits));
+					return (source + pos + ::__awh_trailing__(hits));
 				// Переходим к следующему вектору
 				pos += 16;
 			}
@@ -1476,7 +1476,7 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 			// Если литерал покрывается одной парой байтов
 			if(what.size() == 2)
 				// Выводим первое вхождение пары
-				return ::doublet(text, what.data(), pos);
+				return ::__awh_doublet__(text, what.data(), pos);
 		#endif
 		// Получаем предел ближнего участка текста
 		const size_t horizon = (((pos + LOOKAHEAD) < text.size()) ? (pos + LOOKAHEAD) : text.size());
@@ -1764,15 +1764,15 @@ size_t awh::regex::Prefilter::bounded(string_view text, const size_t pos) const 
 		 */
 		switch(this->leading.size()){
 			// Если ведущий литерал содержит четыре байта
-			case 4: return &selecting <4>;
+			case 4: return &__awh_selecting__ <4>;
 			// Если ведущий литерал содержит пять байтов
-			case 5: return &selecting <5>;
+			case 5: return &__awh_selecting__ <5>;
 			// Если ведущий литерал содержит шесть байтов
-			case 6: return &selecting <6>;
+			case 6: return &__awh_selecting__ <6>;
 			// Если ведущий литерал содержит семь байтов
-			case 7: return &selecting <7>;
+			case 7: return &__awh_selecting__ <7>;
 			// Если ведущий литерал содержит восемь байтов
-			case 8: return &selecting <8>;
+			case 8: return &__awh_selecting__ <8>;
 			// Для остальных длин сохраняем общий вход
 			default: return nullptr;
 		}
@@ -2079,7 +2079,7 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 	 *          без построения маски совпадения пары байтов.
 	 *
 	 */
-	if(::solitary(text, what, pos, solo)){
+	if(::__awh_solitary__(text, what, pos, solo)){
 		// Получаем адрес позиции поиска выбранного байта
 		const char * current = (text.data() + pos + solo);
 		// Получаем адрес предела поиска выбранного байта
@@ -2115,7 +2115,7 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 	// Смещение второго байта пары в искомой последовательности
 	size_t second = 1;
 	// Выбираем пару байтов искомой последовательности
-	::couple(text, what, pos, first, second);
+	::__awh_couple__(text, what, pos, first, second);
 	// Поиск последовательности по выбранной паре байтов
 	return regex::paired(text, what, pos, first, second);
 }
@@ -2137,9 +2137,9 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
  */
 size_t awh::regex::alternating(const char * text, const size_t size, const size_t pos, const void * prefilterPtr) noexcept {
 	// Получаем параметры префильтра
-	const auto & pf = * reinterpret_cast <const regex::prefilter_t *> (prefilterPtr);
+	const auto & prefilter = * reinterpret_cast <const regex::prefilter_t *> (prefilterPtr);
 	// Получаем набор альтернатив
-	const auto & alts = pf.alts;
+	const auto & alts = prefilter.alts;
 	/**
 	 * Если альтернатив нет или все они короче двух байт
 	 */
@@ -2147,7 +2147,7 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 		// Выходим признаком отсутствия совпадения
 		return size;
 	// Устанавливаем начальную позицию сканирования, общую всем путям поиска
-	size_t at = pos;
+	size_t cursor = pos;
 	/**
 	 * Сканируем текст по объединению первых байтов альтернатив
 	 */
@@ -2161,29 +2161,29 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 		 */
 		for(size_t i = 0; i < alts.size(); i++)
 			// Размножаем очередного первого байта по вектору
-			wanted[i] = ::vdupq_n_u8(static_cast <uint8_t> (alts[i][0]));
+			wanted[i] = vdupq_n_u8(static_cast <uint8_t> (alts[i][0]));
 		/**
 		 * Сканируем участки по 16 байтов
 		 */
-		while((at + 16) <= size){
+		while((cursor + 16) <= size){
 			// Читаем участок текста сопоставления
-			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (text + at));
+			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (text + cursor));
 			// Создаём итог сличения участка с набором первых байтов
-			uint8x16_t equal = ::vceqq_u8(chunk, wanted[0]);
+			uint8x16_t equal = vceqq_u8(chunk, wanted[0]);
 			/**
 			 * Обходим первых байтов альтернатив, первого не считая
 			 */
 			for(size_t i = 1; i < alts.size(); i++)
 				// Складываем итог сличения с очередным первым байтом
-				equal = ::vorrq_u8(equal, ::vceqq_u8(chunk, wanted[i]));
+				equal = vorrq_u8(equal, vceqq_u8(chunk, wanted[i]));
 			// Сводим итог к 64-битной маске
-			const uint64_t hits = vget_lane_u64(::vreinterpret_u64_u8(vshrn_n_u16(::vreinterpretq_u16_u8(equal), 4)), 0);
+			const uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(equal), 4)), 0);
 			/**
 			 * Если на участке есть хотя бы одно совпадение первого байта
 			 */
 			if(hits != 0){
 				// Получаем позицию первого совпадения
-				const size_t hit = (at + (::trailing(hits) >> 2));
+				const size_t hit = (cursor + (::__awh_trailing__(hits) >> 2));
 				// Находим индекс альтернативы по первому байту
 				const uint8_t byte = static_cast <uint8_t> (text[hit]);
 				/**
@@ -2209,7 +2209,7 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 				}
 			}
 			// Переходим к следующему участку текста
-			at += 16;
+			cursor += 16;
 		}
 	/**
 	 * Если доступен набор команд SSE2
@@ -2228,9 +2228,9 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 		/**
 		 * Сканируем участки по 16 байтов
 		 */
-		while((at + 16) <= size){
+		while((cursor + 16) <= size){
 			// Читаем участок текста под первые байты альтернатив
-			const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (text + at));
+			const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (text + cursor));
 			// Создаём итог сличения участка с набором первых байтов
 			__m128i equal = ::_mm_cmpeq_epi8(chunk, wanted[0]);
 			/**
@@ -2246,7 +2246,7 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 			 */
 			if(hits != 0){
 				// Получаем позицию первого совпадения
-				const size_t hit = (at + ::trailing(static_cast <uint64_t> (hits)));
+				const size_t hit = (cursor + ::__awh_trailing__(static_cast <uint64_t> (hits)));
 				// Получаем байт позиции совпадения
 				const uint8_t byte = static_cast <uint8_t> (text[hit]);
 				/**
@@ -2272,11 +2272,11 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 				}
 			}
 			// Переходим к следующему участку текста
-			at += 16;
+			cursor += 16;
 		}
 	#endif
 	// Ищем в хвосте текста скалярным проходом
-	const size_t from = (at < size ? at : size);
+	const size_t from = (cursor < size ? cursor : size);
 	/**
 	 * Обходим позиций хвоста текста
 	 */
@@ -2357,7 +2357,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 	// Получаем адрес начала текста сопоставления
 	const char * base = text.data();
 	// Получаем положение поиска очередного участка текста
-	size_t at = pos;
+	size_t cursor = pos;
 	/**
 	 * Если доступен набор команд NEON
 	 */
@@ -2371,33 +2371,33 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 		 */
 		for(size_t i = 0; i < count; i++)
 			// Размножаем очередного значения по вектору
-			wanted[i] = ::vdupq_n_u8(bytes[i]);
+			wanted[i] = vdupq_n_u8(bytes[i]);
 		/**
 		 * Проходим текст сопоставления вектором
 		 */
-		while((at + 16) <= size){
+		while((cursor + 16) <= size){
 			// Читаем участок текста сопоставления
-			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at));
+			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (base + cursor));
 			// Создаём итог сличения участка с набором значений
-			uint8x16_t equal = ::vceqq_u8(chunk, wanted[0]);
+			uint8x16_t equal = vceqq_u8(chunk, wanted[0]);
 			/**
 			 * Обходим искомых значений, первого не считая
 			 */
 			for(size_t i = 1; i < count; i++)
 				// Складываем итог сличения с очередным значением
-				equal = ::vorrq_u8(equal, ::vceqq_u8(chunk, wanted[i]));
+				equal = vorrq_u8(equal, vceqq_u8(chunk, wanted[i]));
 			/**
 			 * Сводим итог сличения к разрядам слова
 			 */
-			const uint64_t hits = vget_lane_u64(::vreinterpret_u64_u8(vshrn_n_u16(::vreinterpretq_u16_u8(equal), 4)), 0);
+			const uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(equal), 4)), 0);
 			/**
 			 * Если участок текста несёт искомое значение
 			 */
 			if(hits != 0)
 				// Выводим позицию найденного байта
-				return (at + (::trailing(hits) >> 2));
+				return (cursor + (::__awh_trailing__(hits) >> 2));
 			// Переходим к следующему участку текста сопоставления
-			at += 16;
+			cursor += 16;
 		}
 	/**
 	 * Если доступен набор команд SSE2
@@ -2416,9 +2416,9 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 		/**
 		 * Проходим текст сопоставления вектором
 		 */
-		while((at + 16) <= size){
+		while((cursor + 16) <= size){
 			// Читаем участок текста сопоставления
-			const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+			const __m128i chunk = ::_mm_loadu_si128(reinterpret_cast <const __m128i *> (base + cursor));
 			// Создаём итог сличения участка с набором значений
 			__m128i equal = ::_mm_cmpeq_epi8(chunk, wanted[0]);
 			/**
@@ -2434,17 +2434,17 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 			 */
 			if(hits != 0)
 				// Выводим позицию найденного байта
-				return (at + ::trailing(static_cast <uint64_t> (hits)));
+				return (cursor + ::__awh_trailing__(static_cast <uint64_t> (hits)));
 			// Переходим к следующему участку текста сопоставления
-			at += 16;
+			cursor += 16;
 		}
 	#endif
 	/**
 	 * Проходим остатк текста сопоставления по байту
 	 */
-	for(; at < size; at++){
+	for(; cursor < size; cursor++){
 		// Получаем значение байта текста в позиции поиска
-		const uint8_t letter = static_cast <uint8_t> (base[at]);
+		const uint8_t letter = static_cast <uint8_t> (base[cursor]);
 		/**
 		 * Обходим набор искомых значений байта
 		 */
@@ -2454,7 +2454,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes, cons
 			 */
 			if(letter == bytes[i])
 				// Выводим позицию найденного байта
-				return at;
+				return cursor;
 		}
 	}
 	// Выводим позицию завершения поиска

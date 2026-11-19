@@ -55,9 +55,13 @@ namespace awh {
 		 * @brief Таблицы кодировок, порождаемые средством «tools/encoding/charset/generate.py»
 		 *
 		 */
+		// Таблица кодировок
 		extern __AWH_SHARED_EXPORT__ const table_t CODEPAGES[];
+		// Число кодировок
 		extern __AWH_SHARED_EXPORT__ const size_t CODEPAGES_COUNT;
+		// Таблица меток кодировок
 		extern __AWH_SHARED_EXPORT__ const labeling_t LABELS[];
+		// Число меток кодировок
 		extern __AWH_SHARED_EXPORT__ const size_t LABELS_COUNT;
 	};
 };

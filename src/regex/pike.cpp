@@ -189,12 +189,12 @@ void awh::regex::Pike::discard(vector <thread_t> & list) noexcept {
  * @param list       набор исполняемых состояний
  * @param marks      набор отметок посещения инструкций программы
  * @param generation номер поколения отметок посещения
- * @param pc         адрес добавляемой инструкции программы
+ * @param programCounter         адрес добавляемой инструкции программы
  * @param slots      номер набора позиций захвата групп
  * @param pos        позиция в тексте, для которой добавляется состояние
  *
  */
-void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & marks, const uint32_t generation, const address_t pc, const uint32_t slots, const size_t pos) noexcept {
+void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & marks, const uint32_t generation, const address_t programCounter, const uint32_t slots, const size_t pos) noexcept {
 	/**
 	 * Замыкание по ε-переходам: обход в глубину от стартовой инструкции
 	 *
@@ -211,7 +211,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 	// Стартовое состояние: инструкция + набор захвата
 	stack.emplace_back();
 	// Адрес стартовой инструкции замыкания
-	stack.back().pc = pc;
+	stack.back().programCounter = programCounter;
 	// Набор позиций захвата стартового состояния
 	stack.back().slots = slots;
 	// slots передан извне, где удерживается своя ссылка — берём свою
@@ -225,7 +225,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 		// Убираем из стека — обработано
 		stack.pop_back();
 		// Инструкция за пределами программы — состояние отбрасывается
-		if(static_cast <size_t> (thread.pc) >= this->_program->instructions.size()){
+		if(static_cast <size_t> (thread.programCounter) >= this->_program->instructions.size()){
 			// Адрес за программой — набор состоянию не нужен
 			this->release(thread.slots);
 			continue;
@@ -238,15 +238,15 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 		 *          не более одного раза на позицию текста.
 		 *
 		 */
-		if(marks.at(thread.pc) == generation){
+		if(marks.at(thread.programCounter) == generation){
 			// Уже посещена — ветвь дублирует ранее найденную
 			this->release(thread.slots);
 			continue;
 		}
 		// Фиксируем посещение инструкции текущим поколением
-		marks.at(thread.pc) = generation;
+		marks.at(thread.programCounter) = generation;
 		// Инструкция программы по адресу состояния
-		const instruction_t & instruction = this->_program->instructions.at(thread.pc);
+		const instruction_t & instruction = this->_program->instructions.item(thread.programCounter);
 		/**
 		 * Определяем тип инструкции: ε-переход или потребление символа
 		 */
@@ -266,12 +266,12 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				// Меньший приоритет — первым в стек, обработается последним
 				stack.emplace_back();
 				// Адрес второго варианта ветвления
-				stack.back().pc = instruction.split.second;
+				stack.back().programCounter = instruction.split.second;
 				stack.back().slots = thread.slots;
 				// Большой приоритет — вторым, обработается первым
 				stack.emplace_back();
 				// Адрес первого варианта ветвления
-				stack.back().pc = instruction.split.first;
+				stack.back().programCounter = instruction.split.first;
 				stack.back().slots = thread.slots;
 			} break;
 			/**
@@ -281,7 +281,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				// Переход не потребляет символ — состояние идёт в замыкание
 				stack.emplace_back();
 				// Адрес инструкции, куда ведёт переход
-				stack.back().pc = instruction.jump.target;
+				stack.back().programCounter = instruction.jump.target;
 				stack.back().slots = thread.slots;
 			} break;
 			/**
@@ -297,7 +297,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				// Продолжение после SAVE: следующая инструкция с обновлённым набором
 				stack.emplace_back();
 				// Следующая инструкция программы
-				stack.back().pc = (thread.pc + 1);
+				stack.back().programCounter = (thread.programCounter + 1);
 				// Набор после записи позиции
 				stack.back().slots = slots;
 			} break;
@@ -318,7 +318,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				// Привязка выполнена — продолжаем с следующей инструкции
 				stack.emplace_back();
 				// Следующая инструкция после успешной привязки
-				stack.back().pc = (thread.pc + 1);
+				stack.back().programCounter = (thread.programCounter + 1);
 				stack.back().slots = thread.slots;
 			} break;
 			/**
@@ -328,7 +328,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				// Размещаем состояние в рабочем списке
 				list.emplace_back();
 				// Адрес инструкции, потребляющей символ
-				list.back().pc = thread.pc;
+				list.back().programCounter = thread.programCounter;
 				// Набор позиций захвата переходит к новому состоянию
 				list.back().slots = thread.slots;
 			}
@@ -596,7 +596,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 			// Получаем исполняемое состояние текущей позиции
 			thread_t & thread = this->_current.at(i);
 			// Получаем исполняемую инструкцию программы
-			const instruction_t & instruction = program.instructions.at(thread.pc);
+			const instruction_t & instruction = program.instructions.item(thread.programCounter);
 			/**
 			 * Если инструкция завершает сопоставление с успехом
 			 *
@@ -689,7 +689,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 				// Переходим к следующему состоянию текущей позиции
 				continue;
 			// Размещаем состояние продолжения в наборе следующей позиции
-			this->append(this->_next, this->_pending, this->_upcoming, (thread.pc + 1), thread.slots, (pos + width));
+			this->append(this->_next, this->_pending, this->_upcoming, (thread.programCounter + 1), thread.slots, (pos + width));
 		}
 		/**
 		 * Если позиция достигла конца текста сопоставления
@@ -769,4 +769,4 @@ awh::regex::Pike::~Pike() noexcept = default;
  * @brief Конструктор нити исполнения
  *
  */
-awh::regex::Pike::Thread::Thread() noexcept : pc(0), slots(NO_SLOTS) {}
+awh::regex::Pike::Thread::Thread() noexcept : programCounter(0), slots(NO_SLOTS) {}

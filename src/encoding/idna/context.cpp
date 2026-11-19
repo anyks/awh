@@ -31,6 +31,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -57,10 +61,10 @@ namespace {
 	constexpr uint8_t VIRAMA = 9;
 
 	/**
-	 * @brief Класс двунаправленности символов письма слева направо
+	 * @brief Функция получения класса двунаправленности символов письма слева направо
 	 *
 	 */
-	inline uint16_t leftward() noexcept {
+	inline uint16_t __awh_leftward__() noexcept {
 		// Выводим идентификатор класса двунаправленности, полученный разбором имени
 		static const uint16_t result = awh::unicode::property("bc=L");
 		// Выводим идентификатор класса двунаправленности
@@ -73,7 +77,7 @@ namespace {
 	 * @return     идентификатор класса двунаправленности
 	 *
 	 */
-	inline uint16_t category(const char * name) noexcept {
+	inline uint16_t __awh_category__(const char * name) noexcept {
 		// Выводим идентификатор класса двунаправленности, полученный разбором имени
 		return awh::unicode::property(name);
 	}
@@ -92,7 +96,7 @@ awh::idna::joining_t awh::idna::joining(const uint32_t code) noexcept {
 	// Получаем наибольший индекс просматриваемого участка таблицы
 	size_t upper = JOININGS_COUNT;
 	/**
-	 * Выполняем двоичный поиск диапазона в таблице видов соединения
+	 * Двоичный поиск диапазона в таблице видов соединения
 	 */
 	while(lower < upper) {
 		// Получаем индекс середины просматриваемого участка
@@ -124,7 +128,7 @@ awh::idna::joining_t awh::idna::joining(const uint32_t code) noexcept {
  */
 bool awh::idna::joiners(const vector <uint32_t> & label) noexcept {
 	/**
-	 * Выполняем обход символов проверяемой метки
+	 * Обход символов проверяемой метки
 	 */
 	for(size_t i = 0; i < label.size(); i++) {
 		// Получаем кодовое значение очередного символа метки
@@ -165,7 +169,7 @@ bool awh::idna::joiners(const vector <uint32_t> & label) noexcept {
 			// Выводим результат проверки правил сочетания соединителей
 			return false;
 		/**
-		 * Выполняем поиск соединяющегося символа слева от разъединителя
+		 * Поиск соединяющегося символа слева от разъединителя
 		 *
 		 * @details Символы, соединению не препятствующие, при поиске опускаются.
 		 *
@@ -174,7 +178,7 @@ bool awh::idna::joiners(const vector <uint32_t> & label) noexcept {
 		// Признак обнаружения соединяющегося символа слева от разъединителя
 		bool preceded = false;
 		/**
-		 * Выполняем просмотр символов, предшествующих разъединителю
+		 * Просмотр символов, предшествующих разъединителю
 		 */
 		while(position > 0) {
 			// Получаем вид соединения предшествующего символа
@@ -201,7 +205,7 @@ bool awh::idna::joiners(const vector <uint32_t> & label) noexcept {
 		// Признак обнаружения соединяющегося символа справа от разъединителя
 		bool followed = false;
 		/**
-		 * Выполняем просмотр символов, следующих за разъединителем
+		 * Просмотр символов, следующих за разъединителем
 		 */
 		while(position < label.size()) {
 			// Получаем вид соединения следующего символа
@@ -236,17 +240,19 @@ bool awh::idna::joiners(const vector <uint32_t> & label) noexcept {
  */
 bool awh::idna::directional(const vector <vector <uint32_t>> & labels) noexcept {
 	// Получаем идентификатор класса символов письма справа налево
-	static const uint16_t rightward = category("bc=R");
+	static const uint16_t rightward = __awh_category__("bc=R");
 	// Получаем идентификатор класса символов арабского письма
-	static const uint16_t arabic = category("bc=AL");
+	// Класс направления «арабская буква»
+	static const uint16_t arabic = __awh_category__("bc=AL");
 	// Получаем идентификатор класса цифр арабского письма
-	static const uint16_t numeric = category("bc=AN");
+	// Класс направления «арабская цифра»
+	static const uint16_t numeric = __awh_category__("bc=AN");
 	/**
-	 * Выполняем обход меток проверяемого доменного имени
+	 * Обход меток проверяемого доменного имени
 	 */
 	for(auto & label : labels) {
 		/**
-		 * Выполняем обход символов очередной метки
+		 * Обход символов очередной метки
 		 */
 		for(auto & code : label) {
 			// Получаем класс двунаправленности очередного символа
@@ -280,16 +286,25 @@ bool awh::idna::bidirectional(const vector <uint32_t> & label) noexcept {
 		// Выводим результат проверки правила двунаправленного письма
 		return true;
 	// Получаем идентификаторы классов двунаправленности, задействованных правилом
-	static const uint16_t rightward = category("bc=R");
-	static const uint16_t arabic = category("bc=AL");
-	static const uint16_t numeric = category("bc=AN");
-	static const uint16_t european = category("bc=EN");
-	static const uint16_t separator = category("bc=ES");
-	static const uint16_t terminator = category("bc=ET");
-	static const uint16_t common = category("bc=CS");
-	static const uint16_t marking = category("bc=NSM");
-	static const uint16_t boundary = category("bc=BN");
-	static const uint16_t neutral = category("bc=ON");
+	static const uint16_t rightward = __awh_category__("bc=R");
+	// Класс направления «арабская буква»
+	static const uint16_t arabic = __awh_category__("bc=AL");
+	// Класс направления «арабская цифра»
+	static const uint16_t numeric = __awh_category__("bc=AN");
+	// Класс направления «европейская цифра»
+	static const uint16_t european = __awh_category__("bc=EN");
+	// Класс направления «европейский разделитель»
+	static const uint16_t separator = __awh_category__("bc=ES");
+	// Класс направления «европейский завершитель»
+	static const uint16_t terminator = __awh_category__("bc=ET");
+	// Класс направления «общий разделитель»
+	static const uint16_t common = __awh_category__("bc=CS");
+	// Класс направления «несвязывающая метка»
+	static const uint16_t marking = __awh_category__("bc=NSM");
+	// Класс направления «граница»
+	static const uint16_t boundary = __awh_category__("bc=BN");
+	// Класс направления «нейтральный»
+	static const uint16_t neutral = __awh_category__("bc=ON");
 	// Получаем класс двунаправленности первого символа метки
 	const uint16_t first = awh::unicode::bidirectional(label.front());
 	/**
@@ -303,7 +318,7 @@ bool awh::idna::bidirectional(const vector <uint32_t> & label) noexcept {
 	/**
 	 * Если метка начинается символом, направления письма не задающим
 	 */
-	if(!inverse && (first != leftward()))
+	if(!inverse && (first != __awh_leftward__()))
 		// Выводим результат проверки правила двунаправленного письма
 		return false;
 	// Признак обнаружения цифр европейского письма в метке
@@ -313,7 +328,7 @@ bool awh::idna::bidirectional(const vector <uint32_t> & label) noexcept {
 	// Положение последнего символа метки, знаком сочетания не являющегося
 	size_t last = label.size();
 	/**
-	 * Выполняем обход символов проверяемой метки
+	 * Обход символов проверяемой метки
 	 */
 	for(size_t i = 0; i < label.size(); i++) {
 		// Получаем класс двунаправленности очередного символа метки
@@ -342,7 +357,7 @@ bool awh::idna::bidirectional(const vector <uint32_t> & label) noexcept {
 			/**
 			 * Если класс очередного символа пятому правилу не отвечает
 			 */
-			if((value != leftward()) && (value != european) && (value != separator) &&
+			if((value != __awh_leftward__()) && (value != european) && (value != separator) &&
 			 (value != common) && (value != terminator) && (value != neutral) &&
 			 (value != boundary) && (value != marking))
 				// Выводим результат проверки правила двунаправленного письма
@@ -390,5 +405,5 @@ bool awh::idna::bidirectional(const vector <uint32_t> & label) noexcept {
 	 *          направо либо цифрой европейского письма.
 	 *
 	 */
-	return ((ending == leftward()) || (ending == european));
+	return ((ending == __awh_leftward__()) || (ending == european));
 }

@@ -31,6 +31,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -21131,12 +21135,12 @@ const awh::unicode::naming_t awh::unicode::NAMES[] = {
 	{"patws", 0x1033},
 	{"pauc", 0x47D},
 	{"paucinhau", 0x47D},
-	{"pc", 0x18},
+	{"programCounter", 0x18},
 	{"pcm", 0x1034},
 	{"pd", 0x19},
 	{"pe", 0x1A},
 	{"perm", 0x472},
-	{"pf", 0x1B},
+	{"prefilter", 0x1B},
 	{"phag", 0x47E},
 	{"phagspa", 0x47E},
 	{"phli", 0x43B},
@@ -26979,6 +26983,7 @@ const awh::unicode::interval_t awh::unicode::COMBINING[] = {
 	{0x100000, 0x100000, 0},
 	{0x10FFFD, 0x10FFFD, 0}
 };
+// Число комбинирующих классов
 const size_t awh::unicode::COMBINING_COUNT = 1266;
 
 /**
@@ -32901,6 +32906,7 @@ const awh::unicode::decomposition_t awh::unicode::DECOMPOSITIONS[] = {
 	{0x2FA1C, 8738, 1, false},
 	{0x2FA1D, 8739, 1, false}
 };
+// Число разложений символов
 const size_t awh::unicode::DECOMPOSITIONS_COUNT = 5914;
 
 /**
@@ -34606,4 +34612,5 @@ const awh::unicode::composition_t awh::unicode::COMPOSITIONS[] = {
 	{0x16D67, 0x16D67, 0x16D68},
 	{0x16D69, 0x16D67, 0x16D6A}
 };
+// Число составлений символов
 const size_t awh::unicode::COMPOSITIONS_COUNT = 961;

@@ -301,7 +301,7 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Prefilter {
 			public:
 				/**
-				 * @brief Тип подпрограммы отбора позиции для порождённого кода
+				 * @brief Функция отбора позиции для порождённого кода
 				 *
 				 */
 				typedef size_t (* seeker_t) (const char *, size_t, size_t, const void *) noexcept;

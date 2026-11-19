@@ -562,8 +562,7 @@ namespace awh {
 			#define AWH_ALLOC_MIRROR 1
 
 			/**
-			 * @brief Зеркало места потока
-			 *
+			 * Зеркало места потока
 			 */
 			extern __thread cache_t * __awh_alloc_mirror__ __attribute__((tls_model("initial-exec")));
 		#endif

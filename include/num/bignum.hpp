@@ -1545,7 +1545,7 @@ namespace awh {
 			 *
 			 */
 			BigNum & operator = (const BigNum <SIZE, KIND> & num) noexcept {
-				// Выполняем установку значения числа иной разрядности
+				// Установка значения числа иной разрядности
 				this->set(num.data(), SIZE, KIND);
 				// Выводим текущий объект
 				return (* this);
@@ -1560,7 +1560,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator + (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем сложение двух чисел
+				// Сложение двух чисел
 				return (num1 += num2);
 			}
 			/**
@@ -1572,7 +1572,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator - (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем вычитание двух чисел
+				// Вычитание двух чисел
 				return (num1 -= num2);
 			}
 			/**
@@ -1584,7 +1584,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator * (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем умножение двух чисел
+				// Умножение двух чисел
 				return (num1 *= num2);
 			}
 			/**
@@ -1596,7 +1596,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator / (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем деление двух чисел
+				// Деление двух чисел
 				return (num1 /= num2);
 			}
 			/**
@@ -1608,7 +1608,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator % (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем извлечение остатка от деления двух чисел
+				// Извлечение остатка от деления двух чисел
 				return (num1 %= num2);
 			}
 		public:
@@ -1621,7 +1621,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator & (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем побитовое умножение двух чисел
+				// Побитовое умножение двух чисел
 				return (num1 &= num2);
 			}
 			/**
@@ -1633,7 +1633,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator | (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем побитовое сложение двух чисел
+				// Побитовое сложение двух чисел
 				return (num1 |= num2);
 			}
 			/**
@@ -1645,7 +1645,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator ^ (BigNum num1, const BigNum & num2) noexcept {
-				// Выполняем побитовое исключающее сложение двух чисел
+				// Побитовое исключающее сложение двух чисел
 				return (num1 ^= num2);
 			}
 			/**
@@ -1657,7 +1657,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator << (BigNum num, const uint32_t count) noexcept {
-				// Выполняем сдвиг числа влево
+				// Сдвиг числа влево
 				return (num <<= count);
 			}
 			/**
@@ -1669,7 +1669,7 @@ namespace awh {
 			 *
 			 */
 			friend BigNum operator >> (BigNum num, const uint32_t count) noexcept {
-				// Выполняем сдвиг числа вправо
+				// Сдвиг числа вправо
 				return (num >>= count);
 			}
 		public:
@@ -1928,7 +1928,7 @@ namespace awh {
 			 *
 			 */
 			BigNum(const BigNum <SIZE, KIND> & num) noexcept : _data{} {
-				// Выполняем установку значения числа иной разрядности
+				// Установка значения числа иной разрядности
 				this->set(num.data(), SIZE, KIND);
 			}
 			/**
@@ -1949,7 +1949,7 @@ namespace awh {
 			 *
 			 */
 			explicit BigNum(const BigNum <SIZE, KIND> & num) noexcept : _data{} {
-				// Выполняем установку значения числа иной разрядности
+				// Установка значения числа иной разрядности
 				this->set(num.data(), SIZE, KIND);
 			}
 		public:

@@ -91,7 +91,7 @@ namespace awh {
 			 *
 			 */
 			static constexpr bool isSupported(const int64_t power) noexcept {
-				// Выполняем проверку попадания показателя степени в диапазон таблицы
+				// Проверка попадания показателя степени в диапазон таблицы
 				return ((power >= static_cast <int64_t> (SMALLEST_POWER)) && (power <= static_cast <int64_t> (LARGEST_POWER)));
 			}
 

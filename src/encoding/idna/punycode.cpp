@@ -30,6 +30,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -100,18 +104,18 @@ namespace {
 	 * @return      пересчитанное смещение записи
 	 *
 	 */
-	inline uint32_t adapt(uint32_t delta, const uint32_t count, const bool first) noexcept {
-		// Выполняем уменьшение приращения
+	inline uint32_t __awh_adapt__(uint32_t delta, const uint32_t count, const bool first) noexcept {
+		// Уменьшение приращения
 		delta = (first ? (delta / DAMP) : (delta / 2));
-		// Выполняем приращение с учётом количества записанных кодовых значений
+		// Приращение с учётом количества записанных кодовых значений
 		delta += (delta / count);
 		// Количество разрядов, на которое смещается запись
 		uint32_t result = 0;
 		/**
-		 * Выполняем подбор смещения записи
+		 * Подбор смещения записи
 		 */
 		for(; delta > (((BASE - TMIN) * TMAX) / 2); result += BASE)
-			// Выполняем уменьшение приращения
+			// Уменьшение приращения
 			delta /= (BASE - TMIN);
 		// Выводим пересчитанное смещение записи
 		return (result + (((BASE - TMIN + 1) * delta) / (delta + SKEW)));
@@ -123,7 +127,7 @@ namespace {
 	 * @return      символ записи, представляющий значение разряда
 	 *
 	 */
-	inline char letter(const uint32_t digit) noexcept {
+	inline char __awh_letter__(const uint32_t digit) noexcept {
 		// Выводим символ записи, представляющий значение разряда
 		return static_cast <char> (digit + 22 + ((digit < 26) ? 75 : 0));
 	}
@@ -134,7 +138,7 @@ namespace {
 	 * @return       значение разряда либо основание системы счисления при отказе
 	 *
 	 */
-	inline uint32_t digit(const char letter) noexcept {
+	inline uint32_t __awh_digit__(const char letter) noexcept {
 		/**
 		 * Если символ записи является цифрой
 		 */
@@ -167,7 +171,7 @@ namespace {
  *
  */
 bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noexcept {
-	// Выполняем очистку получившейся записи
+	// Очистка получившейся записи
 	result.clear();
 	// Кодовое значение, записываемое очередным приращением
 	uint32_t code = INITIAL_N;
@@ -178,14 +182,14 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 	// Количество записанных кодовых значений
 	uint32_t handled = 0;
 	/**
-	 * Выполняем запись кодовых значений набора ASCII без изменений
+	 * Запись кодовых значений набора ASCII без изменений
 	 */
 	for(auto & value : text) {
 		/**
 		 * Если очередное кодовое значение превышает наибольшее значение Юникода
 		 */
 		if(value > MAX_CODEPOINT) {
-			// Выполняем очистку получившейся записи
+			// Очистка получившейся записи
 			result.clear();
 			// Выводим результат выполнения представления текста
 			return false;
@@ -194,9 +198,9 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 		 * Если очередное кодовое значение принадлежит набору ASCII
 		 */
 		if(value < INITIAL_N) {
-			// Выполняем запись символа набора ASCII без изменений
+			// Запись символа набора ASCII без изменений
 			result.append(1, static_cast <char> (value));
-			// Выполняем подсчёт записанного кодового значения
+			// Подсчёт записанного кодового значения
 			handled++;
 		}
 	}
@@ -206,16 +210,16 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 	 * Если основная часть записи не пуста
 	 */
 	if(basic > 0)
-		// Выполняем запись разделителя основной части и её продолжения
+		// Запись разделителя основной части и её продолжения
 		result.append(1, DELIMITER);
 	/**
-	 * Выполняем перечисление кодовых значений текста по возрастанию
+	 * Перечисление кодовых значений текста по возрастанию
 	 */
 	while(handled < text.size()) {
 		// Наименьшее кодовое значение, ещё не записанное
 		uint32_t least = MAX_CODEPOINT + 1;
 		/**
-		 * Выполняем поиск наименьшего незаписанного кодового значения
+		 * Поиск наименьшего незаписанного кодового значения
 		 */
 		for(auto & value : text) {
 			// Если очередное кодовое значение ещё не записано и меньше найденного
@@ -227,17 +231,17 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 		 * Если приращение кодового значения переполняет разрядность
 		 */
 		if((least - code) > ((UINT32_MAX - delta) / (handled + 1))) {
-			// Выполняем очистку получившейся записи
+			// Очистка получившейся записи
 			result.clear();
 			// Выводим результат выполнения представления текста
 			return false;
 		}
-		// Выполняем приращение на разность кодовых значений
+		// Приращение на разность кодовых значений
 		delta += ((least - code) * (handled + 1));
 		// Переходим к найденному кодовому значению
 		code = least;
 		/**
-		 * Выполняем обход кодовых значений текста
+		 * Обход кодовых значений текста
 		 */
 		for(auto & value : text) {
 			/**
@@ -248,7 +252,7 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 				 * Если приращение переполняет разрядность
 				 */
 				if((++delta) == 0) {
-					// Выполняем очистку получившейся записи
+					// Очистка получившейся записи
 					result.clear();
 					// Выводим результат выполнения представления текста
 					return false;
@@ -265,7 +269,7 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 			// Остаток приращения, записываемый разрядами
 			uint32_t rest = delta;
 			/**
-			 * Выполняем запись приращения разрядами переменной длины
+			 * Запись приращения разрядами переменной длины
 			 */
 			for(uint32_t weight = BASE;; weight += BASE) {
 				// Получаем порог разряда, заданный смещением записи
@@ -277,22 +281,23 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
 				if(rest < threshold)
 					// Прекращаем запись приращения разрядами
 					break;
-				// Выполняем запись очередного разряда приращения
-				result.append(1, letter(threshold + ((rest - threshold) % (BASE - threshold))));
-				// Выполняем уменьшение остатка приращения
+				// Запись очередного разряда приращения
+				result.append(1, __awh_letter__(threshold + ((rest - threshold) % (BASE - threshold))));
+				// Уменьшение остатка приращения
 				rest = ((rest - threshold) / (BASE - threshold));
 			}
-			// Выполняем запись последнего разряда приращения
-			result.append(1, letter(rest));
-			// Выполняем пересчёт смещения записи
-			bias = adapt(delta, (handled + 1), (handled == basic));
-			// Выполняем сброс приращения кодового значения
+			// Запись последнего разряда приращения
+			result.append(1, __awh_letter__(rest));
+			// Пересчёт смещения записи
+			bias = __awh_adapt__(delta, (handled + 1), (handled == basic));
+			// Сброс приращения кодового значения
 			delta = 0;
-			// Выполняем подсчёт записанного кодового значения
+			// Подсчёт записанного кодового значения
 			handled++;
 		}
-		// Выполняем приращение кодового значения и переход к следующему
+		// Приращение кодового значения и переход к следующему
 		delta++;
+		// Приращение кодового значения
 		code++;
 	}
 	// Выводим результат выполнения представления текста
@@ -307,7 +312,7 @@ bool awh::punycode::encode(const vector <uint32_t> & text, string & result) noex
  *
  */
 bool awh::punycode::decode(string_view text, vector <uint32_t> & result) noexcept {
-	// Выполняем очистку набора кодовых значений разобранного текста
+	// Очистка набора кодовых значений разобранного текста
 	result.clear();
 	// Кодовое значение, записанное очередным приращением
 	uint32_t code = INITIAL_N;
@@ -322,19 +327,19 @@ bool awh::punycode::decode(string_view text, vector <uint32_t> & result) noexcep
 	 */
 	if(separator != string_view::npos) {
 		/**
-		 * Выполняем разбор кодовых значений основной части записи
+		 * Разбор кодовых значений основной части записи
 		 */
 		for(size_t i = 0; i < separator; i++) {
 			/**
 			 * Если очередной символ основной части набору ASCII не принадлежит
 			 */
 			if(static_cast <uint8_t> (text[i]) >= INITIAL_N) {
-				// Выполняем очистку набора кодовых значений
+				// Очистка набора кодовых значений
 				result.clear();
 				// Выводим результат выполнения разбора записи
 				return false;
 			}
-			// Выполняем добавление кодового значения основной части записи
+			// Добавление кодового значения основной части записи
 			result.push_back(static_cast <uint32_t> (static_cast <uint8_t> (text[i])));
 		}
 		// Переходим к продолжению записи, следующему за разделителем
@@ -342,36 +347,36 @@ bool awh::punycode::decode(string_view text, vector <uint32_t> & result) noexcep
 	// Если разделитель не обнаружен, разбору подлежит вся запись
 	} else separator = 0;
 	/**
-	 * Выполняем разбор продолжения записи
+	 * Разбор продолжения записи
 	 */
 	for(size_t i = separator; i < text.size();) {
 		// Запоминаем положение, записанное предшествующим приращением
 		const uint32_t previous = position;
 		/**
-		 * Выполняем разбор приращения, записанного разрядами переменной длины
+		 * Разбор приращения, записанного разрядами переменной длины
 		 */
 		for(uint32_t weight = BASE, factor = 1;; weight += BASE) {
 			/**
 			 * Если запись оборвана концом текста
 			 */
 			if(i >= text.size()) {
-				// Выполняем очистку набора кодовых значений
+				// Очистка набора кодовых значений
 				result.clear();
 				// Выводим результат выполнения разбора записи
 				return false;
 			}
 			// Получаем значение очередного разряда записи
-			const uint32_t value = digit(text[i++]);
+			const uint32_t value = __awh_digit__(text[i++]);
 			/**
 			 * Если значение разряда извлечь не вышло либо приращение переполняет разрядность
 			 */
 			if((value >= BASE) || (value > ((UINT32_MAX - position) / factor))) {
-				// Выполняем очистку набора кодовых значений
+				// Очистка набора кодовых значений
 				result.clear();
 				// Выводим результат выполнения разбора записи
 				return false;
 			}
-			// Выполняем приращение положения на значение разряда
+			// Приращение положения на значение разряда
 			position += (value * factor);
 			// Получаем порог разряда, заданный смещением записи
 			const uint32_t threshold = ((weight <= bias) ? TMIN :
@@ -386,30 +391,30 @@ bool awh::punycode::decode(string_view text, vector <uint32_t> & result) noexcep
 			 * Если множитель разряда переполняет разрядность
 			 */
 			if(factor > (UINT32_MAX / (BASE - threshold))) {
-				// Выполняем очистку набора кодовых значений
+				// Очистка набора кодовых значений
 				result.clear();
 				// Выводим результат выполнения разбора записи
 				return false;
 			}
-			// Выполняем увеличение множителя разряда
+			// Увеличение множителя разряда
 			factor *= (BASE - threshold);
 		}
-		// Выполняем пересчёт смещения записи
-		bias = adapt((position - previous), static_cast <uint32_t> (result.size() + 1), (previous == 0));
+		// Пересчёт смещения записи
+		bias = __awh_adapt__((position - previous), static_cast <uint32_t> (result.size() + 1), (previous == 0));
 		/**
 		 * Если приращение кодового значения переполняет разрядность
 		 */
 		if((position / (result.size() + 1)) > (MAX_CODEPOINT - code)) {
-			// Выполняем очистку набора кодовых значений
+			// Очистка набора кодовых значений
 			result.clear();
 			// Выводим результат выполнения разбора записи
 			return false;
 		}
-		// Выполняем приращение кодового значения
+		// Приращение кодового значения
 		code += (position / static_cast <uint32_t> (result.size() + 1));
 		// Получаем положение, по которому записывается кодовое значение
 		position %= static_cast <uint32_t> (result.size() + 1);
-		// Выполняем вставку разобранного кодового значения
+		// Вставка разобранного кодового значения
 		result.insert(result.begin() + position, code);
 		// Переходим к следующему положению записи
 		position++;

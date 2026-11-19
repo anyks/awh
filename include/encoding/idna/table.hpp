@@ -55,10 +55,15 @@ namespace awh {
 		 * @brief Таблицы приведения доменных имён, порождаемые средством «tools/encoding/idna/generate.py»
 		 *
 		 */
+		// Таблица преобразований символов
 		extern __AWH_SHARED_EXPORT__ const mapping_t MAPPINGS[];
+		// Число преобразований символов
 		extern __AWH_SHARED_EXPORT__ const size_t MAPPINGS_COUNT;
+		// Наборы кодовых значений преобразований
 		extern __AWH_SHARED_EXPORT__ const uint32_t MAPPING_SETS[];
+		// Таблица соединений символов
 		extern __AWH_SHARED_EXPORT__ const joining_range_t JOININGS[];
+		// Число соединений символов
 		extern __AWH_SHARED_EXPORT__ const size_t JOININGS_COUNT;
 	};
 };

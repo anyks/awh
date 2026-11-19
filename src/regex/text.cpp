@@ -61,7 +61,7 @@ namespace {
 	 * @return      результат проверки принадлежности символа символам слова
 	 *
 	 */
-	static __AWH_INLINE__ bool word(const uint32_t code, const uint32_t flags) noexcept {
+	static __AWH_INLINE__ bool __awh_word__(const uint32_t code, const uint32_t flags) noexcept {
 		/**
 		 * Если установлен режим соответствия сокращённых классов свойствам Юникода
 		 */
@@ -85,7 +85,7 @@ namespace {
 	 * @return           длина завершения строки в знаках либо нуль
 	 *
 	 */
-	static size_t terminator(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
+	static size_t __awh_terminator__(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
 		// Получаем размер текста сопоставления
 		const size_t size = text.size();
 		/**
@@ -167,7 +167,7 @@ namespace {
 	 * @return           результат проверки завершения строки
 	 *
 	 */
-	static bool terminated(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
+	static bool __awh_terminated__(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
 		/**
 		 * Если позиция находится в начале текста
 		 */
@@ -189,7 +189,7 @@ namespace {
 			/**
 			 * Если завершение строки оканчивается в проверяемой позиции
 			 */
-			if(terminator(text, (pos - length), convention) == length)
+			if(__awh_terminator__(text, (pos - length), convention) == length)
 				// Проверка завершения строки: успех
 				return true;
 		}
@@ -451,7 +451,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 				// Проверка привязки к позиции в тексте: успех
 				return true;
 			// Получаем длину завершения строки в проверяемой позиции
-			const size_t length = terminator(text, pos, convention);
+			const size_t length = __awh_terminator__(text, pos, convention);
 			// Проверка завершающего перевода строки
 			return ((length > 0) && ((pos + length) == size));
 		}
@@ -483,7 +483,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 				// Проверка привязки к позиции в тексте: отказ
 				return false;
 			// Проверка предшествующего завершения строки
-			return terminated(text, pos, convention);
+			return __awh_terminated__(text, pos, convention);
 		}
 		/**
 		 * Проверяем привязкю к концу текста либо строки
@@ -494,7 +494,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 			 */
 			if(hasFlag(flags, flag_t::MULTILINE))
 				// Проверка положения в конце текста либо строки
-				return ((pos == size) || (terminator(text, pos, convention) > 0));
+				return ((pos == size) || (__awh_terminator__(text, pos, convention) > 0));
 			/**
 			 * Если позиция находится в конце текста
 			 */
@@ -513,7 +513,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 				// Проверка привязки к позиции в тексте: отказ
 				return false;
 			// Получаем длину завершения строки в проверяемой позиции
-			const size_t length = terminator(text, pos, convention);
+			const size_t length = __awh_terminator__(text, pos, convention);
 			// Проверка завершающего перевода строки
 			return ((length > 0) && ((pos + length) == size));
 		}
@@ -539,13 +539,13 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 			 */
 			if(pos > 0)
 				// Проверяем принадлежность предшествующего символа
-				before = word(decode(text, (pos - behind(text, pos, flags)), flags, width), flags);
+				before = __awh_word__(decode(text, (pos - behind(text, pos, flags)), flags, width), flags);
 			/**
 			 * Если позиция не находится в конце текста
 			 */
 			if(pos < size)
 				// Проверяем принадлежность последующего символа
-				after = word(decode(text, pos, flags, width), flags);
+				after = __awh_word__(decode(text, pos, flags, width), flags);
 			/**
 			 * Если проверяется привязка к границе слова
 			 */

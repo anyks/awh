@@ -34,6 +34,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -54,14 +58,14 @@ namespace {
 	constexpr uint32_t HYPHEN = 0x002D;
 
 	/**
-	 * @brief Признак установленного режима приведения доменного имени
+	 * @brief Функция проверки установленного режима приведения доменного имени
 	 *
 	 * @param mode набор режимов приведения доменного имени
 	 * @param flag проверяемый режим приведения доменного имени
 	 * @return     результат проверки установки режима приведения
 	 *
 	 */
-	inline bool enabled(const uint16_t mode, const awh::idna::option_t flag) noexcept {
+	inline bool __awh_enabled__(const uint16_t mode, const awh::idna::option_t flag) noexcept {
 		// Выводим результат проверки установки режима приведения
 		return ((mode & static_cast <uint16_t> (flag)) != 0);
 	}
@@ -74,7 +78,7 @@ namespace {
 	 * @return        код ошибки проверки допустимости метки
 	 *
 	 */
-	awh::idna::error_t validate(const vector <uint32_t> & label, const uint16_t mode, const bool inverse) noexcept {
+	awh::idna::error_t __awh_validate__(const vector <uint32_t> & label, const uint16_t mode, const bool inverse) noexcept {
 		/**
 		 * Если проверять оказалось нечего
 		 */
@@ -83,7 +87,7 @@ namespace {
 			return awh::idna::error_t::NONE;
 		// Набор кодовых значений метки в нормальном представлении
 		vector <uint32_t> normal;
-		// Выполняем приведение метки к нормальному представлению
+		// Приведение метки к нормальному представлению
 		awh::unicode::normalize(label, awh::unicode::form_t::NFC, normal);
 		/**
 		 * Если метка к нормальному представлению не приведена
@@ -94,7 +98,7 @@ namespace {
 		/**
 		 * Если требуется проверка размещения знаков переноса
 		 */
-		if(enabled(mode, awh::idna::option_t::HYPHENS)) {
+		if(__awh_enabled__(mode, awh::idna::option_t::HYPHENS)) {
 			/**
 			 * Если метка начинается либо завершается знаком переноса
 			 */
@@ -121,7 +125,7 @@ namespace {
 		// Набор кодовых значений преобразования очередного символа
 		vector <uint32_t> mapped;
 		/**
-		 * Выполняем обход символов проверяемой метки
+		 * Обход символов проверяемой метки
 		 */
 		for(auto & code : label) {
 			/**
@@ -145,7 +149,7 @@ namespace {
 					/**
 					 * Если применяются правила записи имён узлов
 					 */
-					if(enabled(mode, awh::idna::option_t::STD3))
+					if(__awh_enabled__(mode, awh::idna::option_t::STD3))
 						// Выводим ошибку размещения недопустимого символа
 						return awh::idna::error_t::DISALLOWED;
 				} break;
@@ -156,7 +160,7 @@ namespace {
 					/**
 					 * Если применяется переходный режим преобразования символов
 					 */
-					if(enabled(mode, awh::idna::option_t::TRANSITIONAL))
+					if(__awh_enabled__(mode, awh::idna::option_t::TRANSITIONAL))
 						// Выводим ошибку размещения недопустимого символа
 						return awh::idna::error_t::DISALLOWED;
 				} break;
@@ -167,13 +171,13 @@ namespace {
 		/**
 		 * Если требуется проверка правил сочетания соединителей
 		 */
-		if(enabled(mode, awh::idna::option_t::JOINERS) && !awh::idna::joiners(label))
+		if(__awh_enabled__(mode, awh::idna::option_t::JOINERS) && !awh::idna::joiners(label))
 			// Выводим ошибку нарушения правил сочетания соединителей
 			return awh::idna::error_t::CONTEXT;
 		/**
 		 * Если требуется проверка правила двунаправленного письма
 		 */
-		if(inverse && enabled(mode, awh::idna::option_t::BIDI) && !awh::idna::bidirectional(label))
+		if(inverse && __awh_enabled__(mode, awh::idna::option_t::BIDI) && !awh::idna::bidirectional(label))
 			// Выводим ошибку нарушения правила двунаправленного письма
 			return awh::idna::error_t::BIDI;
 		// Выводим отсутствие ошибки проверки допустимости метки
@@ -189,8 +193,8 @@ namespace {
 	 * @return        результат выполнения разбора доменного имени
 	 *
 	 */
-	bool separate(string_view domain, const uint16_t mode, vector <vector <uint32_t>> & labels, awh::idna::error_t & error) noexcept {
-		// Выполняем очистку набора меток доменного имени
+	bool __awh_separate__(string_view domain, const uint16_t mode, vector <vector <uint32_t>> & labels, awh::idna::error_t & error) noexcept {
+		// Очистка набора меток доменного имени
 		labels.clear();
 		// Набор кодовых значений доменного имени с преобразованными символами
 		vector <uint32_t> text;
@@ -199,10 +203,10 @@ namespace {
 		// Кодовое значение очередного разобранного символа
 		uint32_t code = 0;
 		/**
-		 * Выполняем обход записей символов доменного имени
+		 * Обход записей символов доменного имени
 		 */
 		for(size_t pos = 0; pos < domain.size();) {
-			// Выполняем разбор записи очередного символа доменного имени
+			// Разбор записи очередного символа доменного имени
 			const size_t length = awh::utf8::decode(domain, pos, code);
 			/**
 			 * Если запись очередного символа разобрать не вышло
@@ -213,7 +217,7 @@ namespace {
 				// Выводим результат выполнения разбора доменного имени
 				return false;
 			}
-			// Выполняем переход к записи следующего символа
+			// Переход к записи следующего символа
 			pos += length;
 			// Получаем состояние очередного символа в таблице преобразований
 			const awh::idna::status_t value = awh::idna::status(code, mapped);
@@ -228,10 +232,10 @@ namespace {
 				 */
 				case static_cast <uint8_t> (awh::idna::status_t::MAPPED): {
 					/**
-					 * Выполняем добавление символов преобразования
+					 * Добавление символов преобразования
 					 */
 					for(auto & value : mapped)
-						// Выполняем добавление символа преобразования
+						// Добавление символа преобразования
 						text.push_back(value);
 				} continue;
 				/**
@@ -241,10 +245,12 @@ namespace {
 					/**
 					 * Если применяется переходный режим преобразования символов
 					 */
-					if(enabled(mode, awh::idna::option_t::TRANSITIONAL)) {
-						// Выполняем добавление символов преобразования
+					if(__awh_enabled__(mode, awh::idna::option_t::TRANSITIONAL)) {
+						/**
+						 * Добавление символов преобразования
+						 */
 						for(auto & value : mapped)
-							// Выполняем добавление символа преобразования
+							// Добавление символа преобразования
 							text.push_back(value);
 						// Переходим к следующему символу доменного имени
 						continue;
@@ -257,10 +263,12 @@ namespace {
 					/**
 					 * Если правила записи имён узлов не применяются
 					 */
-					if(!enabled(mode, awh::idna::option_t::STD3)) {
-						// Выполняем добавление символов преобразования
+					if(!__awh_enabled__(mode, awh::idna::option_t::STD3)) {
+						/**
+						 * Добавление символов преобразования
+						 */
 						for(auto & value : mapped)
-							// Выполняем добавление символа преобразования
+							// Добавление символа преобразования
 							text.push_back(value);
 						// Переходим к следующему символу доменного имени
 						continue;
@@ -286,7 +294,7 @@ namespace {
 					/**
 					 * Если применяются правила записи имён узлов
 					 */
-					if(enabled(mode, awh::idna::option_t::STD3)) {
+					if(__awh_enabled__(mode, awh::idna::option_t::STD3)) {
 						// Выводим ошибку размещения недопустимого символа
 						error = awh::idna::error_t::DISALLOWED;
 						// Выводим результат выполнения разбора доменного имени
@@ -294,11 +302,11 @@ namespace {
 					}
 				} break;
 			}
-			// Выполняем добавление символа доменного имени
+			// Добавление символа доменного имени
 			text.push_back(code);
 		}
 		/**
-		 * Выполняем приведение доменного имени к нормальному представлению
+		 * Приведение доменного имени к нормальному представлению
 		 *
 		 * @details Приведение выполняется вторым шагом обработки, до разбиения имени
 		 *          на метки: приложение по обработке доменных имён предписывает
@@ -306,21 +314,21 @@ namespace {
 		 *
 		 */
 		vector <uint32_t> normal;
-		// Выполняем приведение доменного имени к нормальному представлению
+		// Приведение доменного имени к нормальному представлению
 		awh::unicode::normalize(text, awh::unicode::form_t::NFC, normal);
-		// Выполняем добавление первой метки доменного имени
+		// Добавление первой метки доменного имени
 		labels.emplace_back();
 		/**
-		 * Выполняем разбиение доменного имени на метки
+		 * Разбиение доменного имени на метки
 		 */
 		for(auto & value : normal) {
 			/**
 			 * Если очередной символ является разделителем меток
 			 */
 			if(value == SEPARATOR)
-				// Выполняем добавление следующей метки доменного имени
+				// Добавление следующей метки доменного имени
 				labels.emplace_back();
-			// Выполняем добавление символа в метку доменного имени
+			// Добавление символа в метку доменного имени
 			else labels.back().push_back(value);
 		}
 		// Выводим результат выполнения разбора доменного имени
@@ -340,8 +348,8 @@ namespace {
 	 * @return        код ошибки приведения метки
 	 *
 	 */
-	awh::idna::error_t restore(const vector <uint32_t> & label, const uint16_t mode, const bool inverse, vector <uint32_t> & result) noexcept {
-		// Выполняем запись метки без изменений
+	awh::idna::error_t __awh_restore__(const vector <uint32_t> & label, const uint16_t mode, const bool inverse, vector <uint32_t> & result) noexcept {
+		// Запись метки без изменений
 		result = label;
 		// Получаем длину приставки записи метки кодировкой Punycode
 		const size_t length = ::strlen(awh::idna::PREFIX);
@@ -350,9 +358,9 @@ namespace {
 		 */
 		if(label.size() < length)
 			// Выводим результат проверки допустимости метки
-			return validate(label, mode, inverse);
+			return __awh_validate__(label, mode, inverse);
 		/**
-		 * Выполняем сличение приставки записи метки кодировкой Punycode
+		 * Сличение приставки записи метки кодировкой Punycode
 		 */
 		for(size_t i = 0; i < length; i++) {
 			/**
@@ -364,12 +372,12 @@ namespace {
 			 */
 			if((label.at(i) > 0x7F) || (ascii::toLower(static_cast <char> (label.at(i))) != awh::idna::PREFIX[i]))
 				// Выводим результат проверки допустимости метки
-				return validate(label, mode, inverse);
+				return __awh_validate__(label, mode, inverse);
 		}
 		// Запись метки, разбираемая кодировкой Punycode
 		string encoded = "";
 		/**
-		 * Выполняем сборку записи метки из символов набора ASCII
+		 * Сборка записи метки из символов набора ASCII
 		 */
 		for(size_t i = length; i < label.size(); i++) {
 			/**
@@ -378,7 +386,7 @@ namespace {
 			if(label.at(i) > 0x7F)
 				// Выводим ошибку разбора записи метки
 				return awh::idna::error_t::PUNYCODE;
-			// Выполняем добавление символа записи метки
+			// Добавление символа записи метки
 			encoded.append(1, static_cast <char> (label.at(i)));
 		}
 		// Набор кодовых значений разобранной метки
@@ -398,7 +406,7 @@ namespace {
 		if(decoded.empty())
 			// Выводим ошибку разбора записи метки
 			return awh::idna::error_t::PUNYCODE;
-		// Выполняем запись разобранной метки
+		// Запись разобранной метки
 		result = decoded;
 		/**
 		 * Выводим результат проверки допустимости разобранной метки
@@ -407,7 +415,7 @@ namespace {
 		 *          что предписано приложением по обработке доменных имён.
 		 *
 		 */
-		return validate(decoded, (mode & ~static_cast <uint16_t> (awh::idna::option_t::TRANSITIONAL)), inverse);
+		return __awh_validate__(decoded, (mode & ~static_cast <uint16_t> (awh::idna::option_t::TRANSITIONAL)), inverse);
 	}
 };
 
@@ -420,14 +428,14 @@ namespace {
  *
  */
 awh::idna::status_t awh::idna::status(const uint32_t code, vector <uint32_t> & result) noexcept {
-	// Выполняем очистку набора кодовых значений преобразования символа
+	// Очистка набора кодовых значений преобразования символа
 	result.clear();
 	// Получаем наименьший индекс просматриваемого участка таблицы
 	size_t lower = 0;
 	// Получаем наибольший индекс просматриваемого участка таблицы
 	size_t upper = MAPPINGS_COUNT;
 	/**
-	 * Выполняем двоичный поиск диапазона в таблице преобразований
+	 * Двоичный поиск диапазона в таблице преобразований
 	 */
 	while(lower < upper) {
 		// Получаем индекс середины просматриваемого участка
@@ -449,10 +457,10 @@ awh::idna::status_t awh::idna::status(const uint32_t code, vector <uint32_t> & r
 		 */
 		else {
 			/**
-			 * Выполняем извлечение набора кодовых значений преобразования
+			 * Извлечение набора кодовых значений преобразования
 			 */
 			for(size_t i = 0; i < MAPPINGS[middle].length; i++)
-				// Выполняем добавление очередного кодового значения преобразования
+				// Добавление очередного кодового значения преобразования
 				result.push_back(MAPPING_SETS[MAPPINGS[middle].offset + i]);
 			// Выводим состояние символа в таблице преобразований
 			return MAPPINGS[middle].status;
@@ -499,22 +507,22 @@ string_view awh::idna::message(const error_t error) noexcept {
  *
  */
 bool awh::idna::toAscii(string_view domain, string & result, error_t & error, const uint16_t mode) noexcept {
-	// Выполняем очистку получившейся записи доменного имени
+	// Очистка получившейся записи доменного имени
 	result.clear();
-	// Выполняем сброс кода ошибки приведения доменного имени
+	// Сброс кода ошибки приведения доменного имени
 	error = error_t::NONE;
 	// Набор меток приводимого доменного имени
 	vector <vector <uint32_t>> labels;
 	/**
 	 * Если разобрать доменное имя на метки не вышло
 	 */
-	if(!separate(domain, mode, labels, error))
+	if(!__awh_separate__(domain, mode, labels, error))
 		// Выводим результат выполнения приведения доменного имени
 		return false;
 	// Набор меток доменного имени, приведённых к записи Юникода
 	vector <vector <uint32_t>> restored(labels.size());
 	/**
-	 * Выполняем приведение меток доменного имени к записи Юникода
+	 * Приведение меток доменного имени к записи Юникода
 	 *
 	 * @details Приведение выполняется до проверки правила двунаправленного письма:
 	 *          признак записи имени этим письмом снимается с разобранных меток.
@@ -522,7 +530,7 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 	 */
 	for(size_t i = 0; i < labels.size(); i++) {
 		// Получаем код ошибки приведения очередной метки
-		const error_t status = restore(labels.at(i), (mode & ~static_cast <uint16_t> (option_t::BIDI)), false, restored.at(i));
+		const error_t status = __awh_restore__(labels.at(i), (mode & ~static_cast <uint16_t> (option_t::BIDI)), false, restored.at(i));
 		/**
 		 * Если привести очередную метку не вышло
 		 */
@@ -536,9 +544,9 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 	/**
 	 * Если требуется проверка правила двунаправленного письма
 	 */
-	if(enabled(mode, option_t::BIDI) && directional(restored)) {
+	if(__awh_enabled__(mode, option_t::BIDI) && directional(restored)) {
 		/**
-		 * Выполняем проверку правила двунаправленного письма для каждой метки
+		 * Проверка правила двунаправленного письма для каждой метки
 		 */
 		for(auto & label : restored) {
 			/**
@@ -555,21 +563,21 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 	// Буфер записи символа в кодировке UTF-8
 	char buffer[awh::utf8::MAX_LENGTH];
 	/**
-	 * Выполняем сборку записи доменного имени из символов набора ASCII
+	 * Сборка записи доменного имени из символов набора ASCII
 	 */
 	for(size_t i = 0; i < restored.size(); i++) {
 		/**
 		 * Если очередная метка не является первой
 		 */
 		if(i > 0)
-			// Выполняем добавление разделителя меток доменного имени
+			// Добавление разделителя меток доменного имени
 			result.append(1, '.');
 		// Запись очередной метки доменного имени
 		string encoded = "";
 		// Признак принадлежности всех символов метки набору ASCII
 		bool plain = true;
 		/**
-		 * Выполняем проверку принадлежности символов метки набору ASCII
+		 * Проверка принадлежности символов метки набору ASCII
 		 */
 		for(auto & code : restored.at(i)) {
 			/**
@@ -587,10 +595,10 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 		 */
 		if(plain) {
 			/**
-			 * Выполняем запись метки без изменений
+			 * Запись метки без изменений
 			 */
 			for(auto & code : restored.at(i))
-				// Выполняем добавление символа метки
+				// Добавление символа метки
 				encoded.append(1, static_cast <char> (code));
 		/**
 		 * Если метка содержит символы Юникода
@@ -602,22 +610,22 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 			 * Если представить метку кодировкой Punycode не вышло
 			 */
 			if(!punycode::encode(restored.at(i), punycoded)) {
-				// Выполняем очистку получившейся записи доменного имени
+				// Очистка получившейся записи доменного имени
 				result.clear();
 				// Выводим ошибку разбора записи метки
 				error = error_t::PUNYCODE;
 				// Выводим результат выполнения приведения доменного имени
 				return false;
 			}
-			// Выполняем добавление приставки записи метки кодировкой Punycode
+			// Добавление приставки записи метки кодировкой Punycode
 			encoded.append(PREFIX);
-			// Выполняем добавление записи метки кодировкой Punycode
+			// Добавление записи метки кодировкой Punycode
 			encoded.append(punycoded);
 		}
 		/**
 		 * Если требуется проверка длины доменного имени и его меток
 		 */
-		if(enabled(mode, option_t::LENGTH) && (encoded.empty() || (encoded.size() > MAX_LABEL))) {
+		if(__awh_enabled__(mode, option_t::LENGTH) && (encoded.empty() || (encoded.size() > MAX_LABEL))) {
 			/**
 			 * Если пустой является последняя метка доменного имени
 			 *
@@ -626,7 +634,7 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 			 *
 			 */
 			if(!(encoded.empty() && ((i + 1) == restored.size()) && (i > 0))) {
-				// Выполняем очистку получившейся записи доменного имени
+				// Очистка получившейся записи доменного имени
 				result.clear();
 				// Выводим ошибку длины метки доменного имени
 				error = error_t::LABEL_LENGTH;
@@ -634,7 +642,7 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 				return false;
 			}
 		}
-		// Выполняем добавление записи метки к доменному имени
+		// Добавление записи метки к доменному имени
 		result.append(encoded);
 	}
 	// Заглушаем предупреждение о неиспользуемом буфере записи символа
@@ -642,20 +650,20 @@ bool awh::idna::toAscii(string_view domain, string & result, error_t & error, co
 	/**
 	 * Если требуется проверка длины доменного имени и его меток
 	 */
-	if(enabled(mode, option_t::LENGTH)) {
+	if(__awh_enabled__(mode, option_t::LENGTH)) {
 		// Получаем длину получившейся записи доменного имени
 		size_t length = result.size();
 		/**
 		 * Если доменное имя завершается разделителем меток
 		 */
 		if((length > 0) && (result.back() == '.'))
-			// Выполняем исключение завершающего разделителя из длины
+			// Исключение завершающего разделителя из длины
 			length--;
 		/**
 		 * Если длина доменного имени недопустима
 		 */
 		if((length < 1) || (length > MAX_DOMAIN)) {
-			// Выполняем очистку получившейся записи доменного имени
+			// Очистка получившейся записи доменного имени
 			result.clear();
 			// Выводим ошибку длины доменного имени
 			error = error_t::DOMAIN_LENGTH;
@@ -679,7 +687,7 @@ string awh::idna::toAscii(string_view domain, const uint16_t mode) noexcept {
 	string result = "";
 	// Код ошибки приведения доменного имени
 	error_t error = error_t::NONE;
-	// Выполняем приведение доменного имени к записи из символов набора ASCII
+	// Приведение доменного имени к записи из символов набора ASCII
 	toAscii(domain, result, error, mode);
 	// Выводим получившуюся запись доменного имени
 	return result;
@@ -695,16 +703,16 @@ string awh::idna::toAscii(string_view domain, const uint16_t mode) noexcept {
  *
  */
 bool awh::idna::toUnicode(string_view domain, string & result, error_t & error, const uint16_t mode) noexcept {
-	// Выполняем очистку получившейся записи доменного имени
+	// Очистка получившейся записи доменного имени
 	result.clear();
-	// Выполняем сброс кода ошибки приведения доменного имени
+	// Сброс кода ошибки приведения доменного имени
 	error = error_t::NONE;
 	// Набор меток приводимого доменного имени
 	vector <vector <uint32_t>> labels;
 	/**
 	 * Если разобрать доменное имя на метки не вышло
 	 */
-	if(!separate(domain, mode, labels, error))
+	if(!__awh_separate__(domain, mode, labels, error))
 		// Выводим результат выполнения приведения доменного имени
 		return false;
 	// Набор меток доменного имени, приведённых к записи Юникода
@@ -712,11 +720,11 @@ bool awh::idna::toUnicode(string_view domain, string & result, error_t & error, 
 	// Код ошибки приведения доменного имени, обнаруженной при разборе меток
 	error_t detected = error_t::NONE;
 	/**
-	 * Выполняем приведение меток доменного имени к записи Юникода
+	 * Приведение меток доменного имени к записи Юникода
 	 */
 	for(size_t i = 0; i < labels.size(); i++) {
 		// Получаем код ошибки приведения очередной метки
-		const error_t status = restore(labels.at(i), (mode & ~static_cast <uint16_t> (option_t::BIDI)), false, restored.at(i));
+		const error_t status = __awh_restore__(labels.at(i), (mode & ~static_cast <uint16_t> (option_t::BIDI)), false, restored.at(i));
 		/**
 		 * Если привести очередную метку не вышло
 		 *
@@ -728,16 +736,16 @@ bool awh::idna::toUnicode(string_view domain, string & result, error_t & error, 
 		if(status != error_t::NONE) {
 			// Запоминаем код обнаруженной ошибки приведения
 			detected = status;
-			// Выполняем запись метки без изменений
+			// Запись метки без изменений
 			restored.at(i) = labels.at(i);
 		}
 	}
 	/**
 	 * Если требуется проверка правила двунаправленного письма
 	 */
-	if(enabled(mode, option_t::BIDI) && directional(restored)) {
+	if(__awh_enabled__(mode, option_t::BIDI) && directional(restored)) {
 		/**
-		 * Выполняем проверку правила двунаправленного письма для каждой метки
+		 * Проверка правила двунаправленного письма для каждой метки
 		 */
 		for(auto & label : restored) {
 			// Если очередная метка правилу двунаправленного письма не отвечает
@@ -749,9 +757,9 @@ bool awh::idna::toUnicode(string_view domain, string & result, error_t & error, 
 	/**
 	 * Если требуется проверка длины доменного имени и его меток
 	 */
-	if(enabled(mode, option_t::LENGTH)) {
+	if(__awh_enabled__(mode, option_t::LENGTH)) {
 		/**
-		 * Выполняем проверку длины меток доменного имени
+		 * Проверка длины меток доменного имени
 		 */
 		for(size_t i = 0; i < restored.size(); i++) {
 			/**
@@ -777,33 +785,33 @@ bool awh::idna::toUnicode(string_view domain, string & result, error_t & error, 
 	// Буфер записи символа в кодировке UTF-8
 	char buffer[awh::utf8::MAX_LENGTH];
 	/**
-	 * Выполняем сборку записи доменного имени в кодировке UTF-8
+	 * Сборка записи доменного имени в кодировке UTF-8
 	 */
 	for(size_t i = 0; i < restored.size(); i++) {
 		/**
 		 * Если очередная метка не является первой
 		 */
 		if(i > 0)
-			// Выполняем добавление разделителя меток доменного имени
+			// Добавление разделителя меток доменного имени
 			result.append(1, '.');
 		/**
-		 * Выполняем запись символов очередной метки
+		 * Запись символов очередной метки
 		 */
 		for(auto & code : restored.at(i)) {
-			// Выполняем представление кодового значения записью UTF-8
+			// Представление кодового значения записью UTF-8
 			const size_t length = awh::utf8::encode(code, buffer);
 			/**
 			 * Если представить кодовое значение записью не вышло
 			 */
 			if(length == 0) {
-				// Выполняем очистку получившейся записи доменного имени
+				// Очистка получившейся записи доменного имени
 				result.clear();
 				// Выводим ошибку записи доменного имени
 				error = error_t::ENCODING;
 				// Выводим результат выполнения приведения доменного имени
 				return false;
 			}
-			// Выполняем добавление записи символа метки
+			// Добавление записи символа метки
 			result.append(buffer, length);
 		}
 	}
@@ -825,7 +833,7 @@ string awh::idna::toUnicode(string_view domain, const uint16_t mode) noexcept {
 	string result = "";
 	// Код ошибки приведения доменного имени
 	error_t error = error_t::NONE;
-	// Выполняем приведение доменного имени к записи Юникода
+	// Приведение доменного имени к записи Юникода
 	toUnicode(domain, result, error, mode);
 	// Выводим получившуюся запись доменного имени
 	return result;

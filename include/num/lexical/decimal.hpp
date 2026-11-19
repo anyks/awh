@@ -88,13 +88,13 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ value128_t approximateProduct(const int64_t power, const uint64_t mantissa) noexcept {
-			// Выполняем проверку допустимости требуемой точности
+			// Проверка допустимости требуемой точности
 			static_assert((PRECISION >= 0) && (PRECISION <= 64), "AWH lexical: precision should be in range (0, 64]");
-			// Выполняем проверку принадлежности показателя степени диапазону таблицы
+			// Проверка принадлежности показателя степени диапазону таблицы
 			AWH_LEXICAL_ASSERT(powers::isSupported(power));
 			// Индекс старшего слова степени пяти в таблице
 			const int32_t index = (2 * static_cast <int32_t> (power - powers::SMALLEST_POWER));
-			// Выполняем вычисление основного произведения
+			// Вычисление основного произведения
 			value128_t result = multiply128(mantissa, powers::POWER_OF_FIVE[index]);
 			// Маска значимых младших бит старшего слова произведения
 			constexpr uint64_t PRECISION_MASK = ((PRECISION < 64)
@@ -102,9 +102,9 @@ namespace awh {
 				: 0xFFFFFFFFFFFFFFFFULL);
 			// Если значимые биты произведения оказались насыщены
 			if((result.high & PRECISION_MASK) == PRECISION_MASK){
-				// Выполняем вычисление уточняющего произведения по младшему слову степени
+				// Вычисление уточняющего произведения по младшему слову степени
 				const value128_t refinement = multiply128(mantissa, powers::POWER_OF_FIVE[index + 1]);
-				// Выполняем уточнение младшего слова основного произведения
+				// Уточнение младшего слова основного произведения
 				result.low += refinement.high;
 				// Если уточнение вызвало перенос в старшее слово
 				if(refinement.high > result.low)
@@ -169,9 +169,9 @@ namespace awh {
 				return mantissa_t(0, INVALID_BIAS);
 			// Количество ведущих нулевых бит мантиссы
 			const int32_t zeros = leadingZeros(mantissa);
-			// Выполняем нормализацию мантиссы сдвигом к старшему биту
+			// Нормализация мантиссы сдвигом к старшему биту
 			const uint64_t shifted = (mantissa << zeros);
-			// Выполняем приближённое вычисление произведения с запасом точности
+			// Приближённое вычисление произведения с запасом точности
 			const value128_t product = approximateProduct <BINARY::mantissaExplicitBits() + 3> (power, shifted);
 			// Выводим скорректированную мантиссу с невалидным показателем степени
 			return computeErrorScaled <BINARY> (power, product.high, zeros);
@@ -209,18 +209,18 @@ namespace awh {
 			mantissa_t result;
 			// Количество ведущих нулевых бит мантиссы
 			const int32_t zeros = leadingZeros(mantissa);
-			// Выполняем нормализацию мантиссы сдвигом к старшему биту
+			// Нормализация мантиссы сдвигом к старшему биту
 			const uint64_t shifted = (mantissa << zeros);
-			// Выполняем приближённое вычисление произведения с запасом точности
+			// Приближённое вычисление произведения с запасом точности
 			// на скрытый бит, бит округления и возможный сдвиг нормализации
 			const value128_t product = approximateProduct <BINARY::mantissaExplicitBits() + 3> (power, shifted);
 			// Признак установленного старшего бита произведения
 			const int32_t upperbit = static_cast <int32_t> (product.high >> 63);
 			// Величина сдвига для извлечения мантиссы результата
 			const int32_t shift = (upperbit + 64 - BINARY::mantissaExplicitBits() - 3);
-			// Выполняем извлечение мантиссы результата
+			// Извлечение мантиссы результата
 			result.mantissa = (product.high >> shift);
-			// Выполняем вычисление показателя степени результата
+			// Вычисление показателя степени результата
 			result.power2 = (powerExponent(static_cast <int32_t> (power)) + upperbit - zeros - BINARY::minimumExponent());
 			// Если результат попадает в субнормальный диапазон
 			if(result.power2 <= 0){
@@ -228,14 +228,14 @@ namespace awh {
 				if((1 - result.power2) >= 64)
 					// Выводим нулевое значение
 					return mantissa_t(0, 0);
-				// Выполняем сдвиг мантиссы в субнормальный диапазон
+				// Сдвиг мантиссы в субнормальный диапазон
 				result.mantissa >>= (1 - result.power2);
 				/**
-				 * Выполняем округление вверх, так как округление к чётному 
+				 * Округление вверх, так как округление к чётному 
 				 * и субнормальные значения одновременно не встречаются
 				 */
 				result.mantissa += (result.mantissa & 1);
-				// Выполняем сдвиг мантиссы на место
+				// Сдвиг мантиссы на место
 				result.mantissa >>= 1;
 				// Определяем, стало ли значение нормализованным после округления
 				result.power2 = ((result.mantissa < (uint64_t(1) << BINARY::mantissaExplicitBits())) ? 0 : 1);
@@ -255,18 +255,18 @@ namespace awh {
 					// Отменяем последующее округление вверх
 					result.mantissa &= ~uint64_t(1);
 			}
-			// Выполняем округление мантиссы вверх
+			// Округление мантиссы вверх
 			result.mantissa += (result.mantissa & 1);
-			// Выполняем сдвиг мантиссы на место
+			// Сдвиг мантиссы на место
 			result.mantissa >>= 1;
 			// Если округление вызвало переполнение мантиссы
 			if(result.mantissa >= (uint64_t(2) << BINARY::mantissaExplicitBits())){
-				// Выполняем нормализацию мантиссы
+				// Нормализация мантиссы
 				result.mantissa = (uint64_t(1) << BINARY::mantissaExplicitBits());
 				// Компенсируем нормализацию показателем степени
 				result.power2++;
 			}
-			// Выполняем сброс скрытого бита мантиссы
+			// Сброс скрытого бита мантиссы
 			result.mantissa &= ~(uint64_t(1) << BINARY::mantissaExplicitBits());
 			// Если показатель степени вышел за пределы представимого диапазона
 			if(result.power2 >= BINARY::infinitePower())

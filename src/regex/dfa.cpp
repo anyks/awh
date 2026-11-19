@@ -486,15 +486,15 @@ uint32_t awh::regex::Dfa::state(const vector <address_t> & list, const uint32_t 
 		// Добавляем адрес инструкции в ключ состояния
 		key.append(reinterpret_cast <const char *> (&address), sizeof(address));
 	// Ищем состояние в кэше состояний автомата
-	auto i = this->_cache.find(key);
+	auto entry = this->_cache.find(key);
 	/**
 	 * Если состояние обнаружено в кэше состояний автомата
 	 */
-	if(i != this->_cache.end()){
+	if(entry != this->_cache.end()){
 		// Учитываем обращени к кэшу состояний автомата
 		AWH_REGEX_TICK(path_t::CACHING);
 		// Выводим индекс обнаруженного состояния автомата
-		return i->second;
+		return entry->second;
 	}
 	// Получаем индекс создаваемого состояния автомата
 	const uint32_t result = static_cast <uint32_t> (this->_states.size());
@@ -574,7 +574,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 		// Отмечаем посещени инструкции
 		visited.at(current) = true;
 		// Получаем исполняемую инструкцию программы
-		const instruction_t & instruction = this->_program->instructions.at(current);
+		const instruction_t & instruction = this->_program->instructions.item(current);
 		/**
 		 * Определяем код операции исполняемой инструкции
 		 */
@@ -622,7 +622,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 	 */
 	for(auto & address : matching){
 		// Получаем инструкцию, сопоставляющую символы
-		const instruction_t & instruction = this->_program->instructions.at(address);
+		const instruction_t & instruction = this->_program->instructions.item(address);
 		// Флаг сопоставления байта инструкцией
 		bool accepted = false;
 		/**

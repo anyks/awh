@@ -78,6 +78,9 @@ namespace awh {
 			 *
 			 */
 			constexpr size_t LIMB_BITS = 64;
+		/**
+		 * Если разрядность 64-битная недоступна
+		 */
 		#else
 			/**
 			 * @brief Разряд длинной арифметики является 32-битным
@@ -137,31 +140,6 @@ namespace awh {
 			// Текущее количество значимых разрядов
 			uint16_t length;
 			/**
-			 * @brief Конструктор
-			 *
-			 */
-			Limbs() noexcept : length(0) {}
-			/**
-			 * @brief Конструктор копирования
-			 *
-			 */
-			Limbs(const Limbs &) = delete;
-			/**
-			 * @brief Конструктор перемещения
-			 *
-			 */
-			Limbs(Limbs &&) = delete;
-			/**
-			 * @brief Оператор присваивания копированием
-			 *
-			 */
-			Limbs & operator = (const Limbs &) = delete;
-			/**
-			 * @brief Оператор присваивания перемещением
-			 *
-			 */
-			Limbs & operator = (Limbs &&) = delete;
-			/**
 			 * @brief Метод получения количества значимых разрядов
 			 *
 			 * @return количество значимых разрядов
@@ -198,9 +176,9 @@ namespace awh {
 			 *
 			 */
 			void setLen(const size_t count) noexcept {
-				// Выполняем проверку соблюдения ёмкости вектора
+				// Проверка соблюдения ёмкости вектора
 				AWH_LEXICAL_ASSERT(count <= SIZE);
-				// Выполняем установку количества значимых разрядов
+				// Установка количества значимых разрядов
 				this->length = static_cast <uint16_t> (count);
 			}
 			/**
@@ -211,7 +189,7 @@ namespace awh {
 			 *
 			 */
 			limb_t & operator [] (const size_t index) noexcept {
-				// Выполняем проверку соблюдения границ вектора
+				// Проверка соблюдения границ вектора
 				AWH_LEXICAL_ASSERT(index < this->length);
 				// Выводим ссылку на запрашиваемый разряд
 				return this->data[index];
@@ -224,7 +202,7 @@ namespace awh {
 			 *
 			 */
 			const limb_t & operator [] (const size_t index) const noexcept {
-				// Выполняем проверку соблюдения границ вектора
+				// Проверка соблюдения границ вектора
 				AWH_LEXICAL_ASSERT(index < this->length);
 				// Выводим константную ссылку на запрашиваемый разряд
 				return this->data[index];
@@ -237,7 +215,7 @@ namespace awh {
 			 *
 			 */
 			const limb_t & rindex(const size_t index) const noexcept {
-				// Выполняем проверку соблюдения границ вектора
+				// Проверка соблюдения границ вектора
 				AWH_LEXICAL_ASSERT(index < this->length);
 				// Выводим константную ссылку на запрашиваемый разряд
 				return this->data[this->length - index - 1];
@@ -254,7 +232,7 @@ namespace awh {
 				if(this->len() >= this->capacity())
 					// Сообщаем, что разряд добавить не удалось
 					return false;
-				// Выполняем добавление разряда в конец вектора
+				// Добавление разряда в конец вектора
 				this->data[this->length] = value;
 				// Увеличиваем количество значимых разрядов
 				++this->length;
@@ -273,7 +251,7 @@ namespace awh {
 				if((this->len() + values.len()) > this->capacity())
 					// Сообщаем, что диапазон добавить не удалось
 					return false;
-				// Выполняем копирование диапазона в конец вектора
+				// Копирование диапазона в конец вектора
 				std::copy_n(values.ptr, values.len(), this->data + this->length);
 				// Увеличиваем количество значимых разрядов
 				this->setLen(this->len() + values.len());
@@ -295,9 +273,9 @@ namespace awh {
 					return false;
 				// Если вектор увеличивается
 				if(count > this->len())
-					// Выполняем заполнение добавляемых разрядов
+					// Заполнение добавляемых разрядов
 					std::fill(this->data + this->len(), this->data + count, value);
-				// Выполняем установку количества значимых разрядов
+				// Установка количества значимых разрядов
 				this->setLen(count);
 				// Сообщаем, что размер успешно изменён
 				return true;
@@ -311,7 +289,7 @@ namespace awh {
 			 */
 			bool nonzero(size_t index) const noexcept {
 				/**
-				 * Выполняем перебор разрядов от указанной позиции
+				 * Перебор разрядов от указанной позиции
 				 */
 				while(index < this->len()){
 					// Если очередной разряд не является нулевым
@@ -330,12 +308,37 @@ namespace awh {
 			 */
 			void normalize() noexcept {
 				/**
-				 * Выполняем удаление старших нулевых разрядов
+				 * Удаление старших нулевых разрядов
 				 */
 				while((this->length > 0) && (this->rindex(0) == 0))
 					// Уменьшаем количество значимых разрядов
 					--this->length;
 			}
+			/**
+			 * @brief Конструктор копирования
+			 *
+			 */
+			Limbs(const Limbs &) = delete;
+			/**
+			 * @brief Конструктор перемещения
+			 *
+			 */
+			Limbs(Limbs &&) = delete;
+			/**
+			 * @brief Оператор присваивания копированием
+			 *
+			 */
+			Limbs & operator = (const Limbs &) = delete;
+			/**
+			 * @brief Оператор присваивания перемещением
+			 *
+			 */
+			Limbs & operator = (Limbs &&) = delete;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Limbs() noexcept : length(0) {}
 		};
 		/**
 		 * @brief Шаблон ёмкости вектора разрядов
@@ -446,13 +449,13 @@ namespace awh {
 			 * Для компиляторов с поддержкой встроенной проверки используем её
 			 */
 			#if defined(AWH_LEXICAL_ADD_OVERFLOW)
-				// Выполняем сложение с контролем переполнения
+				// Сложение с контролем переполнения
 				overflow = __builtin_add_overflow(x, y, &result);
 			/**
 			 * Для остальных компиляторов используем стандартное сложение
 			 */
 			#else
-				// Выполняем сложение разрядов
+				// Сложение разрядов
 				result = static_cast <limb_t> (x + y);
 				// Переполнение произошло, если сумма меньше слагаемого
 				overflow = (result < x);
@@ -478,7 +481,7 @@ namespace awh {
 				 * Для компиляторов с поддержкой встроенного расширенного умножения используем его
 				 */
 				#if defined(__SIZEOF_INT128__)
-					// Выполняем умножение с расширением разрядности и учётом переноса
+					// Умножение с расширением разрядности и учётом переноса
 					const __uint128_t result = (
 						(static_cast <__uint128_t> (x) * static_cast <__uint128_t> (y)) +
 						static_cast <__uint128_t> (carry)
@@ -491,11 +494,11 @@ namespace awh {
 				 * Для остальных компиляторов используем 128-битное умножение разрядов
 				 */
 				#else
-					// Выполняем 128-битное умножение разрядов
+					// 128-битное умножение разрядов
 					value128_t result = multiply128(x, y);
 					// Признак переполнения при добавлении переноса
 					bool overflow = false;
-					// Выполняем добавление входящего переноса
+					// Добавление входящего переноса
 					result.low = scalarAdd(result.low, carry, overflow);
 					// Учитываем переполнение в старшей части произведения
 					result.high += static_cast <uint64_t> (overflow);
@@ -508,7 +511,7 @@ namespace awh {
 			 * Для 32-битного разряда используем расширенное умножение
 			 */
 			#else
-				// Выполняем умножение с расширением разрядности и учётом переноса
+				// Умножение с расширением разрядности и учётом переноса
 				const uint64_t result = (
 					(static_cast <uint64_t> (x) * static_cast <uint64_t> (y)) +
 					static_cast <uint64_t> (carry)
@@ -543,10 +546,10 @@ namespace awh {
 			// Признак переполнения разряда
 			bool overflow = false;
 			/**
-			 * Выполняем распространение переноса по значимым разрядам
+			 * Распространение переноса по значимым разрядам
 			 */
 			while((carry != 0) && (index < limbs.len())){
-				// Выполняем добавление переноса к очередному разряду
+				// Добавление переноса к очередному разряду
 				limbs[index] = scalarAdd(limbs[index], carry, overflow);
 				// Формируем перенос для следующего разряда
 				carry = static_cast <limb_t> (overflow);
@@ -555,7 +558,7 @@ namespace awh {
 			}
 			// Если перенос не поглощён значимыми разрядами
 			if(carry != 0)
-				// Выполняем добавление переноса новым разрядом
+				// Добавление переноса новым разрядом
 				return limbs.push(carry);
 			// Сообщаем, что операция выполнена успешно
 			return true;
@@ -576,7 +579,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ bool smallAdd(limbs_t <SIZE> & limbs, const limb_t value) noexcept {
-			// Выполняем добавление скаляра с нулевого разряда
+			// Добавление скаляра с нулевого разряда
 			return smallAddFrom(limbs, value, 0);
 		}
 		/**
@@ -598,14 +601,14 @@ namespace awh {
 			// Текущее значение переноса
 			limb_t carry = 0;
 			/**
-			 * Выполняем умножение каждого значимого разряда
+			 * Умножение каждого значимого разряда
 			 */
 			for(size_t index = 0; index < limbs.len(); ++index)
-				// Выполняем умножение очередного разряда с накоплением переноса
+				// Умножение очередного разряда с накоплением переноса
 				limbs[index] = scalarMul(limbs[index], value, carry);
 			// Если перенос не поглощён значимыми разрядами
 			if(carry != 0)
-				// Выполняем добавление переноса новым разрядом
+				// Добавление переноса новым разрядом
 				return limbs.push(carry);
 			// Сообщаем, что операция выполнена успешно
 			return true;
@@ -629,7 +632,7 @@ namespace awh {
 		__AWH_INLINE__ bool largeAddFrom(limbs_t <SIZE> & limbs, const limbSpan_t values, const size_t start) noexcept {
 			// Если текущей длины вектора недостаточно для добавления диапазона
 			if((limbs.len() < start) || (values.len() > (limbs.len() - start))){
-				// Выполняем расширение вектора нулевыми разрядами
+				// Расширение вектора нулевыми разрядами
 				if(!limbs.resize(values.len() + start, 0))
 					// Сообщаем, что операция не выполнена
 					return false;
@@ -637,7 +640,7 @@ namespace awh {
 			// Признак переноса между разрядами
 			bool carry = false;
 			/**
-			 * Выполняем поразрядное сложение добавляемого диапазона
+			 * Поразрядное сложение добавляемого диапазона
 			 */
 			for(size_t index = 0; index < values.len(); ++index){
 				// Текущее значение целевого разряда
@@ -646,11 +649,11 @@ namespace awh {
 				bool overflowValue = false;
 				// Признак переполнения при добавлении переноса
 				bool overflowCarry = false;
-				// Выполняем сложение разрядов
+				// Сложение разрядов
 				value = scalarAdd(value, values[index], overflowValue);
 				// Если имеется перенос из младшего разряда
 				if(carry)
-					// Выполняем добавление переноса
+					// Добавление переноса
 					value = scalarAdd(value, 1, overflowCarry);
 				// Сохраняем результат сложения
 				limbs[index + start] = value;
@@ -659,7 +662,7 @@ namespace awh {
 			}
 			// Если перенос не поглощён обработанными разрядами
 			if(carry)
-				// Выполняем распространение переноса по старшим разрядам
+				// Распространение переноса по старшим разрядам
 				return smallAddFrom(limbs, 1, values.len() + start);
 			// Сообщаем, что операция выполнена успешно
 			return true;
@@ -685,7 +688,7 @@ namespace awh {
 		__AWH_INLINE__ bool longMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Копия исходного значения для формирования частичных произведений
 			limbs_t <SIZE> source;
-			// Выполняем сохранение исходного значения
+			// Сохранение исходного значения
 			if(!source.extend(limbSpan_t(limbs.data, limbs.len())))
 				// Сообщаем, что операция не выполнена
 				return false;
@@ -693,34 +696,34 @@ namespace awh {
 			const limbSpan_t range = limbSpan_t(source.data, source.len());
 			// Если множитель содержит значимые разряды
 			if(values.len() != 0){
-				// Выполняем умножение на младший разряд множителя
+				// Умножение на младший разряд множителя
 				if(!smallMul(limbs, values[0]))
 					// Сообщаем, что операция не выполнена
 					return false;
 				/**
-				 * Выполняем перебор оставшихся разрядов множителя
+				 * Перебор оставшихся разрядов множителя
 				 */
 				for(size_t index = 1; index < values.len(); ++index){
 					// Если очередной разряд множителя не является нулевым
 					if(values[index] != 0){
 						// Частичное произведение для текущего разряда множителя
 						limbs_t <SIZE> partial;
-						// Выполняем копирование исходного значения
+						// Копирование исходного значения
 						if(!partial.extend(range))
 							// Сообщаем, что операция не выполнена
 							return false;
-						// Выполняем умножение на очередной разряд множителя
+						// Умножение на очередной разряд множителя
 						if(!smallMul(partial, values[index]))
 							// Сообщаем, что операция не выполнена
 							return false;
-						// Выполняем добавление частичного произведения со смещением
+						// Добавление частичного произведения со смещением
 						if(!largeAddFrom(limbs, limbSpan_t(partial.data, partial.len()), index))
 							// Сообщаем, что операция не выполнена
 							return false;
 					}
 				}
 			}
-			// Выполняем удаление старших нулевых разрядов
+			// Удаление старших нулевых разрядов
 			limbs.normalize();
 			// Сообщаем, что операция выполнена успешно
 			return true;
@@ -743,9 +746,9 @@ namespace awh {
 		__AWH_INLINE__ bool largeMul(limbs_t <SIZE> & limbs, const limbSpan_t values) noexcept {
 			// Если множитель состоит из одного разряда
 			if(values.len() == 1)
-				// Выполняем умножение на скаляр
+				// Умножение на скаляр
 				return smallMul(limbs, values[0]);
-			// Выполняем умножение школьным алгоритмом
+			// Умножение школьным алгоритмом
 			return longMul(limbs, values);
 		}
 
@@ -868,18 +871,18 @@ namespace awh {
 				 * Для 64-битного разряда значение помещается в один разряд
 				 */
 				#if defined(AWH_LEXICAL_64BIT_LIMB)
-					// Выполняем добавление значения одним разрядом
+					// Добавление значения одним разрядом
 					this->vec.push(value);
 				/**
 				 * Для 32-битного разряда значение помещается в два разряда
 				 */
 				#else
-					// Выполняем добавление младшей части значения
+					// Добавление младшей части значения
 					this->vec.push(static_cast <limb_t> (value));
-					// Выполняем добавление старшей части значения
+					// Добавление старшей части значения
 					this->vec.push(static_cast <limb_t> (value >> 32));
 				#endif
-				// Выполняем удаление старших нулевых разрядов
+				// Удаление старших нулевых разрядов
 				this->vec.normalize();
 			}
 			/**
@@ -904,7 +907,7 @@ namespace awh {
 					if(this->vec.len() == 1)
 						// Выводим результат нормализации единственного разряда
 						return toHigh64(this->vec.rindex(0), truncated);
-					// Выполняем сборку старших 64 бит из двух старших разрядов
+					// Сборка старших 64 бит из двух старших разрядов
 					const uint64_t result = toHigh64(this->vec.rindex(0), this->vec.rindex(1), truncated);
 					// Учитываем значащие биты оставшихся младших разрядов
 					truncated = (truncated || this->vec.nonzero(2));
@@ -926,7 +929,7 @@ namespace awh {
 					if(this->vec.len() == 2)
 						// Выводим результат сборки двух разрядов
 						return toHigh64(this->vec.rindex(0), this->vec.rindex(1), truncated);
-					// Выполняем сборку старших 64 бит из трёх старших разрядов
+					// Сборка старших 64 бит из трёх старших разрядов
 					const uint64_t result = toHigh64(this->vec.rindex(0), this->vec.rindex(1), this->vec.rindex(2), truncated);
 					// Учитываем значащие биты оставшихся младших разрядов
 					truncated = (truncated || this->vec.nonzero(3));
@@ -953,7 +956,7 @@ namespace awh {
 					// Сообщаем, что текущее значение меньше
 					return -1;
 				/**
-				 * Выполняем поразрядное сравнение от старшего разряда к младшему
+				 * Поразрядное сравнение от старшего разряда к младшему
 				 */
 				for(size_t index = this->vec.len(); index > 0; --index){
 					// Если разряд текущего значения больше
@@ -1012,7 +1015,7 @@ namespace awh {
 			 *
 			 */
 			bool mul(const limb_t value) noexcept {
-				// Выполняем умножение вектора разрядов на скаляр
+				// Умножение вектора разрядов на скаляр
 				return smallMul(this->vec, value);
 			}
 			/**
@@ -1023,7 +1026,7 @@ namespace awh {
 			 *
 			 */
 			bool add(const limb_t value) noexcept {
-				// Выполняем добавление скаляра к вектору разрядов
+				// Добавление скаляра к вектору разрядов
 				return smallAdd(this->vec, value);
 			}
 			/**
@@ -1034,19 +1037,19 @@ namespace awh {
 			 *
 			 */
 			bool shlBits(const size_t count) noexcept {
-				// Выполняем проверку допустимости величины сдвига
+				// Проверка допустимости величины сдвига
 				AWH_LEXICAL_ASSERT((count != 0) && (count < LIMB_BITS));
 				// Величина обратного сдвига для переноса старших бит
 				const size_t shr = (LIMB_BITS - count);
 				// Значение предыдущего обработанного разряда
 				limb_t previous = 0;
 				/**
-				 * Выполняем сдвиг каждого значимого разряда с переносом
+				 * Сдвиг каждого значимого разряда с переносом
 				 */
 				for(size_t index = 0; index < this->vec.len(); ++index){
 					// Сохраняем текущее значение разряда
 					const limb_t value = this->vec[index];
-					// Выполняем сдвиг разряда с добавлением переноса
+					// Сдвиг разряда с добавлением переноса
 					this->vec[index] = static_cast <limb_t> ((value << count) | (previous >> shr));
 					// Сохраняем разряд для формирования переноса
 					previous = value;
@@ -1055,7 +1058,7 @@ namespace awh {
 				const limb_t carry = static_cast <limb_t> (previous >> shr);
 				// Если перенос содержит значащие биты
 				if(carry != 0)
-					// Выполняем добавление переноса новым разрядом
+					// Добавление переноса новым разрядом
 					return this->vec.push(carry);
 				// Сообщаем, что операция выполнена успешно
 				return true;
@@ -1068,7 +1071,7 @@ namespace awh {
 			 *
 			 */
 			bool shlLimbs(const size_t count) noexcept {
-				// Выполняем проверку допустимости величины сдвига
+				// Проверка допустимости величины сдвига
 				AWH_LEXICAL_ASSERT(count != 0);
 				// Если ёмкости вектора недостаточно для сдвига
 				if((count + this->vec.len()) > this->vec.capacity())
@@ -1076,11 +1079,11 @@ namespace awh {
 					return false;
 				// Если значение содержит значимые разряды
 				if(!this->vec.isEmpty()){
-					// Выполняем сдвиг разрядов в сторону старших позиций
+					// Сдвиг разрядов в сторону старших позиций
 					std::copy_backward(this->vec.data, this->vec.data + this->vec.len(), this->vec.data + this->vec.len() + count);
-					// Выполняем обнуление освободившихся младших разрядов
+					// Обнуление освободившихся младших разрядов
 					std::fill(this->vec.data, this->vec.data + count, limb_t(0));
-					// Выполняем установку нового количества значимых разрядов
+					// Установка нового количества значимых разрядов
 					this->vec.setLen(this->vec.len() + count);
 				}
 				// Сообщаем, что операция выполнена успешно
@@ -1100,14 +1103,14 @@ namespace awh {
 				const size_t limbs = (count / LIMB_BITS);
 				// Если требуется сдвиг внутри разряда
 				if(bits != 0){
-					// Выполняем сдвиг внутри разряда
+					// Сдвиг внутри разряда
 					if(!this->shlBits(bits))
 						// Сообщаем, что операция не выполнена
 						return false;
 				}
 				// Если требуется сдвиг на целые разряды
 				if(limbs != 0)
-					// Выполняем сдвиг на целые разряды
+					// Сдвиг на целые разряды
 					return this->shlLimbs(limbs);
 				// Сообщаем, что операция выполнена успешно
 				return true;
@@ -1120,7 +1123,7 @@ namespace awh {
 			 *
 			 */
 			bool pow2(const uint32_t exponent) noexcept {
-				// Выполняем сдвиг значения влево на показатель степени
+				// Сдвиг значения влево на показатель степени
 				return this->shl(exponent);
 			}
 			/**
@@ -1134,10 +1137,10 @@ namespace awh {
 				// Диапазон разрядов значения пятёрки в степени крупного шага
 				const limbSpan_t large = limbSpan_t(LARGE, sizeof(LARGE) / sizeof(limb_t));
 				/**
-				 * Выполняем умножение крупными шагами по таблице разрядов
+				 * Умножение крупными шагами по таблице разрядов
 				 */
 				while(exponent >= LARGE_STEP){
-					// Выполняем умножение на значение крупного шага
+					// Умножение на значение крупного шага
 					if(!largeMul(this->vec, large))
 						// Сообщаем, что операция не выполнена
 						return false;
@@ -1162,10 +1165,10 @@ namespace awh {
 					constexpr limb_t MAX_NATIVE = 1220703125UL;
 				#endif
 				/**
-				 * Выполняем умножение средними шагами нативным скаляром
+				 * Умножение средними шагами нативным скаляром
 				 */
 				while(exponent >= SMALL_STEP){
-					// Выполняем умножение на наибольшую нативную степень
+					// Умножение на наибольшую нативную степень
 					if(!smallMul(this->vec, MAX_NATIVE))
 						// Сообщаем, что операция не выполнена
 						return false;
@@ -1174,7 +1177,7 @@ namespace awh {
 				}
 				// Если остался необработанный показатель степени
 				if(exponent != 0)
-					// Выполняем умножение на оставшуюся степень пятёрки
+					// Умножение на оставшуюся степень пятёрки
 					return smallMul(this->vec, static_cast <limb_t> (((void) SMALL[0], SMALL[exponent])));
 				// Сообщаем, что операция выполнена успешно
 				return true;
@@ -1187,11 +1190,11 @@ namespace awh {
 			 *
 			 */
 			bool pow10(const uint32_t exponent) noexcept {
-				// Выполняем умножение на степень пятёрки
+				// Умножение на степень пятёрки
 				if(!this->pow5(exponent))
 					// Сообщаем, что операция не выполнена
 					return false;
-				// Выполняем умножение на степень двойки
+				// Умножение на степень двойки
 				return this->pow2(exponent);
 			}
 		} bigint_t;

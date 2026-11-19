@@ -70,7 +70,7 @@ namespace awh {
 		 */
 		struct Output {
 			// Код ошибки стандартной библиотеки
-			errc ec;
+			errc errorCode;
 			// Код причины отказа при записи числовой строки
 			error_t error;
 			// Указатель на первый символ за записанным числом
@@ -83,18 +83,18 @@ namespace awh {
 			 */
 			constexpr explicit operator bool() const noexcept {
 				// Запись успешна, если код ошибки не установлен
-				return (this->ec == errc());
+				return (this->errorCode == errc());
 			}
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param ptr   указатель на первый символ за записанным числом
-			 * @param ec    код ошибки стандартной библиотеки
-			 * @param error код причины отказа при записи числовой строки
+			 * @param ptr       указатель на первый символ за записанным числом
+			 * @param errorCode код ошибки стандартной библиотеки
+			 * @param error     код причины отказа при записи числовой строки
 			 *
 			 */
-			constexpr Output(UC * ptr = nullptr, const errc ec = errc(), const error_t error = error_t::NONE) noexcept :
-			 ec(ec), error(error), ptr(ptr) {}
+			constexpr Output(UC * ptr = nullptr, const errc errorCode = errc(), const error_t error = error_t::NONE) noexcept :
+			 errorCode(errorCode), error(error), ptr(ptr) {}
 		};
 		/**
 		 * @brief Шаблон типа символа записываемой строки
@@ -209,12 +209,12 @@ namespace awh {
 			// Указатель на текущую позицию записи
 			UC * position = last;
 			/**
-			 * Выполняем запись значения парами десятичных цифр
+			 * Запись значения парами десятичных цифр
 			 */
 			while(value >= 100ull){
 				// Определяем индекс записываемой пары цифр
 				const uint32_t index = static_cast <uint32_t> ((value % 100ull) * 2ull);
-				// Выполняем деление значения на сотню
+				// Деление значения на сотню
 				value /= 100ull;
 				// Записываем младшую цифру пары
 				*(--position) = static_cast <UC> (DIGITS_PAIRS[index + 1]);
@@ -262,7 +262,7 @@ namespace awh {
 				if(static_cast <size_t> (last - first) < length)
 					// Выводим результат неуспешной записи
 					return output_t <UC> (last, errc::value_too_large, error_t::INSUFFICIENT_BUFFER);
-				// Выполняем запись значения десятичными цифрами
+				// Запись значения десятичными цифрами
 				writeDecimal <UC> (first + length, value);
 				// Выводим результат успешной записи
 				return output_t <UC> (first + length);
@@ -274,12 +274,12 @@ namespace awh {
 			// Обрабатываемое значение
 			uint64_t rest = value;
 			/**
-			 * Выполняем запись значения цифрами системы счисления
+			 * Запись значения цифрами системы счисления
 			 */
 			do {
 				// Записываем очередную цифру значения
 				digits[count++] = static_cast <UC> (DIGITS_TABLE[rest % static_cast <uint64_t> (base)]);
-				// Выполняем деление значения на основание системы счисления
+				// Деление значения на основание системы счисления
 				rest /= static_cast <uint64_t> (base);
 			} while(rest != 0ull);
 			// Если отведённого под запись места недостаточно
@@ -289,7 +289,7 @@ namespace awh {
 			// Указатель на текущую позицию записи
 			UC * position = first;
 			/**
-			 * Выполняем перенос цифр значения в прямом порядке
+			 * Перенос цифр значения в прямом порядке
 			 */
 			for(size_t i = count; i-- > 0;)
 				// Переносим очередную цифру значения
@@ -341,7 +341,7 @@ namespace awh {
 			 * Если мантисса состоит из нескольких цифр
 			 */
 			else {
-				// Выполняем запись цифр мантиссы со сдвигом под десятичную точку
+				// Запись цифр мантиссы со сдвигом под десятичную точку
 				writeDecimal <UC> (first + length + 1, decimal.mantissa);
 				// Переносим старшую цифру мантиссы перед десятичной точкой
 				first[0] = first[1];
@@ -358,11 +358,11 @@ namespace awh {
 			if(exponent < 0){
 				// Записываем знак показателя степени
 				*(position++) = static_cast <UC> ('-');
-				// Выполняем смену знака показателя степени
+				// Смена знака показателя степени
 				exponent = -exponent;
 			// Записываем знак показателя степени
 			} else *(position++) = static_cast <UC> ('+');
-			// Выполняем запись показателя степени
+			// Запись показателя степени
 			writeDecimal <UC> (position + width, static_cast <uint64_t> (exponent));
 			/**
 			 * Если запись показателя степени короче отведённого ей места
@@ -410,10 +410,10 @@ namespace awh {
 			 * Если число дробной части не имеет
 			 */
 			if(decimal.exponent >= 0){
-				// Выполняем запись цифр мантиссы
+				// Запись цифр мантиссы
 				writeDecimal <UC> (first + length, decimal.mantissa);
 				/**
-				 * Выполняем дописывание незначащих нулей целой части
+				 * Дописывание незначащих нулей целой части
 				 */
 				for(size_t i = 0; i < static_cast <size_t> (decimal.exponent); ++i)
 					// Дописываем очередной незначащий ноль
@@ -427,10 +427,10 @@ namespace awh {
 			 * Если целая часть числа значащие цифры содержит
 			 */
 			if(fraction < length){
-				// Выполняем запись цифр мантиссы со сдвигом под десятичную точку
+				// Запись цифр мантиссы со сдвигом под десятичную точку
 				writeDecimal <UC> (first + length + 1, decimal.mantissa);
 				/**
-				 * Выполняем перенос цифр целой части на место перед десятичной точкой
+				 * Перенос цифр целой части на место перед десятичной точкой
 				 */
 				for(size_t i = 0; i < (length - fraction); ++i)
 					// Переносим очередную цифру целой части
@@ -445,12 +445,12 @@ namespace awh {
 			// Записываем символ десятичной точки
 			first[1] = decimalPoint;
 			/**
-			 * Выполняем дописывание незначащих нулей дробной части
+			 * Дописывание незначащих нулей дробной части
 			 */
 			for(size_t i = 0; i < (fraction - length); ++i)
 				// Дописываем очередной незначащий ноль
 				first[2 + i] = static_cast <UC> ('0');
-			// Выполняем запись цифр мантиссы
+			// Запись цифр мантиссы
 			writeDecimal <UC> (first + total, decimal.mantissa);
 			// Выводим результат успешной записи
 			return output_t <UC> (first + total);
@@ -481,10 +481,10 @@ namespace awh {
 		 */
 		__AWH_INLINE__ output_t <UC> toCharsFloat(UC * first, UC * const last, const T value, const options_t <UC> options) noexcept {
 			// Создаём тип беззнакового целого равной разрядности
-			using uint_t = typename binary_t <T>::equiv_uint;
+			using uint_t = typename binary_t <T>::equivUint;
 			// Двоичное представление записываемого числа
 			uint_t bits = 0;
-			// Выполняем извлечение двоичного представления числа
+			// Извлечение двоичного представления числа
 			::memcpy(&bits, &value, sizeof(bits));
 			// Определяем знак записываемого числа
 			const bool sign = ((bits >> binary_t <T>::signIndex()) != 0);
@@ -520,7 +520,7 @@ namespace awh {
 					// Выводим результат неуспешной записи
 					return output_t <UC> (last, errc::value_too_large, error_t::INSUFFICIENT_BUFFER);
 				/**
-				 * Выполняем запись слова вида числа
+				 * Запись слова вида числа
 				 */
 				for(size_t i = 0; i < 3; ++i)
 					// Записываем очередную букву слова вида числа
@@ -541,7 +541,7 @@ namespace awh {
 				// Выводим результат успешной записи
 				return output_t <UC> (position);
 			}
-			// Выполняем формирование кратчайшего десятичного представления числа
+			// Формирование кратчайшего десятичного представления числа
 			const decimal_t decimal = shortest <T> (mantissa, exponent);
 			// Определяем допустимость записи без показателя степени
 			const bool fixed = ((options.format & format_t::FIXED) != format_t::NONE);

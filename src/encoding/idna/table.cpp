@@ -31,6 +31,10 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Используем пространство имён библиотеки
+ */
 using namespace awh;
 
 /**
@@ -43,6 +47,9 @@ using namespace awh;
  *
  */
 using awh::idna::status_t;
+/**
+ * Вводим имя перечисления типов соединения
+ */
 using awh::idna::joining_t;
 
 /**
@@ -7981,6 +7988,7 @@ const awh::idna::mapping_t awh::idna::MAPPINGS[] = {
 	{0xE0100, 0xE01EF, 0, 0, status_t::IGNORED},
 	{0xE01F0, 0x10FFFF, 0, 0, status_t::DISALLOWED}
 };
+// Число преобразований символов
 const size_t awh::idna::MAPPINGS_COUNT = 7930;
 
 /**
@@ -8924,4 +8932,5 @@ const awh::idna::joining_range_t awh::idna::JOININGS[] = {
 	{0xE0020, 0xE007F, joining_t::TRANSPARENT},
 	{0xE0100, 0xE01EF, joining_t::TRANSPARENT}
 };
+// Число соединений символов
 const size_t awh::idna::JOININGS_COUNT = 497;

@@ -128,19 +128,19 @@ namespace awh {
 						if(size <= STACK_BUFFER_SIZE){
 							// Устанавливаем буфер данных размещённый на стеке
 							this->_data = this->_stack;
-							// Выполняем обнуление буфера данных
+							// Обнуление буфера данных
 							::memset(this->_data, 0, size);
 						/**
 						 * Если буфер данных необходимо разместить в динамической памяти
 						 */
 						} else {
-							// Выполняем выделение памяти под буфер данных
+							// Выделение памяти под буфер данных
 							this->_heap.reset(new (nothrow) uint8_t [size]);
 							// Устанавливаем буфер данных размещённый в динамической памяти
 							this->_data = this->_heap.get();
 							// Если буфер данных выделен
 							if(this->_data != nullptr)
-								// Выполняем обнуление буфера данных
+								// Обнуление буфера данных
 								::memset(this->_data, 0, size);
 						}
 					}
@@ -156,7 +156,7 @@ namespace awh {
 			 * @return      значение указанного разряда
 			 *
 			 */
-			__AWH_INLINE__ bool getBit(const uint8_t * value, const size_t index) noexcept {
+			__AWH_INLINE__ bool __awh_get_bit__(const uint8_t * value, const size_t index) noexcept {
 				// Выводим значение указанного разряда числа
 				return ((value[index / 8] & static_cast <uint8_t> (1 << (index % 8))) != 0);
 			}
@@ -168,12 +168,12 @@ namespace awh {
 			 * @param mode  устанавливаемое значение разряда
 			 *
 			 */
-			__AWH_INLINE__ void setBit(uint8_t * value, const size_t index, const bool mode) noexcept {
+			__AWH_INLINE__ void __awh_set_bit__(uint8_t * value, const size_t index, const bool mode) noexcept {
 				// Если требуется установить разряд числа
 				if(mode)
-					// Выполняем установку разряда числа
+					// Установка разряда числа
 					value[index / 8] |= static_cast <uint8_t> (1 << (index % 8));
-				// Выполняем сброс разряда числа
+				// Сброс разряда числа
 				else value[index / 8] &= static_cast <uint8_t> (~(1 << (index % 8)));
 			}
 
@@ -212,7 +212,7 @@ namespace awh {
 						 * Если буфер данных не требуется
 						 */
 						if(size == 0){
-							// Выполняем освобождение динамической памяти
+							// Освобождение динамической памяти
 							this->_heap.reset();
 							// Сбрасываем указатель на активный буфер данных
 							this->_data = nullptr;
@@ -223,14 +223,14 @@ namespace awh {
 						 * Если размер буфера позволяет разместить его на стеке
 						 */
 						if(size <= STACK_BUFFER_SIZE){
-							// Выполняем освобождение динамической памяти
+							// Освобождение динамической памяти
 							this->_heap.reset();
 							// Устанавливаем буфер данных размещённый на стеке
 							this->_data = this->_stack;
 							// Выходим из функции
 							return;
 						}
-						// Выполняем выделение памяти под буфер данных
+						// Выделение памяти под буфер данных
 						this->_heap.reset(new (nothrow) uint8_t [size]);
 						// Устанавливаем буфер данных размещённый в динамической памяти
 						this->_data = this->_heap.get();
@@ -246,11 +246,11 @@ namespace awh {
 					 *
 					 */
 					void copy(const Buffer & other) noexcept {
-						// Выполняем выделение памяти под буфер данных
+						// Выделение памяти под буфер данных
 						this->allocate(other._size);
 						// Если оба буфера данных существуют
 						if((this->_data != nullptr) && (other._data != nullptr))
-							// Выполняем копирование содержимого буфера данных
+							// Копирование содержимого буфера данных
 							::memcpy(this->_data, other._data, this->_size);
 					}
 				public:
@@ -304,11 +304,11 @@ namespace awh {
 					 *
 					 */
 					void assign(const size_t size) noexcept {
-						// Выполняем выделение памяти под буфер данных
+						// Выделение памяти под буфер данных
 						this->allocate(size);
 						// Если буфер данных выделен
 						if(this->_data != nullptr)
-							// Выполняем обнуление буфера данных
+							// Обнуление буфера данных
 							::memset(this->_data, 0, this->_size);
 					}
 					/**
@@ -326,22 +326,22 @@ namespace awh {
 						 * Если оба буфера размещены в динамической памяти
 						 */
 						if((this->_heap != nullptr) && (other._heap != nullptr)){
-							// Выполняем обмен буферами динамической памяти
+							// Обмен буферами динамической памяти
 							this->_heap.swap(other._heap);
-							// Выполняем обмен указателями на активные буферы данных
+							// Обмен указателями на активные буферы данных
 							this->_data = this->_heap.get();
-							// Выполняем обмен указателями на активные буферы данных
+							// Обмен указателями на активные буферы данных
 							other._data = other._heap.get();
-							// Выполняем обмен размерами буферов данных
+							// Обмен размерами буферов данных
 							std::swap(this->_size, other._size);
 							// Выходим из функции
 							return;
 						}
-						// Выполняем обмен содержимым буферов данных через временный буфер
+						// Обмен содержимым буферов данных через временный буфер
 						Buffer temp(std::move(* this));
-						// Выполняем перенос содержимого второго буфера данных
+						// Перенос содержимого второго буфера данных
 						(* this) = std::move(other);
-						// Выполняем перенос содержимого временного буфера данных
+						// Перенос содержимого временного буфера данных
 						other = std::move(temp);
 					}
 				public:
@@ -357,7 +357,7 @@ namespace awh {
 					 *
 					 */
 					explicit Buffer(const size_t size) noexcept : _size(0), _data(nullptr) {
-						// Выполняем выделение обнулённого буфера данных
+						// Выделение обнулённого буфера данных
 						this->assign(size);
 					}
 					/**
@@ -367,7 +367,7 @@ namespace awh {
 					 *
 					 */
 					explicit Buffer(const Buffer & other) noexcept : _size(0), _data(nullptr) {
-						// Выполняем копирование содержимого буфера данных
+						// Копирование содержимого буфера данных
 						this->copy(other);
 					}
 					/**
@@ -381,13 +381,13 @@ namespace awh {
 						 * Если перемещаемый буфер размещён в динамической памяти
 						 */
 						if(other._heap != nullptr){
-							// Выполняем перенос буфера динамической памяти
+							// Перенос буфера динамической памяти
 							this->_heap = std::move(other._heap);
 							// Устанавливаем указатель на активный буфер данных
 							this->_data = this->_heap.get();
 							// Устанавливаем размер буфера данных
 							this->_size = other._size;
-						// Выполняем копирование содержимого буфера данных
+						// Копирование содержимого буфера данных
 						} else this->copy(other);
 						// Сбрасываем указатель перемещаемого буфера данных
 						other._data = nullptr;
@@ -405,7 +405,7 @@ namespace awh {
 					Buffer & operator = (const Buffer & other) noexcept {
 						// Если присваивается иной буфер данных
 						if(this != &other)
-							// Выполняем копирование содержимого буфера данных
+							// Копирование содержимого буфера данных
 							this->copy(other);
 						// Выводим текущий объект
 						return (* this);
@@ -426,13 +426,13 @@ namespace awh {
 							 * Если перемещаемый буфер размещён в динамической памяти
 							 */
 							if(other._heap != nullptr){
-								// Выполняем перенос буфера динамической памяти
+								// Перенос буфера динамической памяти
 								this->_heap = std::move(other._heap);
 								// Устанавливаем указатель на активный буфер данных
 								this->_data = this->_heap.get();
 								// Устанавливаем размер буфера данных
 								this->_size = other._size;
-							// Выполняем копирование содержимого буфера данных
+							// Копирование содержимого буфера данных
 							} else this->copy(other);
 							// Сбрасываем указатель перемещаемого буфера данных
 							other._data = nullptr;
@@ -451,7 +451,7 @@ namespace awh {
 			 * @return       прочитанное значение слова
 			 *
 			 */
-			static __AWH_INLINE__ uint32_t load32(const uint8_t * buffer) noexcept {
+			static __AWH_INLINE__ uint32_t __awh_load32__(const uint8_t * buffer) noexcept {
 				// Выводим прочитанное значение слова
 				return (
 					static_cast <uint32_t> (buffer[0]) |
@@ -467,7 +467,7 @@ namespace awh {
 			 * @param value  записываемое значение слова
 			 *
 			 */
-			static __AWH_INLINE__ void store32(uint8_t * buffer, const uint32_t value) noexcept {
+			static __AWH_INLINE__ void __awh_store32__(uint8_t * buffer, const uint32_t value) noexcept {
 				// Записываем младший байт слова
 				buffer[0] = static_cast <uint8_t> (value & 0xFF);
 				// Записываем второй байт слова
@@ -552,14 +552,14 @@ namespace awh {
 						 * Если буфер разрядов необходимо разместить в динамической памяти
 						 */
 						} else {
-							// Выполняем выделение памяти под буфер разрядов
+							// Выделение памяти под буфер разрядов
 							this->_heap.reset(new (nothrow) uint32_t [count]);
 							// Устанавливаем буфер разрядов размещённый в динамической памяти
 							this->_data = this->_heap.get();
 						}
 						// Если буфер разрядов выделен и требуется его обнуление
 						if(clear && (this->_data != nullptr))
-							// Выполняем обнуление буфера разрядов
+							// Обнуление буфера разрядов
 							::memset(this->_data, 0, (count * sizeof(uint32_t)));
 					}
 			};
@@ -570,7 +570,7 @@ namespace awh {
 			 * @return      количество ведущих нулевых бит разряда
 			 *
 			 */
-			static constexpr uint32_t leadingZeros(const uint32_t value) noexcept {
+			static constexpr uint32_t __awh_leading_zeros__(const uint32_t value) noexcept {
 				// Если значение разряда является нулевым
 				if(value == 0)
 					// Выводим количество ведущих нулевых бит разряда
@@ -590,10 +590,10 @@ namespace awh {
 					// Количество ведущих нулевых бит разряда
 					uint32_t count = 0;
 					/**
-					 * Выполняем подсчёт ведущих нулевых бит разряда
+					 * Подсчёт ведущих нулевых бит разряда
 					 */
 					while((rest & 0x80000000u) == 0){
-						// Выполняем сдвиг обрабатываемого значения разряда
+						// Сдвиг обрабатываемого значения разряда
 						rest <<= 1;
 						// Увеличиваем количество ведущих нулевых бит разряда
 						count++;
@@ -611,40 +611,40 @@ namespace awh {
 			 * @param size  размер буфера числа источника в байтах
 			 *
 			 */
-			static __AWH_INLINE__ void loadLimbs(uint32_t * limbs, const size_t count, const uint8_t * value, const size_t size) noexcept {
+			static __AWH_INLINE__ void __awh_load_limbs__(uint32_t * limbs, const size_t count, const uint8_t * value, const size_t size) noexcept {
 				// Определяем количество полных разрядов числа
 				const size_t full = (size / 4);
 				// Индекс обрабатываемого разряда
-				size_t i = 0;
+				size_t index = 0;
 				/**
-				 * Выполняем перебор всех полных разрядов числа
+				 * Перебор всех полных разрядов числа
 				 */
-				for(; (i < full) && (i < count); ++i)
-					// Выполняем перенос полного разряда числа
-					limbs[i] = load32(value + (i * 4));
+				for(; (index < full) && (index < count); ++index)
+					// Перенос полного разряда числа
+					limbs[index] = __awh_load32__(value + (index * 4));
 				/**
 				 * Если число содержит неполный старший разряд
 				 */
-				if((i < count) && ((i * 4) < size)){
+				if((index < count) && ((index * 4) < size)){
 					// Значение неполного старшего разряда
 					uint32_t limb = 0;
 					/**
-					 * Выполняем перебор всех байтов неполного старшего разряда
+					 * Перебор всех байтов неполного старшего разряда
 					 */
-					for(size_t j = (i * 4); j < size; ++j)
-						// Выполняем перенос байта числа в разряд
-						limb |= (static_cast <uint32_t> (value[j]) << ((j - (i * 4)) * 8));
+					for(size_t j = (index * 4); j < size; ++j)
+						// Перенос байта числа в разряд
+						limb |= (static_cast <uint32_t> (value[j]) << ((j - (index * 4)) * 8));
 					// Записываем значение неполного старшего разряда
-					limbs[i] = limb;
+					limbs[index] = limb;
 					// Увеличиваем индекс обрабатываемого разряда
-					i++;
+					index++;
 				}
 				/**
-				 * Выполняем обнуление оставшихся разрядов буфера приёмника
+				 * Обнуление оставшихся разрядов буфера приёмника
 				 */
-				for(; i < count; ++i)
-					// Выполняем обнуление разряда буфера приёмника
-					limbs[i] = 0;
+				for(; index < count; ++index)
+					// Обнуление разряда буфера приёмника
+					limbs[index] = 0;
 			}
 			/**
 			 * @brief Функция переноса буфера разрядов в буфер числа
@@ -655,24 +655,24 @@ namespace awh {
 			 * @param count количество разрядов буфера источника
 			 *
 			 */
-			static __AWH_INLINE__ void storeLimbs(uint8_t * value, const size_t size, const uint32_t * limbs, const size_t count) noexcept {
+			static __AWH_INLINE__ void __awh_store_limbs__(uint8_t * value, const size_t size, const uint32_t * limbs, const size_t count) noexcept {
 				// Определяем количество полных разрядов числа
 				const size_t full = (size / 4);
 				// Индекс обрабатываемого разряда
-				size_t i = 0;
+				size_t index = 0;
 				/**
-				 * Выполняем перебор всех полных разрядов числа
+				 * Перебор всех полных разрядов числа
 				 */
-				for(; (i < full) && (i < count); ++i)
-					// Выполняем перенос полного разряда числа
-					store32(value + (i * 4), limbs[i]);
+				for(; (index < full) && (index < count); ++index)
+					// Перенос полного разряда числа
+					__awh_store32__(value + (index * 4), limbs[index]);
 				/**
-				 * Выполняем перебор всех оставшихся байтов буфера приёмника
+				 * Перебор всех оставшихся байтов буфера приёмника
 				 */
-				for(size_t j = (i * 4); j < size; ++j){
+				for(size_t j = (index * 4); j < size; ++j){
 					// Определяем индекс разряда содержащего переносимый байт
 					const size_t index = (j / 4);
-					// Выполняем перенос байта разряда в буфер числа
+					// Перенос байта разряда в буфер числа
 					value[j] = ((index < count) ? static_cast <uint8_t> ((limbs[index] >> ((j % 4) * 8)) & 0xFF) : 0);
 				}
 			}
@@ -685,26 +685,26 @@ namespace awh {
 			 * @return      остаток от деления
 			 *
 			 */
-			static __AWH_INLINE__ uint32_t divSmall(uint8_t * value, const size_t size, const uint32_t div) noexcept {
+			static __AWH_INLINE__ uint32_t __awh_div_small__(uint8_t * value, const size_t size, const uint32_t div) noexcept {
 				// Остаток от деления числа
 				uint64_t rem = 0;
 				// Определяем количество старших байтов, не образующих полного слова
 				const size_t tail = (size % sizeof(uint32_t));
 				/**
-				 * Выполняем перебор старших байтов числа, не образующих полного слова
+				 * Перебор старших байтов числа, не образующих полного слова
 				 */
 				for(size_t i = size; i > (size - tail);){
 					// Уменьшаем индекс обрабатываемого байта числа
 					--i;
 					// Формируем текущее делимое значение
 					const uint64_t cur = ((rem << 8) | static_cast <uint64_t> (value[i]));
-					// Выполняем деление текущего значения
+					// Деление текущего значения
 					value[i] = static_cast <uint8_t> (cur / div);
 					// Получаем остаток от деления
 					rem = (cur % div);
 				}
 				/**
-				 * Выполняем перебор всех слов числа от старшего к младшему
+				 * Перебор всех слов числа от старшего к младшему
 				 *
 				 * @details Деление выполняется целыми машинными словами, а не байтами: остаток от
 				 *          деления на делитель разрядностью до тридцати двух бит вместе со следующим
@@ -714,9 +714,9 @@ namespace awh {
 				 */
 				for(size_t i = (size - tail); i >= sizeof(uint32_t); i -= sizeof(uint32_t)){
 					// Формируем текущее делимое значение
-					const uint64_t cur = ((rem << 32) | static_cast <uint64_t> (load32(value + (i - sizeof(uint32_t)))));
-					// Выполняем деление текущего значения
-					store32((value + (i - sizeof(uint32_t))), static_cast <uint32_t> (cur / div));
+					const uint64_t cur = ((rem << 32) | static_cast <uint64_t> (__awh_load32__(value + (i - sizeof(uint32_t)))));
+					// Деление текущего значения
+					__awh_store32__((value + (i - sizeof(uint32_t))), static_cast <uint32_t> (cur / div));
 					// Получаем остаток от деления
 					rem = (cur % div);
 				}
@@ -738,13 +738,13 @@ namespace awh {
 			 * @param add   значение слагаемого
 			 *
 			 */
-			static __AWH_INLINE__ void mulAddSmall(uint8_t * value, const size_t size, const uint64_t mul, const uint64_t add) noexcept {
+			static __AWH_INLINE__ void __awh_mul_add_small__(uint8_t * value, const size_t size, const uint64_t mul, const uint64_t add) noexcept {
 				// Значение переноса разряда
 				uint64_t carry = add;
 				// Определяем количество слов числа
 				const size_t words = ((mul >> 32) == 0 ? (size / sizeof(uint32_t)) : 0);
 				/**
-				 * Выполняем перебор всех слов числа от младшего к старшему
+				 * Перебор всех слов числа от младшего к старшему
 				 *
 				 * @details Умножение выполняется целыми машинными словами, а не байтами: произведение
 				 *          слова на множитель разрядностью до тридцати двух бит вместе с переносом
@@ -755,14 +755,14 @@ namespace awh {
 				 */
 				for(size_t i = 0; i < words; ++i){
 					// Формируем текущее значение произведения
-					const uint64_t cur = ((static_cast <uint64_t> (load32(value + (i * sizeof(uint32_t)))) * mul) + carry);
+					const uint64_t cur = ((static_cast <uint64_t> (__awh_load32__(value + (i * sizeof(uint32_t)))) * mul) + carry);
 					// Записываем младшее слово произведения
-					store32((value + (i * sizeof(uint32_t))), static_cast <uint32_t> (cur & 0xFFFFFFFFull));
+					__awh_store32__((value + (i * sizeof(uint32_t))), static_cast <uint32_t> (cur & 0xFFFFFFFFull));
 					// Получаем значение переноса разряда
 					carry = (cur >> 32);
 				}
 				/**
-				 * Выполняем перебор оставшихся байтов числа от младшего к старшему
+				 * Перебор оставшихся байтов числа от младшего к старшему
 				 */
 				for(size_t i = (words * sizeof(uint32_t)); i < size; ++i){
 					// Формируем текущее значение произведения
@@ -781,7 +781,7 @@ namespace awh {
 			 * @param count  требуемое количество значащих цифр
 			 *
 			 */
-			static __AWH_INLINE__ void decimalRound(string & digits, int64_t & point, const size_t count) noexcept {
+			static __AWH_INLINE__ void __awh_decimal_round__(string & digits, int64_t & point, const size_t count) noexcept {
 				// Если округление не требуется
 				if((count == 0) || (digits.size() <= count))
 					// Выходим из функции
@@ -789,32 +789,32 @@ namespace awh {
 				// Определяем количество отбрасываемых цифр
 				const size_t drop = (digits.size() - count);
 				// Определяем необходимость округления в большую сторону
-				const bool up = (digits[count] >= '5');
-				// Выполняем удаление отбрасываемых цифр
+				const bool roundUp = (digits[count] >= '5');
+				// Удаление отбрасываемых цифр
 				digits.erase(count);
 				// Увеличиваем показатель степени десяти
 				point += static_cast <int64_t> (drop);
 				/**
 				 * Если требуется округление в большую сторону
 				 */
-				if(up){
+				if(roundUp){
 					// Индекс обрабатываемой цифры
-					size_t i = digits.size();
+					size_t index = digits.size();
 					/**
-					 * Выполняем перебор всех цифр числа от младшей к старшей
+					 * Перебор всех цифр числа от младшей к старшей
 					 */
-					while(i-- > 0){
+					while(index-- > 0){
 						/**
 						 * Если цифра не является последней в разряде
 						 */
-						if(digits[i] < '9'){
+						if(digits[index] < '9'){
 							// Увеличиваем значение цифры
-							digits[i] = static_cast <char> (digits[i] + 1);
+							digits[index] = static_cast <char> (digits[index] + 1);
 							// Выходим из цикла округления
 							return;
 						}
 						// Обнуляем значение цифры
-						digits[i] = '0';
+						digits[index] = '0';
 					}
 					// Добавляем цифру переноса в начало строки цифр
 					digits.insert(digits.begin(), '1');
@@ -830,16 +830,18 @@ namespace awh {
 			 * @param digits строка десятичных цифр от старшей к младшей
 			 *
 			 */
-			static __AWH_INLINE__ void decimalTrim(string & digits) noexcept {
+			static __AWH_INLINE__ void __awh_decimal_trim__(string & digits) noexcept {
 				// Индекс первой значащей цифры
 				size_t offset = 0;
-				// Выполняем поиск первой значащей цифры
+				/**
+				 * Поиск первой значащей цифры
+				 */
 				while(((offset + 1) < digits.size()) && (digits[offset] == '0'))
 					// Увеличиваем индекс первой значащей цифры
 					offset++;
 				// Если ведущие нули обнаружены
 				if(offset > 0)
-					// Выполняем удаление ведущих нулей
+					// Удаление ведущих нулей
 					digits.erase(0, offset);
 			}
 
@@ -874,7 +876,7 @@ namespace awh {
 			 * @return     параметры формата вещественного числа
 			 *
 			 */
-			static __AWH_INLINE__ realParams_t realParams(const size_t size) noexcept {
+			static __AWH_INLINE__ realParams_t __awh_real_params__(const size_t size) noexcept {
 				// Результат работы функции
 				realParams_t result;
 				// Определяем общую разрядность вещественного числа
@@ -897,7 +899,7 @@ namespace awh {
 			 * @return     размер рабочего буфера мантиссы в байтах
 			 *
 			 */
-			static constexpr size_t realWorkSize(const size_t size) noexcept {
+			static constexpr size_t __awh_real_work_size__(const size_t size) noexcept {
 				// Выводим размер рабочего буфера мантиссы
 				return ((size * 3) + 16);
 			}
@@ -914,7 +916,7 @@ namespace awh {
 void awh::bignum::reset(uint8_t * value, const size_t size) noexcept {
 	// Если буфер числа передан
 	if((value != nullptr) && (size > 0))
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		::memset(value, 0, size);
 }
 /**
@@ -931,22 +933,22 @@ bool awh::bignum::zero(const uint8_t * value, const size_t size) noexcept {
 		// Выводим результат проверки
 		return true;
 	// Индекс обрабатываемого байта
-	size_t i = 0;
+	size_t index = 0;
 	/**
-	 * Выполняем перебор всех слов числа
+	 * Перебор всех слов числа
 	 */
-	for(; (i + 4) <= size; i += 4){
+	for(; (index + 4) <= size; index += 4){
 		// Если слово числа не является нулевым
-		if(load32(value + i) != 0)
+		if(__awh_load32__(value + index) != 0)
 			// Выводим результат проверки
 			return false;
 	}
 	/**
-	 * Выполняем перебор оставшихся байтов числа
+	 * Перебор оставшихся байтов числа
 	 */
-	for(; i < size; ++i){
+	for(; index < size; ++index){
 		// Если байт числа не является нулевым
-		if(value[i] != 0)
+		if(value[index] != 0)
 			// Выводим результат проверки
 			return false;
 	}
@@ -969,26 +971,26 @@ size_t awh::bignum::bits(const uint8_t * value, const size_t size) noexcept {
 	// Получаем индекс байта следующего за последним полным разрядом числа
 	const size_t offset = (size - (size % sizeof(uint32_t)));
 	/**
-	 * Выполняем перебор байтов неполного старшего разряда числа
+	 * Перебор байтов неполного старшего разряда числа
 	 */
 	for(size_t i = size; i-- > offset;){
 		// Если байт числа содержит установленные биты
 		if(value[i] != 0)
 			// Выводим количество значащих бит числа
-			return ((i * 8) + (32 - leadingZeros(value[i])));
+			return ((i * 8) + (32 - __awh_leading_zeros__(value[i])));
 	}
 	/**
-	 * Выполняем перебор всех полных разрядов числа от старшего к младшему
+	 * Перебор всех полных разрядов числа от старшего к младшему
 	 */
 	for(size_t i = offset; i >= sizeof(uint32_t);){
 		// Смещаемся на очередной разряд числа
 		i -= sizeof(uint32_t);
-		// Выполняем извлечение обрабатываемого разряда числа
-		const uint32_t limb = load32(value + i);
+		// Извлечение обрабатываемого разряда числа
+		const uint32_t limb = __awh_load32__(value + i);
 		// Если разряд числа содержит установленные биты
 		if(limb != 0)
 			// Выводим количество значащих бит числа
-			return ((i * 8) + (32 - leadingZeros(limb)));
+			return ((i * 8) + (32 - __awh_leading_zeros__(limb)));
 	}
 	// Выводим количество значащих бит числа
 	return 0;
@@ -1026,9 +1028,9 @@ void awh::bignum::bit(uint8_t * value, const size_t size, const size_t index, co
 		return;
 	// Если требуется установить бит числа
 	if(mode)
-		// Выполняем установку бита числа
+		// Установка бита числа
 		value[index / 8] |= static_cast <uint8_t> (1 << (index % 8));
-	// Выполняем сброс бита числа
+	// Сброс бита числа
 	else value[index / 8] &= static_cast <uint8_t> (~(1 << (index % 8)));
 }
 /**
@@ -1060,26 +1062,26 @@ bool awh::bignum::add(uint8_t * result, const uint8_t * value, const size_t size
 	// Значение переноса разряда
 	uint64_t carry = 0;
 	// Индекс обрабатываемого байта
-	size_t i = 0;
+	size_t index = 0;
 	/**
-	 * Выполняем перебор всех слов чисел
+	 * Перебор всех слов чисел
 	 */
-	for(; (i + 4) <= size; i += 4){
-		// Выполняем сложение слов чисел
-		carry += (static_cast <uint64_t> (load32(result + i)) + static_cast <uint64_t> (load32(value + i)));
+	for(; (index + 4) <= size; index += 4){
+		// Сложение слов чисел
+		carry += (static_cast <uint64_t> (__awh_load32__(result + index)) + static_cast <uint64_t> (__awh_load32__(value + index)));
 		// Записываем результат сложения слов чисел
-		store32(result + i, static_cast <uint32_t> (carry & 0xFFFFFFFF));
+		__awh_store32__(result + index, static_cast <uint32_t> (carry & 0xFFFFFFFF));
 		// Получаем значение переноса разряда
 		carry >>= 32;
 	}
 	/**
-	 * Выполняем перебор оставшихся байтов чисел
+	 * Перебор оставшихся байтов чисел
 	 */
-	for(; i < size; ++i){
-		// Выполняем сложение байтов чисел
-		carry += (static_cast <uint64_t> (result[i]) + static_cast <uint64_t> (value[i]));
+	for(; index < size; ++index){
+		// Сложение байтов чисел
+		carry += (static_cast <uint64_t> (result[index]) + static_cast <uint64_t> (value[index]));
 		// Записываем результат сложения байтов чисел
-		result[i] = static_cast <uint8_t> (carry & 0xFF);
+		result[index] = static_cast <uint8_t> (carry & 0xFF);
 		// Получаем значение переноса разряда
 		carry >>= 8;
 	}
@@ -1099,26 +1101,26 @@ bool awh::bignum::sub(uint8_t * result, const uint8_t * value, const size_t size
 	// Значение заёма разряда
 	uint64_t borrow = 0;
 	// Индекс обрабатываемого байта
-	size_t i = 0;
+	size_t index = 0;
 	/**
-	 * Выполняем перебор всех слов чисел
+	 * Перебор всех слов чисел
 	 */
-	for(; (i + 4) <= size; i += 4){
-		// Выполняем вычитание слов чисел
-		const uint64_t cur = (static_cast <uint64_t> (load32(result + i)) - static_cast <uint64_t> (load32(value + i)) - borrow);
+	for(; (index + 4) <= size; index += 4){
+		// Вычитание слов чисел
+		const uint64_t cur = (static_cast <uint64_t> (__awh_load32__(result + index)) - static_cast <uint64_t> (__awh_load32__(value + index)) - borrow);
 		// Записываем результат вычитания слов чисел
-		store32(result + i, static_cast <uint32_t> (cur & 0xFFFFFFFF));
+		__awh_store32__(result + index, static_cast <uint32_t> (cur & 0xFFFFFFFF));
 		// Получаем значение заёма разряда
 		borrow = ((cur >> 32) != 0 ? 1 : 0);
 	}
 	/**
-	 * Выполняем перебор оставшихся байтов чисел
+	 * Перебор оставшихся байтов чисел
 	 */
-	for(; i < size; ++i){
-		// Выполняем вычитание байтов чисел
-		const uint64_t cur = (static_cast <uint64_t> (result[i]) - static_cast <uint64_t> (value[i]) - borrow);
+	for(; index < size; ++index){
+		// Вычитание байтов чисел
+		const uint64_t cur = (static_cast <uint64_t> (result[index]) - static_cast <uint64_t> (value[index]) - borrow);
 		// Записываем результат вычитания байтов чисел
-		result[i] = static_cast <uint8_t> (cur & 0xFF);
+		result[index] = static_cast <uint8_t> (cur & 0xFF);
 		// Получаем значение заёма разряда
 		borrow = ((cur >> 8) != 0 ? 1 : 0);
 	}
@@ -1154,9 +1156,9 @@ namespace awh {
 			 * @param count   количество разрядов представления чисел
 			 *
 			 */
-			inline void mulLimbs(uint32_t * product, const uint32_t * num1, const uint32_t * num2, const size_t count) noexcept {
+			inline void __awh_mul_limbs__(uint32_t * product, const uint32_t * num1, const uint32_t * num2, const size_t count) noexcept {
 				/**
-				 * Выполняем перебор всех разрядов множимого числа
+				 * Перебор всех разрядов множимого числа
 				 */
 				for(size_t i = 0; i < count; ++i){
 					// Если разряд множимого числа является нулевым
@@ -1166,7 +1168,7 @@ namespace awh {
 					// Значение переноса разряда
 					uint64_t carry = 0;
 					/**
-					 * Выполняем перебор всех разрядов множителя числа
+					 * Перебор всех разрядов множителя числа
 					 */
 					for(size_t j = 0; (i + j) < count; ++j){
 						// Формируем текущее значение произведения
@@ -1210,35 +1212,35 @@ void awh::bignum::mul(uint8_t * result, const uint8_t * value, const size_t size
 		uint32_t num2[SMALL_LIMB_COUNT] = {0};
 		// Буфер разрядов произведения
 		uint32_t product[SMALL_LIMB_COUNT] = {0};
-		// Выполняем перенос множимого числа в буфер разрядов
-		loadLimbs(num1, count, result, size);
-		// Выполняем перенос множителя числа в буфер разрядов
-		loadLimbs(num2, count, value, size);
-		// Выполняем умножение разрядов чисел
-		mulLimbs(product, num1, num2, count);
-		// Выполняем перенос произведения в буфер числа
-		storeLimbs(result, size, product, count);
+		// Перенос множимого числа в буфер разрядов
+		__awh_load_limbs__(num1, count, result, size);
+		// Перенос множителя числа в буфер разрядов
+		__awh_load_limbs__(num2, count, value, size);
+		// Умножение разрядов чисел
+		__awh_mul_limbs__(product, num1, num2, count);
+		// Перенос произведения в буфер числа
+		__awh_store_limbs__(result, size, product, count);
 		// Выходим из функции
 		return;
 	}
-	// Выполняем создание буфера разрядов множимого числа
+	// Создание буфера разрядов множимого числа
 	Limbs num1(count, false);
-	// Выполняем создание буфера разрядов множителя числа
+	// Создание буфера разрядов множителя числа
 	Limbs num2(count, false);
-	// Выполняем создание буфера разрядов произведения
+	// Создание буфера разрядов произведения
 	Limbs product(count);
 	// Если буферы разрядов не созданы
 	if((num1.get() == nullptr) || (num2.get() == nullptr) || (product.get() == nullptr))
 		// Выходим из функции
 		return;
-	// Выполняем перенос множимого числа в буфер разрядов
-	loadLimbs(num1.get(), count, result, size);
-	// Выполняем перенос множителя числа в буфер разрядов
-	loadLimbs(num2.get(), count, value, size);
-	// Выполняем умножение разрядов чисел
-	mulLimbs(product.get(), num1.get(), num2.get(), count);
-	// Выполняем перенос произведения в буфер числа
-	storeLimbs(result, size, product.get(), count);
+	// Перенос множимого числа в буфер разрядов
+	__awh_load_limbs__(num1.get(), count, result, size);
+	// Перенос множителя числа в буфер разрядов
+	__awh_load_limbs__(num2.get(), count, value, size);
+	// Умножение разрядов чисел
+	__awh_mul_limbs__(product.get(), num1.get(), num2.get(), count);
+	// Перенос произведения в буфер числа
+	__awh_store_limbs__(result, size, product.get(), count);
 }
 /**
  * @brief Функция деления двух беззнаковых целых чисел с получением остатка
@@ -1267,25 +1269,25 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 	 * Если делитель является нулевым
 	 */
 	if(zero(value, size)){
-		// Выполняем обнуление частного от деления
+		// Обнуление частного от деления
 		reset(result, size);
 		// Если буфер остатка от деления передан
 		if(mod != nullptr)
-			// Выполняем обнуление остатка от деления
+			// Обнуление остатка от деления
 			reset(mod, size);
 		// Выводим результат выполнения деления
 		return false;
 	}
 	// Определяем количество разрядов представления чисел
 	const size_t count = ((size + 3) / 4);
-	// Выполняем создание буфера разрядов делимого числа
+	// Создание буфера разрядов делимого числа
 	Limbs num1(count, false);
-	// Выполняем создание буфера разрядов делителя числа
+	// Создание буфера разрядов делителя числа
 	Limbs num2(count, false);
-	// Выполняем создание буфера разрядов частного от деления
+	// Создание буфера разрядов частного от деления
 	Limbs quot(count);
 	/**
-	 * Выполняем создание буфера разрядов остатка от деления
+	 * Создание буфера разрядов остатка от деления
 	 *
 	 * @note Обнуление буфера выполняется только когда остаток от деления запрошен:
 	 *       перенос остатка читает буфер целиком, а заполняются в нём лишь значащие
@@ -1293,28 +1295,32 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 	 *
 	 */
 	Limbs rem(count, (mod != nullptr));
-	// Выполняем создание буфера нормализованного делимого числа
+	// Создание буфера нормализованного делимого числа
 	Limbs dividend(count + 2, false);
-	// Выполняем создание буфера нормализованного делителя числа
+	// Создание буфера нормализованного делителя числа
 	Limbs divisor(count + 1, false);
 	// Если буферы разрядов не созданы
 	if((num1.get() == nullptr) || (num2.get() == nullptr) || (quot.get() == nullptr) ||
 	   (rem.get() == nullptr) || (dividend.get() == nullptr) || (divisor.get() == nullptr))
 		// Выводим результат выполнения деления
 		return false;
-	// Выполняем перенос делимого числа в буфер разрядов
-	loadLimbs(num1.get(), count, result, size);
-	// Выполняем перенос делителя числа в буфер разрядов
-	loadLimbs(num2.get(), count, value, size);
+	// Перенос делимого числа в буфер разрядов
+	__awh_load_limbs__(num1.get(), count, result, size);
+	// Перенос делителя числа в буфер разрядов
+	__awh_load_limbs__(num2.get(), count, value, size);
 	// Определяем количество значащих разрядов делителя числа
 	size_t length2 = count;
-	// Выполняем поиск старшего значащего разряда делителя числа
+	/**
+	 * Поиск старшего значащего разряда делителя числа
+	 */
 	while((length2 > 0) && (num2.get()[length2 - 1] == 0))
 		// Уменьшаем количество значащих разрядов делителя числа
 		length2--;
 	// Определяем количество значащих разрядов делимого числа
 	size_t length1 = count;
-	// Выполняем поиск старшего значащего разряда делимого числа
+	/**
+	 * Поиск старшего значащего разряда делимого числа
+	 */
 	while((length1 > 0) && (num1.get()[length1 - 1] == 0))
 		// Уменьшаем количество значащих разрядов делимого числа
 		length1--;
@@ -1324,9 +1330,9 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 	if(length1 < length2){
 		// Если буфер остатка от деления передан
 		if(mod != nullptr)
-			// Выполняем копирование делимого числа в остаток от деления
+			// Копирование делимого числа в остаток от деления
 			::memcpy(mod, result, size);
-		// Выполняем обнуление частного от деления
+		// Обнуление частного от деления
 		reset(result, size);
 		// Выводим результат выполнения деления
 		return true;
@@ -1338,46 +1344,46 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 		// Значение остатка от деления
 		uint64_t rest = 0;
 		/**
-		 * Выполняем перебор всех значащих разрядов делимого числа
+		 * Перебор всех значащих разрядов делимого числа
 		 */
 		for(size_t i = length1; i-- > 0;){
 			// Формируем текущее делимое значение
 			const uint64_t cur = ((rest << 32) | static_cast <uint64_t> (num1.get()[i]));
-			// Выполняем деление текущего значения
+			// Деление текущего значения
 			quot.get()[i] = static_cast <uint32_t> (cur / num2.get()[0]);
 			// Получаем остаток от деления
 			rest = (cur % num2.get()[0]);
 		}
-		// Выполняем перенос частного от деления в буфер числа
-		storeLimbs(result, size, quot.get(), count);
+		// Перенос частного от деления в буфер числа
+		__awh_store_limbs__(result, size, quot.get(), count);
 		/**
 		 * Если буфер остатка от деления передан
 		 */
 		if(mod != nullptr){
 			// Записываем остаток от деления
 			rem.get()[0] = static_cast <uint32_t> (rest);
-			// Выполняем перенос остатка от деления в буфер числа
-			storeLimbs(mod, size, rem.get(), count);
+			// Перенос остатка от деления в буфер числа
+			__awh_store_limbs__(mod, size, rem.get(), count);
 		}
 		// Выводим результат выполнения деления
 		return true;
 	}
 	/**
-	 * Выполняем деление по алгоритму D Кнута в системе счисления с основанием 2^32
+	 * Деление по алгоритму D Кнута в системе счисления с основанием 2^32
 	 *
 	 * @details Делимое и делитель нормализуются сдвигом влево так, чтобы старший разряд
 	 *          делителя имел установленный старший бит, что обеспечивает точность оценки
 	 *          очередного разряда частного с погрешностью не более двух единиц.
 	 *
 	 */
-	const uint32_t shift = leadingZeros(num2.get()[length2 - 1]);
+	const uint32_t shift = __awh_leading_zeros__(num2.get()[length2 - 1]);
 	/**
 	 * Если нормализация чисел не требуется
 	 */
 	if(shift == 0){
-		// Выполняем копирование разрядов делителя числа
+		// Копирование разрядов делителя числа
 		::memcpy(divisor.get(), num2.get(), (length2 * sizeof(uint32_t)));
-		// Выполняем копирование разрядов делимого числа
+		// Копирование разрядов делимого числа
 		::memcpy(dividend.get(), num1.get(), (length1 * sizeof(uint32_t)));
 		// Обнуляем старший разряд нормализованного делимого числа
 		dividend.get()[length1] = 0;
@@ -1386,7 +1392,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 	 */
 	} else {
 		/**
-		 * Выполняем нормализацию разрядов делителя числа
+		 * Нормализация разрядов делителя числа
 		 */
 		for(size_t i = length2; i-- > 1;)
 			// Формируем нормализованный разряд делителя числа
@@ -1396,7 +1402,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 		// Формируем старший нормализованный разряд делимого числа
 		dividend.get()[length1] = (num1.get()[length1 - 1] >> (32 - shift));
 		/**
-		 * Выполняем нормализацию разрядов делимого числа
+		 * Нормализация разрядов делимого числа
 		 */
 		for(size_t i = length1; i-- > 1;)
 			// Формируем нормализованный разряд делимого числа
@@ -1405,7 +1411,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 		dividend.get()[0] = (num1.get()[0] << shift);
 	}
 	/**
-	 * Выполняем перебор всех разрядов формируемого частного от деления
+	 * Перебор всех разрядов формируемого частного от деления
 	 */
 	for(size_t j = ((length1 - length2) + 1); j-- > 0;){
 		// Формируем старшую часть текущего делимого значения
@@ -1413,12 +1419,12 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 			(static_cast <uint64_t> (dividend.get()[j + length2]) << 32) |
 			static_cast <uint64_t> (dividend.get()[(j + length2) - 1])
 		);
-		// Выполняем оценку очередного разряда частного от деления
+		// Оценка очередного разряда частного от деления
 		uint64_t estimate = (top / divisor.get()[length2 - 1]);
-		// Выполняем оценку остатка от деления
+		// Оценка остатка от деления
 		uint64_t rest = (top % divisor.get()[length2 - 1]);
 		/**
-		 * Выполняем уточнение оценки очередного разряда частного от деления
+		 * Уточнение оценки очередного разряда частного от деления
 		 */
 		while((estimate >= LIMB_BASE) || ((estimate * divisor.get()[length2 - 2]) >
 		      ((rest << 32) | static_cast <uint64_t> (dividend.get()[(j + length2) - 2])))){
@@ -1446,7 +1452,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 		// Значение заёма разряда
 		int64_t borrow = 0;
 		/**
-		 * Выполняем вычитание произведения делителя на оценку разряда частного
+		 * Вычитание произведения делителя на оценку разряда частного
 		 */
 		for(size_t i = 0; i < length2; ++i){
 			// Формируем текущее значение произведения
@@ -1476,7 +1482,7 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 			// Значение переноса разряда
 			uint64_t carry = 0;
 			/**
-			 * Выполняем обратное прибавление делителя числа
+			 * Обратное прибавление делителя числа
 			 */
 			for(size_t i = 0; i < length2; ++i){
 				// Формируем текущее значение суммы
@@ -1493,8 +1499,8 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 			dividend.get()[j + length2] += static_cast <uint32_t> (carry);
 		}
 	}
-	// Выполняем перенос частного от деления в буфер числа
-	storeLimbs(result, size, quot.get(), count);
+	// Перенос частного от деления в буфер числа
+	__awh_store_limbs__(result, size, quot.get(), count);
 	/**
 	 * Если буфер остатка от деления передан
 	 */
@@ -1503,21 +1509,21 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
 		 * Если денормализация остатка не требуется
 		 */
 		if(shift == 0)
-			// Выполняем копирование разрядов остатка от деления
+			// Копирование разрядов остатка от деления
 			::memcpy(rem.get(), dividend.get(), (length2 * sizeof(uint32_t)));
 		/**
 		 * Если требуется выполнить денормализацию остатка
 		 */
 		else {
 			/**
-			 * Выполняем денормализацию разрядов остатка от деления
+			 * Денормализация разрядов остатка от деления
 			 */
 			for(size_t i = 0; i < length2; ++i)
 				// Формируем денормализованный разряд остатка от деления
 				rem.get()[i] = ((dividend.get()[i] >> shift) | (dividend.get()[i + 1] << (32 - shift)));
 		}
-		// Выполняем перенос остатка от деления в буфер числа
-		storeLimbs(mod, size, rem.get(), count);
+		// Перенос остатка от деления в буфер числа
+		__awh_store_limbs__(mod, size, rem.get(), count);
 	}
 	// Выводим результат выполнения деления
 	return true;
@@ -1530,12 +1536,12 @@ bool awh::bignum::divmod(uint8_t * result, const uint8_t * value, uint8_t * mod,
  *
  */
 void awh::bignum::neg(uint8_t * value, const size_t size) noexcept {
-	// Выполняем побитовую инверсию числа
+	// Побитовуя инверсию числа
 	inv(value, size);
 	// Значение переноса разряда
 	uint16_t carry = 1;
 	/**
-	 * Выполняем перебор всех байтов числа
+	 * Перебор всех байтов числа
 	 */
 	for(size_t i = 0; (i < size) && (carry != 0); ++i){
 		// Формируем текущее значение суммы
@@ -1555,10 +1561,10 @@ void awh::bignum::neg(uint8_t * value, const size_t size) noexcept {
  */
 void awh::bignum::inv(uint8_t * value, const size_t size) noexcept {
 	/**
-	 * Выполняем перебор всех байтов числа
+	 * Перебор всех байтов числа
 	 */
 	for(size_t i = 0; i < size; ++i)
-		// Выполняем инверсию байта числа
+		// Инверсия байта числа
 		value[i] = static_cast <uint8_t> (~value[i]);
 }
 /**
@@ -1571,10 +1577,10 @@ void awh::bignum::inv(uint8_t * value, const size_t size) noexcept {
  */
 void awh::bignum::band(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	/**
-	 * Выполняем перебор всех байтов чисел
+	 * Перебор всех байтов чисел
 	 */
 	for(size_t i = 0; i < size; ++i)
-		// Выполняем побитовое умножение байтов чисел
+		// Побитовое умножение байтов чисел
 		result[i] &= value[i];
 }
 /**
@@ -1587,10 +1593,10 @@ void awh::bignum::band(uint8_t * result, const uint8_t * value, const size_t siz
  */
 void awh::bignum::bor(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	/**
-	 * Выполняем перебор всех байтов чисел
+	 * Перебор всех байтов чисел
 	 */
 	for(size_t i = 0; i < size; ++i)
-		// Выполняем побитовое сложение байтов чисел
+		// Побитовое сложение байтов чисел
 		result[i] |= value[i];
 }
 /**
@@ -1603,10 +1609,10 @@ void awh::bignum::bor(uint8_t * result, const uint8_t * value, const size_t size
  */
 void awh::bignum::bxor(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	/**
-	 * Выполняем перебор всех байтов чисел
+	 * Перебор всех байтов чисел
 	 */
 	for(size_t i = 0; i < size; ++i)
-		// Выполняем побитовое исключающее сложение байтов чисел
+		// Побитовое исключающее сложение байтов чисел
 		result[i] ^= value[i];
 }
 /**
@@ -1626,7 +1632,7 @@ void awh::bignum::shl(uint8_t * value, const size_t size, const size_t count) no
 	 * Если сдвиг выходит за пределы разрядной сетки
 	 */
 	if(count >= (size * 8)){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Выходим из функции
 		return;
@@ -1639,9 +1645,9 @@ void awh::bignum::shl(uint8_t * value, const size_t size, const size_t count) no
 	 * Если требуется выполнить сдвиг на целые байты
 	 */
 	if(bytes > 0){
-		// Выполняем сдвиг байтов числа
+		// Сдвиг байтов числа
 		::memmove(value + bytes, value, size - bytes);
-		// Выполняем обнуление младших байтов числа
+		// Обнуление младших байтов числа
 		::memset(value, 0, bytes);
 	}
 	/**
@@ -1651,7 +1657,7 @@ void awh::bignum::shl(uint8_t * value, const size_t size, const size_t count) no
 		// Получаем индекс байта следующего за последним полным разрядом числа
 		const size_t offset = (size - (size % sizeof(uint32_t)));
 		/**
-		 * Выполняем перебор байтов неполного старшего разряда числа
+		 * Перебор байтов неполного старшего разряда числа
 		 */
 		for(size_t i = size; i-- > offset;){
 			// Формируем сдвинутое значение байта числа
@@ -1664,19 +1670,19 @@ void awh::bignum::shl(uint8_t * value, const size_t size, const size_t count) no
 			value[i] = byte;
 		}
 		/**
-		 * Выполняем перебор всех полных разрядов числа от старшего к младшему
+		 * Перебор всех полных разрядов числа от старшего к младшему
 		 */
 		for(size_t i = offset, last = (bytes - (bytes % sizeof(uint32_t))); i > last;){
 			// Смещаемся на очередной разряд числа
 			i -= sizeof(uint32_t);
 			// Формируем сдвинутое значение разряда числа
-			uint32_t limb = (load32(value + i) << rest);
+			uint32_t limb = (__awh_load32__(value + i) << rest);
 			// Если младший разряд числа существует
 			if(i > 0)
 				// Добавляем перенесённые биты младшего разряда числа
-				limb |= (load32(value + (i - sizeof(uint32_t))) >> (32 - rest));
+				limb |= (__awh_load32__(value + (i - sizeof(uint32_t))) >> (32 - rest));
 			// Записываем сдвинутое значение разряда числа
-			store32(value + i, limb);
+			__awh_store32__(value + i, limb);
 		}
 	}
 }
@@ -1700,7 +1706,7 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
 	 * Если сдвиг выходит за пределы разрядной сетки
 	 */
 	if(count >= (size * 8)){
-		// Выполняем заполнение буфера числа
+		// Заполнение буфера числа
 		::memset(value, filler, size);
 		// Выходим из функции
 		return;
@@ -1713,9 +1719,9 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
 	 * Если требуется выполнить сдвиг на целые байты
 	 */
 	if(bytes > 0){
-		// Выполняем сдвиг байтов числа
+		// Сдвиг байтов числа
 		::memmove(value, value + bytes, size - bytes);
-		// Выполняем заполнение старших байтов числа
+		// Заполнение старших байтов числа
 		::memset(value + (size - bytes), filler, bytes);
 	}
 	/**
@@ -1725,25 +1731,25 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
 		// Получаем индекс байта следующего за последним полным разрядом числа
 		const size_t offset = (size - (size % sizeof(uint32_t)));
 		/**
-		 * Выполняем перебор всех полных разрядов числа от младшего к старшему
+		 * Перебор всех полных разрядов числа от младшего к старшему
 		 */
 		for(size_t i = 0; i < offset; i += sizeof(uint32_t)){
 			// Формируем сдвинутое значение разряда числа
-			uint32_t limb = (load32(value + i) >> rest);
+			uint32_t limb = (__awh_load32__(value + i) >> rest);
 			// Значение старшего разряда числа
 			uint32_t next = 0;
 			/**
 			 * Если старший разряд числа существует целиком
 			 */
 			if((i + (sizeof(uint32_t) * 2)) <= size)
-				// Выполняем извлечение старшего разряда числа
-				next = load32(value + i + sizeof(uint32_t));
+				// Извлечение старшего разряда числа
+				next = __awh_load32__(value + i + sizeof(uint32_t));
 			/**
 			 * Если старший разряд числа выходит за пределы разрядной сетки
 			 */
 			else {
 				/**
-				 * Выполняем перебор всех байтов старшего разряда числа
+				 * Перебор всех байтов старшего разряда числа
 				 */
 				for(size_t j = 0; j < sizeof(uint32_t); ++j){
 					// Определяем индекс байта старшего разряда числа
@@ -1755,10 +1761,10 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
 			// Добавляем перенесённые биты старшего разряда числа
 			limb |= (next << (32 - rest));
 			// Записываем сдвинутое значение разряда числа
-			store32(value + i, limb);
+			__awh_store32__(value + i, limb);
 		}
 		/**
-		 * Выполняем перебор байтов неполного старшего разряда числа
+		 * Перебор байтов неполного старшего разряда числа
 		 */
 		for(size_t i = offset; i < size; ++i){
 			// Формируем сдвинутое значение байта числа
@@ -1783,7 +1789,7 @@ void awh::bignum::shr(uint8_t * value, const size_t size, const size_t count, co
  */
 int8_t awh::bignum::ucompare(const uint8_t * value1, const uint8_t * value2, const size_t size) noexcept {
 	/**
-	 * Выполняем перебор всех байтов чисел от старшего к младшему
+	 * Перебор всех байтов чисел от старшего к младшему
 	 */
 	for(size_t i = size; i-- > 0;){
 		// Если байт первого числа больше байта второго числа
@@ -1837,20 +1843,20 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	if(count <= 1)
 		// Выходим из функции
 		return;
-	// Выполняем создание временного буфера текущего приближения
+	// Создание временного буфера текущего приближения
 	Scratch guess(size);
-	// Выполняем создание временного буфера следующего приближения
+	// Создание временного буфера следующего приближения
 	Scratch next(size);
-	// Выполняем создание временного буфера частного от деления
+	// Создание временного буфера частного от деления
 	Scratch quotient(size);
-	// Выполняем создание временного буфера исходного числа
+	// Создание временного буфера исходного числа
 	Scratch source(size);
 	// Если временные буферы не созданы
 	if((guess.get() == nullptr) || (next.get() == nullptr) ||
 	   (quotient.get() == nullptr) || (source.get() == nullptr))
 		// Выходим из функции
 		return;
-	// Выполняем копирование исходного числа
+	// Копирование исходного числа
 	::memcpy(source.get(), value, size);
 	/**
 	 * Формируем начальное приближение корня
@@ -1862,7 +1868,7 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	 */
 	bit(guess.get(), size, ((count + 1) / 2), true);
 	/**
-	 * Выполняем уточнение корня методом Ньютона
+	 * Уточнение корня методом Ньютона
 	 *
 	 * @details Каждая итерация приближения удваивает количество верных разрядов,
 	 *          поэтому итераций требуется порядка логарифма разрядности числа,
@@ -1870,24 +1876,24 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	 *
 	 */
 	for(;;){
-		// Выполняем копирование исходного числа в делимое
+		// Копирование исходного числа в делимое
 		::memcpy(quotient.get(), source.get(), size);
-		// Выполняем деление исходного числа на текущее приближение
+		// Деление исходного числа на текущее приближение
 		divmod(quotient.get(), guess.get(), nullptr, size);
-		// Выполняем копирование текущего приближения
+		// Копирование текущего приближения
 		::memcpy(next.get(), guess.get(), size);
-		// Выполняем сложение текущего приближения с частным от деления
+		// Сложение текущего приближения с частным от деления
 		add(next.get(), quotient.get(), size);
-		// Выполняем деление суммы приближений на два
+		// Деление суммы приближений на два
 		shr(next.get(), size, 1, false);
 		// Если уточнение приближения завершено
 		if(ucompare(next.get(), guess.get(), size) >= 0)
 			// Выходим из цикла уточнения корня
 			break;
-		// Выполняем переход к следующему приближению
+		// Переход к следующему приближению
 		::memcpy(guess.get(), next.get(), size);
 	}
-	// Выполняем копирование результата извлечения корня
+	// Копирование результата извлечения корня
 	::memcpy(value, guess.get(), size);
 }
 /**
@@ -1903,16 +1909,16 @@ void awh::bignum::pow(uint8_t * value, const size_t size, const uint64_t exponen
 	 * Если показатель степени является нулевым
 	 */
 	if(exponent == 0){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Устанавливаем единичное значение числа
 		value[0] = 1;
 		// Выходим из функции
 		return;
 	}
-	// Выполняем создание временного буфера результата
+	// Создание временного буфера результата
 	Scratch result(size);
-	// Выполняем создание временного буфера основания степени
+	// Создание временного буфера основания степени
 	Scratch base(size);
 	// Если временные буферы не созданы
 	if((result.get() == nullptr) || (base.get() == nullptr))
@@ -1920,26 +1926,26 @@ void awh::bignum::pow(uint8_t * value, const size_t size, const uint64_t exponen
 		return;
 	// Устанавливаем единичное значение результата
 	result.get()[0] = 1;
-	// Выполняем копирование основания степени
+	// Копирование основания степени
 	::memcpy(base.get(), value, size);
 	// Получаем показатель степени
 	uint64_t power = exponent;
 	/**
-	 * Выполняем возведение числа в степень методом бинарного возведения
+	 * Возведение числа в степень методом бинарного возведения
 	 */
 	while(power > 0){
 		// Если младший бит показателя степени установлен
 		if((power & 1) != 0)
-			// Выполняем умножение результата на основание степени
+			// Умножение результата на основание степени
 			mul(result.get(), base.get(), size);
-		// Выполняем сдвиг показателя степени
+		// Сдвиг показателя степени
 		power >>= 1;
 		// Если возведение в степень не завершено
 		if(power > 0)
-			// Выполняем возведение основания степени в квадрат
+			// Возведение основания степени в квадрат
 			mul(base.get(), base.get(), size);
 	}
-	// Выполняем копирование результата возведения в степень
+	// Копирование результата возведения в степень
 	::memcpy(value, result.get(), size);
 }
 /**
@@ -1952,19 +1958,19 @@ void awh::bignum::pow(uint8_t * value, const size_t size, const uint64_t exponen
  *
  */
 void awh::bignum::set(uint8_t * value, const size_t size, const uint64_t num, const bool sign) noexcept {
-	// Выполняем обнуление буфера числа
+	// Обнуление буфера числа
 	reset(value, size);
 	// Определяем количество устанавливаемых байтов числа
 	const size_t count = ((size < 8) ? size : 8);
 	/**
-	 * Выполняем перебор всех устанавливаемых байтов числа
+	 * Перебор всех устанавливаемых байтов числа
 	 */
 	for(size_t i = 0; i < count; ++i)
-		// Выполняем установку байта числа
+		// Установка байта числа
 		value[i] = static_cast <uint8_t> ((num >> (i * 8)) & 0xFF);
 	// Если требуется установить отрицательное значение числа
 	if(sign)
-		// Выполняем смену знака числа
+		// Смена знака числа
 		neg(value, size);
 }
 /**
@@ -1981,10 +1987,10 @@ uint64_t awh::bignum::getUint(const uint8_t * value, const size_t size) noexcept
 	// Определяем количество извлекаемых байтов числа
 	const size_t count = ((size < 8) ? size : 8);
 	/**
-	 * Выполняем перебор всех извлекаемых байтов числа
+	 * Перебор всех извлекаемых байтов числа
 	 */
 	for(size_t i = 0; i < count; ++i)
-		// Выполняем извлечение байта числа
+		// Извлечение байта числа
 		result |= (static_cast <uint64_t> (value[i]) << (i * 8));
 	// Выводим результат работы функции
 	return result;
@@ -1998,11 +2004,11 @@ uint64_t awh::bignum::getUint(const uint8_t * value, const size_t size) noexcept
  *
  */
 int64_t awh::bignum::getInt(const uint8_t * value, const size_t size) noexcept {
-	// Выполняем извлечение беззнакового значения числа
+	// Извлечение беззнакового значения числа
 	uint64_t result = getUint(value, size);
 	// Если разрядность числа меньше разрядности результата и число является отрицательным
 	if((size < 8) && negative(value, size))
-		// Выполняем расширение знака числа
+		// Расширение знака числа
 		result |= ~((static_cast <uint64_t> (1) << (size * 8)) - 1);
 	// Выводим результат работы функции
 	return static_cast <int64_t> (result);
@@ -2019,25 +2025,25 @@ int64_t awh::bignum::getInt(const uint8_t * value, const size_t size) noexcept {
 long double awh::bignum::getReal(const uint8_t * value, const size_t size, const bool sign) noexcept {
 	// Определяем является ли число отрицательным
 	const bool minus = (sign && negative(value, size));
-	// Выполняем создание временного буфера числа
+	// Создание временного буфера числа
 	Scratch tmp(size);
 	// Если временный буфер числа не создан
 	if(tmp.get() == nullptr)
 		// Выводим результат работы функции
 		return 0.0L;
-	// Выполняем копирование буфера числа
+	// Копирование буфера числа
 	::memcpy(tmp.get(), value, size);
 	// Если число является отрицательным
 	if(minus)
-		// Выполняем смену знака числа
+		// Смена знака числа
 		neg(tmp.get(), size);
 	// Результат работы функции
 	long double result = 0.0L;
 	/**
-	 * Выполняем перебор всех байтов числа от старшего к младшему
+	 * Перебор всех байтов числа от старшего к младшему
 	 */
 	for(size_t i = size; i-- > 0;)
-		// Выполняем накопление вещественного значения числа
+		// Накопление вещественного значения числа
 		result = ((result * 256.0L) + static_cast <long double> (tmp.get()[i]));
 	// Выводим результат работы функции
 	return (minus ? -result : result);
@@ -2052,7 +2058,7 @@ long double awh::bignum::getReal(const uint8_t * value, const size_t size, const
  *
  */
 void awh::bignum::setReal(uint8_t * value, const size_t size, const long double num, const bool sign) noexcept {
-	// Выполняем обнуление буфера числа
+	// Обнуление буфера числа
 	reset(value, size);
 	// Если устанавливаемое значение не является числом
 	if(::isnan(num))
@@ -2090,11 +2096,11 @@ void awh::bignum::setReal(uint8_t * value, const size_t size, const long double 
 			// Выходим из функции
 			return;
 		}
-		// Выполняем заполнение буфера числа
+		// Заполнение буфера числа
 		::memset(value, 0xFF, size);
 		// Если число является знаковым
 		if(sign)
-			// Выполняем сброс старшего разряда числа
+			// Сброс старшего разряда числа
 			bit(value, size, ((size * 8) - 1), false);
 		// Выходим из функции
 		return;
@@ -2102,19 +2108,19 @@ void awh::bignum::setReal(uint8_t * value, const size_t size, const long double 
 	// Получаем модуль устанавливаемого значения
 	long double rest = ::floorl(::fabsl(num));
 	/**
-	 * Выполняем перебор всех байтов числа
+	 * Перебор всех байтов числа
 	 */
 	for(size_t i = 0; (i < size) && (rest >= 1.0L); ++i){
 		// Получаем значение младшего байта числа
 		const long double byte = ::fmodl(rest, 256.0L);
-		// Выполняем установку байта числа
+		// Установка байта числа
 		value[i] = static_cast <uint8_t> (byte);
-		// Выполняем сдвиг устанавливаемого значения
+		// Сдвиг устанавливаемого значения
 		rest = ::floorl((rest - byte) / 256.0L);
 	}
 	// Если число является отрицательным
 	if(minus)
-		// Выполняем смену знака числа
+		// Смена знака числа
 		neg(value, size);
 }
 /**
@@ -2135,7 +2141,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 		// Выводим результат работы функции
 		return "0";
 	/**
-	 * Выполняем определение формата представления числа
+	 * Определение формата представления числа
 	 */
 	switch(static_cast <uint8_t> (format)){
 		/**
@@ -2144,10 +2150,10 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 		case static_cast <uint8_t> (format_t::BIN): {
 			// Получаем количество значащих бит числа
 			const size_t count = bits(value, size);
-			// Выполняем резервирование памяти под результат
+			// Резервирование памяти под результат
 			result.reserve(count);
 			/**
-			 * Выполняем перебор всех значащих бит числа от старшего к младшему
+			 * Перебор всех значащих бит числа от старшего к младшему
 			 */
 			for(size_t i = count; i-- > 0;)
 				// Добавляем очередной бит числа в результат
@@ -2162,7 +2168,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 			// Определяем позицию старшей восьмеричной цифры
 			size_t offset = (((count + 2) / 3) * 3);
 			/**
-			 * Выполняем перебор всех восьмеричных цифр числа
+			 * Перебор всех восьмеричных цифр числа
 			 */
 			while(offset >= 3){
 				// Уменьшаем позицию обрабатываемой цифры
@@ -2170,7 +2176,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 				// Значение обрабатываемой цифры
 				uint8_t digit = 0;
 				/**
-				 * Выполняем формирование значения обрабатываемой цифры
+				 * Формирование значения обрабатываемой цифры
 				 */
 				for(size_t i = 0; i < 3; ++i){
 					// Если бит числа установлен
@@ -2181,8 +2187,8 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 				// Добавляем очередную цифру числа в результат
 				result.append(1, static_cast <char> ('0' + digit));
 			}
-			// Выполняем удаление ведущих нулей результата
-			decimalTrim(result);
+			// Удаление ведущих нулей результата
+			__awh_decimal_trim__(result);
 		} break;
 		/**
 		 * Если требуется сформировать шестнадцатеричное представление числа
@@ -2196,7 +2202,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 			// Определяем позицию старшей шестнадцатеричной цифры
 			size_t offset = (((count + 3) / 4) * 4);
 			/**
-			 * Выполняем перебор всех шестнадцатеричных цифр числа
+			 * Перебор всех шестнадцатеричных цифр числа
 			 */
 			while(offset >= 4){
 				// Уменьшаем позицию обрабатываемой цифры
@@ -2204,7 +2210,7 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 				// Значение обрабатываемой цифры
 				uint8_t digit = 0;
 				/**
-				 * Выполняем формирование значения обрабатываемой цифры
+				 * Формирование значения обрабатываемой цифры
 				 */
 				for(size_t i = 0; i < 4; ++i){
 					// Если бит числа установлен
@@ -2215,26 +2221,26 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 				// Добавляем очередную цифру числа в результат
 				result.append(1, digits[digit]);
 			}
-			// Выполняем удаление ведущих нулей результата
-			decimalTrim(result);
+			// Удаление ведущих нулей результата
+			__awh_decimal_trim__(result);
 		} break;
 		/**
 		 * Если требуется сформировать десятичное представление числа
 		 */
 		default: {
-			// Выполняем создание временного буфера числа
+			// Создание временного буфера числа
 			Scratch tmp(size);
 			// Если временный буфер числа не создан
 			if(tmp.get() == nullptr)
 				// Выводим результат работы функции
 				return "0";
-			// Выполняем копирование буфера числа
+			// Копирование буфера числа
 			::memcpy(tmp.get(), value, size);
 			// Определяем является ли число отрицательным
 			const bool minus = (sign && negative(value, size));
 			// Если число является отрицательным
 			if(minus)
-				// Выполняем смену знака числа
+				// Смена знака числа
 				neg(tmp.get(), size);
 			/**
 			 * Определяем активную длину буфера числа
@@ -2248,19 +2254,19 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 			 */
 			size_t length = size;
 			/**
-			 * Выполняем поиск старшего значащего байта числа
+			 * Поиск старшего значащего байта числа
 			 */
 			while((length > 0) && (tmp.get()[length - 1] == 0))
 				// Уменьшаем активную длину буфера числа
 				length--;
 			/**
-			 * Выполняем разбор числа по группам десятичных цифр
+			 * Разбор числа по группам десятичных цифр
 			 */
 			while(length > 0){
-				// Выполняем извлечение очередной группы десятичных цифр
-				uint32_t group = divSmall(tmp.get(), length, 1000000000u);
+				// Извлечение очередной группы десятичных цифр
+				uint32_t group = __awh_div_small__(tmp.get(), length, 1000000000u);
 				/**
-				 * Выполняем поиск старшего значащего байта остатка числа
+				 * Поиск старшего значащего байта остатка числа
 				 */
 				while((length > 0) && (tmp.get()[length - 1] == 0))
 					// Уменьшаем активную длину буфера числа
@@ -2268,16 +2274,16 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
 				// Определяем является ли группа последней
 				const bool last = (length == 0);
 				/**
-				 * Выполняем перебор всех цифр извлечённой группы
+				 * Перебор всех цифр извлечённой группы
 				 */
 				for(size_t i = 0; (i < 9) && (!last || (group > 0) || (i == 0)); ++i){
 					// Добавляем очередную цифру числа в результат
 					result.append(1, static_cast <char> ('0' + (group % 10)));
-					// Выполняем сдвиг извлечённой группы
+					// Сдвиг извлечённой группы
 					group /= 10;
 				}
 			}
-			// Выполняем разворот сформированной строки числа
+			// Разворот сформированной строки числа
 			reverse(result.begin(), result.end());
 			// Если число является отрицательным
 			if(minus)
@@ -2300,11 +2306,13 @@ string awh::bignum::print(const uint8_t * value, const size_t size, const bool s
  *
  */
 bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, const bool sign, const format_t format) noexcept {
-	// Выполняем обнуление буфера числа
+	// Обнуление буфера числа
 	reset(value, size);
 	// Индекс обрабатываемого символа строки
 	size_t offset = 0;
-	// Выполняем пропуск ведущих пробельных символов строки
+	/**
+	 * Пропуск ведущих пробельных символов строки
+	 */
 	while((offset < text.size()) && ((text[offset] == ' ') || (text[offset] == '\t')))
 		// Увеличиваем индекс обрабатываемого символа строки
 		offset++;
@@ -2379,7 +2387,7 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	// Определяем основание системы счисления
 	uint32_t base = 10;
 	/**
-	 * Выполняем определение основания системы счисления
+	 * Определение основания системы счисления
 	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если формат представления числа является двоичным
@@ -2397,12 +2405,14 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	 */
 	if(base == 10){
 		/**
-		 * Выполняем разбор строки числа по группам десятичных цифр
+		 * Разбор строки числа по группам десятичных цифр
 		 */
 		while(offset < text.size()){
 			// Определяем количество цифр в обрабатываемой группе
 			size_t length = 0;
-			// Выполняем поиск конца группы десятичных цифр
+			/**
+			 * Поиск конца группы десятичных цифр
+			 */
 			while(((offset + length) < text.size()) && (length < 9) &&
 			      (text[offset + length] >= '0') && (text[offset + length] <= '9'))
 				// Увеличиваем количество цифр в обрабатываемой группе
@@ -2413,22 +2423,24 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 				break;
 			// Значение обрабатываемой группы десятичных цифр
 			uint32_t group = 0;
-			// Выполняем разбор группы десятичных цифр модулем разбора чисел
+			// Разбор группы десятичных цифр модулем разбора чисел
 			const lexical::result_t <char> & result = lexical::fromChars(
 				text.data() + offset, text.data() + offset + length, group, 10
 			);
 			// Если разбор группы десятичных цифр не выполнен
-			if(result.ec != errc())
+			if(result.errorCode != errc())
 				// Выходим из цикла разбора строки числа
 				break;
 			// Определяем множитель обрабатываемой группы десятичных цифр
 			uint64_t multiplier = 1;
-			// Выполняем формирование множителя обрабатываемой группы
+			/**
+			 * Формирование множителя обрабатываемой группы
+			 */
 			for(size_t i = 0; i < length; ++i)
 				// Увеличиваем множитель обрабатываемой группы
 				multiplier *= 10;
-			// Выполняем добавление группы десятичных цифр в число
-			mulAddSmall(value, size, multiplier, group);
+			// Добавление группы десятичных цифр в число
+			__awh_mul_add_small__(value, size, multiplier, group);
 			// Увеличиваем количество разобранных цифр числа
 			count += length;
 			// Увеличиваем индекс обрабатываемого символа строки
@@ -2439,7 +2451,7 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	 */
 	} else {
 		/**
-		 * Выполняем разбор строки числа по отдельным цифрам
+		 * Разбор строки числа по отдельным цифрам
 		 */
 		while(offset < text.size()){
 			// Получаем обрабатываемый символ строки
@@ -2464,8 +2476,8 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 			if(digit >= base)
 				// Выходим из цикла разбора строки числа
 				break;
-			// Выполняем добавление цифры числа
-			mulAddSmall(value, size, base, digit);
+			// Добавление цифры числа
+			__awh_mul_add_small__(value, size, base, digit);
 			// Увеличиваем количество разобранных цифр числа
 			count++;
 			// Увеличиваем индекс обрабатываемого символа строки
@@ -2476,14 +2488,14 @@ bool awh::bignum::parse(uint8_t * value, const size_t size, string_view text, co
 	 * Если цифры числа не обнаружены
 	 */
 	if(count == 0){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Выводим результат выполнения разбора
 		return false;
 	}
 	// Если число является отрицательным
 	if(minus)
-		// Выполняем смену знака числа
+		// Смена знака числа
 		neg(value, size);
 	// Выводим результат выполнения разбора
 	return true;
@@ -2507,13 +2519,13 @@ void awh::bignum::round(uint8_t * value, const size_t size, const bool sign, con
 	const uint64_t count = static_cast <uint64_t> (-static_cast <int64_t> (digits));
 	// Определяем является ли число отрицательным
 	const bool minus = (sign && negative(value, size));
-	// Выполняем создание временного буфера делителя числа
+	// Создание временного буфера делителя числа
 	Scratch divisor(size);
-	// Выполняем создание временного буфера частного от деления
+	// Создание временного буфера частного от деления
 	Scratch quotient(size);
-	// Выполняем создание временного буфера остатка от деления
+	// Создание временного буфера остатка от деления
 	Scratch remainder(size);
-	// Выполняем создание временного буфера удвоенного остатка от деления
+	// Создание временного буфера удвоенного остатка от деления
 	Scratch doubled(size);
 	// Если временные буферы не созданы
 	if((divisor.get() == nullptr) || (quotient.get() == nullptr) ||
@@ -2528,68 +2540,68 @@ void awh::bignum::round(uint8_t * value, const size_t size, const bool sign, con
 	 * Если делитель числа вышел за пределы разрядной сетки
 	 */
 	if(zero(divisor.get(), size)){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Выходим из функции
 		return;
 	}
-	// Выполняем копирование числа в делимое
+	// Копирование числа в делимое
 	::memcpy(quotient.get(), value, size);
 	// Если число является отрицательным
 	if(minus)
-		// Выполняем смену знака делимого числа
+		// Смена знака делимого числа
 		neg(quotient.get(), size);
-	// Выполняем деление модуля числа на делитель
+	// Деление модуля числа на делитель
 	divmod(quotient.get(), divisor.get(), remainder.get(), size);
-	// Выполняем копирование остатка от деления
+	// Копирование остатка от деления
 	::memcpy(doubled.get(), remainder.get(), size);
-	// Выполняем удвоение остатка от деления
+	// Удвоение остатка от деления
 	const bool carry = add(doubled.get(), remainder.get(), size);
-	// Выполняем сравнение удвоенного остатка от деления с делителем
+	// Сравнение удвоенного остатка от деления с делителем
 	const int8_t compare = (carry ? static_cast <int8_t> (1) : ucompare(doubled.get(), divisor.get(), size));
 	// Флаг округления в большую сторону
-	bool up = false;
+	bool roundUp = false;
 	/**
 	 * Определяем необходимость округления в большую сторону
 	 */
 	switch(static_cast <uint8_t> (mode)){
 		// Если требуется округление к ближайшему значению с половиной от нуля
 		case static_cast <uint8_t> (round_t::NEAREST):
-			up = (compare >= 0);
+			roundUp = (compare >= 0);
 		break;
 		// Если требуется округление к ближайшему значению с половиной к чётному
 		case static_cast <uint8_t> (round_t::EVEN):
-			up = ((compare > 0) || ((compare == 0) && ((quotient.get()[0] & 0x01) != 0)));
+			roundUp = ((compare > 0) || ((compare == 0) && ((quotient.get()[0] & 0x01) != 0)));
 		break;
 		// Если требуется округление в сторону минус бесконечности
 		case static_cast <uint8_t> (round_t::DOWN):
-			up = (minus && !zero(remainder.get(), size));
+			roundUp = (minus && !zero(remainder.get(), size));
 		break;
 		// Если требуется округление в сторону плюс бесконечности
 		case static_cast <uint8_t> (round_t::UP):
-			up = (!minus && !zero(remainder.get(), size));
+			roundUp = (!minus && !zero(remainder.get(), size));
 		break;
 		// Если требуется округление в сторону нуля
-		default: up = false;
+		default: roundUp = false;
 	}
 	/**
 	 * Если требуется округление в большую сторону
 	 */
-	if(up){
-		// Выполняем обнуление буфера удвоенного остатка для повторного использования
+	if(roundUp){
+		// Обнуление буфера удвоенного остатка для повторного использования
 		reset(doubled.get(), size);
 		// Устанавливаем единичное значение приращения
 		doubled.get()[0] = 1;
-		// Выполняем увеличение частного от деления на единицу
+		// Увеличение частного от деления на единицу
 		add(quotient.get(), doubled.get(), size);
 	}
-	// Выполняем восстановление разрядности числа умножением на делитель
+	// Восстановление разрядности числа умножением на делитель
 	mul(quotient.get(), divisor.get(), size);
-	// Выполняем копирование результата округления
+	// Копирование результата округления
 	::memcpy(value, quotient.get(), size);
 	// Если число является отрицательным
 	if(minus)
-		// Выполняем смену знака результата округления
+		// Смена знака результата округления
 		neg(value, size);
 }
 /**
@@ -2618,7 +2630,7 @@ namespace awh {
 			 * @return      результат проверки
 			 *
 			 */
-			bool anyBitBelow(const uint8_t * value, const size_t size, const size_t count) noexcept {
+			bool __awh_any_bit_below__(const uint8_t * value, const size_t size, const size_t count) noexcept {
 				// Если проверяемые разряды отсутствуют
 				if(count == 0)
 					// Выводим результат проверки
@@ -2628,7 +2640,7 @@ namespace awh {
 				// Определяем количество полностью проверяемых байтов
 				const size_t bytes = (limit / 8);
 				/**
-				 * Выполняем перебор всех полностью проверяемых байтов
+				 * Перебор всех полностью проверяемых байтов
 				 */
 				for(size_t i = 0; i < bytes; ++i){
 					// Если проверяемый байт содержит установленные разряды
@@ -2653,14 +2665,14 @@ namespace awh {
 			 * @param count количество бит сдвига
 			 *
 			 */
-			void stickyShift(uint8_t * value, const size_t size, const size_t count) noexcept {
+			void __awh_sticky_shift__(uint8_t * value, const size_t size, const size_t count) noexcept {
 				// Если сдвиг не требуется
 				if(count == 0)
 					// Выходим из функции
 					return;
 				// Определяем наличие отброшенных значащих разрядов
-				const bool sticky = anyBitBelow(value, size, count);
-				// Выполняем сдвиг магнитуды вправо
+				const bool sticky = __awh_any_bit_below__(value, size, count);
+				// Сдвиг магнитуды вправо
 				shr(value, size, count, false);
 				// Если отброшенные значащие разряды обнаружены
 				if(sticky)
@@ -2675,7 +2687,7 @@ namespace awh {
 			 * @param shift количество бит сдвига (отрицательное значение соответствует сдвигу влево)
 			 *
 			 */
-			void roundShift(uint8_t * value, const size_t size, const int64_t shift) noexcept {
+			void __awh_round_shift__(uint8_t * value, const size_t size, const int64_t shift) noexcept {
 				// Если сдвиг не требуется
 				if(shift == 0)
 					// Выходим из функции
@@ -2684,7 +2696,7 @@ namespace awh {
 				 * Если требуется выполнить сдвиг магнитуды влево
 				 */
 				if(shift < 0){
-					// Выполняем сдвиг магнитуды влево
+					// Сдвиг магнитуды влево
 					shl(value, size, static_cast <size_t> (-shift));
 					// Выходим из функции
 					return;
@@ -2695,28 +2707,28 @@ namespace awh {
 				 * Если сдвиг полностью выходит за пределы магнитуды
 				 */
 				if(count > (size * 8)){
-					// Выполняем обнуление магнитуды
+					// Обнуление магнитуды
 					reset(value, size);
 					// Выходим из функции
 					return;
 				}
 				// Получаем значение округляемого разряда магнитуды
-				const bool guard = getBit(value, count - 1);
+				const bool guard = __awh_get_bit__(value, count - 1);
 				// Определяем наличие отброшенных значащих разрядов
-				const bool sticky = anyBitBelow(value, size, (count - 1));
-				// Выполняем сдвиг магнитуды вправо
+				const bool sticky = __awh_any_bit_below__(value, size, (count - 1));
+				// Сдвиг магнитуды вправо
 				shr(value, size, count, false);
 				/**
 				 * Если требуется выполнить округление магнитуды
 				 */
 				if(guard && (sticky || ((value[0] & 0x01) != 0))){
-					// Выполняем создание временного буфера единицы округления
+					// Создание временного буфера единицы округления
 					Scratch one(size);
 					// Если временный буфер единицы округления создан
 					if(one.get() != nullptr){
 						// Устанавливаем единичное значение округления
 						one.get()[0] = 1;
-						// Выполняем округление магнитуды
+						// Округление магнитуды
 						add(value, one.get(), size);
 					}
 				}
@@ -2732,7 +2744,7 @@ namespace awh {
 			 * @return       значение поля порядка вещественного числа
 			 *
 			 */
-			inline uint64_t realExponent(const uint8_t * value, const realParams_t & params) noexcept {
+			inline uint64_t __awh_real_exponent__(const uint8_t * value, const realParams_t & params) noexcept {
 				// Получаем индекс байта содержащего младший разряд поля порядка
 				const size_t offset = (params.man / 8);
 				// Получаем номер младшего разряда поля порядка в байте
@@ -2742,7 +2754,7 @@ namespace awh {
 				// Количество уже извлечённых разрядов поля порядка
 				size_t count = (8 - skip);
 				/**
-				 * Выполняем извлечение оставшихся разрядов поля порядка
+				 * Извлечение оставшихся разрядов поля порядка
 				 */
 				for(size_t i = 1; count < params.exp; ++i){
 					// Добавляем очередной байт поля порядка
@@ -2761,7 +2773,7 @@ namespace awh {
 			 * @return       результат проверки
 			 *
 			 */
-			inline bool realMantissaZero(const uint8_t * value, const realParams_t & params) noexcept {
+			inline bool __awh_real_mantissa_zero__(const uint8_t * value, const realParams_t & params) noexcept {
 				// Получаем индекс байта содержащего старший разряд мантиссы
 				const size_t offset = (params.man / 8);
 				// Если старший неполный байт мантиссы содержит установленные разряды
@@ -2784,17 +2796,17 @@ namespace awh {
 			 */
 			inline class_t realClass(const uint8_t * value, const size_t size) noexcept {
 				// Получаем параметры формата вещественного числа
-				const realParams_t params = realParams(size);
+				const realParams_t params = __awh_real_params__(size);
 				// Получаем значение поля порядка вещественного числа
-				const uint64_t exponent = realExponent(value, params);
+				const uint64_t exponent = __awh_real_exponent__(value, params);
 				// Если поле порядка содержит нулевое значение
 				if(exponent == 0)
 					// Выводим класс значения вещественного числа
-					return (realMantissaZero(value, params) ? class_t::ZERO : class_t::SUBNORMAL);
+					return (__awh_real_mantissa_zero__(value, params) ? class_t::ZERO : class_t::SUBNORMAL);
 				// Если поле порядка содержит максимальное значение
 				else if(exponent == params.maxExp)
 					// Выводим класс значения вещественного числа
-					return (realMantissaZero(value, params) ? class_t::UNLIMITED : class_t::UNDEFINED);
+					return (__awh_real_mantissa_zero__(value, params) ? class_t::UNLIMITED : class_t::UNDEFINED);
 				// Выводим класс значения вещественного числа
 				return class_t::NORMAL;
 			}
@@ -2806,24 +2818,24 @@ namespace awh {
 			 * @return      распакованное представление вещественного числа
 			 *
 			 */
-			realValue_t realUnpack(const uint8_t * value, const size_t size) noexcept {
+			realValue_t __awh_real_unpack__(const uint8_t * value, const size_t size) noexcept {
 				// Результат работы функции
 				realValue_t result;
 				// Получаем параметры формата вещественного числа
-				const realParams_t params = realParams(size);
-				// Выполняем выделение памяти под буфер мантиссы
-				result.mantissa.assign(realWorkSize(size));
+				const realParams_t params = __awh_real_params__(size);
+				// Выделение памяти под буфер мантиссы
+				result.mantissa.assign(__awh_real_work_size__(size));
 				// Извлекаем знак вещественного числа
 				result.sign = bit(value, size, params.bits - 1);
 				// Получаем значение поля порядка вещественного числа
-				const uint64_t exponent = realExponent(value, params);
-				// Выполняем копирование мантиссы вещественного числа
+				const uint64_t exponent = __awh_real_exponent__(value, params);
+				// Копирование мантиссы вещественного числа
 				::memcpy(result.mantissa.data(), value, size);
 				// Получаем индекс байта содержащего старший разряд мантиссы
 				const size_t offset = (params.man / 8);
-				// Выполняем сброс разрядов старше мантиссы в её старшем байте
+				// Сброс разрядов старше мантиссы в её старшем байте
 				result.mantissa.data()[offset] &= static_cast <uint8_t> ((1u << (params.man % 8)) - 1);
-				// Выполняем сброс всех байтов буфера мантиссы старше её старшего байта
+				// Сброс всех байтов буфера мантиссы старше её старшего байта
 				::memset((result.mantissa.data() + offset) + 1, 0, result.mantissa.size() - (offset + 1));
 				/**
 				 * Если поле порядка содержит нулевое значение
@@ -2848,7 +2860,7 @@ namespace awh {
 					// Определяем класс значения вещественного числа
 					result.type = class_t::NORMAL;
 					// Устанавливаем неявный старший разряд мантиссы
-					setBit(result.mantissa.data(), params.man, true);
+					__awh_set_bit__(result.mantissa.data(), params.man, true);
 					// Определяем показатель степени двойки
 					result.exp = ((static_cast <int64_t> (exponent) - params.bias) - static_cast <int64_t> (params.man));
 				}
@@ -2866,10 +2878,10 @@ namespace awh {
 			 * @param length   размер буфера мантиссы в байтах
 			 *
 			 */
-			void realPack(uint8_t * result, const size_t size, const bool sign, const int64_t exponent, uint8_t * mantissa, const size_t length) noexcept {
+			void __awh_real_pack__(uint8_t * result, const size_t size, const bool sign, const int64_t exponent, uint8_t * mantissa, const size_t length) noexcept {
 				// Получаем параметры формата вещественного числа
-				const realParams_t params = realParams(size);
-				// Выполняем обнуление буфера числа приёмника
+				const realParams_t params = __awh_real_params__(size);
+				// Обнуление буфера числа приёмника
 				reset(result, size);
 				/**
 				 * Если мантисса упаковываемого числа является нулевой
@@ -2892,25 +2904,25 @@ namespace awh {
 				if(exp <= 0){
 					// Определяем требуемый сдвиг мантиссы
 					const int64_t shift = (((1 - params.bias) - static_cast <int64_t> (params.man)) - exponent);
-					// Выполняем сдвиг мантиссы с округлением
-					roundShift(mantissa, length, shift);
+					// Сдвиг мантиссы с округлением
+					__awh_round_shift__(mantissa, length, shift);
 					// Определяем значение поля порядка упаковываемого числа
 					exp = ((bits(mantissa, length) > params.man) ? 1 : 0);
 					// Если мантисса стала минимальным нормализованным числом
 					if(exp == 1)
-						// Выполняем сброс неявного старшего разряда мантиссы
-						setBit(mantissa, params.man, false);
+						// Сброс неявного старшего разряда мантиссы
+						__awh_set_bit__(mantissa, params.man, false);
 				/**
 				 * Если упаковываемое число находится в нормализованном диапазоне
 				 */
 				} else {
-					// Выполняем сдвиг мантиссы с округлением
-					roundShift(mantissa, length, (position - static_cast <int64_t> (params.man)));
+					// Сдвиг мантиссы с округлением
+					__awh_round_shift__(mantissa, length, (position - static_cast <int64_t> (params.man)));
 					/**
 					 * Если округление мантиссы привело к переполнению разрядной сетки
 					 */
 					if(bits(mantissa, length) > (params.man + 1)){
-						// Выполняем сдвиг мантиссы вправо
+						// Сдвиг мантиссы вправо
 						shr(mantissa, length, 1, false);
 						// Увеличиваем значение поля порядка упаковываемого числа
 						exp += 1;
@@ -2924,17 +2936,17 @@ namespace awh {
 						// Выходим из функции
 						return;
 					}
-					// Выполняем сброс неявного старшего разряда мантиссы
-					setBit(mantissa, params.man, false);
+					// Сброс неявного старшего разряда мантиссы
+					__awh_set_bit__(mantissa, params.man, false);
 				}
-				// Выполняем копирование мантиссы упаковываемого числа
+				// Копирование мантиссы упаковываемого числа
 				::memcpy(result, mantissa, ((length < size) ? length : size));
 				/**
-				 * Выполняем перебор всех разрядов поля порядка
+				 * Перебор всех разрядов поля порядка
 				 */
 				for(size_t i = 0; i < params.exp; ++i)
-					// Выполняем установку разряда поля порядка
-					setBit(result, params.man + i, ((static_cast <uint64_t> (exp) & (static_cast <uint64_t> (1) << i)) != 0));
+					// Установка разряда поля порядка
+					__awh_set_bit__(result, params.man + i, ((static_cast <uint64_t> (exp) & (static_cast <uint64_t> (1) << i)) != 0));
 				// Если упаковываемое число является отрицательным
 				if(sign)
 					// Устанавливаем знак упаковываемого числа
@@ -2953,33 +2965,35 @@ namespace awh {
 			 * @param digits строка десятичных цифр от старшей к младшей
 			 *
 			 */
-			void decimalLoad(uint8_t * value, const size_t size, string_view digits) noexcept {
+			void __awh_decimal_load__(uint8_t * value, const size_t size, string_view digits) noexcept {
 				// Индекс обрабатываемой цифры строки
 				size_t offset = 0;
 				/**
-				 * Выполняем перебор всех цифр строки по группам
+				 * Перебор всех цифр строки по группам
 				 */
 				while(offset < digits.size()){
 					// Определяем количество цифр в обрабатываемой группе
 					const size_t length = min(static_cast <size_t> (9), (digits.size() - offset));
 					// Значение обрабатываемой группы десятичных цифр
 					uint32_t group = 0;
-					// Выполняем разбор группы десятичных цифр модулем разбора чисел
+					// Разбор группы десятичных цифр модулем разбора чисел
 					const lexical::result_t <char> result = lexical::fromChars(
 						digits.data() + offset, digits.data() + offset + length, group, 10
 					);
 					// Если разбор группы десятичных цифр не выполнен
-					if(result.ec != errc())
+					if(result.errorCode != errc())
 						// Выходим из цикла разбора строки цифр
 						break;
 					// Определяем множитель обрабатываемой группы десятичных цифр
 					uint64_t multiplier = 1;
-					// Выполняем формирование множителя обрабатываемой группы
+					/**
+					 * Формирование множителя обрабатываемой группы
+					 */
 					for(size_t i = 0; i < length; ++i)
 						// Увеличиваем множитель обрабатываемой группы
 						multiplier *= 10;
-					// Выполняем добавление группы десятичных цифр в число
-					mulAddSmall(value, size, multiplier, group);
+					// Добавление группы десятичных цифр в число
+					__awh_mul_add_small__(value, size, multiplier, group);
 					// Увеличиваем индекс обрабатываемой цифры строки
 					offset += length;
 				}
@@ -2992,15 +3006,15 @@ namespace awh {
 			 * @param exponent показатель степени десяти
 			 *
 			 */
-			void decimalScale(uint8_t * value, const size_t size, const int64_t exponent) noexcept {
+			void __awh_decimal_scale__(uint8_t * value, const size_t size, const int64_t exponent) noexcept {
 				// Получаем оставшийся показатель степени десяти
 				int64_t rest = exponent;
 				/**
-				 * Выполняем умножение числа на степень десяти крупными шагами
+				 * Умножение числа на степень десяти крупными шагами
 				 */
 				while(rest >= 9){
-					// Выполняем умножение числа на миллиард
-					mulAddSmall(value, size, 1000000000ull, 0);
+					// Умножение числа на миллиард
+					__awh_mul_add_small__(value, size, 1000000000ull, 0);
 					// Уменьшаем оставшийся показатель степени десяти
 					rest -= 9;
 				}
@@ -3010,12 +3024,14 @@ namespace awh {
 				if(rest > 0){
 					// Определяем множитель остатка степени десяти
 					uint64_t multiplier = 1;
-					// Выполняем формирование множителя остатка степени десяти
+					/**
+					 * Формирование множителя остатка степени десяти
+					 */
 					for(int64_t i = 0; i < rest; ++i)
 						// Увеличиваем множитель остатка степени десяти
 						multiplier *= 10;
-					// Выполняем умножение числа на остаток степени десяти
-					mulAddSmall(value, size, multiplier, 0);
+					// Умножение числа на остаток степени десяти
+					__awh_mul_add_small__(value, size, multiplier, 0);
 				}
 			}
 			/**
@@ -3033,7 +3049,7 @@ namespace awh {
 			 * @return       результат формирования представления
 			 *
 			 */
-			bool realDecimal(const realValue_t & num, string & digits, int64_t & point) noexcept {
+			bool __awh_real_decimal__(const realValue_t & num, string & digits, int64_t & point) noexcept {
 				// Если преобразование числа выходит за пределы допустимого объёма вычислений
 				if((num.exp > static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)) || (num.exp < -static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)))
 					// Выводим результат формирования представления
@@ -3053,19 +3069,19 @@ namespace awh {
 				if(num.exp >= 0){
 					// Определяем размер рабочего буфера целого значения числа
 					const size_t length = (num.mantissa.size() + static_cast <size_t> ((num.exp + 7) / 8) + sizeof(uint32_t));
-					// Выполняем создание рабочего буфера целого значения числа
+					// Создание рабочего буфера целого значения числа
 					Buffer value(length);
 					// Если рабочий буфер целого значения числа не создан
 					if(value.data() == nullptr)
 						// Выводим результат формирования представления
 						return false;
-					// Выполняем копирование мантиссы числа
+					// Копирование мантиссы числа
 					::memcpy(value.data(), num.mantissa.data(), num.mantissa.size());
 					// Если требуется выполнить масштабирование числа степенью двойки
 					if(num.exp > 0)
-						// Выполняем сдвиг мантиссы числа
+						// Сдвиг мантиссы числа
 						shl(value.data(), length, static_cast <size_t> (num.exp));
-					// Выполняем формирование десятичного представления числа
+					// Формирование десятичного представления числа
 					digits = print(value.data(), length, false, format_t::DEC);
 					// Выводим результат формирования представления
 					return true;
@@ -3083,22 +3099,22 @@ namespace awh {
 				 *
 				 */
 				const size_t length = (num.mantissa.size() + ((divisions * 2322) / 8000) + sizeof(uint32_t) + 2);
-				// Выполняем создание рабочего буфера целого значения числа
+				// Создание рабочего буфера целого значения числа
 				Buffer value(length);
 				// Если рабочий буфер целого значения числа не создан
 				if(value.data() == nullptr)
 					// Выводим результат формирования представления
 					return false;
-				// Выполняем копирование мантиссы числа
+				// Копирование мантиссы числа
 				::memcpy(value.data(), num.mantissa.data(), num.mantissa.size());
 				// Определяем оставшееся количество делений числа на два
 				size_t rest = divisions;
 				/**
-				 * Выполняем умножение числа на степень пятёрки крупными шагами
+				 * Умножение числа на степень пятёрки крупными шагами
 				 */
 				while(rest >= 13){
-					// Выполняем умножение числа на тринадцатую степень пятёрки
-					mulAddSmall(value.data(), length, 1220703125ull, 0);
+					// Умножение числа на тринадцатую степень пятёрки
+					__awh_mul_add_small__(value.data(), length, 1220703125ull, 0);
 					// Уменьшаем оставшееся количество делений числа
 					rest -= 13;
 				}
@@ -3109,17 +3125,17 @@ namespace awh {
 					// Определяем множитель остатка степени пятёрки
 					uint64_t multiplier = 1;
 					/**
-					 * Выполняем формирование множителя остатка степени пятёрки
+					 * Формирование множителя остатка степени пятёрки
 					 */
 					for(size_t i = 0; i < rest; ++i)
 						// Увеличиваем множитель остатка степени пятёрки
 						multiplier *= 5;
-					// Выполняем умножение числа на остаток степени пятёрки
-					mulAddSmall(value.data(), length, multiplier, 0);
+					// Умножение числа на остаток степени пятёрки
+					__awh_mul_add_small__(value.data(), length, multiplier, 0);
 				}
 				// Уменьшаем показатель степени десяти числа
 				point = -static_cast <int64_t> (divisions);
-				// Выполняем формирование десятичного представления числа
+				// Формирование десятичного представления числа
 				digits = print(value.data(), length, false, format_t::DEC);
 				// Выводим результат формирования представления
 				return true;
@@ -3138,7 +3154,7 @@ namespace awh {
 			 * @param mode   правило округления числа
 			 *
 			 */
-			void decimalDrop(string & digits, int64_t & point, const size_t drop, const bool sign, const round_t mode) noexcept {
+			void __awh_decimal_drop__(string & digits, int64_t & point, const size_t drop, const bool sign, const round_t mode) noexcept {
 				// Если отбрасывание цифр не требуется
 				if(drop == 0)
 					// Выходим из функции
@@ -3156,7 +3172,7 @@ namespace awh {
 					// Получаем значение старшей отбрасываемой цифры
 					guard = digits[keep];
 					/**
-					 * Выполняем перебор оставшихся отбрасываемых цифр
+					 * Перебор оставшихся отбрасываемых цифр
 					 */
 					for(size_t i = (keep + 1); i < digits.size(); ++i){
 						/**
@@ -3174,7 +3190,7 @@ namespace awh {
 				 */
 				} else {
 					/**
-					 * Выполняем перебор всех цифр записи числа
+					 * Перебор всех цифр записи числа
 					 */
 					for(size_t i = 0; i < digits.size(); ++i){
 						/**
@@ -3188,7 +3204,7 @@ namespace awh {
 						}
 					}
 				}
-				// Выполняем отбрасывание младших цифр записи числа
+				// Отбрасывание младших цифр записи числа
 				digits.erase(keep);
 				// Увеличиваем показатель степени десяти числа
 				point += static_cast <int64_t> (drop);
@@ -3197,38 +3213,38 @@ namespace awh {
 					// Устанавливаем нулевое значение записи числа
 					digits.assign(1, '0');
 				// Флаг округления в большую сторону
-				bool up = false;
+				bool roundUp = false;
 				/**
 				 * Определяем необходимость округления в большую сторону
 				 */
 				switch(static_cast <uint8_t> (mode)){
 					// Если требуется округление к ближайшему значению с половиной от нуля
 					case static_cast <uint8_t> (round_t::NEAREST):
-						up = (guard >= '5');
+						roundUp = (guard >= '5');
 					break;
 					// Если требуется округление к ближайшему значению с половиной к чётному
 					case static_cast <uint8_t> (round_t::EVEN):
-						up = ((guard > '5') || ((guard == '5') && (sticky || (((digits.back() - '0') % 2) != 0))));
+						roundUp = ((guard > '5') || ((guard == '5') && (sticky || (((digits.back() - '0') % 2) != 0))));
 					break;
 					// Если требуется округление в сторону минус бесконечности
 					case static_cast <uint8_t> (round_t::DOWN):
-						up = (sign && ((guard != '0') || sticky));
+						roundUp = (sign && ((guard != '0') || sticky));
 					break;
 					// Если требуется округление в сторону плюс бесконечности
 					case static_cast <uint8_t> (round_t::UP):
-						up = (!sign && ((guard != '0') || sticky));
+						roundUp = (!sign && ((guard != '0') || sticky));
 					break;
 					// Если требуется округление в сторону нуля
-					default: up = false;
+					default: roundUp = false;
 				}
 				// Если округление в большую сторону не требуется
-				if(!up)
+				if(!roundUp)
 					// Выходим из функции
 					return;
 				// Индекс увеличиваемой цифры записи числа
 				size_t index = digits.size();
 				/**
-				 * Выполняем увеличение записи числа на единицу младшего разряда
+				 * Увеличение записи числа на единицу младшего разряда
 				 */
 				while(index-- > 0){
 					/**
@@ -3258,9 +3274,9 @@ namespace awh {
 			 * @param power  показатель степени десяти
 			 *
 			 */
-			void realCompose(uint8_t * result, const size_t size, const bool sign, string_view digits, const int64_t power) noexcept {
+			void __awh_real_compose__(uint8_t * result, const size_t size, const bool sign, string_view digits, const int64_t power) noexcept {
 				// Получаем параметры формата вещественного числа
-				const realParams_t params = realParams(size);
+				const realParams_t params = __awh_real_params__(size);
 				// Определяем требуемую разрядность мантиссы числа
 				const size_t digitBits = (static_cast <size_t> (static_cast <long double> (digits.size()) * LOG2_OF_TEN) + 8);
 				/**
@@ -3270,15 +3286,15 @@ namespace awh {
 					// Определяем требуемую разрядность множителя числа
 					const size_t powerBits = (static_cast <size_t> (static_cast <long double> (power) * LOG2_OF_TEN) + 8);
 					// Определяем требуемый размер буфера мантиссы числа
-					const size_t length = max(realWorkSize(size), (((digitBits + powerBits) / 8) + 16));
-					// Выполняем создание буфера мантиссы числа
+					const size_t length = max(__awh_real_work_size__(size), (((digitBits + powerBits) / 8) + 16));
+					// Создание буфера мантиссы числа
 					Buffer mantissa(length);
-					// Выполняем перенос цифр числа в буфер мантиссы
-					decimalLoad(mantissa.data(), length, digits);
-					// Выполняем умножение мантиссы числа на степень десяти
-					decimalScale(mantissa.data(), length, power);
-					// Выполняем упаковку формируемого числа
-					realPack(result, size, sign, 0, mantissa.data(), length);
+					// Перенос цифр числа в буфер мантиссы
+					__awh_decimal_load__(mantissa.data(), length, digits);
+					// Умножение мантиссы числа на степень десяти
+					__awh_decimal_scale__(mantissa.data(), length, power);
+					// Упаковка формируемого числа
+					__awh_real_pack__(result, size, sign, 0, mantissa.data(), length);
 					// Выходим из функции
 					return;
 				}
@@ -3298,29 +3314,29 @@ namespace awh {
 					// Обнуляем сдвиг делимого числа
 					shift = 0;
 				// Определяем требуемый размер буферов числа
-				const size_t length = max(realWorkSize(size), ((((digitBits + static_cast <size_t> (shift)) + powerBits) / 8) + 32));
-				// Выполняем создание буфера делимого числа
+				const size_t length = max(__awh_real_work_size__(size), ((((digitBits + static_cast <size_t> (shift)) + powerBits) / 8) + 32));
+				// Создание буфера делимого числа
 				Buffer numerator(length);
-				// Выполняем создание буфера делителя числа
+				// Создание буфера делителя числа
 				Buffer denominator(length);
-				// Выполняем создание буфера остатка от деления
+				// Создание буфера остатка от деления
 				Buffer remainder(length);
-				// Выполняем перенос цифр числа в буфер делимого
-				decimalLoad(numerator.data(), length, digits);
+				// Перенос цифр числа в буфер делимого
+				__awh_decimal_load__(numerator.data(), length, digits);
 				// Устанавливаем единичное значение делителя числа
 				denominator[0] = 1;
-				// Выполняем формирование делителя числа
-				decimalScale(denominator.data(), length, -power);
-				// Выполняем сдвиг делимого числа
+				// Формирование делителя числа
+				__awh_decimal_scale__(denominator.data(), length, -power);
+				// Сдвиг делимого числа
 				shl(numerator.data(), length, static_cast <size_t> (shift));
-				// Выполняем деление мантиссы числа на делитель
+				// Деление мантиссы числа на делитель
 				divmod(numerator.data(), denominator.data(), remainder.data(), length);
 				// Если остаток от деления не является нулевым
 				if(!zero(remainder.data(), length))
 					// Устанавливаем флаг отброшенных значащих разрядов
 					numerator[0] |= 0x01;
-				// Выполняем упаковку формируемого числа
-				realPack(result, size, sign, -shift, numerator.data(), length);
+				// Упаковка формируемого числа
+				__awh_real_pack__(result, size, sign, -shift, numerator.data(), length);
 			}
 		};
 	};
@@ -3334,7 +3350,7 @@ namespace awh {
  */
 size_t awh::bignum::exponentBits(const size_t bits) noexcept {
 	/**
-	 * Выполняем определение стандартной разрядности порядка
+	 * Определение стандартной разрядности порядка
 	 */
 	switch(bits){
 		// Если разрядность числа соответствует формату binary16
@@ -3350,7 +3366,7 @@ size_t awh::bignum::exponentBits(const size_t bits) noexcept {
 	if(bits <= 16)
 		// Выводим разрядность порядка вещественного числа
 		return 4;
-	// Выполняем расчёт разрядности порядка по формуле стандарта IEEE-754
+	// Расчёт разрядности порядка по формуле стандарта IEEE-754
 	int64_t result = (::llroundl(4.0L * ::log2l(static_cast <long double> (bits))) - 13);
 	// Если разрядность порядка меньше минимально допустимой
 	if(result < 4)
@@ -3389,14 +3405,14 @@ awh::bignum::class_t awh::bignum::classify(const uint8_t * value, const size_t s
  */
 void awh::bignum::realInf(uint8_t * value, const size_t size, const bool sign) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем обнуление буфера числа
+	const realParams_t params = __awh_real_params__(size);
+	// Обнуление буфера числа
 	reset(value, size);
 	/**
-	 * Выполняем перебор всех разрядов поля порядка
+	 * Перебор всех разрядов поля порядка
 	 */
 	for(size_t i = 0; i < params.exp; ++i)
-		// Выполняем установку разряда поля порядка
+		// Установка разряда поля порядка
 		bit(value, size, params.man + i, true);
 	// Если требуется сформировать отрицательную бесконечность
 	if(sign)
@@ -3412,8 +3428,8 @@ void awh::bignum::realInf(uint8_t * value, const size_t size, const bool sign) n
  */
 void awh::bignum::realNan(uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем формирование бесконечности вещественного числа
+	const realParams_t params = __awh_real_params__(size);
+	// Формирование бесконечности вещественного числа
 	realInf(value, size, false);
 	// Устанавливаем старший разряд мантиссы вещественного числа
 	bit(value, size, params.man - 1, true);
@@ -3427,16 +3443,16 @@ void awh::bignum::realNan(uint8_t * value, const size_t size) noexcept {
  */
 void awh::bignum::realEpsilon(uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем обнуление буфера числа
+	const realParams_t params = __awh_real_params__(size);
+	// Обнуление буфера числа
 	reset(value, size);
 	// Определяем значение поля порядка машинного эпсилон
 	const int64_t exp = (params.bias - static_cast <int64_t> (params.man));
 	/**
-	 * Выполняем перебор всех разрядов поля порядка
+	 * Перебор всех разрядов поля порядка
 	 */
 	for(size_t i = 0; i < params.exp; ++i)
-		// Выполняем установку разряда поля порядка
+		// Установка разряда поля порядка
 		bit(value, size, params.man + i, ((static_cast <uint64_t> (exp) & (static_cast <uint64_t> (1) << i)) != 0));
 }
 /**
@@ -3449,12 +3465,12 @@ void awh::bignum::realEpsilon(uint8_t * value, const size_t size) noexcept {
  */
 void awh::bignum::realLimit(uint8_t * value, const size_t size, const bool sign) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем заполнение буфера числа
+	const realParams_t params = __awh_real_params__(size);
+	// Заполнение буфера числа
 	::memset(value, 0xFF, size);
-	// Выполняем сброс младшего разряда поля порядка
+	// Сброс младшего разряда поля порядка
 	bit(value, size, params.man, false);
-	// Выполняем установку знака вещественного числа
+	// Установка знака вещественного числа
 	bit(value, size, params.bits - 1, sign);
 }
 /**
@@ -3465,7 +3481,7 @@ void awh::bignum::realLimit(uint8_t * value, const size_t size, const bool sign)
  *
  */
 void awh::bignum::realNeg(uint8_t * value, const size_t size) noexcept {
-	// Выполняем инверсию знака вещественного числа
+	// Инверсия знака вещественного числа
 	bit(value, size, (size * 8) - 1, !bit(value, size, (size * 8) - 1));
 }
 /**
@@ -3476,7 +3492,7 @@ void awh::bignum::realNeg(uint8_t * value, const size_t size) noexcept {
  *
  */
 void awh::bignum::realAbs(uint8_t * value, const size_t size) noexcept {
-	// Выполняем сброс знака вещественного числа
+	// Сброс знака вещественного числа
 	bit(value, size, (size * 8) - 1, false);
 }
 /**
@@ -3526,9 +3542,9 @@ int8_t awh::bignum::realCompare(const uint8_t * value1, const uint8_t * value2, 
 	 *
 	 */
 	if(byte1 != byte2)
-		// Выполняем сравнение старших байтов модулей чисел
+		// Сравнение старших байтов модулей чисел
 		result = ((byte1 > byte2) ? 1 : -1);
-	// Выполняем сравнение оставшихся байтов модулей чисел
+	// Сравнение оставшихся байтов модулей чисел
 	else result = ucompare(value1, value2, top);
 	// Выводим результат сравнения с учётом знака чисел
 	return (sign1 ? static_cast <int8_t> (-result) : result);
@@ -3543,11 +3559,11 @@ int8_t awh::bignum::realCompare(const uint8_t * value1, const uint8_t * value2, 
  */
 void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем распаковку первого слагаемого
-	realValue_t num1 = realUnpack(result, size);
-	// Выполняем распаковку второго слагаемого
-	realValue_t num2 = realUnpack(value, size);
+	const realParams_t params = __awh_real_params__(size);
+	// Распаковка первого слагаемого
+	realValue_t num1 = __awh_real_unpack__(result, size);
+	// Распаковка второго слагаемого
+	realValue_t num2 = __awh_real_unpack__(value, size);
 	/**
 	 * Если одно из слагаемых не является числом
 	 */
@@ -3583,7 +3599,7 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 	 * Если оба слагаемых являются нулевыми
 	 */
 	if((num1.type == class_t::ZERO) && (num2.type == class_t::ZERO)){
-		// Выполняем обнуление буфера числа приёмника
+		// Обнуление буфера числа приёмника
 		reset(result, size);
 		// Если оба слагаемых являются отрицательными
 		if(num1.sign && num2.sign)
@@ -3596,8 +3612,8 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 	 * Если первое слагаемое является нулевым
 	 */
 	if(num1.type == class_t::ZERO){
-		// Выполняем упаковку второго слагаемого
-		realPack(result, size, num2.sign, num2.exp, num2.mantissa.data(), num2.mantissa.size());
+		// Упаковка второго слагаемого
+		__awh_real_pack__(result, size, num2.sign, num2.exp, num2.mantissa.data(), num2.mantissa.size());
 		// Выходим из функции
 		return;
 	}
@@ -3605,20 +3621,20 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 	 * Если второе слагаемое является нулевым
 	 */
 	if(num2.type == class_t::ZERO){
-		// Выполняем упаковку первого слагаемого
-		realPack(result, size, num1.sign, num1.exp, num1.mantissa.data(), num1.mantissa.size());
+		// Упаковка первого слагаемого
+		__awh_real_pack__(result, size, num1.sign, num1.exp, num1.mantissa.data(), num1.mantissa.size());
 		// Выходим из функции
 		return;
 	}
 	// Если порядок первого слагаемого меньше порядка второго слагаемого
 	if(num1.exp < num2.exp)
-		// Выполняем обмен слагаемых местами
+		// Обмен слагаемых местами
 		swap(num1, num2);
 	// Определяем количество дополнительных разрядов округления
 	const int64_t guard = (static_cast <int64_t> (params.man) + 4);
 	// Определяем разницу порядков слагаемых
 	const int64_t diff = (num1.exp - num2.exp);
-	// Выполняем сдвиг мантиссы первого слагаемого
+	// Сдвиг мантиссы первого слагаемого
 	shl(num1.mantissa.data(), num1.mantissa.size(), static_cast <size_t> (guard));
 	// Определяем результирующий показатель степени двойки
 	const int64_t exp = (num1.exp - guard);
@@ -3626,29 +3642,29 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 	const int64_t shift = (guard - diff);
 	// Если требуется выполнить сдвиг мантиссы второго слагаемого влево
 	if(shift >= 0)
-		// Выполняем сдвиг мантиссы второго слагаемого влево
+		// Сдвиг мантиссы второго слагаемого влево
 		shl(num2.mantissa.data(), num2.mantissa.size(), static_cast <size_t> (shift));
-	// Выполняем сдвиг мантиссы второго слагаемого вправо
-	else stickyShift(num2.mantissa.data(), num2.mantissa.size(), static_cast <size_t> (-shift));
+	// Сдвиг мантиссы второго слагаемого вправо
+	else __awh_sticky_shift__(num2.mantissa.data(), num2.mantissa.size(), static_cast <size_t> (-shift));
 	// Определяем знак результата сложения
 	bool sign = num1.sign;
 	/**
 	 * Если знаки слагаемых совпадают
 	 */
 	if(num1.sign == num2.sign)
-		// Выполняем сложение мантисс слагаемых
+		// Сложение мантисс слагаемых
 		add(num1.mantissa.data(), num2.mantissa.data(), num1.mantissa.size());
 	/**
 	 * Если знаки слагаемых не совпадают
 	 */
 	else {
-		// Выполняем сравнение мантисс слагаемых
+		// Сравнение мантисс слагаемых
 		const int8_t compare = ucompare(num1.mantissa.data(), num2.mantissa.data(), num1.mantissa.size());
 		/**
 		 * Если мантиссы слагаемых совпадают
 		 */
 		if(compare == 0){
-			// Выполняем обнуление буфера числа приёмника
+			// Обнуление буфера числа приёмника
 			reset(result, size);
 			// Выходим из функции
 			return;
@@ -3657,22 +3673,22 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
 		 * Если мантисса первого слагаемого больше мантиссы второго слагаемого
 		 */
 		if(compare > 0)
-			// Выполняем вычитание мантисс слагаемых
+			// Вычитание мантисс слагаемых
 			sub(num1.mantissa.data(), num2.mantissa.data(), num1.mantissa.size());
 		/**
 		 * Если мантисса второго слагаемого больше мантиссы первого слагаемого
 		 */
 		else {
-			// Выполняем вычитание мантисс слагаемых
+			// Вычитание мантисс слагаемых
 			sub(num2.mantissa.data(), num1.mantissa.data(), num2.mantissa.size());
-			// Выполняем обмен мантисс слагаемых местами
+			// Обмен мантисс слагаемых местами
 			num1.mantissa.swap(num2.mantissa);
 			// Определяем знак результата сложения
 			sign = num2.sign;
 		}
 	}
-	// Выполняем упаковку результата сложения
-	realPack(result, size, sign, exp, num1.mantissa.data(), num1.mantissa.size());
+	// Упаковка результата сложения
+	__awh_real_pack__(result, size, sign, exp, num1.mantissa.data(), num1.mantissa.size());
 }
 /**
  * @brief Функция вычитания двух вещественных чисел
@@ -3683,17 +3699,17 @@ void awh::bignum::realAdd(uint8_t * result, const uint8_t * value, const size_t 
  *
  */
 void awh::bignum::realSub(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
-	// Выполняем создание временного буфера вычитаемого числа
+	// Создание временного буфера вычитаемого числа
 	Scratch tmp(size);
 	// Если временный буфер вычитаемого числа не создан
 	if(tmp.get() == nullptr)
 		// Выходим из функции
 		return;
-	// Выполняем копирование вычитаемого числа
+	// Копирование вычитаемого числа
 	::memcpy(tmp.get(), value, size);
-	// Выполняем смену знака вычитаемого числа
+	// Смена знака вычитаемого числа
 	realNeg(tmp.get(), size);
-	// Выполняем сложение уменьшаемого с вычитаемым числом
+	// Сложение уменьшаемого с вычитаемым числом
 	realAdd(result, tmp.get(), size);
 }
 /**
@@ -3706,11 +3722,11 @@ void awh::bignum::realSub(uint8_t * result, const uint8_t * value, const size_t 
  */
 void awh::bignum::realMul(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем распаковку множимого числа
-	realValue_t num1 = realUnpack(result, size);
-	// Выполняем распаковку множителя числа
-	const realValue_t num2 = realUnpack(value, size);
+	const realParams_t params = __awh_real_params__(size);
+	// Распаковка множимого числа
+	realValue_t num1 = __awh_real_unpack__(result, size);
+	// Распаковка множителя числа
+	const realValue_t num2 = __awh_real_unpack__(value, size);
 	/**
 	 * Если один из множителей не является числом
 	 */
@@ -3739,7 +3755,7 @@ void awh::bignum::realMul(uint8_t * result, const uint8_t * value, const size_t 
 	 * Если один из множителей является нулевым
 	 */
 	if((num1.type == class_t::ZERO) || (num2.type == class_t::ZERO)){
-		// Выполняем обнуление буфера числа приёмника
+		// Обнуление буфера числа приёмника
 		reset(result, size);
 		// Если результат умножения является отрицательным
 		if(sign)
@@ -3748,10 +3764,10 @@ void awh::bignum::realMul(uint8_t * result, const uint8_t * value, const size_t 
 		// Выходим из функции
 		return;
 	}
-	// Выполняем умножение мантисс множителей
+	// Умножение мантисс множителей
 	mul(num1.mantissa.data(), num2.mantissa.data(), num1.mantissa.size());
-	// Выполняем упаковку результата умножения
-	realPack(result, size, sign, (num1.exp + num2.exp), num1.mantissa.data(), num1.mantissa.size());
+	// Упаковка результата умножения
+	__awh_real_pack__(result, size, sign, (num1.exp + num2.exp), num1.mantissa.data(), num1.mantissa.size());
 }
 /**
  * @brief Функция деления двух вещественных чисел
@@ -3763,11 +3779,11 @@ void awh::bignum::realMul(uint8_t * result, const uint8_t * value, const size_t 
  */
 void awh::bignum::realDiv(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем распаковку делимого числа
-	realValue_t num1 = realUnpack(result, size);
-	// Выполняем распаковку делителя числа
-	const realValue_t num2 = realUnpack(value, size);
+	const realParams_t params = __awh_real_params__(size);
+	// Распаковка делимого числа
+	realValue_t num1 = __awh_real_unpack__(result, size);
+	// Распаковка делителя числа
+	const realValue_t num2 = __awh_real_unpack__(value, size);
 	/**
 	 * Если одно из чисел не является числом
 	 */
@@ -3802,7 +3818,7 @@ void awh::bignum::realDiv(uint8_t * result, const uint8_t * value, const size_t 
 	 * Если делимое является нулевым или делитель является бесконечностью
 	 */
 	if((num1.type == class_t::ZERO) || (num2.type == class_t::UNLIMITED)){
-		// Выполняем обнуление буфера числа приёмника
+		// Обнуление буфера числа приёмника
 		reset(result, size);
 		// Если результат деления является отрицательным
 		if(sign)
@@ -3829,18 +3845,18 @@ void awh::bignum::realDiv(uint8_t * result, const uint8_t * value, const size_t 
 	if(guard < 0)
 		// Обнуляем сдвиг делимого числа
 		guard = 0;
-	// Выполняем сдвиг мантиссы делимого числа
+	// Сдвиг мантиссы делимого числа
 	shl(num1.mantissa.data(), num1.mantissa.size(), static_cast <size_t> (guard));
-	// Выполняем создание буфера остатка от деления
+	// Создание буфера остатка от деления
 	Buffer rem(num1.mantissa.size());
-	// Выполняем деление мантисс чисел
+	// Деление мантисс чисел
 	divmod(num1.mantissa.data(), num2.mantissa.data(), rem.data(), num1.mantissa.size());
 	// Если остаток от деления не является нулевым
 	if(!zero(rem.data(), rem.size()))
 		// Устанавливаем флаг отброшенных значащих разрядов
 		num1.mantissa[0] |= 0x01;
-	// Выполняем упаковку результата деления
-	realPack(result, size, sign, ((num1.exp - num2.exp) - guard), num1.mantissa.data(), num1.mantissa.size());
+	// Упаковка результата деления
+	__awh_real_pack__(result, size, sign, ((num1.exp - num2.exp) - guard), num1.mantissa.data(), num1.mantissa.size());
 }
 /**
  * @brief Функция извлечения остатка от деления двух вещественных чисел
@@ -3851,10 +3867,10 @@ void awh::bignum::realDiv(uint8_t * result, const uint8_t * value, const size_t 
  *
  */
 void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t size) noexcept {
-	// Выполняем распаковку делимого числа
-	realValue_t num1 = realUnpack(result, size);
-	// Выполняем распаковку делителя числа
-	const realValue_t num2 = realUnpack(value, size);
+	// Распаковка делимого числа
+	realValue_t num1 = __awh_real_unpack__(result, size);
+	// Распаковка делителя числа
+	const realValue_t num2 = __awh_real_unpack__(value, size);
 	/**
 	 * Если одно из чисел не является числом либо делимое является бесконечностью либо делитель является нулевым
 	 */
@@ -3875,15 +3891,15 @@ void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t 
 	if(diff < 0)
 		// Выходим из функции оставляя делимое без изменений
 		return;
-	// Выполняем создание буфера частного от деления
+	// Создание буфера частного от деления
 	Buffer quot(num1.mantissa.size());
-	// Выполняем создание буфера остатка от деления
+	// Создание буфера остатка от деления
 	Buffer rem(num1.mantissa.size());
-	// Выполняем копирование мантиссы делимого числа
+	// Копирование мантиссы делимого числа
 	::memcpy(quot.data(), num1.mantissa.data(), num1.mantissa.size());
-	// Выполняем деление мантисс чисел
+	// Деление мантисс чисел
 	divmod(quot.data(), num2.mantissa.data(), rem.data(), num1.mantissa.size());
-	// Выполняем копирование остатка от деления мантисс
+	// Копирование остатка от деления мантисс
 	::memcpy(num1.mantissa.data(), rem.data(), num1.mantissa.size());
 	// Определяем разрядность рабочего буфера мантиссы
 	const size_t capacity = (num1.mantissa.size() * 8);
@@ -3903,7 +3919,7 @@ void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t 
 	// Определяем оставшееся количество разрядов приведения
 	int64_t rest = diff;
 	/**
-	 * Выполняем блочное приведение остатка по модулю делителя
+	 * Блочное приведение остатка по модулю делителя
 	 */
 	while(rest > 0){
 		// Если остаток от деления обнулился, дальнейшее приведение его не изменит
@@ -3912,19 +3928,19 @@ void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t 
 			break;
 		// Определяем размер очередного сдвига остатка
 		const size_t step = ((static_cast <int64_t> (block) < rest) ? block : static_cast <size_t> (rest));
-		// Выполняем сдвиг остатка от деления
+		// Сдвиг остатка от деления
 		shl(num1.mantissa.data(), num1.mantissa.size(), step);
 		// Уменьшаем оставшееся количество разрядов приведения
 		rest -= static_cast <int64_t> (step);
-		// Выполняем копирование сдвинутого остатка
+		// Копирование сдвинутого остатка
 		::memcpy(quot.data(), num1.mantissa.data(), num1.mantissa.size());
-		// Выполняем деление сдвинутого остатка на мантиссу делителя
+		// Деление сдвинутого остатка на мантиссу делителя
 		divmod(quot.data(), num2.mantissa.data(), rem.data(), num1.mantissa.size());
-		// Выполняем копирование остатка от деления
+		// Копирование остатка от деления
 		::memcpy(num1.mantissa.data(), rem.data(), num1.mantissa.size());
 	}
-	// Выполняем упаковку остатка от деления
-	realPack(result, size, num1.sign, num2.exp, num1.mantissa.data(), num1.mantissa.size());
+	// Упаковка остатка от деления
+	__awh_real_pack__(result, size, num1.sign, num2.exp, num1.mantissa.data(), num1.mantissa.size());
 }
 /**
  * @brief Функция извлечения квадратного корня вещественного числа
@@ -3935,9 +3951,9 @@ void awh::bignum::realMod(uint8_t * result, const uint8_t * value, const size_t 
  */
 void awh::bignum::realSqrt(uint8_t * value, const size_t size) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем распаковку числа
-	realValue_t num = realUnpack(value, size);
+	const realParams_t params = __awh_real_params__(size);
+	// Распаковка числа
+	realValue_t num = __awh_real_unpack__(value, size);
 	/**
 	 * Если число не является числом либо является отрицательным
 	 */
@@ -3966,26 +3982,26 @@ void awh::bignum::realSqrt(uint8_t * value, const size_t size) noexcept {
 		// Уменьшаем результирующий показатель степени двойки
 		exp -= 1;
 	}
-	// Выполняем сдвиг мантиссы числа
+	// Сдвиг мантиссы числа
 	shl(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (shift));
-	// Выполняем создание буфера проверки результата
+	// Создание буфера проверки результата
 	Buffer check(num.mantissa.size());
-	// Выполняем копирование мантиссы числа
+	// Копирование мантиссы числа
 	::memcpy(check.data(), num.mantissa.data(), num.mantissa.size());
-	// Выполняем извлечение целочисленного квадратного корня мантиссы
+	// Извлечение целочисленного квадратного корня мантиссы
 	sqrt(num.mantissa.data(), num.mantissa.size());
-	// Выполняем создание буфера квадрата результата
+	// Создание буфера квадрата результата
 	Buffer square(num.mantissa.size());
-	// Выполняем копирование результата извлечения корня
+	// Копирование результата извлечения корня
 	::memcpy(square.data(), num.mantissa.data(), num.mantissa.size());
-	// Выполняем возведение результата в квадрат
+	// Возведение результата в квадрат
 	mul(square.data(), num.mantissa.data(), square.size());
 	// Если квадрат результата не совпадает с исходным значением
 	if(ucompare(square.data(), check.data(), square.size()) != 0)
 		// Устанавливаем флаг отброшенных значащих разрядов
 		num.mantissa[0] |= 0x01;
-	// Выполняем упаковку результата извлечения корня
-	realPack(value, size, false, (exp / 2), num.mantissa.data(), num.mantissa.size());
+	// Упаковка результата извлечения корня
+	__awh_real_pack__(value, size, false, (exp / 2), num.mantissa.data(), num.mantissa.size());
 }
 /**
  * @brief Функция возведения вещественного числа в целую степень
@@ -3996,9 +4012,9 @@ void awh::bignum::realSqrt(uint8_t * value, const size_t size) noexcept {
  *
  */
 void awh::bignum::realPow(uint8_t * value, const size_t size, const uint64_t exponent) noexcept {
-	// Выполняем создание временного буфера результата
+	// Создание временного буфера результата
 	Scratch result(size);
-	// Выполняем создание временного буфера основания степени
+	// Создание временного буфера основания степени
 	Scratch base(size);
 	// Если временные буферы не созданы
 	if((result.get() == nullptr) || (base.get() == nullptr))
@@ -4010,33 +4026,33 @@ void awh::bignum::realPow(uint8_t * value, const size_t size, const uint64_t exp
 	 * Если показатель степени является нулевым
 	 */
 	if(exponent == 0){
-		// Выполняем копирование результата возведения в степень
+		// Копирование результата возведения в степень
 		::memcpy(value, result.get(), size);
 		// Выходим из функции
 		return;
 	}
-	// Выполняем копирование основания степени
+	// Копирование основания степени
 	::memcpy(base.get(), value, size);
 	// Получаем показатель степени
 	uint64_t power = exponent;
 	/**
-	 * Выполняем возведение числа в степень методом бинарного возведения
+	 * Возведение числа в степень методом бинарного возведения
 	 */
 	while(power > 0){
 		// Если младший бит показателя степени установлен
 		if((power & 1) != 0)
-			// Выполняем умножение результата на основание степени
+			// Умножение результата на основание степени
 			realMul(result.get(), base.get(), size);
-		// Выполняем сдвиг показателя степени
+		// Сдвиг показателя степени
 		power >>= 1;
 		/**
 		 * Если возведение в степень не завершено
 		 */
 		if(power > 0)
-			// Выполняем возведение основания степени в квадрат
+			// Возведение основания степени в квадрат
 			realMul(base.get(), base.get(), size);
 	}
-	// Выполняем копирование результата возведения в степень
+	// Копирование результата возведения в степень
 	::memcpy(value, result.get(), size);
 }
 /**
@@ -4049,12 +4065,12 @@ void awh::bignum::realPow(uint8_t * value, const size_t size, const uint64_t exp
  *
  */
 void awh::bignum::realSet(uint8_t * value, const size_t size, const uint64_t num, const bool sign) noexcept {
-	// Выполняем создание буфера мантиссы устанавливаемого числа
-	Buffer mantissa(realWorkSize(size));
-	// Выполняем установку значения мантиссы устанавливаемого числа
+	// Создание буфера мантиссы устанавливаемого числа
+	Buffer mantissa(__awh_real_work_size__(size));
+	// Установка значения мантиссы устанавливаемого числа
 	set(mantissa.data(), mantissa.size(), num, false);
-	// Выполняем упаковку устанавливаемого числа
-	realPack(value, size, sign, 0, mantissa.data(), mantissa.size());
+	// Упаковка устанавливаемого числа
+	__awh_real_pack__(value, size, sign, 0, mantissa.data(), mantissa.size());
 }
 /**
  * @brief Функция установки вещественного значения числа
@@ -4089,7 +4105,7 @@ void awh::bignum::realSetReal(uint8_t * value, const size_t size, const long dou
 	 * Если устанавливаемое значение является нулевым
 	 */
 	if(num == 0.0L){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Если устанавливаемое значение является отрицательным
 		if(sign)
@@ -4100,14 +4116,14 @@ void awh::bignum::realSetReal(uint8_t * value, const size_t size, const long dou
 	}
 	// Показатель степени двойки устанавливаемого значения
 	int32_t exponent = 0;
-	// Выполняем извлечение мантиссы устанавливаемого значения
+	// Извлечение мантиссы устанавливаемого значения
 	const long double mantissa = ::frexpl(::fabsl(num), &exponent);
-	// Выполняем создание буфера мантиссы устанавливаемого числа
-	Buffer buffer(realWorkSize(size));
-	// Выполняем установку значения мантиссы устанавливаемого числа
+	// Создание буфера мантиссы устанавливаемого числа
+	Buffer buffer(__awh_real_work_size__(size));
+	// Установка значения мантиссы устанавливаемого числа
 	set(buffer.data(), buffer.size(), static_cast <uint64_t> (::ldexpl(mantissa, 63)), false);
-	// Выполняем упаковку устанавливаемого числа
-	realPack(value, size, sign, (static_cast <int64_t> (exponent) - 63), buffer.data(), buffer.size());
+	// Упаковка устанавливаемого числа
+	__awh_real_pack__(value, size, sign, (static_cast <int64_t> (exponent) - 63), buffer.data(), buffer.size());
 }
 /**
  * @brief Основное пространство имён
@@ -4138,8 +4154,8 @@ namespace awh {
 			 * @return       признак того что целая часть числа помещается в машинное слово
 			 *
 			 */
-			bool realMagnitude(realValue_t & num, uint64_t & result) noexcept {
-				// Выполняем обнуление модуля целой части числа
+			bool __awh_real_magnitude__(realValue_t & num, uint64_t & result) noexcept {
+				// Обнуление модуля целой части числа
 				result = 0;
 				// Получаем количество значащих разрядов мантиссы числа
 				const size_t count = bits(num.mantissa.data(), num.mantissa.size());
@@ -4160,7 +4176,7 @@ namespace awh {
 					if((static_cast <int64_t> (count) + num.exp) > 64)
 						// Выводим признак выхода числа за пределы машинного слова
 						return false;
-					// Выполняем сдвиг мантиссы влево
+					// Сдвиг мантиссы влево
 					shl(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (num.exp));
 				/**
 				 * Если требуется выполнить сдвиг мантиссы вправо
@@ -4170,14 +4186,14 @@ namespace awh {
 					if(-num.exp >= static_cast <int64_t> (count))
 						// Выводим признак того что целая часть числа помещается в машинное слово
 						return true;
-					// Выполняем сдвиг мантиссы вправо
+					// Сдвиг мантиссы вправо
 					shr(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (-num.exp), false);
 				}
 				// Если целая часть числа не помещается в машинное слово
 				if(bits(num.mantissa.data(), num.mantissa.size()) > 64)
 					// Выводим признак выхода числа за пределы машинного слова
 					return false;
-				// Выполняем извлечение модуля целой части числа
+				// Извлечение модуля целой части числа
 				result = getUint(num.mantissa.data(), num.mantissa.size());
 				// Выводим признак того что целая часть числа помещается в машинное слово
 				return true;
@@ -4198,8 +4214,8 @@ namespace awh {
  *
  */
 uint64_t awh::bignum::realGetUint(const uint8_t * value, const size_t size) noexcept {
-	// Выполняем распаковку вещественного числа
-	realValue_t num = realUnpack(value, size);
+	// Распаковка вещественного числа
+	realValue_t num = __awh_real_unpack__(value, size);
 	// Если вещественное число является нулевым либо не является числом
 	if((num.type == class_t::ZERO) || (num.type == class_t::UNDEFINED))
 		// Выводим результат работы функции
@@ -4215,7 +4231,7 @@ uint64_t awh::bignum::realGetUint(const uint8_t * value, const size_t size) noex
 	// Модуль целой части вещественного числа
 	uint64_t result = 0;
 	// Если целая часть числа не помещается в разрядную сетку результата
-	if(!realMagnitude(num, result))
+	if(!__awh_real_magnitude__(num, result))
 		// Выводим результат работы функции
 		return UINT64_MAX;
 	// Выводим результат работы функции
@@ -4233,8 +4249,8 @@ uint64_t awh::bignum::realGetUint(const uint8_t * value, const size_t size) noex
  *
  */
 int64_t awh::bignum::realGetInt(const uint8_t * value, const size_t size) noexcept {
-	// Выполняем распаковку вещественного числа
-	realValue_t num = realUnpack(value, size);
+	// Распаковка вещественного числа
+	realValue_t num = __awh_real_unpack__(value, size);
 	// Если вещественное число является нулевым либо не является числом
 	if((num.type == class_t::ZERO) || (num.type == class_t::UNDEFINED))
 		// Выводим результат работы функции
@@ -4246,7 +4262,7 @@ int64_t awh::bignum::realGetInt(const uint8_t * value, const size_t size) noexce
 	// Модуль целой части вещественного числа
 	uint64_t result = 0;
 	// Если целая часть числа не помещается в разрядную сетку результата
-	if(!realMagnitude(num, result))
+	if(!__awh_real_magnitude__(num, result))
 		// Выводим результат работы функции
 		return (num.sign ? INT64_MIN : INT64_MAX);
 	/**
@@ -4280,8 +4296,8 @@ int64_t awh::bignum::realGetInt(const uint8_t * value, const size_t size) noexce
  *
  */
 long double awh::bignum::realGetReal(const uint8_t * value, const size_t size) noexcept {
-	// Выполняем распаковку вещественного числа
-	realValue_t num = realUnpack(value, size);
+	// Распаковка вещественного числа
+	realValue_t num = __awh_real_unpack__(value, size);
 	// Если вещественное число не является числом
 	if(num.type == class_t::UNDEFINED)
 		// Выводим результат работы функции
@@ -4300,9 +4316,9 @@ long double awh::bignum::realGetReal(const uint8_t * value, const size_t size) n
 	const int64_t shift = ((count > 64) ? static_cast <int64_t> (count - 64) : 0);
 	// Если требуется выполнить сдвиг мантиссы
 	if(shift > 0)
-		// Выполняем сдвиг мантиссы вправо
+		// Сдвиг мантиссы вправо
 		shr(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (shift), false);
-	// Выполняем извлечение целого значения мантиссы
+	// Извлечение целого значения мантиссы
 	const uint64_t mantissa = getUint(num.mantissa.data(), num.mantissa.size());
 	// Определяем результирующий показатель степени двойки
 	const int64_t exponent = (num.exp + shift);
@@ -4310,7 +4326,7 @@ long double awh::bignum::realGetReal(const uint8_t * value, const size_t size) n
 	if((exponent > 65536) || (exponent < -65536))
 		// Выводим результат работы функции
 		return ((exponent > 0) ? (num.sign ? -HUGE_VALL : HUGE_VALL) : (num.sign ? -0.0L : 0.0L));
-	// Выполняем формирование вещественного значения числа
+	// Формирование вещественного значения числа
 	const long double result = ::ldexpl(static_cast <long double> (mantissa), static_cast <int32_t> (exponent));
 	// Выводим результат работы функции
 	return (num.sign ? -result : result);
@@ -4329,13 +4345,13 @@ void awh::bignum::realCast(uint8_t * result, const size_t size1, const uint8_t *
 	 * Если разрядность чисел совпадает
 	 */
 	if(size1 == size2){
-		// Выполняем копирование буфера числа
+		// Копирование буфера числа
 		::memcpy(result, value, size1);
 		// Выходим из функции
 		return;
 	}
-	// Выполняем распаковку вещественного числа источника
-	const realValue_t num = realUnpack(value, size2);
+	// Распаковка вещественного числа источника
+	const realValue_t num = __awh_real_unpack__(value, size2);
 	/**
 	 * Если вещественное число не является числом
 	 */
@@ -4358,7 +4374,7 @@ void awh::bignum::realCast(uint8_t * result, const size_t size1, const uint8_t *
 	 * Если вещественное число является нулевым
 	 */
 	if(num.type == class_t::ZERO){
-		// Выполняем обнуление буфера числа приёмника
+		// Обнуление буфера числа приёмника
 		reset(result, size1);
 		// Если вещественное число является отрицательным
 		if(num.sign)
@@ -4368,13 +4384,13 @@ void awh::bignum::realCast(uint8_t * result, const size_t size1, const uint8_t *
 		return;
 	}
 	// Определяем требуемый размер буфера мантиссы
-	const size_t length = max(realWorkSize(size1), num.mantissa.size());
-	// Выполняем создание буфера мантиссы числа приёмника
+	const size_t length = max(__awh_real_work_size__(size1), num.mantissa.size());
+	// Создание буфера мантиссы числа приёмника
 	Buffer mantissa(length);
-	// Выполняем копирование мантиссы числа источника
+	// Копирование мантиссы числа источника
 	::memcpy(mantissa.data(), num.mantissa.data(), num.mantissa.size());
-	// Выполняем упаковку числа приёмника
-	realPack(result, size1, num.sign, num.exp, mantissa.data(), mantissa.size());
+	// Упаковка числа приёмника
+	__awh_real_pack__(result, size1, num.sign, num.exp, mantissa.data(), mantissa.size());
 }
 /**
  * @brief Основное пространство имён
@@ -4399,15 +4415,15 @@ namespace awh {
 			 * @param shift показатель степени двойки масштабирования
 			 *
 			 */
-			void realScale(uint8_t * value, const size_t size, const int64_t shift) noexcept {
-				// Выполняем распаковку вещественного числа
-				realValue_t num = realUnpack(value, size);
+			void __awh_real_scale__(uint8_t * value, const size_t size, const int64_t shift) noexcept {
+				// Распаковка вещественного числа
+				realValue_t num = __awh_real_unpack__(value, size);
 				// Если вещественное число не является конечным числом
 				if((num.type == class_t::UNDEFINED) || (num.type == class_t::UNLIMITED) || (num.type == class_t::ZERO))
 					// Выходим из функции оставляя число без изменений
 					return;
-				// Выполняем упаковку масштабированного числа
-				realPack(value, size, num.sign, (num.exp + shift), num.mantissa.data(), num.mantissa.size());
+				// Упаковка масштабированного числа
+				__awh_real_pack__(value, size, num.sign, (num.exp + shift), num.mantissa.data(), num.mantissa.size());
 			}
 			/**
 			 * @brief Функция проверки вещественного числа на нечётность
@@ -4417,9 +4433,9 @@ namespace awh {
 			 * @return      результат проверки
 			 *
 			 */
-			bool realOdd(const uint8_t * value, const size_t size) noexcept {
-				// Выполняем распаковку вещественного числа
-				const realValue_t num = realUnpack(value, size);
+			bool __awh_real_odd__(const uint8_t * value, const size_t size) noexcept {
+				// Распаковка вещественного числа
+				const realValue_t num = __awh_real_unpack__(value, size);
 				// Если вещественное число не является конечным числом
 				if(num.type != class_t::NORMAL)
 					// Выводим результат проверки
@@ -4440,12 +4456,12 @@ namespace awh {
 			 * @param sign  флаг насыщения минимальным значением разрядной сетки
 			 *
 			 */
-			void saturate(uint8_t * value, const size_t size, const type_t type, const bool sign) noexcept {
+			void __awh_saturate__(uint8_t * value, const size_t size, const type_t type, const bool sign) noexcept {
 				/**
 				 * Если требуется выполнить насыщение минимальным значением
 				 */
 				if(sign){
-					// Выполняем обнуление буфера числа
+					// Обнуление буфера числа
 					reset(value, size);
 					// Если число является знаковым целым
 					if(type == type_t::SIGNED)
@@ -4454,11 +4470,11 @@ namespace awh {
 					// Выходим из функции
 					return;
 				}
-				// Выполняем заполнение буфера числа
+				// Заполнение буфера числа
 				::memset(value, 0xFF, size);
 				// Если число является знаковым целым
 				if(type == type_t::SIGNED)
-					// Выполняем сброс старшего разряда числа
+					// Сброс старшего разряда числа
 					bit(value, size, (size * 8) - 1, false);
 			}
 			/**
@@ -4472,12 +4488,12 @@ namespace awh {
 			 * @param type2  тип числа источника
 			 *
 			 */
-			void convert(uint8_t * result, const size_t size1, const type_t type1, const uint8_t * value, const size_t size2, const type_t type2) noexcept {
+			void __awh_convert__(uint8_t * result, const size_t size1, const type_t type1, const uint8_t * value, const size_t size2, const type_t type2) noexcept {
 				/**
 				 * Если оба числа являются вещественными
 				 */
 				if((type1 == type_t::REAL) && (type2 == type_t::REAL)){
-					// Выполняем перенос вещественного числа
+					// Перенос вещественного числа
 					realCast(result, size1, value, size2);
 					// Выходим из функции
 					return;
@@ -4486,9 +4502,9 @@ namespace awh {
 				 * Если число источника является вещественным
 				 */
 				if(type2 == type_t::REAL){
-					// Выполняем распаковку вещественного числа источника
-					const realValue_t num = realUnpack(value, size2);
-					// Выполняем обнуление буфера числа приёмника
+					// Распаковка вещественного числа источника
+					const realValue_t num = __awh_real_unpack__(value, size2);
+					// Обнуление буфера числа приёмника
 					reset(result, size1);
 					// Если вещественное число не является конечным числом
 					if((num.type == class_t::UNDEFINED) || (num.type == class_t::ZERO))
@@ -4498,8 +4514,8 @@ namespace awh {
 					 * Если вещественное число является бесконечностью
 					 */
 					if(num.type == class_t::UNLIMITED){
-						// Выполняем насыщение числа приёмника
-						saturate(result, size1, type1, num.sign);
+						// Насыщение числа приёмника
+						__awh_saturate__(result, size1, type1, num.sign);
 						// Выходим из функции
 						return;
 					}
@@ -4513,8 +4529,8 @@ namespace awh {
 					 *
 					 */
 					if(num.sign && (type1 == type_t::UNSIGNED)){
-						// Выполняем насыщение числа приёмника
-						saturate(result, size1, type1, true);
+						// Насыщение числа приёмника
+						__awh_saturate__(result, size1, type1, true);
 						// Выходим из функции
 						return;
 					}
@@ -4527,9 +4543,9 @@ namespace awh {
 					 *
 					 */
 					const size_t length = max((static_cast <size_t> (size1) + 8), num.mantissa.size());
-					// Выполняем создание рабочего буфера целой части числа
+					// Создание рабочего буфера целой части числа
 					Buffer mantissa(length);
-					// Выполняем копирование мантиссы числа источника
+					// Копирование мантиссы числа источника
 					::memcpy(mantissa.data(), num.mantissa.data(), num.mantissa.size());
 					// Получаем количество значащих разрядов мантиссы числа источника
 					const size_t count = bits(num.mantissa.data(), num.mantissa.size());
@@ -4548,29 +4564,29 @@ namespace awh {
 						 * Если целая часть числа не помещается в разрядную сетку приёмника
 						 */
 						if((static_cast <int64_t> (count) + num.exp) > static_cast <int64_t> (capacity)){
-							// Выполняем насыщение числа приёмника
-							saturate(result, size1, type1, num.sign);
+							// Насыщение числа приёмника
+							__awh_saturate__(result, size1, type1, num.sign);
 							// Выходим из функции
 							return;
 						}
-						// Выполняем сдвиг мантиссы влево
+						// Сдвиг мантиссы влево
 						shl(mantissa.data(), length, static_cast <size_t> (num.exp));
 					// Если требуется выполнить сдвиг мантиссы вправо
 					} else if(num.exp < 0)
-						// Выполняем сдвиг мантиссы вправо
+						// Сдвиг мантиссы вправо
 						shr(mantissa.data(), length, static_cast <size_t> (-num.exp), false);
 					// Если целая часть числа не помещается в разрядную сетку приёмника
 					if(bits(mantissa.data(), length) > capacity){
-						// Выполняем насыщение числа приёмника
-						saturate(result, size1, type1, num.sign);
+						// Насыщение числа приёмника
+						__awh_saturate__(result, size1, type1, num.sign);
 						// Выходим из функции
 						return;
 					}
-					// Выполняем копирование целой части числа в буфер числа приёмника
+					// Копирование целой части числа в буфер числа приёмника
 					::memcpy(result, mantissa.data(), size1);
 					// Если вещественное число является отрицательным
 					if(num.sign)
-						// Выполняем смену знака числа приёмника
+						// Смена знака числа приёмника
 						neg(result, size1);
 					// Выходим из функции
 					return;
@@ -4580,29 +4596,29 @@ namespace awh {
 				 */
 				if(type1 == type_t::REAL){
 					// Определяем требуемый размер буфера мантиссы
-					const size_t length = max(realWorkSize(size1), size2);
-					// Выполняем создание буфера мантиссы числа приёмника
+					const size_t length = max(__awh_real_work_size__(size1), size2);
+					// Создание буфера мантиссы числа приёмника
 					Buffer mantissa(length);
-					// Выполняем копирование числа источника
+					// Копирование числа источника
 					::memcpy(mantissa.data(), value, size2);
 					// Определяем является ли число источника отрицательным
 					const bool sign = ((type2 == type_t::SIGNED) && negative(value, size2));
 					// Если число источника является отрицательным
 					if(sign)
-						// Выполняем смену знака числа источника
+						// Смена знака числа источника
 						neg(mantissa.data(), size2);
-					// Выполняем сброс старших разрядов буфера мантиссы
+					// Сброс старших разрядов буфера мантиссы
 					if(length > size2)
-						// Выполняем обнуление старших байтов буфера мантиссы
+						// Обнуление старших байтов буфера мантиссы
 						::memset(mantissa.data() + size2, 0, (length - size2));
-					// Выполняем упаковку числа приёмника
-					realPack(result, size1, sign, 0, mantissa.data(), mantissa.size());
+					// Упаковка числа приёмника
+					__awh_real_pack__(result, size1, sign, 0, mantissa.data(), mantissa.size());
 					// Выходим из функции
 					return;
 				}
 				// Определяем количество копируемых байтов числа
 				const size_t count = min(size1, size2);
-				// Выполняем копирование числа источника
+				// Копирование числа источника
 				::memcpy(result, value, count);
 				/**
 				 * Если разрядность числа приёмника превышает разрядность числа источника
@@ -4610,7 +4626,7 @@ namespace awh {
 				if(size1 > count){
 					// Определяем значение заполнителя старших разрядов
 					const uint8_t filler = (((type2 == type_t::SIGNED) && negative(value, size2)) ? 0xFF : 0x00);
-					// Выполняем заполнение старших байтов числа приёмника
+					// Заполнение старших байтов числа приёмника
 					::memset(result + count, filler, (size1 - count));
 				}
 			}
@@ -4632,12 +4648,12 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	 * Если требуется сформировать представление битового образа числа
 	 */
 	if((format == format_t::BIN) || (format == format_t::OCT) || (format == format_t::HEX) || (format == format_t::HEXUP))
-		// Выполняем формирование представления битового образа числа
+		// Формирование представления битового образа числа
 		return print(value, size, false, format);
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем распаковку вещественного числа
-	realValue_t num = realUnpack(value, size);
+	const realParams_t params = __awh_real_params__(size);
+	// Распаковка вещественного числа
+	realValue_t num = __awh_real_unpack__(value, size);
 	// Если вещественное число не является числом
 	if(num.type == class_t::UNDEFINED)
 		// Выводим результат работы функции
@@ -4679,8 +4695,8 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	string digits = "";
 	// Показатель степени десяти применяемый к строке цифр
 	int64_t point = 0;
-	// Выполняем формирование точного десятичного представления числа
-	const bool exact = realDecimal(num, digits, point);
+	// Формирование точного десятичного представления числа
+	const bool exact = __awh_real_decimal__(num, digits, point);
 	/**
 	 * Если точное преобразование числа выходит за пределы допустимого объёма вычислений
 	 *
@@ -4696,20 +4712,20 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		const int64_t shift = ((count > 64) ? static_cast <int64_t> (count - 64) : 0);
 		// Если требуется выполнить сдвиг мантиссы
 		if(shift > 0)
-			// Выполняем сдвиг мантиссы вправо
+			// Сдвиг мантиссы вправо
 			shr(num.mantissa.data(), num.mantissa.size(), static_cast <size_t> (shift), false);
-		// Выполняем извлечение целого значения мантиссы
+		// Извлечение целого значения мантиссы
 		const long double mantissa = static_cast <long double> (getUint(num.mantissa.data(), num.mantissa.size()));
-		// Выполняем расчёт десятичного логарифма числа
+		// Расчёт десятичного логарифма числа
 		const long double logarithm = (::log10l(mantissa) + (static_cast <long double> (num.exp + shift) * ::log10l(2.0L)));
 		// Определяем показатель степени десяти числа
 		point = static_cast <int64_t> (::floorl(logarithm));
-		// Выполняем расчёт мантиссы числа в десятичном представлении
+		// Расчёт мантиссы числа в десятичном представлении
 		long double rest = ::powl(10.0L, (logarithm - static_cast <long double> (point)));
 		// Определяем количество формируемых значащих цифр
 		const size_t count10 = ((natural < 18) ? natural : 18);
 		/**
-		 * Выполняем формирование значащих цифр числа
+		 * Формирование значащих цифр числа
 		 */
 		for(size_t i = 0; i < count10; ++i){
 			// Получаем очередную цифру числа
@@ -4724,14 +4740,14 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 				digit = 0;
 			// Добавляем очередную цифру числа в результат
 			digits.append(1, static_cast <char> ('0' + digit));
-			// Выполняем сдвиг мантиссы числа
+			// Сдвиг мантиссы числа
 			rest = ((rest - static_cast <long double> (digit)) * 10.0L);
 		}
 		// Корректируем показатель степени десяти под сформированные цифры
 		point -= static_cast <int64_t> (digits.size() - 1);
 	}
-	// Выполняем удаление ведущих нулей десятичного представления числа
-	decimalTrim(digits);
+	// Удаление ведущих нулей десятичного представления числа
+	__awh_decimal_trim__(digits);
 	// Определяем количество значащих цифр строкового представления числа
 	size_t significant = natural;
 	/**
@@ -4744,7 +4760,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	 *
 	 */
 	if(exact && (precision < 0)){
-		// Выполняем создание буфера проверки обратного разбора числа
+		// Создание буфера проверки обратного разбора числа
 		Scratch probe(size);
 		/**
 		 * Если буфер проверки обратного разбора числа создан
@@ -4764,7 +4780,7 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 			 */
 			string candidate = "";
 			/**
-			 * Выполняем поиск минимального количества значащих цифр
+			 * Поиск минимального количества значащих цифр
 			 */
 			while(low < high){
 				// Определяем середину отрезка поиска
@@ -4773,10 +4789,10 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 				candidate.assign(digits);
 				// Формируем показатель степени десяти проверяемого представления
 				int64_t position = point;
-				// Выполняем округление проверяемого представления числа
-				decimalRound(candidate, position, middle);
-				// Выполняем обратное формирование числа из проверяемого представления
-				realCompose(probe.get(), size, num.sign, candidate, position);
+				// Округление проверяемого представления числа
+				__awh_decimal_round__(candidate, position, middle);
+				// Обратное формирование числа из проверяемого представления
+				__awh_real_compose__(probe.get(), size, num.sign, candidate, position);
 				// Если обратное формирование числа дало исходное значение
 				if(::memcmp(probe.get(), value, size) == 0)
 					// Уменьшаем верхнюю границу количества значащих цифр
@@ -4794,8 +4810,8 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	if(format == format_t::SCI){
 		// Определяем количество формируемых значащих цифр числа
 		const size_t count = ((precision >= 0) ? (static_cast <size_t> (precision) + 1) : significant);
-		// Выполняем округление десятичного представления числа
-		decimalRound(digits, point, count);
+		// Округление десятичного представления числа
+		__awh_decimal_round__(digits, point, count);
 		// Определяем показатель степени десяти числа
 		const int64_t exponent = ((point + static_cast <int64_t> (digits.size())) - 1);
 		// Результат работы функции
@@ -4812,11 +4828,13 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		 * Если количество знаков после запятой определяется автоматически
 		 */
 		if(precision < 0){
-			// Выполняем удаление незначащих нулей дробной части числа
+			/**
+			 * Удаление незначащих нулей дробной части числа
+			 */
 			while(!rest.empty() && (rest.back() == '0'))
-				// Выполняем удаление незначащей цифры дробной части числа
+				// Удаление незначащей цифры дробной части числа
 				rest.erase(rest.size() - 1);
-		// Выполняем дополнение дробной части числа незначащими нулями
+		// Дополнение дробной части числа незначащими нулями
 		} else if(rest.size() < static_cast <size_t> (precision))
 			// Добавляем незначащие нули в дробную часть числа
 			rest.append((static_cast <size_t> (precision) - rest.size()), '0');
@@ -4838,12 +4856,12 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		// Получаем модуль показателя степени десяти
 		uint64_t rest10 = static_cast <uint64_t> ((exponent < 0) ? -exponent : exponent);
 		/**
-		 * Выполняем формирование значения показателя степени десяти
+		 * Формирование значения показателя степени десяти
 		 */
 		do {
 			// Добавляем очередную цифру показателя степени десяти
 			power.insert(power.begin(), static_cast <char> ('0' + (rest10 % 10)));
-			// Выполняем сдвиг показателя степени десяти
+			// Сдвиг показателя степени десяти
 			rest10 /= 10;
 		} while(rest10 > 0);
 		// Добавляем показатель степени десяти в результат
@@ -4866,12 +4884,12 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 		 *
 		 */
 		if(fraction > static_cast <int64_t> (precision))
-			// Выполняем отбрасывание младших цифр десятичного представления числа
-			decimalDrop(digits, point, static_cast <size_t> (fraction - static_cast <int64_t> (precision)), num.sign, round_t::NEAREST);
-	// Выполняем округление десятичного представления числа
-	} else decimalRound(digits, point, significant);
-	// Выполняем удаление ведущих нулей десятичного представления числа
-	decimalTrim(digits);
+			// Отбрасывание младших цифр десятичного представления числа
+			__awh_decimal_drop__(digits, point, static_cast <size_t> (fraction - static_cast <int64_t> (precision)), num.sign, round_t::NEAREST);
+	// Округление десятичного представления числа
+	} else __awh_decimal_round__(digits, point, significant);
+	// Удаление ведущих нулей десятичного представления числа
+	__awh_decimal_trim__(digits);
 	// Результат работы функции
 	string result = "";
 	// Если вещественное число является отрицательным
@@ -4937,13 +4955,15 @@ string awh::bignum::realPrint(const uint8_t * value, const size_t size, const fo
 	 * Если количество знаков после запятой определяется автоматически
 	 */
 	} else {
-		// Выполняем удаление незначащих нулей дробной части числа
+		/**
+		 * Удаление незначащих нулей дробной части числа
+		 */
 		while(!result.empty() && (result.back() == '0'))
-			// Выполняем удаление незначащей цифры дробной части числа
+			// Удаление незначащей цифры дробной части числа
 			result.erase(result.size() - 1);
 		// Если разделитель дробной части числа остался без цифр
 		if(!result.empty() && (result.back() == '.'))
-			// Выполняем удаление разделителя дробной части числа
+			// Удаление разделителя дробной части числа
 			result.erase(result.size() - 1);
 	}
 	// Выводим результат работы функции
@@ -4972,13 +4992,13 @@ namespace awh {
 			 * @return        результат сравнения
 			 *
 			 */
-			bool compareNoCase(string_view text, string_view pattern) noexcept {
+			bool __awh_compare_no_case__(string_view text, string_view pattern) noexcept {
 				// Если размер строки меньше размера образца
 				if(text.size() < pattern.size())
 					// Выводим результат сравнения
 					return false;
 				/**
-				 * Выполняем перебор всех символов образца
+				 * Перебор всех символов образца
 				 */
 				for(size_t i = 0; i < pattern.size(); ++i){
 					// Получаем обрабатываемый символ строки
@@ -5007,12 +5027,14 @@ namespace awh {
  */
 bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text) noexcept {
 	// Получаем параметры формата вещественного числа
-	const realParams_t params = realParams(size);
-	// Выполняем обнуление буфера числа
+	const realParams_t params = __awh_real_params__(size);
+	// Обнуление буфера числа
 	reset(value, size);
 	// Индекс обрабатываемого символа строки
 	size_t offset = 0;
-	// Выполняем пропуск ведущих пробельных символов строки
+	/**
+	 * Пропуск ведущих пробельных символов строки
+	 */
 	while((offset < text.size()) && ((text[offset] == ' ') || (text[offset] == '\t')))
 		// Увеличиваем индекс обрабатываемого символа строки
 		offset++;
@@ -5032,7 +5054,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	/**
 	 * Если разбираемая строка содержит значение не являющееся числом
 	 */
-	if(compareNoCase(rest, "nan")){
+	if(__awh_compare_no_case__(rest, "nan")){
 		// Устанавливаем значение не являющееся числом
 		realNan(value, size);
 		// Выводим результат выполнения разбора
@@ -5041,7 +5063,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	/**
 	 * Если разбираемая строка содержит значение бесконечности
 	 */
-	if(compareNoCase(rest, "inf")){
+	if(__awh_compare_no_case__(rest, "inf")){
 		// Устанавливаем значение бесконечности
 		realInf(value, size, sign);
 		// Выводим результат выполнения разбора
@@ -5056,7 +5078,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	// Количество разобранных цифр числа
 	size_t count = 0;
 	/**
-	 * Выполняем разбор мантиссы числа
+	 * Разбор мантиссы числа
 	 */
 	while(offset < text.size()){
 		// Получаем обрабатываемый символ строки
@@ -5114,23 +5136,23 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 		if(position < text.size()){
 			// Значение показателя степени десяти числа
 			int64_t power = 0;
-			// Выполняем разбор показателя степени десяти модулем разбора чисел
+			// Разбор показателя степени десяти модулем разбора чисел
 			const lexical::result_t <char> & result = lexical::fromChars(
 				text.data() + position, text.data() + text.size(), power, 10
 			);
 			// Если разбор показателя степени десяти выполнен
-			if(result.ec == errc())
+			if(result.errorCode == errc())
 				// Устанавливаем показатель степени десяти числа
 				exponent = power;
 		}
 	}
-	// Выполняем удаление ведущих нулей мантиссы числа
-	decimalTrim(digits);
+	// Удаление ведущих нулей мантиссы числа
+	__awh_decimal_trim__(digits);
 	/**
 	 * Если мантисса числа является нулевой
 	 */
 	if(digits == "0"){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Если число является отрицательным
 		if(sign)
@@ -5142,7 +5164,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	// Определяем результирующий показатель степени десяти числа
 	const int64_t power = (exponent - fraction);
 	/**
-	 * Выполняем оценку порядка разбираемого числа
+	 * Оценка порядка разбираемого числа
 	 *
 	 * @details Оценка является верхней границей двоичного порядка числа, поэтому
 	 *          сравнение с пределами разрядной сетки выполняется с запасом. Значения,
@@ -5165,7 +5187,7 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	 * Если разбираемое число выходит за нижний предел разрядной сетки
 	 */
 	if(magnitude < -static_cast <long double> (params.bias + static_cast <int64_t> (params.man) + 64)){
-		// Выполняем обнуление буфера числа
+		// Обнуление буфера числа
 		reset(value, size);
 		// Если число является отрицательным
 		if(sign)
@@ -5180,15 +5202,15 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
 	if((((power < 0) ? -power : power) > static_cast <int64_t> (MAX_DECIMAL_STEPS * 5)) || (digits.size() > (MAX_DECIMAL_STEPS * 5))){
 		// Приближённое значение разбираемого числа
 		double approx = 0.0;
-		// Выполняем приближённый разбор числа модулем разбора чисел
+		// Приближённый разбор числа модулем разбора чисел
 		lexical::fromChars(text.data(), text.data() + text.size(), approx);
-		// Выполняем установку приближённого значения числа
+		// Установка приближённого значения числа
 		realSetReal(value, size, static_cast <long double> (approx));
 		// Выводим результат выполнения разбора
 		return true;
 	}
-	// Выполняем формирование вещественного числа из десятичного представления
-	realCompose(value, size, sign, digits, power);
+	// Формирование вещественного числа из десятичного представления
+	__awh_real_compose__(value, size, sign, digits, power);
 	// Выводим результат выполнения разбора
 	return true;
 }
@@ -5202,8 +5224,8 @@ bool awh::bignum::realParse(uint8_t * value, const size_t size, string_view text
  *
  */
 void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t digits, const round_t mode) noexcept {
-	// Выполняем распаковку вещественного числа
-	const realValue_t num = realUnpack(value, size);
+	// Распаковка вещественного числа
+	const realValue_t num = __awh_real_unpack__(value, size);
 	// Если число не является конечным ненулевым значением
 	if((num.type == class_t::UNDEFINED) || (num.type == class_t::UNLIMITED) || (num.type == class_t::ZERO))
 		// Выходим из функции оставляя число без изменений
@@ -5221,10 +5243,10 @@ void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t di
 	 *          мало, что округление до любого разумного количества знаков даёт нуль
 	 *
 	 */
-	if(!realDecimal(num, text, point)){
+	if(!__awh_real_decimal__(num, text, point)){
 		// Если число является пренебрежимо малым
 		if(num.exp < 0){
-			// Выполняем обнуление буфера числа
+			// Обнуление буфера числа
 			reset(value, size);
 			// Если число является отрицательным
 			if(num.sign)
@@ -5234,8 +5256,8 @@ void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t di
 		// Выходим из функции
 		return;
 	}
-	// Выполняем удаление ведущих нулей десятичного представления числа
-	decimalTrim(text);
+	// Удаление ведущих нулей десятичного представления числа
+	__awh_decimal_trim__(text);
 	// Определяем текущее количество знаков после запятой
 	const int64_t fraction = ((point < 0) ? -point : 0);
 	// Если округление числа не требуется
@@ -5244,10 +5266,10 @@ void awh::bignum::realRound(uint8_t * value, const size_t size, const int32_t di
 		return;
 	// Определяем количество отбрасываемых цифр записи числа
 	const int64_t drop = (fraction - static_cast <int64_t> (digits));
-	// Выполняем отбрасывание младших цифр записи числа
-	decimalDrop(text, point, static_cast <size_t> (drop), num.sign, mode);
-	// Выполняем формирование округлённого числа из десятичного представления
-	realCompose(value, size, num.sign, text, point);
+	// Отбрасывание младших цифр записи числа
+	__awh_decimal_drop__(text, point, static_cast <size_t> (drop), num.sign, mode);
+	// Формирование округлённого числа из десятичного представления
+	__awh_real_compose__(value, size, num.sign, text, point);
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -5317,16 +5339,16 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::maximum() noexcept {
 		 * Если число является знаковым целым
 		 */
 		case static_cast <uint8_t> (bignum::type_t::SIGNED):
-			// Выполняем заполнение буфера числа
+			// Заполнение буфера числа
 			result._data.fill(0xFF);
-			// Выполняем сброс старшего разряда числа
+			// Сброс старшего разряда числа
 			result._data[BYTES - 1] = 0x7F;
 		break;
 		/**
 		 * Если число является беззнаковым целым
 		 */
 		case static_cast <uint8_t> (bignum::type_t::UNSIGNED):
-			// Выполняем заполнение буфера числа
+			// Заполнение буфера числа
 			result._data.fill(0xFF);
 		break;
 		/**
@@ -5439,9 +5461,9 @@ void awh::BigNum <BYTES, TYPE>::divmod(const BigNum & num1, const BigNum & num2,
 	 * Если число является вещественным
 	 */
 	if(TYPE == bignum::type_t::REAL){
-		// Выполняем извлечение частного от деления
+		// Извлечение частного от деления
 		quotient = (num1 / num2);
-		// Выполняем извлечение остатка от деления
+		// Извлечение остатка от деления
 		remainder = (num1 % num2);
 		// Выходим из функции
 		return;
@@ -5454,21 +5476,21 @@ void awh::BigNum <BYTES, TYPE>::divmod(const BigNum & num1, const BigNum & num2,
 	BigNum dividend(num1.abs());
 	// Получаем модуль делителя числа
 	const BigNum divisor(num2.abs());
-	// Выполняем создание буфера остатка от деления
+	// Создание буфера остатка от деления
 	array <uint8_t, BYTES> mod{};
-	// Выполняем деление модулей чисел за один проход
+	// Деление модулей чисел за один проход
 	bignum::divmod(dividend._data.data(), divisor._data.data(), mod.data(), BYTES);
-	// Выполняем копирование частного от деления
+	// Копирование частного от деления
 	quotient._data = dividend._data;
-	// Выполняем копирование остатка от деления
+	// Копирование остатка от деления
 	remainder._data = mod;
 	// Если частное от деления является отрицательным
 	if(sign1)
-		// Выполняем смену знака частного от деления
+		// Смена знака частного от деления
 		bignum::neg(quotient._data.data(), BYTES);
 	// Если остаток от деления является отрицательным
 	if(sign2)
-		// Выполняем смену знака остатка от деления
+		// Смена знака остатка от деления
 		bignum::neg(remainder._data.data(), BYTES);
 }
 /**
@@ -5484,7 +5506,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 void awh::BigNum <BYTES, TYPE>::clear() noexcept {
-	// Выполняем обнуление буфера числа
+	// Обнуление буфера числа
 	this->_data.fill(0);
 }
 /**
@@ -5502,7 +5524,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 void awh::BigNum <BYTES, TYPE>::swap(BigNum & num) noexcept {
-	// Выполняем обмен буферами чисел
+	// Обмен буферами чисел
 	this->_data.swap(num._data);
 }
 /**
@@ -5567,7 +5589,7 @@ bool awh::BigNum <BYTES, TYPE>::odd() const noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
 		// Выводим результат проверки вещественного числа
-		return bignum::realOdd(this->_data.data(), BYTES);
+		return bignum::__awh_real_odd__(this->_data.data(), BYTES);
 	// Выводим результат проверки младшего разряда целого числа
 	return ((this->_data[0] & 0x01) != 0);
 }
@@ -5630,8 +5652,8 @@ uint32_t awh::BigNum <BYTES, TYPE>::bits() const noexcept {
 	 * Если число является вещественным
 	 */
 	if(TYPE == bignum::type_t::REAL){
-		// Выполняем распаковку вещественного числа
-		const bignum::realValue_t num = bignum::realUnpack(this->_data.data(), BYTES);
+		// Распаковка вещественного числа
+		const bignum::realValue_t num = bignum::__awh_real_unpack__(this->_data.data(), BYTES);
 		// Если вещественное число не является конечным числом
 		if((num.type == bignum::class_t::UNDEFINED) || (num.type == bignum::class_t::UNLIMITED))
 			// Выводим количество значащих бит числа
@@ -5677,7 +5699,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 void awh::BigNum <BYTES, TYPE>::bit(const uint32_t index, const bool mode) noexcept {
-	// Выполняем установку значения указанного бита числа
+	// Установка значения указанного бита числа
 	bignum::bit(this->_data.data(), BYTES, index, mode);
 }
 /**
@@ -5753,13 +5775,13 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 void awh::BigNum <BYTES, TYPE>::set(const uint8_t * buffer, const uint16_t size, const type_t type) noexcept {
 	// Если буфер числа источника не передан
 	if((buffer == nullptr) || (size == 0)){
-		// Выполняем очистку значения числа
+		// Очистка значения числа
 		this->clear();
 		// Выходим из функции
 		return;
 	}
-	// Выполняем преобразование числа источника
-	bignum::convert(this->_data.data(), BYTES, TYPE, buffer, size, type);
+	// Преобразование числа источника
+	bignum::__awh_convert__(this->_data.data(), BYTES, TYPE, buffer, size, type);
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -5782,8 +5804,8 @@ void awh::BigNum <BYTES, TYPE>::get(uint8_t * buffer, const uint16_t size, const
 	if((buffer == nullptr) || (size == 0))
 		// Выходим из функции
 		return;
-	// Выполняем преобразование числа приёмника
-	bignum::convert(buffer, size, type, this->_data.data(), BYTES, TYPE);
+	// Преобразование числа приёмника
+	bignum::__awh_convert__(buffer, size, type, this->_data.data(), BYTES, TYPE);
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -5840,11 +5862,11 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::abs() const noexcept {
 	BigNum result(* this);
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем извлечение модуля вещественного числа
+		// Извлечение модуля вещественного числа
 		bignum::realAbs(result._data.data(), BYTES);
 	// Если число является отрицательным знаковым целым
 	else if((TYPE == bignum::type_t::SIGNED) && bignum::negative(result._data.data(), BYTES))
-		// Выполняем смену знака целого числа
+		// Смена знака целого числа
 		bignum::neg(result._data.data(), BYTES);
 	// Выводим результат работы функции
 	return result;
@@ -5874,14 +5896,14 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::sqrt() const noexcept {
 		 * Знак числа сохраняется намеренно, поскольку стандарт IEEE-754 требует получения
 		 * значения не являющегося числом для отрицательных значений и сохранения знака нуля
 		 */
-		// Выполняем извлечение квадратного корня вещественного числа
+		// Извлечение квадратного корня вещественного числа
 		bignum::realSqrt(result._data.data(), BYTES);
 		// Выводим результат работы функции
 		return result;
 	}
 	// Результат работы функции
 	BigNum result(this->abs());
-	// Выполняем извлечение целочисленного квадратного корня
+	// Извлечение целочисленного квадратного корня
 	bignum::sqrt(result._data.data(), BYTES);
 	// Выводим результат работы функции
 	return result;
@@ -5906,9 +5928,9 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::pow(const uint64_t exponent
 	BigNum result(* this);
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем возведение вещественного числа в степень
+		// Возведение вещественного числа в степень
 		bignum::realPow(result._data.data(), BYTES, exponent);
-	// Выполняем возведение целого числа в степень
+	// Возведение целого числа в степень
 	else bignum::pow(result._data.data(), BYTES, exponent);
 	// Выводим результат работы функции
 	return result;
@@ -5934,9 +5956,9 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::round(const int32_t digits,
 	BigNum result(* this);
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем округление вещественного числа
+		// Округление вещественного числа
 		bignum::realRound(result._data.data(), BYTES, digits, mode);
-	// Выполняем округление целого числа
+	// Округление целого числа
 	else bignum::round(result._data.data(), BYTES, (TYPE == bignum::type_t::SIGNED), digits, mode);
 	// Выводим результат работы функции
 	return result;
@@ -5957,7 +5979,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::trunc(const int32_t digits) const noexcept {
-	// Выполняем округление числа в сторону нуля
+	// Округление числа в сторону нуля
 	return this->round(digits, bignum::round_t::ZERO);
 }
 /**
@@ -5976,7 +5998,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::floor(const int32_t digits) const noexcept {
-	// Выполняем округление числа в сторону минус бесконечности
+	// Округление числа в сторону минус бесконечности
 	return this->round(digits, bignum::round_t::DOWN);
 }
 /**
@@ -5995,7 +6017,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::ceil(const int32_t digits) const noexcept {
-	// Выполняем округление числа в сторону плюс бесконечности
+	// Округление числа в сторону плюс бесконечности
 	return this->round(digits, bignum::round_t::UP);
 }
 /**
@@ -6045,12 +6067,12 @@ bool awh::BigNum <BYTES, TYPE>::parse(string_view text, const format_t format) n
 	if(TYPE == bignum::type_t::REAL){
 		// Если требуется выполнить разбор битового образа вещественного числа
 		if((format == format_t::BIN) || (format == format_t::OCT) || (format == format_t::HEX) || (format == format_t::HEXUP))
-			// Выполняем разбор битового образа вещественного числа
+			// Разбор битового образа вещественного числа
 			return bignum::parse(this->_data.data(), BYTES, text, false, format);
-		// Выполняем разбор строкового представления вещественного числа
+		// Разбор строкового представления вещественного числа
 		return bignum::realParse(this->_data.data(), BYTES, text);
 	}
-	// Выполняем разбор строкового представления целого числа
+	// Разбор строкового представления целого числа
 	return bignum::parse(this->_data.data(), BYTES, text, (TYPE == bignum::type_t::SIGNED), format);
 }
 /**
@@ -6077,7 +6099,7 @@ namespace awh {
 			 * @return      извлечённое знаковое целое значение числа
 			 *
 			 */
-			int64_t castInt(const uint8_t * value, const size_t size, const type_t type) noexcept {
+			int64_t __awh_cast_int__(const uint8_t * value, const size_t size, const type_t type) noexcept {
 				// Если число является вещественным
 				if(type == type_t::REAL)
 					// Выводим знаковое целое значение вещественного числа
@@ -6094,7 +6116,7 @@ namespace awh {
 			 * @return      извлечённое беззнаковое целое значение числа
 			 *
 			 */
-			uint64_t castUint(const uint8_t * value, const size_t size, const type_t type) noexcept {
+			uint64_t __awh_cast_uint__(const uint8_t * value, const size_t size, const type_t type) noexcept {
 				// Если число является вещественным
 				if(type == type_t::REAL)
 					// Выводим беззнаковое целое значение вещественного числа
@@ -6111,7 +6133,7 @@ namespace awh {
 			 * @return      извлечённое вещественное значение числа
 			 *
 			 */
-			long double castReal(const uint8_t * value, const size_t size, const type_t type) noexcept {
+			long double __awh_cast_real__(const uint8_t * value, const size_t size, const type_t type) noexcept {
 				// Если число является вещественным
 				if(type == type_t::REAL)
 					// Выводим вещественное значение вещественного числа
@@ -6174,7 +6196,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator char() const noexcept {
 	// Выводим результат приведения
-	return static_cast <char> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <char> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6192,7 +6214,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator signed char() const noexcept {
 	// Выводим результат приведения
-	return static_cast <signed char> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <signed char> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6210,7 +6232,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator unsigned char() const noexcept {
 	// Выводим результат приведения
-	return static_cast <unsigned char> (bignum::castUint(this->_data.data(), BYTES, TYPE));
+	return static_cast <unsigned char> (bignum::__awh_cast_uint__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6228,7 +6250,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator short() const noexcept {
 	// Выводим результат приведения
-	return static_cast <short> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <short> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6246,7 +6268,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator unsigned short() const noexcept {
 	// Выводим результат приведения
-	return static_cast <unsigned short> (bignum::castUint(this->_data.data(), BYTES, TYPE));
+	return static_cast <unsigned short> (bignum::__awh_cast_uint__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6264,7 +6286,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator int() const noexcept {
 	// Выводим результат приведения
-	return static_cast <int> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <int> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6282,7 +6304,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator unsigned int() const noexcept {
 	// Выводим результат приведения
-	return static_cast <unsigned int> (bignum::castUint(this->_data.data(), BYTES, TYPE));
+	return static_cast <unsigned int> (bignum::__awh_cast_uint__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6300,7 +6322,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator long() const noexcept {
 	// Выводим результат приведения
-	return static_cast <long> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <long> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6318,7 +6340,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator unsigned long() const noexcept {
 	// Выводим результат приведения
-	return static_cast <unsigned long> (bignum::castUint(this->_data.data(), BYTES, TYPE));
+	return static_cast <unsigned long> (bignum::__awh_cast_uint__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6336,7 +6358,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator long long() const noexcept {
 	// Выводим результат приведения
-	return static_cast <long long> (bignum::castInt(this->_data.data(), BYTES, TYPE));
+	return static_cast <long long> (bignum::__awh_cast_int__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6354,7 +6376,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator unsigned long long() const noexcept {
 	// Выводим результат приведения
-	return static_cast <unsigned long long> (bignum::castUint(this->_data.data(), BYTES, TYPE));
+	return static_cast <unsigned long long> (bignum::__awh_cast_uint__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6372,7 +6394,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator float() const noexcept {
 	// Выводим результат приведения
-	return static_cast <float> (bignum::castReal(this->_data.data(), BYTES, TYPE));
+	return static_cast <float> (bignum::__awh_cast_real__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6390,7 +6412,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator double() const noexcept {
 	// Выводим результат приведения
-	return static_cast <double> (bignum::castReal(this->_data.data(), BYTES, TYPE));
+	return static_cast <double> (bignum::__awh_cast_real__(this->_data.data(), BYTES, TYPE));
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6408,7 +6430,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  */
 awh::BigNum <BYTES, TYPE>::operator long double() const noexcept {
 	// Выводим результат приведения
-	return bignum::castReal(this->_data.data(), BYTES, TYPE);
+	return bignum::__awh_cast_real__(this->_data.data(), BYTES, TYPE);
 }
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -6484,9 +6506,9 @@ awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::operator - () const noexcep
 	BigNum result(* this);
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем смену знака вещественного числа
+		// Смена знака вещественного числа
 		bignum::realNeg(result._data.data(), BYTES);
-	// Выполняем смену знака целого числа
+	// Смена знака целого числа
 	else bignum::neg(result._data.data(), BYTES);
 	// Выводим результат работы функции
 	return result;
@@ -6508,7 +6530,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::operator ~ () const noexcept {
 	// Результат работы функции
 	BigNum result(* this);
-	// Выполняем побитовую инверсию числа
+	// Побитовуя инверсию числа
 	bignum::inv(result._data.data(), BYTES);
 	// Выводим результат работы функции
 	return result;
@@ -6528,7 +6550,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator ++ () noexcept {
-	// Выполняем увеличение значения числа на единицу
+	// Увеличение значения числа на единицу
 	return ((* this) += BigNum(1));
 }
 /**
@@ -6548,7 +6570,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::operator ++ (int) noexcept {
 	// Результат работы функции
 	BigNum result(* this);
-	// Выполняем увеличение значения числа на единицу
+	// Увеличение значения числа на единицу
 	++(* this);
 	// Выводим результат работы функции
 	return result;
@@ -6568,7 +6590,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator -- () noexcept {
-	// Выполняем уменьшение значения числа на единицу
+	// Уменьшение значения числа на единицу
 	return ((* this) -= BigNum(1));
 }
 /**
@@ -6588,7 +6610,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> awh::BigNum <BYTES, TYPE>::operator -- (int) noexcept {
 	// Результат работы функции
 	BigNum result(* this);
-	// Выполняем уменьшение значения числа на единицу
+	// Уменьшение значения числа на единицу
 	--(* this);
 	// Выводим результат работы функции
 	return result;
@@ -6611,9 +6633,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator += (const BigNum & num) noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем сложение вещественных чисел
+		// Сложение вещественных чисел
 		bignum::realAdd(this->_data.data(), num._data.data(), BYTES);
-	// Выполняем сложение целых чисел
+	// Сложение целых чисел
 	else bignum::add(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6636,9 +6658,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator -= (const BigNum & num) noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем вычитание вещественных чисел
+		// Вычитание вещественных чисел
 		bignum::realSub(this->_data.data(), num._data.data(), BYTES);
-	// Выполняем вычитание целых чисел
+	// Вычитание целых чисел
 	else bignum::sub(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6661,9 +6683,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator *= (const BigNum & num) noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем умножение вещественных чисел
+		// Умножение вещественных чисел
 		bignum::realMul(this->_data.data(), num._data.data(), BYTES);
-	// Выполняем умножение целых чисел
+	// Умножение целых чисел
 	else bignum::mul(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6688,7 +6710,7 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator /= (const BigNum
 	 * Если число является вещественным
 	 */
 	if(TYPE == bignum::type_t::REAL){
-		// Выполняем деление вещественных чисел
+		// Деление вещественных чисел
 		bignum::realDiv(this->_data.data(), num._data.data(), BYTES);
 		// Выводим текущий объект
 		return (* this);
@@ -6699,13 +6721,13 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator /= (const BigNum
 	BigNum dividend(this->abs());
 	// Получаем модуль делителя числа
 	const BigNum divisor(num.abs());
-	// Выполняем деление модулей чисел
+	// Деление модулей чисел
 	bignum::divmod(dividend._data.data(), divisor._data.data(), nullptr, BYTES);
-	// Выполняем копирование частного от деления
+	// Копирование частного от деления
 	this->_data = dividend._data;
 	// Если результат деления является отрицательным
 	if(sign)
-		// Выполняем смену знака результата деления
+		// Смена знака результата деления
 		bignum::neg(this->_data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6730,7 +6752,7 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator %= (const BigNum
 	 * Если число является вещественным
 	 */
 	if(TYPE == bignum::type_t::REAL){
-		// Выполняем извлечение остатка от деления вещественных чисел
+		// Извлечение остатка от деления вещественных чисел
 		bignum::realMod(this->_data.data(), num._data.data(), BYTES);
 		// Выводим текущий объект
 		return (* this);
@@ -6741,15 +6763,15 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator %= (const BigNum
 	BigNum dividend(this->abs());
 	// Получаем модуль делителя числа
 	const BigNum divisor(num.abs());
-	// Выполняем создание буфера остатка от деления
+	// Создание буфера остатка от деления
 	array <uint8_t, BYTES> mod{};
-	// Выполняем деление модулей чисел
+	// Деление модулей чисел
 	bignum::divmod(dividend._data.data(), divisor._data.data(), mod.data(), BYTES);
-	// Выполняем копирование остатка от деления
+	// Копирование остатка от деления
 	this->_data = mod;
 	// Если остаток от деления является отрицательным
 	if(sign)
-		// Выполняем смену знака остатка от деления
+		// Смена знака остатка от деления
 		bignum::neg(this->_data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6770,7 +6792,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator &= (const BigNum & num) noexcept {
-	// Выполняем побитовое умножение чисел
+	// Побитовое умножение чисел
 	bignum::band(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6791,7 +6813,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator |= (const BigNum & num) noexcept {
-	// Выполняем побитовое сложение чисел
+	// Побитовое сложение чисел
 	bignum::bor(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6812,7 +6834,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator ^= (const BigNum & num) noexcept {
-	// Выполняем побитовое исключающее сложение чисел
+	// Побитовое исключающее сложение чисел
 	bignum::bxor(this->_data.data(), num._data.data(), BYTES);
 	// Выводим текущий объект
 	return (* this);
@@ -6835,9 +6857,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator <<= (const uint32_t count) noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем умножение вещественного числа на степень двойки
-		bignum::realScale(this->_data.data(), BYTES, static_cast <int64_t> (count));
-	// Выполняем сдвиг целого числа влево
+		// Умножение вещественного числа на степень двойки
+		bignum::__awh_real_scale__(this->_data.data(), BYTES, static_cast <int64_t> (count));
+	// Сдвиг целого числа влево
 	else bignum::shl(this->_data.data(), BYTES, count);
 	// Выводим текущий объект
 	return (* this);
@@ -6860,9 +6882,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator >>= (const uint32_t count) noexcept {
 	// Если число является вещественным
 	if(TYPE == bignum::type_t::REAL)
-		// Выполняем деление вещественного числа на степень двойки
-		bignum::realScale(this->_data.data(), BYTES, -static_cast <int64_t> (count));
-	// Выполняем сдвиг целого числа вправо
+		// Деление вещественного числа на степень двойки
+		bignum::__awh_real_scale__(this->_data.data(), BYTES, -static_cast <int64_t> (count));
+	// Сдвиг целого числа вправо
 	else bignum::shr(this->_data.data(), BYTES, count, (TYPE == bignum::type_t::SIGNED));
 	// Выводим текущий объект
 	return (* this);
@@ -6891,16 +6913,16 @@ namespace awh {
 			 * @param num   устанавливаемое значение
 			 *
 			 */
-			void assignInt(uint8_t * value, const size_t size, const type_t type, const int64_t num) noexcept {
+			void __awh_assign_int__(uint8_t * value, const size_t size, const type_t type, const int64_t num) noexcept {
 				// Определяем является ли устанавливаемое значение отрицательным
 				const bool sign = (num < 0);
 				// Получаем модуль устанавливаемого значения
 				const uint64_t magnitude = (sign ? (~static_cast <uint64_t> (num) + 1) : static_cast <uint64_t> (num));
 				// Если число является вещественным
 				if(type == type_t::REAL)
-					// Выполняем установку значения вещественного числа
+					// Установка значения вещественного числа
 					realSet(value, size, magnitude, sign);
-				// Выполняем установку значения целого числа
+				// Установка значения целого числа
 				else set(value, size, magnitude, sign);
 			}
 			/**
@@ -6912,12 +6934,12 @@ namespace awh {
 			 * @param num   устанавливаемое значение
 			 *
 			 */
-			void assignUint(uint8_t * value, const size_t size, const type_t type, const uint64_t num) noexcept {
+			void __awh_assign_uint__(uint8_t * value, const size_t size, const type_t type, const uint64_t num) noexcept {
 				// Если число является вещественным
 				if(type == type_t::REAL)
-					// Выполняем установку значения вещественного числа
+					// Установка значения вещественного числа
 					realSet(value, size, num, false);
-				// Выполняем установку значения целого числа
+				// Установка значения целого числа
 				else set(value, size, num, false);
 			}
 			/**
@@ -6929,12 +6951,12 @@ namespace awh {
 			 * @param num   устанавливаемое значение
 			 *
 			 */
-			void assignReal(uint8_t * value, const size_t size, const type_t type, const long double num) noexcept {
+			void __awh_assign_real__(uint8_t * value, const size_t size, const type_t type, const long double num) noexcept {
 				// Если число является вещественным
 				if(type == type_t::REAL)
-					// Выполняем установку значения вещественного числа
+					// Установка значения вещественного числа
 					realSetReal(value, size, num);
-				// Выполняем установку значения целого числа
+				// Установка значения целого числа
 				else setReal(value, size, num, (type == type_t::SIGNED));
 			}
 		};
@@ -6949,8 +6971,8 @@ namespace awh {
 #define AWH_BIGNUM_ASSIGN_INT(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const TYPENAME num) noexcept { \
-		/* Выполняем установку знакового целого значения числа */ \
-		bignum::assignInt(this->_data.data(), BYTES, TYPE, static_cast <int64_t> (num)); \
+		/* Установка знакового целого значения числа */ \
+		bignum::__awh_assign_int__(this->_data.data(), BYTES, TYPE, static_cast <int64_t> (num)); \
 		/* Выводим текущий объект */ \
 		return (* this); \
 	}
@@ -6963,8 +6985,8 @@ namespace awh {
 #define AWH_BIGNUM_ASSIGN_UINT(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const TYPENAME num) noexcept { \
-		/* Выполняем установку беззнакового целого значения числа */ \
-		bignum::assignUint(this->_data.data(), BYTES, TYPE, static_cast <uint64_t> (num)); \
+		/* Установка беззнакового целого значения числа */ \
+		bignum::__awh_assign_uint__(this->_data.data(), BYTES, TYPE, static_cast <uint64_t> (num)); \
 		/* Выводим текущий объект */ \
 		return (* this); \
 	}
@@ -6977,28 +6999,43 @@ namespace awh {
 #define AWH_BIGNUM_ASSIGN_REAL(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const TYPENAME num) noexcept { \
-		/* Выполняем установку вещественного значения числа */ \
-		bignum::assignReal(this->_data.data(), BYTES, TYPE, static_cast <long double> (num)); \
+		/* Установка вещественного значения числа */ \
+		bignum::__awh_assign_real__(this->_data.data(), BYTES, TYPE, static_cast <long double> (num)); \
 		/* Выводим текущий объект */ \
 		return (* this); \
 	}
 /**
  * Объявляем операторы присваивания встроенных числовых типов
  */
+// Оператор присваивания для типа bool
 AWH_BIGNUM_ASSIGN_UINT(bool)
+// Оператор присваивания для типа char
 AWH_BIGNUM_ASSIGN_INT(char)
+// Оператор присваивания для типа signed char
 AWH_BIGNUM_ASSIGN_INT(signed char)
+// Оператор присваивания для типа unsigned char
 AWH_BIGNUM_ASSIGN_UINT(unsigned char)
+// Оператор присваивания для типа short
 AWH_BIGNUM_ASSIGN_INT(short)
+// Оператор присваивания для типа unsigned short
 AWH_BIGNUM_ASSIGN_UINT(unsigned short)
+// Оператор присваивания для типа int
 AWH_BIGNUM_ASSIGN_INT(int)
+// Оператор присваивания для типа unsigned int
 AWH_BIGNUM_ASSIGN_UINT(unsigned int)
+// Оператор присваивания для типа long
 AWH_BIGNUM_ASSIGN_INT(long)
+// Оператор присваивания для типа unsigned long
 AWH_BIGNUM_ASSIGN_UINT(unsigned long)
+// Оператор присваивания для типа long long
 AWH_BIGNUM_ASSIGN_INT(long long)
+// Оператор присваивания для типа unsigned long long
 AWH_BIGNUM_ASSIGN_UINT(unsigned long long)
+// Оператор присваивания для типа float
 AWH_BIGNUM_ASSIGN_REAL(float)
+// Оператор присваивания для типа double
 AWH_BIGNUM_ASSIGN_REAL(double)
+// Оператор присваивания для типа long double
 AWH_BIGNUM_ASSIGN_REAL(long double)
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -7018,7 +7055,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const BigNum & num) noexcept {
 	// Если присваивается иной объект числа
 	if(this != &num)
-		// Выполняем копирование буфера числа
+		// Копирование буфера числа
 		this->_data = num._data;
 	// Выводим текущий объект
 	return (* this);
@@ -7041,9 +7078,9 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (BigNum && num) noexcept {
 	// Если присваивается иной объект числа
 	if(this != &num){
-		// Выполняем перемещение буфера числа
+		// Перемещение буфера числа
 		this->_data = num._data;
-		// Выполняем очистку буфера перемещаемого числа
+		// Очистка буфера перемещаемого числа
 		num._data.fill(0);
 	}
 	// Выводим текущий объект
@@ -7065,7 +7102,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const char * text) noexcept {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse((text != nullptr) ? string_view(text) : string_view(""));
 	// Выводим текущий объект
 	return (* this);
@@ -7086,7 +7123,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (const string & text) noexcept {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse(text);
 	// Выводим текущий объект
 	return (* this);
@@ -7107,7 +7144,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (string_view text) noexcept {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse(text);
 	// Выводим текущий объект
 	return (* this);
@@ -7121,8 +7158,8 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (string_view t
 #define AWH_BIGNUM_CTOR_INT(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE>::BigNum(const TYPENAME num) noexcept : _data{} { \
-		/* Выполняем установку знакового целого значения числа */ \
-		bignum::assignInt(this->_data.data(), BYTES, TYPE, static_cast <int64_t> (num)); \
+		/* Установка знакового целого значения числа */ \
+		bignum::__awh_assign_int__(this->_data.data(), BYTES, TYPE, static_cast <int64_t> (num)); \
 	}
 /**
  * @brief Макрос объявления конструктора беззнакового целого значения
@@ -7133,8 +7170,8 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (string_view t
 #define AWH_BIGNUM_CTOR_UINT(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE>::BigNum(const TYPENAME num) noexcept : _data{} { \
-		/* Выполняем установку беззнакового целого значения числа */ \
-		bignum::assignUint(this->_data.data(), BYTES, TYPE, static_cast <uint64_t> (num)); \
+		/* Установка беззнакового целого значения числа */ \
+		bignum::__awh_assign_uint__(this->_data.data(), BYTES, TYPE, static_cast <uint64_t> (num)); \
 	}
 /**
  * @brief Макрос объявления конструктора вещественного значения
@@ -7145,26 +7182,41 @@ awh::BigNum <BYTES, TYPE> & awh::BigNum <BYTES, TYPE>::operator = (string_view t
 #define AWH_BIGNUM_CTOR_REAL(TYPENAME) \
 	template <uint16_t BYTES, awh::bignum::type_t TYPE> \
 	awh::BigNum <BYTES, TYPE>::BigNum(const TYPENAME num) noexcept : _data{} { \
-		/* Выполняем установку вещественного значения числа */ \
-		bignum::assignReal(this->_data.data(), BYTES, TYPE, static_cast <long double> (num)); \
+		/* Установка вещественного значения числа */ \
+		bignum::__awh_assign_real__(this->_data.data(), BYTES, TYPE, static_cast <long double> (num)); \
 	}
 /**
  * Объявляем конструкторы встроенных числовых типов
  */
+// Конструктор от типа bool
 AWH_BIGNUM_CTOR_UINT(bool)
+// Конструктор от типа char
 AWH_BIGNUM_CTOR_INT(char)
+// Конструктор от типа signed char
 AWH_BIGNUM_CTOR_INT(signed char)
+// Конструктор от типа unsigned char
 AWH_BIGNUM_CTOR_UINT(unsigned char)
+// Конструктор от типа short
 AWH_BIGNUM_CTOR_INT(short)
+// Конструктор от типа unsigned short
 AWH_BIGNUM_CTOR_UINT(unsigned short)
+// Конструктор от типа int
 AWH_BIGNUM_CTOR_INT(int)
+// Конструктор от типа unsigned int
 AWH_BIGNUM_CTOR_UINT(unsigned int)
+// Конструктор от типа long
 AWH_BIGNUM_CTOR_INT(long)
+// Конструктор от типа unsigned long
 AWH_BIGNUM_CTOR_UINT(unsigned long)
+// Конструктор от типа long long
 AWH_BIGNUM_CTOR_INT(long long)
+// Конструктор от типа unsigned long long
 AWH_BIGNUM_CTOR_UINT(unsigned long long)
+// Конструктор от типа float
 AWH_BIGNUM_CTOR_REAL(float)
+// Конструктор от типа double
 AWH_BIGNUM_CTOR_REAL(double)
+// Конструктор от типа long double
 AWH_BIGNUM_CTOR_REAL(long double)
 /**
  * @brief Шаблон разрядности и типа длинного числа
@@ -7209,7 +7261,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE>::BigNum(BigNum && num) noexcept : _data(num._data) {
-	// Выполняем очистку буфера перемещаемого числа
+	// Очистка буфера перемещаемого числа
 	num._data.fill(0);
 }
 /**
@@ -7227,7 +7279,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE>::BigNum(const char * text) noexcept : _data{} {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse((text != nullptr) ? string_view(text) : string_view(""));
 }
 /**
@@ -7245,7 +7297,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE>::BigNum(const string & text) noexcept : _data{} {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse(text);
 }
 /**
@@ -7263,7 +7315,7 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
  *
  */
 awh::BigNum <BYTES, TYPE>::BigNum(string_view text) noexcept : _data{} {
-	// Выполняем разбор строкового представления числа
+	// Разбор строкового представления числа
 	this->parse(text);
 }
 /**
@@ -7298,11 +7350,11 @@ template <uint16_t BYTES, awh::bignum::type_t TYPE>
 istream & awh::operator >> (istream & is, awh::BigNum <BYTES, TYPE> & num) noexcept {
 	// Строковое представление числа
 	string text = "";
-	// Выполняем чтение строкового представления числа из потока
+	// Чтение строкового представления числа из потока
 	is >> text;
 	// Если строковое представление числа получено
 	if(!text.empty())
-		// Выполняем разбор строкового представления числа
+		// Разбор строкового представления числа
 		num.parse(text);
 	// Выводим поток для чтения
 	return is;

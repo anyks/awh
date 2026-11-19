@@ -119,7 +119,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr uint64_t swapBytes(const uint64_t value) noexcept {
-			// Выполняем перестановку байт значения
+			// Перестановка байт значения
 			return (
 				((value & 0xFF00000000000000ULL) >> 56) |
 				((value & 0x00FF000000000000ULL) >> 40) |
@@ -154,7 +154,7 @@ namespace awh {
 				// Аккумулятор упакованного значения
 				uint64_t result = 0;
 				/**
-				 * Выполняем упаковку младших байт символов блока
+				 * Упаковка младших байт символов блока
 				 */
 				for(size_t i = 0; i < DIGITS_PER_BLOCK; ++i)
 					// Записываем младший байт очередного символа
@@ -164,13 +164,13 @@ namespace awh {
 			}
 			// Аккумулятор упакованного значения
 			uint64_t result = 0;
-			// Выполняем чтение блока символов одной операцией
+			// Чтение блока символов одной операцией
 			::memcpy(&result, chars, sizeof(uint64_t));
 			/**
 			 * На платформах с обратным порядком байт приводим значение к прямому
 			 */
 			#if AWH_LEXICAL_BIG_ENDIAN
-				// Выполняем перестановку байт значения
+				// Перестановка байт значения
 				result = swapBytes(result);
 			#endif
 			// Выводим упакованное значение
@@ -191,7 +191,7 @@ namespace awh {
 			__AWH_INLINE__ uint64_t readBlockSimd(const __m128i data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-				// Выполняем упаковку 16-битных элементов в 8-битные
+				// Упаковка 16-битных элементов в 8-битные
 				const __m128i packed = _mm_packus_epi16(data, data);
 				/**
 				 * Извлекаем результат с учётом разрядности платформы
@@ -205,7 +205,7 @@ namespace awh {
 				#else
 					// Упакованное 64-битное значение
 					uint64_t result = 0;
-					// Выполняем выгрузку младших 64 бит векторного регистра
+					// Выгрузка младших 64 бит векторного регистра
 					_mm_storel_epi64(reinterpret_cast <__m128i *> (&result), packed);
 					// Выводим упакованное значение
 					return result;
@@ -223,7 +223,7 @@ namespace awh {
 			__AWH_INLINE__ uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-				// Выполняем загрузку блока символов и его упаковку
+				// Загрузка блока символов и его упаковку
 				return readBlockSimd(_mm_loadu_si128(reinterpret_cast <const __m128i *> (chars)));
 				// Восстанавливаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_RESTORE_WARNINGS
@@ -242,7 +242,7 @@ namespace awh {
 			__AWH_INLINE__ uint64_t readBlockSimd(const uint16x8_t data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-				// Выполняем сужение 16-битных элементов до 8-битных
+				// Сужение 16-битных элементов до 8-битных
 				const uint8x8_t packed = vmovn_u16(data);
 				// Выводим упакованное значение
 				return vget_lane_u64(vreinterpret_u64_u8(packed), 0);
@@ -259,7 +259,7 @@ namespace awh {
 			__AWH_INLINE__ uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-				// Выполняем загрузку блока символов и его упаковку
+				// Загрузка блока символов и его упаковку
 				return readBlockSimd(vld1q_u16(reinterpret_cast <const uint16_t *> (chars)));
 				// Восстанавливаем предупреждения о выравнивании указателей
 				AWH_LEXICAL_SIMD_RESTORE_WARNINGS
@@ -297,11 +297,11 @@ namespace awh {
 			constexpr uint64_t MUL1 = 0x000F424000000064ULL;
 			// Второй множитель свёртки разрядов
 			constexpr uint64_t MUL2 = 0x0000271000000001ULL;
-			// Выполняем перевод ASCII-кодов в числовые значения цифр
+			// Перевод ASCII-кодов в числовые значения цифр
 			value -= 0x3030303030303030ULL;
-			// Выполняем свёртку соседних разрядов
+			// Свёртка соседних разрядов
 			value = ((value * 10) + (value >> 8));
-			// Выполняем финальную свёртку в 32-битное значение
+			// Финальнуя свёртку в 32-битное значение
 			value = ((((value & MASK) * MUL1) + (((value >> 16) & MASK) * MUL2)) >> 32);
 			// Выводим числовое значение блока цифр
 			return static_cast <uint32_t> (value);
@@ -323,9 +323,9 @@ namespace awh {
 		__AWH_INLINE__ uint32_t parseBlock(const UC * chars) noexcept {
 			// Если векторный разбор для типа символа недоступен
 			if(!hasSimd <UC> ())
-				// Выполняем скалярный разбор упакованного блока
+				// Скалярный разбор упакованного блока
 				return parseBlock(readBlock(chars));
-			// Выполняем векторный разбор упакованного блока
+			// Векторный разбор упакованного блока
 			return parseBlock(readBlockSimd(chars));
 		}
 		/**
@@ -336,7 +336,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr bool isDigitBlock(const uint64_t value) noexcept {
-			// Выполняем одновременную проверку всех байт блока на диапазон цифр
+			// Одновременнуя проверку всех байт блока на диапазон цифр
 			return !(((value + 0x4646464646464646ULL) | (value - 0x3030303030303030ULL)) & 0x8080808080808080ULL);
 		}
 
@@ -354,22 +354,22 @@ namespace awh {
 			 */
 			__AWH_INLINE__ bool parseBlockSimd(const char16_t * chars, uint64_t & value) noexcept {
 				/**
-				 * Выполняем разбор блока доступным набором векторных инструкций
+				 * Разбор блока доступным набором векторных инструкций
 				 */
 				#if defined(AWH_LEXICAL_SSE2)
 					// Отключаем предупреждения о выравнивании указателей
 					AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-					// Выполняем загрузку блока символов
+					// Загрузка блока символов
 					const __m128i data = _mm_loadu_si128(reinterpret_cast <const __m128i *> (chars));
-					// Выполняем смещение диапазона цифр к границе знакового переполнения
+					// Смещение диапазона цифр к границе знакового переполнения
 					const __m128i shifted = _mm_add_epi16(data, _mm_set1_epi16(32720));
-					// Выполняем проверку выхода символов за диапазон десятичных цифр
+					// Проверка выхода символов за диапазон десятичных цифр
 					const __m128i invalid = _mm_cmpgt_epi16(shifted, _mm_set1_epi16(-32759));
 					// Результат разбора блока
 					bool result = false;
 					// Если все символы блока являются десятичными цифрами
 					if(_mm_movemask_epi8(invalid) == 0){
-						// Выполняем накопление числового значения блока
+						// Накопление числового значения блока
 						value = ((value * 100000000ULL) + parseBlock(readBlockSimd(data)));
 						// Запоминаем, что блок успешно разобран
 						result = true;
@@ -384,17 +384,17 @@ namespace awh {
 				#else
 					// Отключаем предупреждения о выравнивании указателей
 					AWH_LEXICAL_SIMD_DISABLE_WARNINGS
-					// Выполняем загрузку блока символов
+					// Загрузка блока символов
 					const uint16x8_t data = vld1q_u16(reinterpret_cast <const uint16_t *> (chars));
-					// Выполняем смещение диапазона цифр к нулю
+					// Смещение диапазона цифр к нулю
 					const uint16x8_t shifted = vsubq_u16(data, vmovq_n_u16(u'0'));
-					// Выполняем проверку попадания символов в диапазон десятичных цифр
+					// Проверка попадания символов в диапазон десятичных цифр
 					const uint16x8_t valid = vcltq_u16(shifted, vmovq_n_u16(static_cast <uint16_t> (u'9' - u'0' + 1)));
 					// Результат разбора блока
 					bool result = false;
 					// Если все символы блока являются десятичными цифрами
 					if(vminvq_u16(valid) == 0xFFFF){
-						// Выполняем накопление числового значения блока
+						// Накопление числового значения блока
 						value = ((value * 100000000ULL) + parseBlock(readBlockSimd(data)));
 						// Запоминаем, что блок успешно разобран
 						result = true;
@@ -448,10 +448,10 @@ namespace awh {
 				// Завершаем блочный разбор
 				return;
 			/**
-			 * Выполняем разбор блоков цифр, пока это возможно
+			 * Разбор блоков цифр, пока это возможно
 			 */
 			while((static_cast <size_t> (pend - p) >= DIGITS_PER_BLOCK) && parseBlockSimd(p, value))
-				// Выполняем смещение позиции на размер разобранного блока
+				// Смещение позиции на размер разобранного блока
 				p += DIGITS_PER_BLOCK;
 		}
 		/**
@@ -467,12 +467,12 @@ namespace awh {
 		 */
 		__AWH_INLINE__ void parseBlocks(const char * & p, const char * const pend, uint64_t & value) noexcept {
 			/**
-			 * Выполняем разбор блоков цифр, пока это возможно
+			 * Разбор блоков цифр, пока это возможно
 			 */
 			while((static_cast <size_t> (pend - p) >= DIGITS_PER_BLOCK) && isDigitBlock(readBlock(p))){
-				// Выполняем накопление числового значения блока
+				// Накопление числового значения блока
 				value = ((value * 100000000ULL) + parseBlock(readBlock(p)));
-				// Выполняем смещение позиции на размер разобранного блока
+				// Смещение позиции на размер разобранного блока
 				p += DIGITS_PER_BLOCK;
 			}
 		}
@@ -503,10 +503,10 @@ namespace awh {
 			 */
 			#else
 				// Если результат операции не помещается в разрядность
-				if(value > ((numeric_limits <uint64_t>::max() - digit) / base))
+				if(value > (((numeric_limits <uint64_t>::max)() - digit) / base))
 					// Сообщаем о переполнении разрядности
 					return false;
-				// Выполняем накопление значения
+				// Накопление значения
 				value = ((value * base) + digit);
 			#endif
 			// Сообщаем, что операция выполнена успешно
@@ -624,7 +624,7 @@ namespace awh {
 			result.negative = (* p == UC('-'));
 			// Если строка начинается со знака числа
 			if(result.negative || (!JSON && isFormat(options.format, format_t::ALLOW_LEADING_PLUS) && (* p == UC('+')))){
-				// Выполняем пропуск символа знака
+				// Пропуск символа знака
 				++p;
 				// Если после знака строка закончилась
 				if(p == pend)
@@ -647,13 +647,13 @@ namespace awh {
 			const UC * const startDigits = p;
 			// Аккумулятор значения мантиссы
 			uint64_t mantissa = 0;
-			// Выполняем блочный разбор цифр целой части
+			// Блочный разбор цифр целой части
 			parseBlocks(p, pend, mantissa);
 			/**
-			 * Выполняем поразрядный разбор оставшихся цифр целой части
+			 * Поразрядный разбор оставшихся цифр целой части
 			 */
 			while((p != pend) && isDigit(* p)){
-				// Выполняем накопление очередной цифры
+				// Накопление очередной цифры
 				mantissa = ((mantissa * 10ULL) + static_cast <uint64_t> (* p - UC('0')));
 				// Переходим к следующему символу
 				++p;
@@ -683,17 +683,17 @@ namespace awh {
 			const bool hasDecimalPoint = ((p != pend) && (* p == decimalPoint));
 			// Если десятичная точка обнаружена
 			if(hasDecimalPoint){
-				// Выполняем пропуск символа десятичной точки
+				// Пропуск символа десятичной точки
 				++p;
 				// Запоминаем начало цифр дробной части
 				const UC * const startFraction = p;
-				// Выполняем блочный разбор цифр дробной части
+				// Блочный разбор цифр дробной части
 				parseBlocks(p, pend, mantissa);
 				/**
-				 * Выполняем поразрядный разбор оставшихся цифр дробной части
+				 * Поразрядный разбор оставшихся цифр дробной части
 				 */
 				while((p != pend) && isDigit(* p)){
-					// Выполняем накопление очередной цифры
+					// Накопление очередной цифры
 					mantissa = ((mantissa * 10ULL) + static_cast <uint64_t> (* p - UC('0')));
 					// Переходим к следующему символу
 					++p;
@@ -706,7 +706,7 @@ namespace awh {
 				digitCount -= exponent;
 			}
 			/**
-			 * Выполняем проверку наличия цифр в мантиссе
+			 * Проверка наличия цифр в мантиссе
 			 */
 			if(JSON){
 				// Если дробная часть объявлена, но не содержит цифр
@@ -731,7 +731,7 @@ namespace awh {
 				const UC * const locationOfMarker = p;
 				// Если текущий символ является маркером экспоненты
 				if((* p == UC('e')) || (* p == UC('E')) || (* p == UC('d')) || (* p == UC('D')))
-					// Выполняем пропуск маркера экспоненты
+					// Пропуск маркера экспоненты
 					++p;
 				// Признак отрицательной экспоненциальной части
 				bool negativeExponent = false;
@@ -739,11 +739,11 @@ namespace awh {
 				if((p != pend) && (* p == UC('-'))){
 					// Запоминаем отрицательный знак экспоненциальной части
 					negativeExponent = true;
-					// Выполняем пропуск символа знака
+					// Пропуск символа знака
 					++p;
 				// Если экспоненциальная часть начинается со знака плюс
 				} else if((p != pend) && (* p == UC('+')))
-					// Выполняем пропуск символа знака
+					// Пропуск символа знака
 					++p;
 				// Если экспоненциальная часть не содержит цифр
 				if((p == pend) || !isDigit(* p)){
@@ -751,17 +751,17 @@ namespace awh {
 					if(!isFormat(options.format, format_t::FIXED))
 						// Сообщаем об отсутствии экспоненциальной части
 						return reportError <UC> (p, error_t::MISSING_EXPONENTIAL_PART);
-					// Выполняем откат разбора к позиции маркера
+					// Откат разбора к позиции маркера
 					p = locationOfMarker;
 				// Если экспоненциальная часть содержит цифры
 				} else {
 					/**
-					 * Выполняем разбор цифр экспоненциальной части
+					 * Разбор цифр экспоненциальной части
 					 */
 					while((p != pend) && isDigit(* p)){
 						// Если накопленное значение ещё не достигло предела насыщения
 						if(explicitExponent < 0x10000000)
-							// Выполняем накопление очередной цифры
+							// Накопление очередной цифры
 							explicitExponent = ((explicitExponent * 10) + static_cast <int64_t> (* p - UC('0')));
 						// Переходим к следующему символу
 						++p;
@@ -786,7 +786,7 @@ namespace awh {
 				// Позиция перебора значащих цифр
 				const UC * position = startDigits;
 				/**
-				 * Выполняем пропуск ведущих нулей и десятичной точки
+				 * Пропуск ведущих нулей и десятичной точки
 				 */
 				while((position != pend) && ((* position == UC('0')) || (* position == decimalPoint))){
 					// Если пропускается ведущий нуль
@@ -807,10 +807,10 @@ namespace awh {
 					// Конец диапазона символов целой части
 					const UC * const endInteger = (position + result.integer.len());
 					/**
-					 * Выполняем набор значащих цифр из целой части
+					 * Набор значащих цифр из целой части
 					 */
 					while((mantissa < MIN_NINETEEN_DIGITS) && (position != endInteger)){
-						// Выполняем накопление очередной цифры
+						// Накопление очередной цифры
 						mantissa = ((mantissa * 10ULL) + static_cast <uint64_t> (* position - UC('0')));
 						// Переходим к следующему символу
 						++position;
@@ -826,10 +826,10 @@ namespace awh {
 						// Конец диапазона символов дробной части
 						const UC * const endFraction = (position + result.fraction.len());
 						/**
-						 * Выполняем набор значащих цифр из дробной части
+						 * Набор значащих цифр из дробной части
 						 */
 						while((mantissa < MIN_NINETEEN_DIGITS) && (position != endFraction)){
-							// Выполняем накопление очередной цифры
+							// Накопление очередной цифры
 							mantissa = ((mantissa * 10ULL) + static_cast <uint64_t> (* position - UC('0')));
 							// Переходим к следующему символу
 							++position;
@@ -880,12 +880,12 @@ namespace awh {
 				return result_t <UC> (first, errc::invalid_argument, error_t::MISSING_INTEGER_AFTER_SIGN);
 			// Если строка начинается со знака числа
 			if(negative || (isFormat(options.format, format_t::ALLOW_LEADING_PLUS) && (* p == UC('+'))))
-				// Выполняем пропуск символа знака
+				// Пропуск символа знака
 				++p;
 			// Запоминаем начало числовой части
 			const UC * const startNumber = p;
 			/**
-			 * Выполняем пропуск ведущих нулей
+			 * Пропуск ведущих нулей
 			 */
 			while((p != pend) && (* p == UC('0')))
 				// Переходим к следующему символу
@@ -898,10 +898,10 @@ namespace awh {
 			uint64_t result = 0;
 			// Если разбор выполняется в десятичной системе счисления
 			if(base == 10)
-				// Выполняем блочный разбор значащих цифр
+				// Блочный разбор значащих цифр
 				parseBlocks(p, pend, result);
 			/**
-			 * Выполняем поразрядный разбор оставшихся значащих цифр
+			 * Поразрядный разбор оставшихся значащих цифр
 			 */
 			while(p != pend){
 				// Получаем значение очередной цифры
@@ -910,7 +910,7 @@ namespace awh {
 				if(digit >= base)
 					// Завершаем разбор значащих цифр
 					break;
-				// Выполняем накопление очередной цифры
+				// Накопление очередной цифры
 				result = ((result * static_cast <uint64_t> (base)) + digit);
 				// Переходим к следующему символу
 				++p;
@@ -943,10 +943,10 @@ namespace awh {
 				// Сбрасываем накопленное значение
 				result = 0;
 				/**
-				 * Выполняем повторный разбор значащих цифр
+				 * Повторный разбор значащих цифр
 				 */
 				for(const UC * position = startDigits; position != p; ++position){
-					// Выполняем накопление очередной цифры с контролем переполнения
+					// Накопление очередной цифры с контролем переполнения
 					if(!mulAddChecked(result, static_cast <uint64_t> (base), charToDigit(* position)))
 						// Сообщаем о выходе значения за пределы диапазона
 						return result_t <UC> (p, errc::result_out_of_range, error_t::OVERFLOW_RANGE);
@@ -955,7 +955,7 @@ namespace awh {
 			// Если разобрано отрицательное число
 			if(negative){
 				// Предел абсолютного значения для отрицательных чисел целевого типа
-				const uint64_t limit = (static_cast <uint64_t> (numeric_limits <T>::max()) + 1ULL);
+				const uint64_t limit = (static_cast <uint64_t> ((numeric_limits <T>::max)()) + 1ULL);
 				// Если абсолютное значение выходит за пределы целевого типа
 				if(result > limit)
 					// Сообщаем о выходе значения за пределы диапазона
@@ -969,7 +969,7 @@ namespace awh {
 			// Если разобрано положительное число
 			} else {
 				// Если значение выходит за пределы целевого типа
-				if(result > static_cast <uint64_t> (numeric_limits <T>::max()))
+				if(result > static_cast <uint64_t> ((numeric_limits <T>::max)()))
 					// Сообщаем о выходе значения за пределы диапазона
 					return result_t <UC> (p, errc::result_out_of_range, error_t::OVERFLOW_RANGE);
 				// Записываем результат разбора

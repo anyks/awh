@@ -213,7 +213,7 @@ namespace awh {
 			// Собираемое из потока октетов число
 			value_t value = 0;
 			/**
-			 * Выполняем перебор всех октетов сформированного хэша
+			 * Перебор всех октетов сформированного хэша
 			 */
 			for(size_t i = 0; i < sizeof(T); i++)
 				// Добавляем очередной октет сформированного хэша в число
@@ -265,7 +265,7 @@ namespace awh {
 			// Собираемое из потока октетов число
 			value_t value = 0;
 			/**
-			 * Выполняем перебор всех октетов сформированного хэша
+			 * Перебор всех октетов сформированного хэша
 			 */
 			for(size_t i = 0; i < sizeof(T); i++)
 				// Добавляем очередной октет сформированного хэша в число
@@ -275,7 +275,7 @@ namespace awh {
 			 * либо значение не являющееся числом
 			 */
 			if(((value >> mantissa) & exponent) == exponent)
-				// Выполняем сброс старшего бита порядка числа
+				// Сброс старшего бита порядка числа
 				value &= ~(static_cast <value_t> (1) << ((sizeof(T) * 8) - 2));
 			// Записываем битовое представление в результат хэширования
 			::memcpy(&result, &value, sizeof(T));
@@ -324,7 +324,7 @@ namespace awh {
 			 * Если результатом хэширования является вещественное длинное число
 			 */
 			if constexpr(TYPE == bignum::type_t::REAL)
-				// Выполняем приведение результата хэширования к конечному значению
+				// Приведение результата хэширования к конечному значению
 				hashing::finite(result.data(), BYTES);
 		}
 		/**
@@ -348,7 +348,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ T create(const void * buffer, const size_t size, const uint64_t seed = 0) noexcept {
-			// Выполняем проверку типа результата хэширования на пригодность
+			// Проверка типа результата хэширования на пригодность
 			static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 			/**
 			 * Если результатом хэширования является целое число, умещающееся
@@ -365,9 +365,9 @@ namespace awh {
 				T result;
 				// Буфер сформированного хэша
 				uint8_t data[sizeof(T)];
-				// Выполняем формирование хэша буфера данных
+				// Формирование хэша буфера данных
 				hashing::generate(buffer, size, seed, data, sizeof(T));
-				// Выполняем запись сформированного хэша в результат хэширования
+				// Запись сформированного хэша в результат хэширования
 				hashing::assign(result, data);
 				// Выводим результат работы функции
 				return result;
@@ -507,7 +507,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ T digest() const noexcept {
-				// Выполняем проверку типа результата хэширования на пригодность
+				// Проверка типа результата хэширования на пригодность
 				static_assert(!std::is_same_v <T, bool>, "AWH hash: the result of hashing does not fit in a boolean type, use an integer type of the required width");
 				/**
 				 * Если результатом хэширования является целое число, умещающееся
@@ -524,9 +524,9 @@ namespace awh {
 					T result;
 					// Буфер сформированного хэша
 					uint8_t buffer[sizeof(T)];
-					// Выполняем формирование результата потокового хэширования
+					// Формирование результата потокового хэширования
 					this->digest(buffer, sizeof(T));
-					// Выполняем запись сформированного хэша в результат хэширования
+					// Запись сформированного хэша в результат хэширования
 					hashing::assign(result, buffer);
 					// Выводим результат работы функции
 					return result;
@@ -549,7 +549,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ T hash(const void * buffer, const size_t size) const noexcept {
-				// Выполняем формирование хэша буфера данных
+				// Формирование хэша буфера данных
 				return hashing::create <T> (buffer, size, this->_seed);
 			}
 			/**
@@ -567,7 +567,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ T hash(string_view text) const noexcept {
-				// Выполняем формирование хэша текста
+				// Формирование хэша текста
 				return this->hash <T> (text.data(), text.size());
 			}
 			/**
@@ -592,7 +592,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ A hash(const B & buffer) const noexcept {
-				// Выполняем формирование хэша буфера данных
+				// Формирование хэша буфера данных
 				return this->hash <A> (buffer.data(), buffer.size() * sizeof(typename B::value_type));
 			}
 		public:
@@ -603,7 +603,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ void update(string_view text) noexcept {
-				// Выполняем добавление текста в потоковое хэширование
+				// Добавление текста в потоковое хэширование
 				this->update(text.data(), text.size());
 			}
 			/**
@@ -623,7 +623,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ void update(const B & buffer) noexcept {
-				// Выполняем добавление данных в потоковое хэширование
+				// Добавление данных в потоковое хэширование
 				this->update(buffer.data(), buffer.size() * sizeof(typename B::value_type));
 			}
 		public:
@@ -642,7 +642,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ void update(const BigNum <BYTES, TYPE> & num) noexcept {
-				// Выполняем добавление длинного числа в потоковое хэширование
+				// Добавление длинного числа в потоковое хэширование
 				this->update(num.data(), BYTES);
 			}
 			/**
@@ -662,7 +662,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ T hash(const BigNum <BYTES, TYPE> & num) const noexcept {
-				// Выполняем формирование хэша длинного числа
+				// Формирование хэша длинного числа
 				return this->hash <T> (num.data(), BYTES);
 			}
 		public:
@@ -674,7 +674,7 @@ namespace awh {
 			 *
 			 */
 			__AWH_INLINE__ uint64_t operator () (string_view text) const noexcept {
-				// Выполняем формирование хэша текста
+				// Формирование хэша текста
 				return this->hash <uint64_t> (text.data(), text.size());
 			}
 		public:
@@ -728,7 +728,7 @@ namespace std {
 		 *
 		 */
 		size_t operator () (const awh::BigNum <BYTES, TYPE> & num) const noexcept {
-			// Выполняем формирование хэша длинного числа
+			// Формирование хэша длинного числа
 			return awh::hashing::create <size_t> (num.data(), BYTES);
 		}
 	};

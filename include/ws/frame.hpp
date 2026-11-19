@@ -133,7 +133,7 @@ namespace awh {
 				/**
 				 * Устанавливаем максимальную версию фрейма
 				 */
-				static constexpr uint32_t MAX_FRAME_SIZE = numeric_limits <uint32_t>::max();
+				static constexpr uint32_t MAX_FRAME_SIZE = UINT32_MAX;
 			public:
 				/**
 				 * Состояние фрейма

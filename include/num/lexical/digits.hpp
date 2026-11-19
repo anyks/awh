@@ -102,7 +102,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr uint64_t zerosPattern() noexcept {
-			// Выполняем проверку допустимости разрядности символа
+			// Проверка допустимости разрядности символа
 			static_assert((sizeof(UC) == 1) || (sizeof(UC) == 2) || (sizeof(UC) == 4), "AWH lexical: unsupported character size");
 			// Выводим упакованный блок символов нуля
 			return ((sizeof(UC) == 1)
@@ -142,28 +142,28 @@ namespace awh {
 		 */
 		__AWH_INLINE__ constexpr int32_t scientificExponent(uint64_t mantissa, int32_t exponent) noexcept {
 			/**
-			 * Выполняем сжатие мантиссы четвёрками десятичных разрядов
+			 * Сжатие мантиссы четвёрками десятичных разрядов
 			 */
 			while(mantissa >= 10000){
-				// Выполняем деление мантиссы на четыре разряда
+				// Деление мантиссы на четыре разряда
 				mantissa /= 10000;
 				// Учитываем сжатие в показателе степени
 				exponent += 4;
 			}
 			/**
-			 * Выполняем сжатие мантиссы парами десятичных разрядов
+			 * Сжатие мантиссы парами десятичных разрядов
 			 */
 			while(mantissa >= 100){
-				// Выполняем деление мантиссы на два разряда
+				// Деление мантиссы на два разряда
 				mantissa /= 100;
 				// Учитываем сжатие в показателе степени
 				exponent += 2;
 			}
 			/**
-			 * Выполняем сжатие мантиссы по одному десятичному разряду
+			 * Сжатие мантиссы по одному десятичному разряду
 			 */
 			while(mantissa >= 10){
-				// Выполняем деление мантиссы на один разряд
+				// Деление мантиссы на один разряд
 				mantissa /= 10;
 				// Учитываем сжатие в показателе степени
 				exponent += 1;
@@ -201,13 +201,13 @@ namespace awh {
 			if(shift == 64)
 				// Обнуляем мантиссу
 				mantissa.mantissa = 0;
-			// Выполняем сдвиг мантиссы на место
+			// Сдвиг мантиссы на место
 			else mantissa.mantissa >>= shift;
 			// Компенсируем сдвиг показателем степени
 			mantissa.power2 += shift;
 			// Признак нечётности младшего значащего бита мантиссы
 			const bool isOdd = ((mantissa.mantissa & 1) == 1);
-			// Выполняем округление по решению обработчика
+			// Округление по решению обработчика
 			mantissa.mantissa += static_cast <uint64_t> (callback(isOdd, isHalfway, isAbove));
 		}
 		/**
@@ -222,7 +222,7 @@ namespace awh {
 			if(shift == 64)
 				// Обнуляем мантиссу
 				mantissa.mantissa = 0;
-			// Выполняем сдвиг мантиссы на место
+			// Сдвиг мантиссы на место
 			else mantissa.mantissa >>= shift;
 			// Компенсируем сдвиг показателем степени
 			mantissa.power2 += shift;
@@ -247,23 +247,23 @@ namespace awh {
 			const int32_t shift = (64 - binary_t <T>::mantissaExplicitBits() - 1);
 			// Если результат попадает в субнормальный диапазон
 			if((-mantissa.power2) >= shift){
-				// Выполняем округление со сдвигом в субнормальный диапазон
+				// Округление со сдвигом в субнормальный диапазон
 				callback(mantissa, std::min <int32_t> (1 - mantissa.power2, 64));
 				// Определяем, стало ли значение нормализованным после округления
 				mantissa.power2 = ((mantissa.mantissa < (uint64_t(1) << binary_t <T>::mantissaExplicitBits())) ? 0 : 1);
 				// Завершаем приведение мантиссы
 				return;
 			}
-			// Выполняем округление со сдвигом нормализованного числа
+			// Округление со сдвигом нормализованного числа
 			callback(mantissa, shift);
 			// Если округление вызвало переполнение мантиссы
 			if(mantissa.mantissa >= (uint64_t(2) << binary_t <T>::mantissaExplicitBits())){
-				// Выполняем нормализацию мантиссы
+				// Нормализация мантиссы
 				mantissa.mantissa = (uint64_t(1) << binary_t <T>::mantissaExplicitBits());
 				// Компенсируем нормализацию показателем степени
 				mantissa.power2++;
 			}
-			// Выполняем сброс скрытого бита мантиссы
+			// Сброс скрытого бита мантиссы
 			mantissa.mantissa &= ~(uint64_t(1) << binary_t <T>::mantissaExplicitBits());
 			// Если показатель степени вышел за пределы представимого диапазона
 			if(mantissa.power2 >= binary_t <T>::infinitePower()){
@@ -291,20 +291,20 @@ namespace awh {
 			// Упакованный блок символов
 			uint64_t block = 0;
 			/**
-			 * Выполняем блочный пропуск нулевых цифр
+			 * Блочный пропуск нулевых цифр
 			 */
 			while(static_cast <size_t> (last - first) >= patternLength <UC> ()){
-				// Выполняем чтение очередного блока символов
+				// Чтение очередного блока символов
 				::memcpy(&block, first, sizeof(uint64_t));
 				// Если блок содержит не только нулевые цифры
 				if(block != zerosPattern <UC> ())
 					// Завершаем блочный пропуск
 					break;
-				// Выполняем смещение позиции на размер блока
+				// Смещение позиции на размер блока
 				first += patternLength <UC> ();
 			}
 			/**
-			 * Выполняем посимвольный пропуск оставшихся нулевых цифр
+			 * Посимвольный пропуск оставшихся нулевых цифр
 			 */
 			while(first != last){
 				// Если символ не является нулевой цифрой
@@ -336,20 +336,20 @@ namespace awh {
 			// Упакованный блок символов
 			uint64_t block = 0;
 			/**
-			 * Выполняем блочную проверку диапазона символов
+			 * Блочнуя проверку диапазона символов
 			 */
 			while(static_cast <size_t> (last - first) >= patternLength <UC> ()){
-				// Выполняем чтение очередного блока символов
+				// Чтение очередного блока символов
 				::memcpy(&block, first, sizeof(uint64_t));
 				// Если блок содержит не только нулевые цифры
 				if(block != zerosPattern <UC> ())
 					// Сообщаем о наличии отброшенных значащих цифр
 					return true;
-				// Выполняем смещение позиции на размер блока
+				// Смещение позиции на размер блока
 				first += patternLength <UC> ();
 			}
 			/**
-			 * Выполняем посимвольную проверку оставшихся цифр
+			 * Посимвольнуя проверку оставшихся цифр
 			 */
 			while(first != last){
 				// Если символ не является нулевой цифрой
@@ -377,7 +377,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ bool isTruncated(const span_t <UC> range) noexcept {
-			// Выполняем проверку диапазона символов
+			// Проверка диапазона символов
 			return isTruncated(range.ptr, range.ptr + range.len());
 		}
 		/**
@@ -390,11 +390,11 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ bool mulAdd(bigint_t & value, const limb_t power, const limb_t addition) noexcept {
-			// Выполняем умножение значения на степень десятки
+			// Умножение значения на степень десятки
 			if(!value.mul(power))
 				// Сообщаем, что операция не выполнена
 				return false;
-			// Выполняем добавление накопленного значения
+			// Добавление накопленного значения
 			return value.add(addition);
 		}
 		/**
@@ -442,21 +442,21 @@ namespace awh {
 			const UC * position = number.integer.ptr;
 			// Конец разбираемого диапазона символов
 			const UC * end = (position + number.integer.len());
-			// Выполняем пропуск ведущих нулей целой части
+			// Пропуск ведущих нулей целой части
 			skipZeros(position, end);
 			/**
-			 * Выполняем разбор значащих цифр целой части
+			 * Разбор значащих цифр целой части
 			 */
 			while(position != end){
 				/**
-				 * Выполняем блочный разбор цифр, пока это возможно
+				 * Блочный разбор цифр, пока это возможно
 				 */
 				while((static_cast <size_t> (end - position) >= DIGITS_PER_BLOCK) &&
 					  ((STEP - counter) >= DIGITS_PER_BLOCK) &&
 					  ((maxDigits - digits) >= DIGITS_PER_BLOCK)){
-					// Выполняем накопление разобранного блока цифр
+					// Накопление разобранного блока цифр
 					value = ((value * 100000000ULL) + parseBlock(position));
-					// Выполняем смещение позиции на размер блока
+					// Смещение позиции на размер блока
 					position += DIGITS_PER_BLOCK;
 					// Учитываем разобранные цифры в счётчике блока
 					counter += DIGITS_PER_BLOCK;
@@ -464,10 +464,10 @@ namespace awh {
 					digits += DIGITS_PER_BLOCK;
 				}
 				/**
-				 * Выполняем поразрядный разбор оставшихся цифр блока
+				 * Поразрядный разбор оставшихся цифр блока
 				 */
 				while((counter < STEP) && (position != end) && (digits < maxDigits)){
-					// Выполняем накопление очередной цифры
+					// Накопление очередной цифры
 					value = ((value * 10ULL) + static_cast <limb_t> (* position - UC('0')));
 					// Переходим к следующему символу
 					++position;
@@ -476,7 +476,7 @@ namespace awh {
 					// Учитываем разобранную цифру в общем счётчике
 					++digits;
 				}
-				// Выполняем перенос накопленного блока в значение длинной арифметики
+				// Перенос накопленного блока в значение длинной арифметики
 				if(!mulAdd(result, static_cast <limb_t> (POWERS_OF_TEN[counter]), value))
 					// Сообщаем, что операция не выполнена
 					return false;
@@ -491,7 +491,7 @@ namespace awh {
 					// Если значащие цифры были отброшены
 					if(truncated){
 						/**
-						 * Выполняем округление вверх на единицу младшего разряда,
+						 * Округление вверх на единицу младшего разряда,
 						 * что исключает ложное попадание в середину интервала
 						 */
 						if(!mulAdd(result, 10, 1))
@@ -516,21 +516,21 @@ namespace awh {
 				end = (position + number.fraction.len());
 				// Если значащих цифр ещё не обнаружено
 				if(digits == 0)
-					// Выполняем пропуск ведущих нулей дробной части
+					// Пропуск ведущих нулей дробной части
 					skipZeros(position, end);
 				/**
-				 * Выполняем разбор значащих цифр дробной части
+				 * Разбор значащих цифр дробной части
 				 */
 				while(position != end){
 					/**
-					 * Выполняем блочный разбор цифр, пока это возможно
+					 * Блочный разбор цифр, пока это возможно
 					 */
 					while((static_cast <size_t> (end - position) >= DIGITS_PER_BLOCK) &&
 						  ((STEP - counter) >= DIGITS_PER_BLOCK) &&
 						  ((maxDigits - digits) >= DIGITS_PER_BLOCK)){
-						// Выполняем накопление разобранного блока цифр
+						// Накопление разобранного блока цифр
 						value = ((value * 100000000ULL) + parseBlock(position));
-						// Выполняем смещение позиции на размер блока
+						// Смещение позиции на размер блока
 						position += DIGITS_PER_BLOCK;
 						// Учитываем разобранные цифры в счётчике блока
 						counter += DIGITS_PER_BLOCK;
@@ -538,10 +538,10 @@ namespace awh {
 						digits += DIGITS_PER_BLOCK;
 					}
 					/**
-					 * Выполняем поразрядный разбор оставшихся цифр блока
+					 * Поразрядный разбор оставшихся цифр блока
 					 */
 					while((counter < STEP) && (position != end) && (digits < maxDigits)){
-						// Выполняем накопление очередной цифры
+						// Накопление очередной цифры
 						value = ((value * 10ULL) + static_cast <limb_t> (* position - UC('0')));
 						// Переходим к следующему символу
 						++position;
@@ -550,7 +550,7 @@ namespace awh {
 						// Учитываем разобранную цифру в общем счётчике
 						++digits;
 					}
-					// Выполняем перенос накопленного блока в значение длинной арифметики
+					// Перенос накопленного блока в значение длинной арифметики
 					if(!mulAdd(result, static_cast <limb_t> (POWERS_OF_TEN[counter]), value))
 						// Сообщаем, что операция не выполнена
 						return false;
@@ -559,7 +559,7 @@ namespace awh {
 						// Если значащие цифры дробной части были отброшены
 						if(isTruncated(position, end)){
 							/**
-							 * Выполняем округление вверх на единицу младшего разряда, 
+							 * Округление вверх на единицу младшего разряда, 
 							 * что исключает ложное попадание в середину интервала
 							 */
 							if(!mulAdd(result, 10, 1))
@@ -579,7 +579,7 @@ namespace awh {
 			}
 			// Если остался неперенесённый блок цифр
 			if(counter != 0)
-				// Выполняем перенос накопленного блока в значение длинной арифметики
+				// Перенос накопленного блока в значение длинной арифметики
 				return mulAdd(result, static_cast <limb_t> (POWERS_OF_TEN[counter]), value);
 			// Сообщаем, что операция выполнена успешно
 			return true;
@@ -601,21 +601,21 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ bool positiveDigitComp(bigint_t & digits, const int32_t exponent, mantissa_t & result) noexcept {
-			// Выполняем умножение значащих цифр на степень десятки
+			// Умножение значащих цифр на степень десятки
 			if(!digits.pow10(static_cast <uint32_t> (exponent)))
 				// Сообщаем, что операция не выполнена
 				return false;
 			// Признак отброшенных значащих бит
 			bool truncated = false;
-			// Выполняем извлечение старших 64 бит значения
+			// Извлечение старших 64 бит значения
 			result.mantissa = digits.hi64(truncated);
 			// Смещение показателя степени относительно минимального
 			const int32_t bias = (binary_t <T>::mantissaExplicitBits() - binary_t <T>::minimumExponent());
-			// Выполняем вычисление показателя степени результата
+			// Вычисление показателя степени результата
 			result.power2 = (digits.bitLength() - 64 + bias);
-			// Выполняем округление к ближайшему с учётом отброшенных бит
+			// Округление к ближайшему с учётом отброшенных бит
 			roundMantissa <T> (result, [truncated](mantissa_t & value, const int32_t shift){
-				// Выполняем округление к ближайшему с разрешением ничьей к чётному
+				// Округление к ближайшему с разрешением ничьей к чётному
 				roundNearestTieEven(value, shift, [truncated](const bool isOdd, const bool isHalfway, const bool isAbove) -> bool {
 					// Округляем вверх при превышении середины или при отброшенных битах
 					return (isAbove || (isHalfway && truncated) || (isOdd && isHalfway));
@@ -649,14 +649,14 @@ namespace awh {
 		__AWH_INLINE__ bool negativeDigitComp(bigint_t & digits, const mantissa_t & source, const int32_t exponent, mantissa_t & result) noexcept {
 			// Копия исходной мантиссы для округления вниз
 			mantissa_t lower = source;
-			// Выполняем округление исходной мантиссы вниз
+			// Округление исходной мантиссы вниз
 			roundMantissa <T> (lower, [](mantissa_t & value, const int32_t shift){
-				// Выполняем отбрасывание младших бит мантиссы
+				// Отбрасывание младших бит мантиссы
 				roundDown(value, shift);
 			});
 			// Машинное значение нижней границы интервала
 			T boundary = T(0);
-			// Выполняем сборку машинного значения нижней границы
+			// Сборка машинного значения нижней границы
 			toFloat(false, lower, boundary);
 			// Середина интервала между нижней границей и следующим представимым числом
 			const mantissa_t halfway = toExtendedHalfway(boundary);
@@ -668,39 +668,39 @@ namespace awh {
 			const uint32_t power5 = static_cast <uint32_t> (-exponent);
 			// Если требуется приведение по степени пятёрки
 			if(power5 != 0){
-				// Выполняем умножение теоретического значения на степень пятёрки
+				// Умножение теоретического значения на степень пятёрки
 				if(!theory.pow5(power5))
 					// Сообщаем, что операция не выполнена
 					return false;
 			}
 			// Если теоретическое значение требует приведения по степени двойки
 			if(power2 > 0){
-				// Выполняем умножение теоретического значения на степень двойки
+				// Умножение теоретического значения на степень двойки
 				if(!theory.pow2(static_cast <uint32_t> (power2)))
 					// Сообщаем, что операция не выполнена
 					return false;
 			// Если фактические цифры требуют приведения по степени двойки
 			} else if(power2 < 0){
-				// Выполняем умножение фактических цифр на степень двойки
+				// Умножение фактических цифр на степень двойки
 				if(!digits.pow2(static_cast <uint32_t> (-power2)))
 					// Сообщаем, что операция не выполнена
 					return false;
 			}
-			// Выполняем точное сравнение фактических цифр с теоретическим значением
+			// Точное сравнение фактических цифр с теоретическим значением
 			const int32_t order = digits.compare(theory);
 			// Копируем исходную мантиссу для округления
 			result = source;
-			// Выполняем округление по результату сравнения
+			// Округление по результату сравнения
 			roundMantissa <T> (result, [order](mantissa_t & value, const int32_t shift){
-				// Выполняем округление к ближайшему с разрешением ничьей к чётному
+				// Округление к ближайшему с разрешением ничьей к чётному
 				roundNearestTieEven(value, shift, [order](const bool isOdd, const bool, const bool) -> bool {
 					// Если фактические цифры больше теоретической середины
 					if(order > 0)
-						// Выполняем округление вверх
+						// Округление вверх
 						return true;
 					// Если фактические цифры меньше теоретической середины
 					else if(order < 0)
-						// Выполняем округление вниз
+						// Округление вниз
 						return false;
 					// Разрешаем точное попадание в середину к чётному значению
 					return isOdd;
@@ -733,7 +733,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ mantissa_t digitComp(const parsedNumber_t <UC> & number, mantissa_t source) noexcept {
-			// Выполняем снятие смещения невалидного показателя степени
+			// Снятие смещения невалидного показателя степени
 			source.power2 -= INVALID_BIAS;
 			// Показатель степени разбираемого числа в научной записи
 			const int32_t scientific = scientificExponent(number.mantissa, static_cast <int32_t> (number.exponent));
@@ -743,7 +743,7 @@ namespace awh {
 			size_t digits = 0;
 			// Значащие цифры в виде значения длинной арифметики
 			bigint_t value;
-			// Выполняем разбор значащих цифр в значение длинной арифметики
+			// Разбор значащих цифр в значение длинной арифметики
 			if(!parseMantissa(value, number, maxDigits, digits))
 				// Выводим исходное приближение без уточнения
 				return source;
@@ -753,7 +753,7 @@ namespace awh {
 			mantissa_t result;
 			// Если показатель степени является неотрицательным
 			if(exponent >= 0){
-				// Выполняем округление при неотрицательном показателе степени
+				// Округление при неотрицательном показателе степени
 				if(!positiveDigitComp <T> (value, exponent, result))
 					// Выводим исходное приближение без уточнения
 					return source;

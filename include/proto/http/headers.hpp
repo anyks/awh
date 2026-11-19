@@ -107,7 +107,7 @@ namespace awh {
 						string value = "";
 					public:
 						/**
-						 * @brief Фабричный метод создания HTTP-заголовка
+						 * @brief Метод создания HTTP-заголовка
 						 *
 						 * @param name  название HTTP-заголовка
 						 * @param value значение HTTP-заголовка
@@ -775,7 +775,7 @@ namespace awh {
 				 */
 				void erase(string_view name) noexcept;
 				/**
-				 * @brief erase Метод удаления заголовка
+				 * @brief Метод удаления заголовка
 				 *
 				 * @param it идетартор заголовка для удаления
 				 * @return   следующий итератор
@@ -801,7 +801,7 @@ namespace awh {
 				size_t size() const noexcept;
 			public:
 				/**
-				 * @brief Количество добавленных заголовков
+				 * @brief Метод получения количества добавленных заголовков
 				 *
 				 * @param name название заголовка количество которых нужно определить
 				 * @return     количество добавленных заголовков

@@ -6,8 +6,14 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
 
-# Компенсируем название OS Windows
-if [[ $OS =~ "MINGW64" ]]; then
+##
+ # Опознаём MS Windows по любому из окружений MSYS2, а не по одному лишь MINGW64:
+ # оболочка ARM64 зовётся CLANGARM64, а запуск напрямую по ssh или из Git for
+ # Windows представляется как MSYS_NT. При одной проверке MINGW64 такая сборка
+ # считалась бы Unix-подобной: сборка зависимостей искала бы установку по
+ # правилам Unix, а установщик отказывал бы «Only for Windows»
+ ##
+if [[ $OS =~ "MINGW" ]] || [[ $OS =~ "MSYS" ]] || [[ $OS =~ "CLANG" ]] || [[ $OS =~ "UCRT" ]] || [[ $OS =~ "CYGWIN" ]]; then
 	OS="Windows"
 fi
 

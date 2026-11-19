@@ -106,8 +106,7 @@
 /**
  * Подключаем интринсики Visual Studio для 128-битного умножения
  */
-#if (defined(AWH_LEXICAL_VISUAL_STUDIO) && (defined(_WIN32) || defined(_WIN64))) || \
-	(defined(_M_ARM64) && !defined(__MINGW32__) && !defined(__clang__))
+#if (defined(AWH_LEXICAL_VISUAL_STUDIO) && (defined(_WIN32) || defined(_WIN64))) || (defined(_M_ARM64) && !defined(__MINGW32__) && !defined(__clang__))
 	// Подключаем интринсики Visual Studio для 128-битного умножения
 	#include <intrin.h>
 #endif
@@ -136,8 +135,7 @@
 /**
  * Если порядок байт платформы для GCC и Clang сответствует big-endian - определяем макрос как 1, иначе как 0
  */
-#elif defined(__BIG_ENDIAN__) || defined(__ARMEB__) || defined(__THUMBEB__) || \
-	 defined(__AARCH64EB__) || defined(_MIBSEB) || defined(__MIBSEB) || defined(__MIBSEB__)
+#elif defined(__BIG_ENDIAN__) || defined(__ARMEB__) || defined(__THUMBEB__) || defined(__AARCH64EB__) || defined(_MIBSEB) || defined(__MIBSEB) || defined(__MIBSEB__)
 	/**
 	 * @brief Платформа объявлена как big-endian
 	 *
@@ -146,8 +144,7 @@
 /**
  * Если порядок байт платформы для GCC и Clang сответствует little-endian - определяем макрос как 0, иначе как 1
  */
-#elif defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) || defined(__THUMBEL__) || \
-	 defined(__AARCH64EL__) || defined(_MIPSEL) || defined(__MIPSEL) || defined(__MIPSEL__)
+#elif defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) || defined(__THUMBEL__) || defined(__AARCH64EL__) || defined(_MIPSEL) || defined(__MIPSEL) || defined(__MIPSEL__)
 	/**
 	 * @brief Платформа объявлена как little-endian
 	 *

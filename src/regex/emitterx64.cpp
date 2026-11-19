@@ -166,7 +166,7 @@ namespace {
 	 * @param value размещаемый байт команды
 	 *
 	 */
-	static __AWH_INLINE__ void emit8(vector <uint8_t> & code, const uint8_t value) noexcept {
+	static __AWH_INLINE__ void __awh_emit8__(vector <uint8_t> & code, const uint8_t value) noexcept {
 		// Размещаем байт команды
 		code.push_back(value);
 	}
@@ -177,7 +177,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	static __AWH_INLINE__ void emit32(vector <uint8_t> & code, const uint32_t value) noexcept {
+	static __AWH_INLINE__ void __awh_emit32__(vector <uint8_t> & code, const uint32_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -192,7 +192,7 @@ namespace {
 	 * @param value размещаемое значение поля команды
 	 *
 	 */
-	static __AWH_INLINE__ void emit64(vector <uint8_t> & code, const uint64_t value) noexcept {
+	static __AWH_INLINE__ void __awh_emit64__(vector <uint8_t> & code, const uint64_t value) noexcept {
 		/**
 		 * Размещаем пол команды байтами от младшего
 		 */
@@ -215,7 +215,7 @@ namespace {
 	 *          назначает обращение к разрядной сетке шириною восемь байтов.
 	 *
 	 */
-	static constexpr uint8_t rex(const bool wide, const uint32_t reg, const uint32_t index, const uint32_t base) noexcept {
+	static constexpr uint8_t __awh_rex__(const bool wide, const uint32_t reg, const uint32_t index, const uint32_t base) noexcept {
 		// Выводим собранный байт расширения набора регистров
 		return static_cast <uint8_t> (0x40u | (wide ? 0x08u : 0x00u) | (((reg >> 3) & 0x01u) << 2) | (((index >> 3) & 0x01u) << 1) | ((base >> 3) & 0x01u));
 	}
@@ -228,7 +228,7 @@ namespace {
 	 * @return     собранный байт указания способа обращения
 	 *
 	 */
-	static constexpr uint8_t modrm(const uint8_t mode, const uint32_t reg, const uint32_t rm) noexcept {
+	static constexpr uint8_t __awh_modrm__(const uint8_t mode, const uint32_t reg, const uint32_t rm) noexcept {
 		// Выводим собранный байт указания способа обращения
 		return static_cast <uint8_t> ((mode << 6) | ((reg & 0x07u) << 3) | (rm & 0x07u));
 	}
@@ -241,7 +241,7 @@ namespace {
 	 * @return      собранный байт уточнения обращения к памяти
 	 *
 	 */
-	static constexpr uint8_t sib(const uint8_t scale, const uint32_t index, const uint32_t base) noexcept {
+	static constexpr uint8_t __awh_sib__(const uint8_t scale, const uint32_t index, const uint32_t base) noexcept {
 		// Выводим собранный байт уточнения обращения к памяти
 		return static_cast <uint8_t> ((scale << 6) | ((index & 0x07u) << 3) | (base & 0x07u));
 	}
@@ -260,13 +260,13 @@ namespace {
 	 *          путей, ошибиться в каких легко.
 	 *
 	 */
-	static __AWH_INLINE__ void memory(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
+	static __AWH_INLINE__ void __awh_memory__(vector <uint8_t> & code, const uint8_t opcode, const uint32_t reg, const uint32_t base, const uint32_t offset) noexcept {
 		// Размещаем байт расширения набора регистров
-		emit8(code, rex(true, reg, 0, base));
+		__awh_emit8__(code, __awh_rex__(true, reg, 0, base));
 		// Размещаем код команды процессора
-		emit8(code, opcode);
+		__awh_emit8__(code, opcode);
 		// Размещаем байт указания способа обращения
-		emit8(code, modrm(0x02, reg, base));
+		__awh_emit8__(code, __awh_modrm__(0x02, reg, base));
 		/**
 		 * Если основанием обращения является указатель стека вызова
 		 *
@@ -277,9 +277,9 @@ namespace {
 		 */
 		if((base & 0x07u) == STACK_POINTER)
 			// Размещаем байт уточнения обращения к памяти
-			emit8(code, sib(0x00, STACK_POINTER, base));
+			__awh_emit8__(code, __awh_sib__(0x00, STACK_POINTER, base));
 		// Размещаем смещение обращения
-		emit32(code, offset);
+		__awh_emit32__(code, offset);
 	}
 };
 
@@ -306,15 +306,15 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *          восьми байтов к кадру - см. «ALIGN».
 		 *
 		 */
-		emit8(this->_code, 0x53);
-		emit8(this->_code, 0x56);
-		emit8(this->_code, 0x57);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x54);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x55);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x56);
+		__awh_emit8__(this->_code, 0x53);
+		__awh_emit8__(this->_code, 0x56);
+		__awh_emit8__(this->_code, 0x57);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x54);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x55);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x56);
 		/**
 		 * Читаем адрес таблицы обстановки из кадра вызывающего
 		 *
@@ -326,7 +326,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *          байтов, отчего смещение чтения - восемьдесят восемь.
 		 *
 		 */
-		memory(this->_code, 0x8B, static_cast <uint32_t> (reg_t::CONTEXT), static_cast <uint32_t> (reg_t::STACK), 88);
+		__awh_memory__(this->_code, 0x8B, static_cast <uint32_t> (reg_t::CONTEXT), static_cast <uint32_t> (reg_t::STACK), 88);
 		/**
 		 * Отводим кадр вызова порождаемого сопоставителя
 		 *
@@ -350,13 +350,13 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *          возвращает придача восьми байтов к кадру - см. «ALIGN».
 		 *
 		 */
-		emit8(this->_code, 0x53);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x54);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x55);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x56);
+		__awh_emit8__(this->_code, 0x53);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x54);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x55);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x56);
 		// Отводим кадр вызова порождаемого сопоставителя
 		this->sub(reg_t::STACK, reg_t::STACK, (frame + ALIGN));
 	#endif
@@ -377,15 +377,15 @@ void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 		/**
 		 * Восстанавливаем регистров, входом сохранённых
 		 */
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5E);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5D);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5C);
-		emit8(this->_code, 0x5F);
-		emit8(this->_code, 0x5E);
-		emit8(this->_code, 0x5B);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5E);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5D);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5C);
+		__awh_emit8__(this->_code, 0x5F);
+		__awh_emit8__(this->_code, 0x5E);
+		__awh_emit8__(this->_code, 0x5B);
 	/**
 	 * Если операционная система не принадлежит к MS Windows
 	 */
@@ -395,13 +395,13 @@ void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 		/**
 		 * Восстанавливаем регистров, входом сохранённых
 		 */
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5E);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5D);
-		emit8(this->_code, 0x41);
-		emit8(this->_code, 0x5C);
-		emit8(this->_code, 0x5B);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5E);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5D);
+		__awh_emit8__(this->_code, 0x41);
+		__awh_emit8__(this->_code, 0x5C);
+		__awh_emit8__(this->_code, 0x5B);
 	#endif
 }
 /**
@@ -448,12 +448,12 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 		/**
 		 * Размещаем восьмибайтовой холостой команды: nop [rax + rax]
 		 */
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x1F);
-		emit8(this->_code, modrm(0x02, 0, 4));
-		emit8(this->_code, sib(0, 0, 0));
+		__awh_emit8__(this->_code, 0x0F);
+		__awh_emit8__(this->_code, 0x1F);
+		__awh_emit8__(this->_code, __awh_modrm__(0x02, 0, 4));
+		__awh_emit8__(this->_code, __awh_sib__(0, 0, 0));
 		// Размещаем нулевое смещение холостой команды
-		emit32(this->_code, 0);
+		__awh_emit32__(this->_code, 0);
 		// Уменьшаем остающееся расстояние до границы строки выборки команд
 		gap -= 8;
 	}
@@ -466,66 +466,66 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 			/**
 			 * Размещаем семибайтовой холостой команды: nop [rax]
 			 */
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x1F);
-			emit8(this->_code, modrm(0x02, 0, 0));
+			__awh_emit8__(this->_code, 0x0F);
+			__awh_emit8__(this->_code, 0x1F);
+			__awh_emit8__(this->_code, __awh_modrm__(0x02, 0, 0));
 			// Размещаем нулевое смещение холостой команды
-			emit32(this->_code, 0);
+			__awh_emit32__(this->_code, 0);
 		} break;
 		// Если остающееся расстояние составляет шесть байтов
 		case 6: {
 			/**
 			 * Размещаем шестибайтовой холостой команды: nop [rax + rax]
 			 */
-			emit8(this->_code, 0x66);
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x1F);
-			emit8(this->_code, modrm(0x01, 0, 4));
-			emit8(this->_code, sib(0, 0, 0));
-			emit8(this->_code, 0x00);
+			__awh_emit8__(this->_code, 0x66);
+			__awh_emit8__(this->_code, 0x0F);
+			__awh_emit8__(this->_code, 0x1F);
+			__awh_emit8__(this->_code, __awh_modrm__(0x01, 0, 4));
+			__awh_emit8__(this->_code, __awh_sib__(0, 0, 0));
+			__awh_emit8__(this->_code, 0x00);
 		} break;
 		// Если остающееся расстояние составляет пять байтов
 		case 5: {
 			/**
 			 * Размещаем пятибайтовой холостой команды: nop [rax + rax]
 			 */
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x1F);
-			emit8(this->_code, modrm(0x01, 0, 4));
-			emit8(this->_code, sib(0, 0, 0));
-			emit8(this->_code, 0x00);
+			__awh_emit8__(this->_code, 0x0F);
+			__awh_emit8__(this->_code, 0x1F);
+			__awh_emit8__(this->_code, __awh_modrm__(0x01, 0, 4));
+			__awh_emit8__(this->_code, __awh_sib__(0, 0, 0));
+			__awh_emit8__(this->_code, 0x00);
 		} break;
 		// Если остающееся расстояние составляет четыре байта
 		case 4: {
 			/**
 			 * Размещаем четырёхбайтовой холостой команды: nop [rax]
 			 */
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x1F);
-			emit8(this->_code, modrm(0x01, 0, 0));
-			emit8(this->_code, 0x00);
+			__awh_emit8__(this->_code, 0x0F);
+			__awh_emit8__(this->_code, 0x1F);
+			__awh_emit8__(this->_code, __awh_modrm__(0x01, 0, 0));
+			__awh_emit8__(this->_code, 0x00);
 		} break;
 		// Если остающееся расстояние составляет три байта
 		case 3: {
 			/**
 			 * Размещаем трёхбайтовой холостой команды: nop [rax]
 			 */
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x1F);
-			emit8(this->_code, modrm(0x00, 0, 0));
+			__awh_emit8__(this->_code, 0x0F);
+			__awh_emit8__(this->_code, 0x1F);
+			__awh_emit8__(this->_code, __awh_modrm__(0x00, 0, 0));
 		} break;
 		// Если остающееся расстояние составляет два байта
 		case 2: {
 			/**
 			 * Размещаем двухбайтовой холостой команды: nop
 			 */
-			emit8(this->_code, 0x66);
-			emit8(this->_code, 0x90);
+			__awh_emit8__(this->_code, 0x66);
+			__awh_emit8__(this->_code, 0x90);
 		} break;
 		// Если остающееся расстояние составляет один байт
 		case 1:
 			// Размещаем однословной холостой команды: nop
-			emit8(this->_code, 0x90);
+			__awh_emit8__(this->_code, 0x90);
 		break;
 	}
 	// Расставляем меткю перехода
@@ -561,7 +561,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 		return;
 	}
 	// Размещаем код команды безусловного перехода
-	emit8(this->_code, 0xE9);
+	__awh_emit8__(this->_code, 0xE9);
 	// Размещаем отложенного перехода
 	this->_fixups.emplace_back();
 	// Устанавливаем положени поля смещения перехода
@@ -571,7 +571,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	// Устанавливаем вид размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::JUMP;
 	// Размещаем пол смещения, значения ещё не несущего
-	emit32(this->_code, 0);
+	__awh_emit32__(this->_code, 0);
 }
 /**
  * @brief Метод размещения перехода к метке по условию
@@ -604,9 +604,9 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 		return;
 	}
 	// Размещаем приставкю кода команды перехода по условию
-	emit8(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0x0F);
 	// Размещаем код команды перехода по условию
-	emit8(this->_code, static_cast <uint8_t> (0x80u | static_cast <uint32_t> (cond)));
+	__awh_emit8__(this->_code, static_cast <uint8_t> (0x80u | static_cast <uint32_t> (cond)));
 	// Размещаем отложенного перехода
 	this->_fixups.emplace_back();
 	// Устанавливаем положени поля смещения перехода
@@ -616,7 +616,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	// Устанавливаем вид размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
 	// Размещаем пол смещения, значения ещё не несущего
-	emit32(this->_code, 0);
+	__awh_emit32__(this->_code, 0);
 }
 /**
  * @brief Метод размещения сравнения значений регистров
@@ -629,11 +629,11 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	// Получаем номера сравниваемых регистров
 	const uint32_t left = static_cast <uint32_t> (first), right = static_cast <uint32_t> (second);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, right, 0, left));
+	__awh_emit8__(this->_code, __awh_rex__(true, right, 0, left));
 	// Размещаем код команды сравнения значений регистров
-	emit8(this->_code, 0x39);
+	__awh_emit8__(this->_code, 0x39);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x03, right, left));
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, right, left));
 }
 /**
  * @brief Метод размещения сравнения значений регистров
@@ -655,13 +655,13 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 	// Получаем номер сравниваемого регистра
 	const uint32_t target = static_cast <uint32_t> (reg);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, 0, 0, target));
+	__awh_emit8__(this->_code, __awh_rex__(true, 0, 0, target));
 	// Размещаем код команды обработки регистра с числом
-	emit8(this->_code, 0x81);
+	__awh_emit8__(this->_code, 0x81);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x03, 0x07, target));
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 0x07, target));
 	// Размещаем сравниваемого числа
-	emit32(this->_code, value);
+	__awh_emit32__(this->_code, value);
 }
 /**
  * @brief Метод размещения сложения значения регистра с числом
@@ -688,13 +688,13 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 */
 	if(result == operand){
 		// Размещаем байт расширения набора регистров
-		emit8(this->_code, rex(true, 0, 0, result));
+		__awh_emit8__(this->_code, __awh_rex__(true, 0, 0, result));
 		// Размещаем код команды обработки регистра с числом
-		emit8(this->_code, 0x81);
+		__awh_emit8__(this->_code, 0x81);
 		// Размещаем байт указания способа обращения
-		emit8(this->_code, modrm(0x03, 0x00, result));
+		__awh_emit8__(this->_code, __awh_modrm__(0x03, 0x00, result));
 		// Размещаем прибавляемого числа
-		emit32(this->_code, value);
+		__awh_emit32__(this->_code, value);
 	/**
 	 * Если итог сложения размещается в регистре ином
 	 *
@@ -703,7 +703,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 *          складывает основание со смещением и флагов не изменяет.
 	 *
 	 */
-	} else memory(this->_code, 0x8D, result, operand, value);
+	} else __awh_memory__(this->_code, 0x8D, result, operand, value);
 }
 /**
  * @brief Метод размещения вычитания числа из значения регистра
@@ -730,17 +730,17 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 */
 	if(result == operand){
 		// Размещаем байт расширения набора регистров
-		emit8(this->_code, rex(true, 0, 0, result));
+		__awh_emit8__(this->_code, __awh_rex__(true, 0, 0, result));
 		// Размещаем код команды обработки регистра с числом
-		emit8(this->_code, 0x81);
+		__awh_emit8__(this->_code, 0x81);
 		// Размещаем байт указания способа обращения
-		emit8(this->_code, modrm(0x03, 0x05, result));
+		__awh_emit8__(this->_code, __awh_modrm__(0x03, 0x05, result));
 		// Размещаем вычитаемого числа
-		emit32(this->_code, value);
+		__awh_emit32__(this->_code, value);
 	/**
 	 * Если итог вычитания размещается в регистре ином
 	 */
-	} else memory(this->_code, 0x8D, result, operand, static_cast <uint32_t> (-static_cast <int32_t> (value)));
+	} else __awh_memory__(this->_code, 0x8D, result, operand, static_cast <uint32_t> (-static_cast <int32_t> (value)));
 }
 /**
  * @brief Метод размещения переноса значения регистра
@@ -765,11 +765,11 @@ void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept 
 		// Выходим из метода размещения переноса
 		return;
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, operand, 0, result));
+	__awh_emit8__(this->_code, __awh_rex__(true, operand, 0, result));
 	// Размещаем код команды переноса значения регистра
-	emit8(this->_code, 0x89);
+	__awh_emit8__(this->_code, 0x89);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x03, operand, result));
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, operand, result));
 }
 /**
  * @brief Метод размещения переноса значения регистра
@@ -794,20 +794,20 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 		 */
 		if(result >= 0x08)
 			// Размещаем байт расширения набора регистров
-			emit8(this->_code, rex(false, 0, 0, result));
+			__awh_emit8__(this->_code, __awh_rex__(false, 0, 0, result));
 		// Размещаем код команды записи числа в регистр
-		emit8(this->_code, static_cast <uint8_t> (0xB8u + (result & 0x07u)));
+		__awh_emit8__(this->_code, static_cast <uint8_t> (0xB8u + (result & 0x07u)));
 		// Размещаем записываемого числа
-		emit32(this->_code, static_cast <uint32_t> (value));
+		__awh_emit32__(this->_code, static_cast <uint32_t> (value));
 		// Выходим из метода размещения записи
 		return;
 	}
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, 0, 0, result));
+	__awh_emit8__(this->_code, __awh_rex__(true, 0, 0, result));
 	// Размещаем код команды записи числа в регистр
-	emit8(this->_code, static_cast <uint8_t> (0xB8u + (result & 0x07u)));
+	__awh_emit8__(this->_code, static_cast <uint8_t> (0xB8u + (result & 0x07u)));
 	// Размещаем записываемого числа
-	emit64(this->_code, value);
+	__awh_emit64__(this->_code, value);
 }
 /**
  * @brief Метод размещения чтения байта текста
@@ -823,11 +823,11 @@ void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t
 	// Получаем номера регистров основания и смещения обращения
 	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, result, shift, origin));
+	__awh_emit8__(this->_code, __awh_rex__(true, result, shift, origin));
 	// Размещаем приставкю кода команды чтения байта
-	emit8(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0x0F);
 	// Размещаем код команды чтения байта с дополнением нулями
-	emit8(this->_code, 0xB6);
+	__awh_emit8__(this->_code, 0xB6);
 	/**
 	 * Размещаем байт указания способа обращения
 	 *
@@ -837,11 +837,11 @@ void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t
 	 *          прочитано как обращение по смещению от счётчика команд.
 	 *
 	 */
-	emit8(this->_code, modrm(0x01, result, STACK_POINTER));
+	__awh_emit8__(this->_code, __awh_modrm__(0x01, result, STACK_POINTER));
 	// Размещаем байт уточнения обращения к памяти
-	emit8(this->_code, sib(0x00, shift, origin));
+	__awh_emit8__(this->_code, __awh_sib__(0x00, shift, origin));
 	// Размещаем смещение обращения
-	emit8(this->_code, 0x00);
+	__awh_emit8__(this->_code, 0x00);
 }
 /**
  * @brief Метод размещения чтения значения обстановки исполнения
@@ -858,7 +858,7 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 		// Выходим из метода размещения чтения
 		return;
 	// Размещаем команду чтения значения обстановки исполнения
-	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), (index * 8));
+	__awh_memory__(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), (index * 8));
 }
 /**
  * @brief Метод размещения чтения значения из памяти
@@ -892,7 +892,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          доводов: места кадра размещаются за ним.
 	 *
 	 */
-	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
+	__awh_memory__(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
  * @brief Метод размещения записи значения регистра в память
@@ -926,7 +926,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 *          доводов: места кадра размещаются за ним.
 	 *
 	 */
-	memory(this->_code, 0x89, static_cast <uint32_t> (source), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
+	__awh_memory__(this->_code, 0x89, static_cast <uint32_t> (source), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
  * @brief Метод размещения чтения значения из памяти
@@ -942,9 +942,9 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	// Получаем номера регистров основания и смещения обращения
 	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, result, shift, origin));
+	__awh_emit8__(this->_code, __awh_rex__(true, result, shift, origin));
 	// Размещаем код команды чтения восьмибайтового значения
-	emit8(this->_code, 0x8B);
+	__awh_emit8__(this->_code, 0x8B);
 	/**
 	 * Размещаем байт указания способа обращения
 	 *
@@ -954,7 +954,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	 *          как обращение по смещению от счётчика команд.
 	 *
 	 */
-	emit8(this->_code, modrm(0x01, result, STACK_POINTER));
+	__awh_emit8__(this->_code, __awh_modrm__(0x01, result, STACK_POINTER));
 	/**
 	 * Размещаем байт уточнения обращения к памяти
 	 *
@@ -962,9 +962,9 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	 *          восьмибайтовыми, а смещение задаётся номером значения в нём.
 	 *
 	 */
-	emit8(this->_code, sib(0x03, shift, origin));
+	__awh_emit8__(this->_code, __awh_sib__(0x03, shift, origin));
 	// Размещаем смещение обращения
-	emit8(this->_code, 0x00);
+	__awh_emit8__(this->_code, 0x00);
 }
 /**
  * @brief Метод размещения записи значения регистра в память
@@ -980,15 +980,15 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_
 	// Получаем номера регистров основания и смещения обращения
 	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, result, shift, origin));
+	__awh_emit8__(this->_code, __awh_rex__(true, result, shift, origin));
 	// Размещаем код команды записи восьмибайтового значения
-	emit8(this->_code, 0x89);
+	__awh_emit8__(this->_code, 0x89);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x01, result, STACK_POINTER));
+	__awh_emit8__(this->_code, __awh_modrm__(0x01, result, STACK_POINTER));
 	// Размещаем байт уточнения обращения к памяти
-	emit8(this->_code, sib(0x03, shift, origin));
+	__awh_emit8__(this->_code, __awh_sib__(0x03, shift, origin));
 	// Размещаем смещение обращения
-	emit8(this->_code, 0x00);
+	__awh_emit8__(this->_code, 0x00);
 }
 /**
  * @brief Метод размещения вызова подпрограммы по адресу в регистре
@@ -1004,11 +1004,11 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	 */
 	if(target >= 0x08)
 		// Размещаем байт расширения набора регистров
-		emit8(this->_code, rex(false, 0, 0, target));
+		__awh_emit8__(this->_code, __awh_rex__(false, 0, 0, target));
 	// Размещаем код команды вызова подпрограммы
-	emit8(this->_code, 0xFF);
+	__awh_emit8__(this->_code, 0xFF);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x03, 0x02, target));
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 0x02, target));
 }
 /**
  * @brief Метод размещения вычисления адреса метки
@@ -1043,9 +1043,9 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Получаем номер регистра вычисленного адреса метки
 	const uint32_t result = static_cast <uint32_t> (target);
 	// Размещаем байт расширения набора регистров
-	emit8(this->_code, rex(true, result, 0, 0));
+	__awh_emit8__(this->_code, __awh_rex__(true, result, 0, 0));
 	// Размещаем код команды вычисления адреса
-	emit8(this->_code, 0x8D);
+	__awh_emit8__(this->_code, 0x8D);
 	/**
 	 * Размещаем байт указания способа обращения
 	 *
@@ -1054,7 +1054,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	 *          иному адресу правки не требует.
 	 *
 	 */
-	emit8(this->_code, modrm(0x00, result, 0x05));
+	__awh_emit8__(this->_code, __awh_modrm__(0x00, result, 0x05));
 	// Размещаем отложенного перехода
 	this->_fixups.emplace_back();
 	// Устанавливаем положени поля смещения вычисления адреса
@@ -1064,7 +1064,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Устанавливаем вид размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
 	// Размещаем пол смещения, значения ещё не несущего
-	emit32(this->_code, 0);
+	__awh_emit32__(this->_code, 0);
 }
 /**
  * @brief Метод размещения перехода по адресу в регистре
@@ -1080,11 +1080,11 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 	 */
 	if(target >= 0x08)
 		// Размещаем байт расширения набора регистров
-		emit8(this->_code, rex(false, 0, 0, target));
+		__awh_emit8__(this->_code, __awh_rex__(false, 0, 0, target));
 	// Размещаем код команды перехода по адресу регистра
-	emit8(this->_code, 0xFF);
+	__awh_emit8__(this->_code, 0xFF);
 	// Размещаем байт указания способа обращения
-	emit8(this->_code, modrm(0x03, 0x04, target));
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 0x04, target));
 }
 /**
  * @brief Метод размещения метки цели перехода по адресу в регистре
@@ -1111,7 +1111,7 @@ void awh::regex::Emitter::landing() noexcept {
  */
 void awh::regex::Emitter::ret() noexcept {
 	// Размещаем код команды завершения вызова
-	emit8(this->_code, 0xC3);
+	__awh_emit8__(this->_code, 0xC3);
 }
 /**
  * @brief Метод разрешения отложенных переходов
@@ -1213,9 +1213,9 @@ void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, cons
 	// Получаем количество байтов, оставшихся до конца текста
 	this->move(reg_t::SPARE, reg_t::SIZE);
 	// Вычитаем текущей позиции из оставшегося размера: sub spare, keeper
-	emit8(this->_code, rex(true, keeper, 0, spare));
-	emit8(this->_code, 0x29);
-	emit8(this->_code, modrm(0x03, keeper, spare));
+	__awh_emit8__(this->_code, __awh_rex__(true, keeper, 0, spare));
+	__awh_emit8__(this->_code, 0x29);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, keeper, spare));
 	// Проверяем наличие полного вектора перед чтением памяти
 	this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
 	// Переходим к побайтному хвосту при коротком остатке
@@ -1235,48 +1235,48 @@ void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, cons
 		// Размножаем постоянную по четырём байтам целого регистра
 		this->move(reg_t::LETTER, (static_cast <uint32_t> (value) * 0x01010101u));
 		// Переносим младшие четыре байта в XMM: movd xmm, letter
-		emit8(this->_code, 0x66);
-		emit8(this->_code, rex(false, index, 0, letter));
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x6E);
-		emit8(this->_code, modrm(0x03, index, letter));
+		__awh_emit8__(this->_code, 0x66);
+		__awh_emit8__(this->_code, __awh_rex__(false, index, 0, letter));
+		__awh_emit8__(this->_code, 0x0F);
+		__awh_emit8__(this->_code, 0x6E);
+		__awh_emit8__(this->_code, __awh_modrm__(0x03, index, letter));
 		// Размножаем постоянную по всему вектору: pshufd xmm, xmm, 0
-		emit8(this->_code, 0x66);
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x70);
-		emit8(this->_code, modrm(0x03, index, index));
-		emit8(this->_code, 0x00);
+		__awh_emit8__(this->_code, 0x66);
+		__awh_emit8__(this->_code, 0x0F);
+		__awh_emit8__(this->_code, 0x70);
+		__awh_emit8__(this->_code, __awh_modrm__(0x03, index, index));
+		__awh_emit8__(this->_code, 0x00);
 	}
 	// Расставляем меткю векторного прохода
 	this->aligned(scan);
 	// Читаем полный невыровненный вектор: movdqu xmm2, [text + keeper]
-	emit8(this->_code, 0xF3);
-	emit8(this->_code, rex(false, 2, keeper, text));
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0x6F);
-	emit8(this->_code, modrm(0x00, 2, STACK_POINTER));
-	emit8(this->_code, sib(0x00, keeper, text));
+	__awh_emit8__(this->_code, 0xF3);
+	__awh_emit8__(this->_code, __awh_rex__(false, 2, keeper, text));
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0x6F);
+	__awh_emit8__(this->_code, __awh_modrm__(0x00, 2, STACK_POINTER));
+	__awh_emit8__(this->_code, __awh_sib__(0x00, keeper, text));
 	// Переводим значения байтов в порядок знакового сравнения: paddb xmm2, xmm0
-	emit8(this->_code, 0x66);
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0xFC);
-	emit8(this->_code, modrm(0x03, 2, 0));
+	__awh_emit8__(this->_code, 0x66);
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0xFC);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 2, 0));
 	// Копируем верхнюю границу перед сравнением: movdqa xmm3, xmm1
-	emit8(this->_code, 0x66);
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0x6F);
-	emit8(this->_code, modrm(0x03, 3, 1));
+	__awh_emit8__(this->_code, 0x66);
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0x6F);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 3, 1));
 	// Сравниваем байты с шириной диапазона: pcmpgtb xmm3, xmm2
-	emit8(this->_code, 0x66);
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0x64);
-	emit8(this->_code, modrm(0x03, 3, 2));
+	__awh_emit8__(this->_code, 0x66);
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0x64);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, 3, 2));
 	// Получаем маску допустимых байтов: pmovmskb scratch, xmm3
-	emit8(this->_code, 0x66);
-	emit8(this->_code, rex(false, scratch, 0, 3));
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0xD7);
-	emit8(this->_code, modrm(0x03, scratch, 3));
+	__awh_emit8__(this->_code, 0x66);
+	__awh_emit8__(this->_code, __awh_rex__(false, scratch, 0, 3));
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0xD7);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, scratch, 3));
 	// Проверяем наличие кандидата в векторе
 	this->compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
 	// Переходим к первому установленному разряду маски
@@ -1312,14 +1312,14 @@ void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, cons
 	// Расставляем меткю вектора с найденным кандидатом
 	this->place(found);
 	// Находим первый установленный разряд ненулевой маски: bsf scratch, scratch
-	emit8(this->_code, rex(true, scratch, 0, scratch));
-	emit8(this->_code, 0x0F);
-	emit8(this->_code, 0xBC);
-	emit8(this->_code, modrm(0x03, scratch, scratch));
+	__awh_emit8__(this->_code, __awh_rex__(true, scratch, 0, scratch));
+	__awh_emit8__(this->_code, 0x0F);
+	__awh_emit8__(this->_code, 0xBC);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, scratch, scratch));
 	// Прибавляем смещение первого кандидата: add keeper, scratch
-	emit8(this->_code, rex(true, scratch, 0, keeper));
-	emit8(this->_code, 0x01);
-	emit8(this->_code, modrm(0x03, scratch, keeper));
+	__awh_emit8__(this->_code, __awh_rex__(true, scratch, 0, keeper));
+	__awh_emit8__(this->_code, 0x01);
+	__awh_emit8__(this->_code, __awh_modrm__(0x03, scratch, keeper));
 	// Переходим к попытке сопоставления в найденной позиции
 	this->jump(ready);
 }

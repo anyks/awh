@@ -86,9 +86,9 @@ namespace awh {
 				 *        объявленное изменяемым для запрета вычисления на этапе компиляции
 				 *
 				 */
-				static volatile float minimum = numeric_limits <float>::min();
+				static volatile float minimum = (numeric_limits <float>::min)();
 				/**
-				 * Выполняем однократное чтение значения
+				 * Однократное чтение значения
 				 */
 				const float value = minimum;
 				/**
@@ -172,13 +172,13 @@ namespace awh {
 				if(mantissa > binary_t <T>::maxMantissaFastPath())
 					// Сообщаем, что быстрый путь неприменим
 					return false;
-				// Выполняем преобразование мантиссы к типу результата
+				// Преобразование мантиссы к типу результата
 				value = static_cast <T> (mantissa);
 				// Если показатель степени является отрицательным
 				if(exponent < 0)
-					// Выполняем деление на точную степень десяти
+					// Деление на точную степень десяти
 					value = (value / binary_t <T>::exactPowerOfTen(-exponent));
-				// Выполняем умножение на точную степень десяти
+				// Умножение на точную степень десяти
 				else value = (value * binary_t <T>::exactPowerOfTen(exponent));
 				// Если разбираемое число является отрицательным
 				if(negative)
@@ -208,7 +208,7 @@ namespace awh {
 					return true;
 				}
 			#endif
-			// Выполняем умножение мантиссы на точную степень десяти
+			// Умножение мантиссы на точную степень десяти
 			value = (static_cast <T> (mantissa) * binary_t <T>::exactPowerOfTen(exponent));
 			// Если разбираемое число является отрицательным
 			if(negative)
@@ -242,13 +242,13 @@ namespace awh {
 			const bool negative = (* first == UC('-'));
 			// Если строка начинается со знака значения
 			if(negative || (isFormat(options.format, format_t::ALLOW_LEADING_PLUS) && (* first == UC('+'))))
-				// Выполняем пропуск символа знака
+				// Пропуск символа знака
 				++first;
 			// Если оставшейся длины строки достаточно для специального значения
 			if((last - first) >= 3){
 				// Если строка начинается с обозначения нечислового значения
 				if(compareIgnoreCase(first, constNan <UC> (), 3)){
-					// Выполняем пропуск обозначения нечислового значения
+					// Пропуск обозначения нечислового значения
 					first += 3;
 					// Устанавливаем нечисловой результат с корректным знаком
 					value = (negative ? -numeric_limits <T>::quiet_NaN() : numeric_limits <T>::quiet_NaN());
@@ -257,7 +257,7 @@ namespace awh {
 					// Если за обозначением следует уточняющая последовательность
 					if((first != last) && (* first == UC('('))){
 						/**
-						 * Выполняем поиск закрывающей скобки уточняющей последовательности
+						 * Поиск закрывающей скобки уточняющей последовательности
 						 */
 						for(const UC * position = (first + 1); position != last; ++position){
 							// Если обнаружена закрывающая скобка
@@ -311,28 +311,28 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromParsedNumber(const parsedNumber_t <UC> & number, T & value) noexcept {
-			// Выполняем проверку поддержки типа результата
+			// Проверка поддержки типа результата
 			static_assert(is_supported_float <T>::value, "AWH lexical: only some floating-point types are supported");
-			// Выполняем проверку поддержки типа символа исходной строки
+			// Проверка поддержки типа символа исходной строки
 			static_assert(is_supported_char <UC>::value, "AWH lexical: only char, wchar_t, char16_t and char32_t are supported");
 			// Если мантисса не усечена и быстрый путь применим
 			if(!number.tooManyDigits && clingerFastPath(number.mantissa, number.exponent, number.negative, value))
 				// Выводим успешный результат преобразования
 				return result_t <UC> (number.lastmatch);
-			// Выполняем вычисление двоичного представления числа
+			// Вычисление двоичного представления числа
 			mantissa_t result = computeFloat <binary_t <T>> (number.exponent, number.mantissa);
 			// Если мантисса усечена, а вычисление дало однозначный результат
 			if(number.tooManyDigits && (result.power2 >= 0)){
 				// Если соседнее значение мантиссы даёт иной результат
 				if(result != computeFloat <binary_t <T>> (number.exponent, number.mantissa + 1))
-					// Выполняем повторное вычисление с пометкой необходимости уточнения
+					// Повторное вычисление с пометкой необходимости уточнения
 					result = computeError <binary_t <T>> (number.exponent, number.mantissa);
 			}
 			// Если однозначное округление невозможно
 			if(result.power2 < 0)
-				// Выполняем точное округление длинной арифметикой
+				// Точное округление длинной арифметикой
 				result = digitComp <T, UC> (number, result);
-			// Выполняем сборку числа с плавающей точкой
+			// Сборка числа с плавающей точкой
 			toFloat(number.negative, result, value);
 			// Если получено антипереполнение либо переполнение результата
 			if(((number.mantissa != 0) && (result.mantissa == 0) && (result.power2 == 0)) ||
@@ -361,14 +361,14 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromCharsFloat(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
-			// Выполняем проверку поддержки типа результата
+			// Проверка поддержки типа результата
 			static_assert(is_supported_float <T>::value, "AWH lexical: only some floating-point types are supported");
-			// Выполняем проверку поддержки типа символа исходной строки
+			// Проверка поддержки типа символа исходной строки
 			static_assert(is_supported_char <UC>::value, "AWH lexical: only char, wchar_t, char16_t and char32_t are supported");
 			// Если разрешён пропуск ведущих пробельных символов
 			if(isFormat(options.format, format_t::SKIP_WHITE_SPACE)){
 				/**
-				 * Выполняем пропуск ведущих пробельных символов
+				 * Пропуск ведущих пробельных символов
 				 */
 				while((first != last) && isSpace(* first))
 					// Переходим к следующему символу
@@ -378,7 +378,7 @@ namespace awh {
 			if(first == last)
 				// Сообщаем о невозможности разобрать число
 				return result_t <UC> (first, errc::invalid_argument, error_t::EMPTY_INPUT);
-			// Выполняем разбор числовой строки в строгом или общем режиме
+			// Разбор числовой строки в строгом или общем режиме
 			const parsedNumber_t <UC> number = (isFormat(options.format, format_t::BASIC_JSON)
 				? parseNumberString <true, UC> (first, last, options)
 				: parseNumberString <false, UC> (first, last, options));
@@ -388,10 +388,10 @@ namespace awh {
 				if(isFormat(options.format, format_t::NO_INFNAN))
 					// Сообщаем о невозможности разобрать число
 					return result_t <UC> (first, errc::invalid_argument, number.error);
-				// Выполняем разбор специального значения
+				// Разбор специального значения
 				return parseInfNan(first, last, value, options);
 			}
-			// Выполняем преобразование разобранной числовой строки в число
+			// Преобразование разобранной числовой строки в число
 			return fromParsedNumber(number, value);
 		}
 		/**
@@ -413,14 +413,14 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromCharsInt(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
-			// Выполняем проверку поддержки типа результата
+			// Проверка поддержки типа результата
 			static_assert(is_supported_integer <T>::value, "AWH lexical: only integer types are supported");
-			// Выполняем проверку поддержки типа символа исходной строки
+			// Проверка поддержки типа символа исходной строки
 			static_assert(is_supported_char <UC>::value, "AWH lexical: only char, wchar_t, char16_t and char32_t are supported");
 			// Если разрешён пропуск ведущих пробельных символов
 			if(isFormat(options.format, format_t::SKIP_WHITE_SPACE)){
 				/**
-				 * Выполняем пропуск ведущих пробельных символов
+				 * Пропуск ведущих пробельных символов
 				 */
 				while((first != last) && isSpace(* first))
 					// Переходим к следующему символу
@@ -434,7 +434,7 @@ namespace awh {
 			if((options.base < 2) || (options.base > 36))
 				// Сообщаем о недопустимом основании системы счисления
 				return result_t <UC> (first, errc::invalid_argument, error_t::INVALID_BASE);
-			// Выполняем разбор числовой строки целого числа
+			// Разбор числовой строки целого числа
 			return parseIntString(first, last, value, options);
 		}
 
@@ -450,7 +450,7 @@ namespace awh {
 		 *
 		 */
 		struct dispatch_t {
-			// Выполняем проверку поддержки типа результата
+			// Проверка поддержки типа результата
 			static_assert(INDEX > 0, "AWH lexical: unsupported result type");
 		};
 
@@ -478,7 +478,7 @@ namespace awh {
 			 *
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
-				// Выполняем разбор числа с плавающей точкой
+				// Разбор числа с плавающей точкой
 				return fromCharsFloat(first, last, value, options);
 			}
 		};
@@ -507,7 +507,7 @@ namespace awh {
 			 *
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
-				// Выполняем разбор целого числа
+				// Разбор целого числа
 				return fromCharsInt(first, last, value, options);
 			}
 		};
@@ -533,11 +533,9 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromCharsAdvanced(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
-			// Выполняем разбор числа диспетчером по категории типа результата
-			return dispatch_t <
-				static_cast <size_t> (is_supported_float <T>::value) +
-				(2 * static_cast <size_t> (is_supported_integer <T>::value))
-			>::call(first, last, value, options);
+			// Разбор числа диспетчером по категории типа результата
+			return dispatch_t <static_cast <size_t> (is_supported_float <T>::value) +
+				(2 * static_cast <size_t> (is_supported_integer <T>::value))>::call(first, last, value, options);
 		}
 		/**
 		 * @brief Шаблон типа результата и типа символа исходной строки
@@ -563,7 +561,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const format_t format = format_t::GENERAL) noexcept {
-			// Выполняем разбор числа с плавающей точкой
+			// Разбор числа с плавающей точкой
 			return fromCharsFloat(first, last, value, options_t <UC> (format));
 		}
 		/**
@@ -587,7 +585,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const int32_t base = 10) noexcept {
-			// Выполняем разбор целого числа
+			// Разбор целого числа
 			return fromCharsInt(first, last, value, options_t <UC> (format_t::GENERAL, UC('.'), base));
 		}
 		/**
@@ -622,7 +620,7 @@ namespace awh {
 			 * Если записываемое число является логическим значением
 			 */
 			if(is_same <T, bool>::value)
-				// Выполняем запись логического значения цифрой
+				// Запись логического значения цифрой
 				return writeUnsigned <UC> (first, last, static_cast <uint64_t> (value ? 1 : 0), base);
 			// Модуль записываемого числа
 			uint64_t magnitude = 0;
@@ -658,7 +656,7 @@ namespace awh {
 				// Определяем модуль записываемого числа
 				magnitude = static_cast <uint64_t> (static_cast <uint_t> (value));
 			}
-			// Выполняем запись модуля числа
+			// Запись модуля числа
 			return writeUnsigned <UC> (position, last, magnitude, base);
 		}
 		/**
@@ -686,7 +684,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ output_t <UC> toChars(UC * first, UC * const last, const T value, const format_t format = format_t::GENERAL) noexcept {
-			// Выполняем запись числа с плавающей точкой
+			// Запись числа с плавающей точкой
 			return toCharsFloat <T, UC> (first, last, value, options_t <UC> (format));
 		}
 		/**
@@ -708,7 +706,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ output_t <UC> toCharsAdvanced(UC * first, UC * const last, const T value, const options_t <UC> options) noexcept {
-			// Выполняем запись числа с плавающей точкой
+			// Запись числа с плавающей точкой
 			return toCharsFloat <T, UC> (first, last, value, options);
 		}
 		/**
@@ -737,7 +735,7 @@ namespace awh {
 			if(clingerFastPath(mantissa, exponent, false, value))
 				// Выводим результат быстрого пути
 				return value;
-			// Выполняем сборку результата из вычисленного двоичного представления
+			// Сборка результата из вычисленного двоичного представления
 			toFloat(false, computeFloat <binary_t <T>> (exponent, mantissa), value);
 			// Выводим результат умножения
 			return value;
@@ -774,7 +772,7 @@ namespace awh {
 			if(clingerFastPath(absolute, exponent, negative, value))
 				// Выводим результат быстрого пути
 				return value;
-			// Выполняем сборку результата из вычисленного двоичного представления
+			// Сборка результата из вычисленного двоичного представления
 			toFloat(negative, computeFloat <binary_t <T>> (exponent, absolute), value);
 			// Выводим результат умножения
 			return value;
@@ -797,12 +795,12 @@ namespace awh {
 		 */
 		__AWH_INLINE__ T integerTimesPow10(const INT mantissa, const int32_t exponent) noexcept {
 			/**
-			 * Выполняем приведение значения мантиссы к разрядности вычисления
+			 * Приведение значения мантиссы к разрядности вычисления
 			 */
 			if constexpr (is_signed <INT>::value)
-				// Выполняем умножение знакового значения мантиссы
+				// Умножение знакового значения мантиссы
 				return integerTimesPow10 <T> (static_cast <int64_t> (mantissa), exponent);
-			// Выполняем умножение беззнакового значения мантиссы
+			// Умножение беззнакового значения мантиссы
 			else return integerTimesPow10 <T> (static_cast <uint64_t> (mantissa), exponent);
 		}
 	};

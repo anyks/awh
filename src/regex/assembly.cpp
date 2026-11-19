@@ -100,7 +100,7 @@ namespace {
 	 * @return размер страницы памяти в байтах
 	 *
 	 */
-	static size_t granularity() noexcept {
+	static size_t __awh_granularity__() noexcept {
 		/**
 		 * Если сборка выполняется для операционной системы Windows
 		 */
@@ -167,7 +167,7 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 		// Размещение участка исполняемой памяти: отказ
 		return false;
 	// Получаем размер страницы памяти
-	const size_t page = ::granularity();
+	const size_t page = ::__awh_granularity__();
 	/**
 	 * Получаем размер участка, кратный размеру страницы памяти
 	 *

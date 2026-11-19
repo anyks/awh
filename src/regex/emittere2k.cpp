@@ -315,9 +315,9 @@ namespace {
 		// Признак наличия слога расширения
 		bool extended;
 		// Первый слог управления и признак наличия
-		uint32_t cs0;
+		uint32_t control0;
 		// Второй слог управления и признак наличия
-		uint32_t cs1;
+		uint32_t control1;
 		// Слог коротких операций и признак его наличия
 		uint32_t stub;
 		// Слог расширения канала нулевого и признак его наличия
@@ -337,7 +337,7 @@ namespace {
 		explicit Bundle() noexcept :
 		 first(false), second(false),
 		 stubbed(false), extended(false),
-		 cs0(0), cs1(0), stub(0),
+		 control0(0), control1(0), stub(0),
 		 ales(0), literals(0),
 		 has{false}, lts{0}, als{0} {}
 	} bundle_t;
@@ -349,7 +349,7 @@ namespace {
 	 * @param bundle размещаемая широкая команда
 	 *
 	 */
-	static __AWH_INLINE__ void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
+	static __AWH_INLINE__ void __awh_emit__(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
 		// Количество слов головной части широкой команды
 		size_t middle = (bundle.stubbed ? 1 : 0);
 		/**
@@ -441,13 +441,13 @@ namespace {
 		 */
 		if(bundle.first)
 			// Размещаем слог управления первого
-			out[pos++] = bundle.cs0;
+			out[pos++] = bundle.control0;
 		/**
 		 * Если широкая команда несёт слог управления второй
 		 */
 		if(bundle.second)
 			// Размещаем слог управления второго
-			out[pos++] = bundle.cs1;
+			out[pos++] = bundle.control1;
 		/**
 		 * Если широкая команда несёт слог расширения канала нулевого
 		 *
@@ -490,7 +490,7 @@ namespace {
 	 * @return       собранный слог операции
 	 *
 	 */
-	static constexpr uint32_t alop(const uint8_t opcode, const uint8_t src1, const uint8_t src2, const uint8_t dst) noexcept {
+	static constexpr uint32_t __awh_alop__(const uint8_t opcode, const uint8_t src1, const uint8_t src2, const uint8_t dst) noexcept {
 		// Выводим собранный слог арифметико-логической операции
 		return (
 			(static_cast <uint32_t> (opcode) << 24) | (static_cast <uint32_t> (src1) << 16) |
@@ -504,7 +504,7 @@ namespace {
 	 * @return    поле довода, регистр обозначающее
 	 *
 	 */
-	static constexpr uint8_t reg(const regex::emitter_t::reg_t reg) noexcept {
+	static constexpr uint8_t __awh_reg__(const regex::emitter_t::reg_t reg) noexcept {
 		// Выводим поле довода, регистр окна обозначающее
 		return static_cast <uint8_t> (0x80 | static_cast <uint8_t> (reg));
 	}
@@ -515,7 +515,7 @@ namespace {
 	 * @return       поле довода, регистр обозначающее
 	 *
 	 */
-	static constexpr uint8_t place(const uint8_t number) noexcept {
+	static constexpr uint8_t __awh_place__(const uint8_t number) noexcept {
 		// Выводим поле довода, регистр окна обозначающее
 		return static_cast <uint8_t> (0x80 | number);
 	}
@@ -528,7 +528,7 @@ namespace {
 	 * @return     собранный слог коротких операций
 	 *
 	 */
-	static constexpr uint32_t transfer(const uint8_t ctpr, const uint8_t kind, const uint8_t pred) noexcept {
+	static constexpr uint32_t __awh_transfer__(const uint8_t ctpr, const uint8_t kind, const uint8_t pred) noexcept {
 		// Выводим собранный слог коротких операций
 		return (
 			(0xC0000000u | (static_cast <uint32_t> (ctpr) << 10) |
@@ -542,7 +542,7 @@ namespace {
 	 * @return       собранный слог управления
 	 *
 	 */
-	static constexpr uint32_t prepare(const int64_t offset) noexcept {
+	static constexpr uint32_t __awh_prepare__(const int64_t offset) noexcept {
 		// Выводим собранный слог управления подготовки перехода
 		return (0x40000000u | (static_cast <uint32_t> (static_cast <int32_t> (offset / 8)) & 0x0FFFFFFFu));
 	}
@@ -553,7 +553,7 @@ namespace {
 	 * @return    маска, регистру отвечающая
 	 *
 	 */
-	static constexpr uint32_t mask(const regex::Emitter::reg_t reg) noexcept {
+	static constexpr uint32_t __awh_mask__(const regex::Emitter::reg_t reg) noexcept {
 		// Выводим маску, регистру отвечающую
 		return (1u << (static_cast <uint8_t> (reg) & 0x1F));
 	}
@@ -566,7 +566,7 @@ namespace {
 awh::regex::Emitter::Packed::Packed() noexcept :
  first(false), second(false), opened(false),
  stubbed(false), extended(false), literals(0),
- predicates(0), ales(0), cs0(0), cs1(0),
+ predicates(0), ales(0), control0(0), control1(0),
  stub(0), writes(0), has{}, als{}, lts{} {}
 
 /**
@@ -604,7 +604,7 @@ void awh::regex::Emitter::flush() noexcept {
 	// Переносим количество слогов литералов
 	bundle.literals = this->_packed.literals;
 	// Размещаем широкой команды, к выдаче отложенной
-	::emit(this->_code, bundle);
+	::__awh_emit__(this->_code, bundle);
 	// Сбрасываем широкой команды, к выдаче отложенной
 	this->_packed = packed_t();
 }
@@ -716,7 +716,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	// Устанавливаем количество слогов литералов
 	window.literals = 1;
 	// Размещаем установку окна регистров
-	::emit(this->_code, window);
+	::__awh_emit__(this->_code, window);
 	// Устанавливаем количество мест кадра вызова, входом отведённых
 	this->_seats = (static_cast <size_t> (frame) / sizeof(size_t));
 	/**
@@ -738,7 +738,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 */
 		allot.has[CHANNEL] = true;
 		// Собираем слог отведения кадра вызова
-		allot.als[CHANNEL] = ::alop(OP_GETSP, 0xEC, SINGLE, ::reg(reg_t::STACK));
+		allot.als[CHANNEL] = ::__awh_alop__(OP_GETSP, 0xEC, SINGLE, ::__awh_reg__(reg_t::STACK));
 		// Устанавливаем слог расширения операции
 		allot.extended = true;
 		// Устанавливаем код второй операции
@@ -748,7 +748,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		// Устанавливаем количество слогов литералов
 		allot.literals = 1;
 		// Размещаем отведени кадра вызова
-		::emit(this->_code, allot);
+		::__awh_emit__(this->_code, allot);
 	}
 }
 /**
@@ -845,17 +845,17 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	// Устанавливаем слог управления подготовки перехода
 	ready.first = true;
 	// Собираем слог подготовки перехода, смещения ещё не несущего
-	ready.cs0 = ::prepare(0);
+	ready.control0 = ::__awh_prepare__(0);
 	// Размещаем подготовкю перехода
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду передачи управления
 	bundle_t pass;
 	// Устанавливаем слог коротких операций
 	pass.stubbed = true;
 	// Собираем слог передачи управления без условия
-	pass.stub = ::transfer(1, 1, 0);
+	pass.stub = ::__awh_transfer__(1, 1, 0);
 	// Размещаем передачю управления
-	::emit(this->_code, pass);
+	::__awh_emit__(this->_code, pass);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }
@@ -931,17 +931,17 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	// Устанавливаем слог управления подготовки перехода
 	ready.first = true;
 	// Собираем слог подготовки перехода, смещения ещё не несущего
-	ready.cs0 = ::prepare(0);
+	ready.control0 = ::__awh_prepare__(0);
 	// Размещаем подготовкю перехода
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду передачи управления по условию
 	bundle_t pass;
 	// Устанавливаем слог коротких операций
 	pass.stubbed = true;
 	// Собираем слог передачи управления по предикату
-	pass.stub = ::transfer(1, (denied ? 3 : 2), pred);
+	pass.stub = ::__awh_transfer__(1, (denied ? 3 : 2), pred);
 	// Размещаем передачю управления
-	::emit(this->_code, pass);
+	::__awh_emit__(this->_code, pass);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }
@@ -981,9 +981,9 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Отводим канал под сравнение значений регистров
-		const uint8_t slot = this->reserve(COMPARISON, (::mask(first) | ::mask(second)), 0);
+		const uint8_t slot = this->reserve(COMPARISON, (::__awh_mask__(first) | ::__awh_mask__(second)), 0);
 		// Собираем слог сравнения значений регистров
-		this->_packed.als[slot] = ::alop(OP_CMPD, ::reg(first), ::reg(second), static_cast <uint8_t> ((kinds[i] << 5) | preds[i]));
+		this->_packed.als[slot] = ::__awh_alop__(OP_CMPD, ::__awh_reg__(first), ::__awh_reg__(second), static_cast <uint8_t> ((kinds[i] << 5) | preds[i]));
 	}
 	// Учитываем записю предикатов широкою командою
 	this->_packed.predicates = 0x07;
@@ -1036,9 +1036,9 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Отводим канал под сравнение значения регистра с числом
-		const uint8_t slot = this->reserve(COMPARISON, ::mask(reg), 0);
+		const uint8_t slot = this->reserve(COMPARISON, ::__awh_mask__(reg), 0);
 		// Собираем слог сравнения значения регистра с числом
-		this->_packed.als[slot] = ::alop(OP_CMPD, ::reg(reg), ((value <= MAX_LITTLE) ?
+		this->_packed.als[slot] = ::__awh_alop__(OP_CMPD, ::__awh_reg__(reg), ((value <= MAX_LITTLE) ?
 		 static_cast <uint8_t> (CONSTANT | value) : SINGLE), static_cast <uint8_t> ((kinds[i] << 5) | preds[i]));
 		/**
 		 * Если число полем довода не размещается
@@ -1071,9 +1071,9 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 */
 	if(value <= MAX_LITTLE){
 		// Отводим канал под операцию с постоянной
-		const uint8_t slot = this->reserve(ARITHMETIC, ::mask(source), ::mask(target));
+		const uint8_t slot = this->reserve(ARITHMETIC, ::__awh_mask__(source), ::__awh_mask__(target));
 		// Собираем слог операции с постоянной
-		this->_packed.als[slot] = ::alop(OP_ADDD, ::reg(source), static_cast <uint8_t> (CONSTANT | value), ::reg(target));
+		this->_packed.als[slot] = ::__awh_alop__(OP_ADDD, ::__awh_reg__(source), static_cast <uint8_t> (CONSTANT | value), ::__awh_reg__(target));
 		// Выходим из метода размещения операции
 		return;
 	}
@@ -1095,7 +1095,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 */
 	if(value <= MAX_LITERAL){
 		// Собираем слог сложения со слогом литерала
-		add.als[CHANNEL] = ::alop(OP_ADDD, ::reg(source), SINGLE, ::reg(target));
+		add.als[CHANNEL] = ::__awh_alop__(OP_ADDD, ::__awh_reg__(source), SINGLE, ::__awh_reg__(target));
 		// Устанавливаем числ слогом литерала
 		add.lts[0] = value;
 		// Устанавливаем количество слогов литералов
@@ -1105,7 +1105,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 */
 	} else {
 		// Собираем слог сложения со слогом литерала двойным
-		add.als[CHANNEL] = ::alop(OP_ADDD, ::reg(source), DOUBLE, ::reg(target));
+		add.als[CHANNEL] = ::__awh_alop__(OP_ADDD, ::__awh_reg__(source), DOUBLE, ::__awh_reg__(target));
 		// Устанавливаем младшей половины числа
 		add.lts[0] = value;
 		// Устанавливаем старшей половины числа
@@ -1114,7 +1114,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 		add.literals = 2;
 	}
 	// Размещаем сложени значения регистра с числом
-	::emit(this->_code, add);
+	::__awh_emit__(this->_code, add);
 }
 /**
  * @brief Метод размещения вычитания числа из значения регистра
@@ -1134,9 +1134,9 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 */
 	if(value <= MAX_LITTLE){
 		// Отводим канал под операцию с постоянной
-		const uint8_t slot = this->reserve(ARITHMETIC, ::mask(source), ::mask(target));
+		const uint8_t slot = this->reserve(ARITHMETIC, ::__awh_mask__(source), ::__awh_mask__(target));
 		// Собираем слог операции с постоянной
-		this->_packed.als[slot] = ::alop(OP_SUBD, ::reg(source), static_cast <uint8_t> (CONSTANT | value), ::reg(target));
+		this->_packed.als[slot] = ::__awh_alop__(OP_SUBD, ::__awh_reg__(source), static_cast <uint8_t> (CONSTANT | value), ::__awh_reg__(target));
 		// Выходим из метода размещения операции
 		return;
 	}
@@ -1158,7 +1158,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 */
 	if(value <= MAX_LITERAL){
 		// Собираем слог вычитания слога литерала
-		sub.als[CHANNEL] = ::alop(OP_SUBD, ::reg(source), SINGLE, ::reg(target));
+		sub.als[CHANNEL] = ::__awh_alop__(OP_SUBD, ::__awh_reg__(source), SINGLE, ::__awh_reg__(target));
 		// Устанавливаем числ слогом литерала
 		sub.lts[0] = value;
 		// Устанавливаем количество слогов литералов
@@ -1168,7 +1168,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 */
 	} else {
 		// Собираем слог вычитания слога литерала двойного
-		sub.als[CHANNEL] = ::alop(OP_SUBD, ::reg(source), DOUBLE, ::reg(target));
+		sub.als[CHANNEL] = ::__awh_alop__(OP_SUBD, ::__awh_reg__(source), DOUBLE, ::__awh_reg__(target));
 		// Устанавливаем младшей половины числа
 		sub.lts[0] = value;
 		// Устанавливаем старшей половины числа
@@ -1177,7 +1177,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 		sub.literals = 2;
 	}
 	// Размещаем вычитани числа из значения регистра
-	::emit(this->_code, sub);
+	::__awh_emit__(this->_code, sub);
 }
 /**
  * @brief Метод размещения переноса значения регистра
@@ -1194,7 +1194,7 @@ void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept 
 		// Выходим из метода размещения переноса
 		return;
 	// Отводим канал под перенос значения регистра
-	const uint8_t slot = this->reserve(ARITHMETIC, ::mask(source), ::mask(target));
+	const uint8_t slot = this->reserve(ARITHMETIC, ::__awh_mask__(source), ::__awh_mask__(target));
 	/**
 	 * Собираем слог переноса значения регистра
 	 *
@@ -1202,7 +1202,7 @@ void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept 
 	 *          с нулём - тем же порядком, каким его ведёт собиратель LCC.
 	 *
 	 */
-	this->_packed.als[slot] = ::alop(OP_ADDD, CONSTANT, ::reg(source), ::reg(target));
+	this->_packed.als[slot] = ::__awh_alop__(OP_ADDD, CONSTANT, ::__awh_reg__(source), ::__awh_reg__(target));
 }
 /**
  * @brief Метод размещения переноса значения регистра
@@ -1230,13 +1230,13 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 	 */
 	if(value <= static_cast <uint64_t> (MAX_LITTLE))
 		// Собираем слог записи постоянной
-		write.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, static_cast <uint8_t> (CONSTANT | value), ::reg(target));
+		write.als[CHANNEL] = ::__awh_alop__(OP_ADDD, CONSTANT, static_cast <uint8_t> (CONSTANT | value), ::__awh_reg__(target));
 	/**
 	 * Если число слогом литерала размещается
 	 */
 	else if(value <= static_cast <uint64_t> (MAX_LITERAL)) {
 		// Собираем слог записи слога литерала
-		write.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, SINGLE, ::reg(target));
+		write.als[CHANNEL] = ::__awh_alop__(OP_ADDD, CONSTANT, SINGLE, ::__awh_reg__(target));
 		// Устанавливаем числ слогом литерала
 		write.lts[0] = static_cast <uint32_t> (value);
 		// Устанавливаем количество слогов литералов
@@ -1252,10 +1252,10 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 		// Устанавливаем старшей половины числа
 		write.lts[1] = static_cast <uint32_t> (value >> 32);
 		// Собираем слог записи слога литерала двойного
-		write.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, DOUBLE, ::reg(target));
+		write.als[CHANNEL] = ::__awh_alop__(OP_ADDD, CONSTANT, DOUBLE, ::__awh_reg__(target));
 	}
 	// Размещаем записю числа в регистр
-	::emit(this->_code, write);
+	::__awh_emit__(this->_code, write);
 }
 /**
  * @brief Метод размещения чтения байта текста
@@ -1267,7 +1267,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
  */
 void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t offset) noexcept {
 	// Отводим канал под чтение байта текста
-	const uint8_t slot = this->reserve(LOADING, (::mask(base) | ::mask(offset)), ::mask(target));
+	const uint8_t slot = this->reserve(LOADING, (::__awh_mask__(base) | ::__awh_mask__(offset)), ::__awh_mask__(target));
 	/**
 	 * Собираем слог чтения байта по сумме регистров
 	 *
@@ -1275,7 +1275,7 @@ void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t
 	 *          разрядов: проверено исполнением на значении 0xF7.
 	 *
 	 */
-	this->_packed.als[slot] = ::alop(OP_LDB, ::reg(base), ::reg(offset), ::reg(target));
+	this->_packed.als[slot] = ::__awh_alop__(OP_LDB, ::__awh_reg__(base), ::__awh_reg__(offset), ::__awh_reg__(target));
 }
 /**
  * @brief Метод размещения чтения значения обстановки исполнения
@@ -1360,8 +1360,8 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	// Устанавливаем слог канала нулевого
 	fetch.has[CHANNEL] = true;
 	// Собираем слог чтения значения из памяти
-	fetch.als[CHANNEL] = ::alop(OP_LDD, ::reg(base), ((offset <= MAX_LITTLE) ?
-	 static_cast <uint8_t> (CONSTANT | offset) : SINGLE), ::reg(target));
+	fetch.als[CHANNEL] = ::__awh_alop__(OP_LDD, ::__awh_reg__(base), ((offset <= MAX_LITTLE) ?
+	 static_cast <uint8_t> (CONSTANT | offset) : SINGLE), ::__awh_reg__(target));
 	/**
 	 * Если смещение полем довода не размещается
 	 */
@@ -1372,7 +1372,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 		fetch.literals = 1;
 	}
 	// Размещаем чтени значения из памяти
-	::emit(this->_code, fetch);
+	::__awh_emit__(this->_code, fetch);
 }
 /**
  * @brief Метод размещения записи значения регистра в память
@@ -1430,7 +1430,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 */
 	if(offset <= MAX_FIRST)
 		// Собираем слог записи значения по смещению постоянному
-		store.als[KEEPING] = ::alop(OP_STD, static_cast <uint8_t> (CONSTANT | offset), ::reg(base), ::reg(source));
+		store.als[KEEPING] = ::__awh_alop__(OP_STD, static_cast <uint8_t> (CONSTANT | offset), ::__awh_reg__(base), ::__awh_reg__(source));
 	/**
 	 * Если смещение полем первого довода не размещается
 	 */
@@ -1449,18 +1449,18 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 			return;
 		}
 		// Собираем слог вычисления адреса места записи
-		address.als[CHANNEL] = ::alop(OP_ADDD, ::reg(base), SINGLE, ::place(ADDRESSER));
+		address.als[CHANNEL] = ::__awh_alop__(OP_ADDD, ::__awh_reg__(base), SINGLE, ::__awh_place__(ADDRESSER));
 		// Устанавливаем смещение слогом литерала
 		address.lts[0] = offset;
 		// Устанавливаем количество слогов литералов
 		address.literals = 1;
 		// Размещаем вычислени адреса места записи
-		::emit(this->_code, address);
+		::__awh_emit__(this->_code, address);
 		// Собираем слог записи значения по вычисленному адресу
-		store.als[KEEPING] = ::alop(OP_STD, CONSTANT, ::place(ADDRESSER), ::reg(source));
+		store.als[KEEPING] = ::__awh_alop__(OP_STD, CONSTANT, ::__awh_place__(ADDRESSER), ::__awh_reg__(source));
 	}
 	// Размещаем записю значения регистра в память
-	::emit(this->_code, store);
+	::__awh_emit__(this->_code, store);
 	// Добавляем размещённой записи в ряд
 	this->_stored.emplace_back(source, base, index);
 	// Устанавливаем длину кода на миг завершения ряда
@@ -1496,17 +1496,17 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	 *          командой в запасной регистр.
 	 *
 	 */
-	shift.als[CHANNEL] = ::alop(OP_SHLD, ::reg(offset), static_cast <uint8_t> (CONSTANT | 3), ::place(INDEXER));
+	shift.als[CHANNEL] = ::__awh_alop__(OP_SHLD, ::__awh_reg__(offset), static_cast <uint8_t> (CONSTANT | 3), ::__awh_place__(INDEXER));
 	// Размещаем вычислени смещения в байтах
-	::emit(this->_code, shift);
+	::__awh_emit__(this->_code, shift);
 	// Создаём широкую команду чтения значения из памяти
 	bundle_t fetch;
 	// Устанавливаем слог канала нулевого
 	fetch.has[CHANNEL] = true;
 	// Собираем слог чтения значения по сумме регистров
-	fetch.als[CHANNEL] = ::alop(OP_LDD, ::reg(base), ::place(INDEXER), ::reg(target));
+	fetch.als[CHANNEL] = ::__awh_alop__(OP_LDD, ::__awh_reg__(base), ::__awh_place__(INDEXER), ::__awh_reg__(target));
 	// Размещаем чтени значения из памяти
-	::emit(this->_code, fetch);
+	::__awh_emit__(this->_code, fetch);
 }
 /**
  * @brief Метод размещения записи значения регистра в память
@@ -1531,17 +1531,17 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_
 	// Устанавливаем слог канала нулевого
 	shift.has[CHANNEL] = true;
 	// Собираем слог умножения номера на размер значения
-	shift.als[CHANNEL] = ::alop(OP_SHLD, ::reg(offset), static_cast <uint8_t> (CONSTANT | 3), ::place(INDEXER));
+	shift.als[CHANNEL] = ::__awh_alop__(OP_SHLD, ::__awh_reg__(offset), static_cast <uint8_t> (CONSTANT | 3), ::__awh_place__(INDEXER));
 	// Размещаем вычислени смещения в байтах
-	::emit(this->_code, shift);
+	::__awh_emit__(this->_code, shift);
 	// Создаём широкую команду записи значения регистра в память
 	bundle_t store;
 	// Устанавливаем слог канала второго
 	store.has[KEEPING] = true;
 	// Собираем слог записи значения по сумме регистров
-	store.als[KEEPING] = ::alop(OP_STD, ::place(INDEXER), ::reg(base), ::reg(source));
+	store.als[KEEPING] = ::__awh_alop__(OP_STD, ::__awh_place__(INDEXER), ::__awh_reg__(base), ::__awh_reg__(source));
 	// Размещаем записю значения регистра в память
-	::emit(this->_code, store);
+	::__awh_emit__(this->_code, store);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }
@@ -1570,30 +1570,30 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 		// Устанавливаем слог канала нулевого
 		pass.has[CHANNEL] = true;
 		// Собираем слог переноса довода в область доводов
-		pass.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, ::place(i), ::place(static_cast <uint8_t> (ARGUMENT + i)));
+		pass.als[CHANNEL] = ::__awh_alop__(OP_ADDD, CONSTANT, ::__awh_place__(i), ::__awh_place__(static_cast <uint8_t> (ARGUMENT + i)));
 		// Размещаем перенос довода
-		::emit(this->_code, pass);
+		::__awh_emit__(this->_code, pass);
 	}
 	// Создаём широкую команду подготовки вызова подпрограммы
 	bundle_t ready;
 	// Устанавливаем слог канала нулевого
 	ready.has[CHANNEL] = true;
 	// Собираем слог переноса адреса подпрограммы в регистр подготовки
-	ready.als[CHANNEL] = ::alop(OP_MOVTD, CONSTANT, ::reg(reg), PREPARED);
+	ready.als[CHANNEL] = ::__awh_alop__(OP_MOVTD, CONSTANT, ::__awh_reg__(reg), PREPARED);
 	// Размещаем подготовкю вызова подпрограммы
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду вызова подпрограммы
 	bundle_t invoke;
 	// Устанавливаем слог коротких операций
 	invoke.stubbed = true;
 	// Собираем слог передачи управления вызовом
-	invoke.stub = ::transfer(1, 1, 0);
+	invoke.stub = ::__awh_transfer__(1, 1, 0);
 	// Устанавливаем слог управления второго
 	invoke.second = true;
 	// Собираем слог вызова со сдвигом окна регистров
-	invoke.cs1 = (0x50000000u | static_cast <uint32_t> (SHIFT));
+	invoke.control1 = (0x50000000u | static_cast <uint32_t> (SHIFT));
 	// Размещаем вызов подпрограммы
-	::emit(this->_code, invoke);
+	::__awh_emit__(this->_code, invoke);
 	// Создаём широкую команду переноса итога вызова
 	bundle_t result;
 	// Устанавливаем слог канала нулевого
@@ -1605,9 +1605,9 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	 *          и служит первый регистр области доводов.
 	 *
 	 */
-	result.als[CHANNEL] = ::alop(OP_ADDD, CONSTANT, ::place(ARGUMENT), ::reg(reg_t::RESULT));
+	result.als[CHANNEL] = ::__awh_alop__(OP_ADDD, CONSTANT, ::__awh_place__(ARGUMENT), ::__awh_reg__(reg_t::RESULT));
 	// Размещаем перенос итога вызова
-	::emit(this->_code, result);
+	::__awh_emit__(this->_code, result);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }
@@ -1656,9 +1656,9 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Устанавливаем слог управления подготовки перехода
 	ready.first = true;
 	// Собираем слог подготовки перехода, смещения ещё не несущего
-	ready.cs0 = ::prepare(0);
+	ready.control0 = ::__awh_prepare__(0);
 	// Размещаем подготовкю перехода
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду чтения регистра подготовки перехода
 	bundle_t read;
 	// Устанавливаем слог канала нулевого
@@ -1673,13 +1673,13 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	 *          нему и выполняется.
 	 *
 	 */
-	read.als[CHANNEL] = ::alop(OP_RRD, CONTROL1, CONSTANT, ::reg(target));
+	read.als[CHANNEL] = ::__awh_alop__(OP_RRD, CONTROL1, CONSTANT, ::__awh_reg__(target));
 	// Устанавливаем слог расширения операции
 	read.extended = true;
 	// Устанавливаем код второй операции
 	read.ales = EXTENSION;
 	// Размещаем чтени регистра подготовки перехода
-	::emit(this->_code, read);
+	::__awh_emit__(this->_code, read);
 }
 /**
  * @brief Метод размещения перехода по адресу в регистре
@@ -1707,17 +1707,17 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 	 *          пометки и без него.
 	 *
 	 */
-	ready.als[CHANNEL] = ::alop(OP_MOVTD, CONSTANT, ::reg(reg), PREPARED);
+	ready.als[CHANNEL] = ::__awh_alop__(OP_MOVTD, CONSTANT, ::__awh_reg__(reg), PREPARED);
 	// Размещаем подготовкю перехода по адресу
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду передачи управления
 	bundle_t pass;
 	// Устанавливаем слог коротких операций
 	pass.stubbed = true;
 	// Собираем слог передачи управления без условия
-	pass.stub = ::transfer(1, 1, 0);
+	pass.stub = ::__awh_transfer__(1, 1, 0);
 	// Размещаем передачю управления
-	::emit(this->_code, pass);
+	::__awh_emit__(this->_code, pass);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }
@@ -1749,17 +1749,17 @@ void awh::regex::Emitter::ret() noexcept {
 	 *          ассемблер отвергает прямо, а исполнение - недопустимой командой.
 	 *
 	 */
-	ready.cs0 = (0xF0000000u);
+	ready.control0 = (0xF0000000u);
 	// Размещаем подготовкю возврата
-	::emit(this->_code, ready);
+	::__awh_emit__(this->_code, ready);
 	// Создаём широкую команду передачи управления возвратом
 	bundle_t pass;
 	// Устанавливаем слог коротких операций
 	pass.stubbed = true;
 	// Собираем слог передачи управления возвратом
-	pass.stub = ::transfer(3, 1, 0);
+	pass.stub = ::__awh_transfer__(3, 1, 0);
 	// Размещаем передачю управления возвратом
-	::emit(this->_code, pass);
+	::__awh_emit__(this->_code, pass);
 	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
 }

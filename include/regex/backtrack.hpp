@@ -749,7 +749,7 @@ namespace awh {
 					// Размер журнала изменений отметок атомарных групп на момент сохранения
 					size_t remarks;
 					// Адрес инструкции, с которой продолжается исполнение
-					address_t pc;
+					address_t programCounter;
 					// Номер ячейки отметки ветви охватывающей группы глагола перехода
 					uint32_t cell;
 					/**
@@ -1236,15 +1236,15 @@ namespace awh {
 				 *          от накопленных точек возврата, что соответствует запрету
 				 *          возврата внутрь проверок окружения и рекурсивных вызовов.
 				 *
-				 * @param pc    адрес инструкции, с которой начинается исполнение
-				 * @param pos   позиция в тексте, с которой начинается исполнение
-				 * @param base  глубина набора точек возврата, ниже которой возврат недопустим
-				 * @param bound позиция, в которой обязано завершиться исполнение
-				 * @param end   позиция завершения исполнения программы
-				 * @return      результат исполнения программы
+				 * @param programCounter адрес инструкции, с которой начинается исполнение
+				 * @param pos            позиция в тексте, с которой начинается исполнение
+				 * @param base           глубина набора точек возврата, ниже которой возврат недопустим
+				 * @param bound          позиция, в которой обязано завершиться исполнение
+				 * @param end            позиция завершения исполнения программы
+				 * @return               результат исполнения программы
 				 *
 				 */
-				bool run(const address_t pc, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept;
+				bool run(const address_t programCounter, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept;
 				/**
 				 * @brief Метод сопоставления текста, захваченного группой
 				 *
@@ -1339,14 +1339,14 @@ namespace awh {
 				 *       подставленный телом цикла, он не выигрывает цепочке ни на одной
 				 *       машине, а у LCC строки с цепочками теряют до 9.3 процента
 				 *
-				 * @param instruction переход, цепочку возглавляющий
-				 * @param pc          адрес перехода в программе регулярного выражения
-				 * @param from        позиция начала прохода в тексте сопоставления
-				 * @param size        размер текста сопоставления
-				 * @return            количество копий цепочки, проходом поглощённых
+				 * @param instruction    переход, цепочку возглавляющий
+				 * @param programCounter адрес перехода в программе регулярного выражения
+				 * @param from           позиция начала прохода в тексте сопоставления
+				 * @param size           размер текста сопоставления
+				 * @return               количество копий цепочки, проходом поглощённых
 				 *
 				 */
-				size_t chain(const instruction_t & instruction, const address_t pc, const size_t from, const size_t size) noexcept;
+				size_t chain(const instruction_t & instruction, const address_t programCounter, const size_t from, const size_t size) noexcept;
 				/**
 				 * @brief Метод построения таблицы принадлежности байтов классу символов
 				 *

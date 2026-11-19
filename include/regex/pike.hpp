@@ -90,7 +90,7 @@ namespace awh {
 				 */
 				typedef struct Thread {
 					// Адрес исполняемой инструкции программы
-					address_t pc;
+					address_t programCounter;
 					/**
 					 * Номер набора позиций захвата групп
 					 *
@@ -227,15 +227,15 @@ namespace awh {
 				 *          Повторное добавление инструкции в пределах одной позиции
 				 *          не выполняется.
 				 *
-				 * @param list       набор исполняемых состояний
-				 * @param marks      набор отметок посещения инструкций программы
-				 * @param generation номер поколения отметок посещения
-				 * @param pc         адрес добавляемой инструкции программы
-				 * @param slots      номер набора позиций захвата групп
-				 * @param pos        позиция в тексте, для которой добавляется состояние
+				 * @param list           набор исполняемых состояний
+				 * @param marks          набор отметок посещения инструкций программы
+				 * @param generation     номер поколения отметок посещения
+				 * @param programCounter адрес добавляемой инструкции программы
+				 * @param slots          номер набора позиций захвата групп
+				 * @param pos            позиция в тексте, для которой добавляется состояние
 				 *
 				 */
-				void append(vector <thread_t> & list, vector <uint32_t> & marks, const uint32_t generation, const address_t pc, const uint32_t slots, const size_t pos) noexcept;
+				void append(vector <thread_t> & list, vector <uint32_t> & marks, const uint32_t generation, const address_t programCounter, const uint32_t slots, const size_t pos) noexcept;
 			private:
 				/**
 				 * @brief Метод выделения набора позиций захвата групп

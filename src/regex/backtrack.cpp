@@ -224,7 +224,7 @@ namespace {
 	 *       выдал бы номер недостижимый вместо номера чужого.
 	 *
 	 */
-	static uint16_t numbering(const char * name) noexcept {
+	static uint16_t __awh_numbering__(const char * name) noexcept {
 		// Получаем идентификатор письменности по её имени
 		const uint16_t id = unicode::property(name);
 		/**
@@ -266,17 +266,17 @@ namespace {
 	 * @return       количество письменностей, в набор выведенных
 	 *
 	 */
-	static size_t collecting(const uint32_t code, uint16_t * output) noexcept {
+	static size_t __awh_collecting__(const uint32_t code, uint16_t * output) noexcept {
 		// Получаем номера письменностей восточноазиатских
-		static const uint16_t HAN = numbering("Han");
+		static const uint16_t HAN = __awh_numbering__("Han");
 		// Получаем номер письменности HANGUL
-		static const uint16_t HANGUL = numbering("Hangul");
+		static const uint16_t HANGUL = __awh_numbering__("Hangul");
 		// Получаем номер письменности BOPOMOFO
-		static const uint16_t BOPOMOFO = numbering("Bopomofo");
+		static const uint16_t BOPOMOFO = __awh_numbering__("Bopomofo");
 		// Получаем номер письменности HIRAGANA
-		static const uint16_t HIRAGANA = numbering("Hiragana");
+		static const uint16_t HIRAGANA = __awh_numbering__("Hiragana");
 		// Получаем номер письменности KATAKANA
-		static const uint16_t KATAKANA = numbering("Katakana");
+		static const uint16_t KATAKANA = __awh_numbering__("Katakana");
 		// Извлекаем набор письменностей символа
 		size_t result = unicode::scripts(code, output, (SCRIPTS - 4));
 		// Получаем количество письменностей, символом заданных
@@ -323,11 +323,11 @@ namespace {
 	 * @return       результат проверки принадлежности общей письменности
 	 *
 	 */
-	static bool commoning(const uint16_t * output, const size_t count) noexcept {
+	static bool __awh_commoning__(const uint16_t * output, const size_t count) noexcept {
 		// Получаем номера письменностей общих
-		static const uint16_t COMMON = numbering("Common");
+		static const uint16_t COMMON = __awh_numbering__("Common");
 		// Получаем номер письменности INHERITED
-		static const uint16_t INHERITED = numbering("Inherited");
+		static const uint16_t INHERITED = __awh_numbering__("Inherited");
 		// Проверка принадлежности символа общей письменности
 		return ((count == 1) && ((output[0] == COMMON) || (output[0] == INHERITED)));
 	}
@@ -342,7 +342,7 @@ namespace {
 	 * @return     кодовое значение нуля набора десятичных цифр
 	 *
 	 */
-	static uint32_t grounding(const uint32_t code) noexcept {
+	static uint32_t __awh_grounding__(const uint32_t code) noexcept {
 		// Кодовое значение нуля набора десятичных цифр
 		uint32_t result = code;
 		/**
@@ -377,7 +377,7 @@ namespace {
 	 * @return      результат проверки прогона письменности
 	 *
 	 */
-	static bool scripted(const string_view text, const size_t begin, const size_t finish, const uint32_t flags) noexcept {
+	static bool __awh_scripted__(const string_view text, const size_t begin, const size_t finish, const uint32_t flags) noexcept {
 		// Набор письменностей прогона
 		uint16_t common[SCRIPTS];
 		// Количество письменностей прогона
@@ -403,7 +403,7 @@ namespace {
 			 */
 			if(unicode::general(code) == static_cast <uint16_t> (unicode::property_id_t::Nd)){
 				// Получаем кодовое значение нуля набора десятичных цифр
-				const uint32_t zero = grounding(code);
+				const uint32_t zero = __awh_grounding__(code);
 				/**
 				 * Если набор десятичных цифр прогоном уже встречен
 				 */
@@ -425,11 +425,11 @@ namespace {
 			// Набор письменностей символа прогона
 			uint16_t own[SCRIPTS];
 			// Получаем набор письменностей символа прогона
-			const size_t size = collecting(code, own);
+			const size_t size = __awh_collecting__(code, own);
 			/**
 			 * Если символ принадлежит письменности общей
 			 */
-			if(commoning(own, size))
+			if(__awh_commoning__(own, size))
 				// Переходим к символу следующему
 				continue;
 			/**
@@ -854,23 +854,23 @@ AWH_REGEX_LITERAL size_t awh::regex::Backtrack::literal(const instruction_t & in
  *       с возвратом.
  *
  * @param inst переход, цепочку возглавляющий
- * @param pc   адрес перехода в программе регулярного выражения
+ * @param programCounter   адрес перехода в программе регулярного выражения
  * @param from позиция начала прохода в тексте сопоставления
  * @param size размер текста сопоставления
  * @return     количество копий цепочки, проходом поглощённых
  *
  */
-size_t awh::regex::Backtrack::chain(const instruction_t & inst, const address_t pc, const size_t from, const size_t size) noexcept {
+size_t awh::regex::Backtrack::chain(const instruction_t & inst, const address_t programCounter, const size_t from, const size_t size) noexcept {
 	// Получаем набор инструкций программы регулярного выражения
 	const Sequence <instruction_t> & instructions = this->_program->instructions;
 	/**
 	 * Если тело повторения за пределы программы выходит
 	 */
-	if((static_cast <size_t> (pc) + 1) >= instructions.size())
+	if((static_cast <size_t> (programCounter) + 1) >= instructions.size())
 		// Выводим отсутствие прохода цепочки одним ходом
 		return UNCHAINED;
 	// Получаем инструкцию тела ограниченного повторения
-	const instruction_t & repeated = instructions.at(static_cast <size_t> (pc) + 1);
+	const instruction_t & repeated = instructions.item(static_cast <size_t> (programCounter) + 1);
 	/**
 	 * Если тело повторения таблицей принадлежности байтов не проходится
 	 */
@@ -892,7 +892,7 @@ size_t awh::regex::Backtrack::chain(const instruction_t & inst, const address_t 
 		// Размещаем точкю возврата к ветви повторения
 		this->_points.emplace_back();
 		// Устанавливаем адрес ветви завершения повторения
-		this->_points.back().pc = inst.split.second;
+		this->_points.back().programCounter = inst.split.second;
 		// Устанавливаем позицию последнего символа цепочки
 		this->_points.back().pos = ((from + count) - 1);
 		// Устанавливаем размер журнала изменений ячеек захвата
@@ -1128,7 +1128,7 @@ bool awh::regex::Backtrack::advance(const instruction_t & instruction, size_t & 
 		// Неприменимость продвижения ряда: отказ
 		return false;
 	// Получаем инструкцию продолжения сопоставления вслед за рядом
-	const instruction_t & next = this->_program->instructions.at(first);
+	const instruction_t & next = this->_program->instructions.item(first);
 	/**
 	 * Если продолжение начинается не сопоставлением одиночного символа ASCII
 	 *
@@ -1146,7 +1146,7 @@ bool awh::regex::Backtrack::advance(const instruction_t & instruction, size_t & 
 	// Получаем значение байта, с какого продолжение сопоставления начинается
 	const uint8_t following = static_cast <uint8_t> (next.letter.code);
 	// Получаем инструкцию тела ленивого повторения одиночного символа
-	const instruction_t & repeated = this->_program->instructions.at(static_cast <size_t> (instruction.split.run));
+	const instruction_t & repeated = this->_program->instructions.item(static_cast <size_t> (instruction.split.run));
 	// Получаем размер текста сопоставления
 	const size_t size = this->_text.size();
 	// Получаем адрес начала текста сопоставления
@@ -1503,7 +1503,7 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
 /**
  * @brief Метод исполнения программы с заданной инструкции
  *
- * @param pc    адрес инструкции, с которой начинается исполнение
+ * @param programCounter    адрес инструкции, с которой начинается исполнение
  * @param pos   позиция в тексте, с которой начинается исполнение
  * @param base  глубина набора точек возврата, ниже которой возврат недопустим
  * @param bound позиция, в которой обязано завершиться исполнение
@@ -1589,7 +1589,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	// Получаем размер журнала изменений на входе в исполнение
 	const size_t mark = this->_journal.size();
 	// Адрес исполняемой инструкции программы
-	address_t pc = address;
+	address_t programCounter = address;
 	// Позиция сопоставления в тексте
 	size_t current = pos;
 	/**
@@ -1697,7 +1697,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		/**
 		 * Если адрес инструкции находится за пределами программы
 		 */
-		if(static_cast <size_t> (pc) >= count)
+		if(static_cast <size_t> (programCounter) >= count)
 			// Устанавливаем флаг отказа сопоставления
 			failed = true;
 		/**
@@ -1705,7 +1705,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		 */
 		else {
 			// Получаем исполняемую инструкцию программы
-			const instruction_t & instruction = program[pc];
+			const instruction_t & instruction = program[programCounter];
 			/**
 			 * Определяем код операции исполняемой инструкции
 			 */
@@ -1731,7 +1731,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if(instruction.control.type == control_t::MARK){
 						// Запоминаем адрес глагола отметки в ячейке
-						this->store(this->_program->marker, static_cast <size_t> (pc));
+						this->store(this->_program->marker, static_cast <size_t> (programCounter));
 						/**
 						 * Если глагол отметки положение своё имени и отдаёт
 						 *
@@ -1751,9 +1751,9 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							// Запоминаем положени отметки в ячейке имени
 							this->store(instruction.control.cell, current);
 						// Запоминаем адрес глагола отметки попытки
-						this->_failing = static_cast <size_t> (pc);
+						this->_failing = static_cast <size_t> (programCounter);
 						// Переходим к следующей инструкции программы
-						pc++;
+						programCounter++;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -1764,7 +1764,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Устанавливаем номер ячейки отметки ветви охватывающей
 					this->_points.back().cell = instruction.control.cell;
 					// Устанавливаем адрес продолжения исполнения
-					this->_points.back().pc = pc;
+					this->_points.back().programCounter = programCounter;
 					// Устанавливаем позицию размещения точки возврата
 					this->_points.back().pos = current;
 					// Устанавливаем размер журнала изменений ячеек захвата
@@ -1774,7 +1774,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Устанавливаем вид глагола управления возвратом
 					this->_points.back().control = (static_cast <uint8_t> (instruction.control.type) + 1);
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -1871,7 +1871,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 */
 				case static_cast <uint8_t> (opcode_t::SPLIT): {
 					// Получаем адрес тела повторения одиночного символа
-					const address_t body = program[pc].split.run;
+					const address_t body = program[programCounter].split.run;
 					/**
 					 * Если переход возглавляет повторение одиночного символа
 					 *
@@ -2021,7 +2021,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								// Заводим очередную точку возврата
 								this->_points.emplace_back();
 								// Устанавливаем адрес ветви завершения повторения
-								this->_points.back().pc = exit;
+								this->_points.back().programCounter = exit;
 								// Устанавливаем позицию последнего символа ряда
 								this->_points.back().pos = (passed - 1);
 								// Устанавливаем размер журнала изменений ячеек захвата
@@ -2052,7 +2052,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								// Заводим очередную точку возврата
 								this->_points.emplace_back();
 								// Устанавливаем адрес ветви завершения повторения
-								this->_points.back().pc = exit;
+								this->_points.back().programCounter = exit;
 								// Устанавливаем позицию сопоставления в тексте
 								this->_points.back().pos = repeat;
 								// Устанавливаем размер журнала изменений ячеек захвата
@@ -2080,7 +2080,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						// Переходим к позиции, достигнутой проходом ряда
 						current = passed;
 						// Переходим к ветви завершения повторения
-						pc = exit;
+						programCounter = exit;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2166,7 +2166,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if(AWH_REGEX_UNLIKELY(instruction.split.most != 0)){
 						// Проходим цепочкю ограниченного повторения
-						const size_t count = this->chain(instruction, pc, current, size);
+						const size_t count = this->chain(instruction, programCounter, current, size);
 						/**
 						 * Если цепочка пройдена одним ходом
 						 */
@@ -2176,7 +2176,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							// Переходим к позиции, достигнутой проходом цепочки
 							current += count;
 							// Переходим к ветви завершения повторения
-							pc = instruction.split.second;
+							programCounter = instruction.split.second;
 							// Продолжаем исполнение программы регулярного выражения
 							continue;
 						}
@@ -2186,13 +2186,13 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Заводим очередную точку возврата
 					this->_points.emplace_back();
 					// Устанавливаем адрес ветви с наименьшим приоритетом
-					this->_points.back().pc = instruction.split.second;
+					this->_points.back().programCounter = instruction.split.second;
 					// Устанавливаем позицию сопоставления в тексте
 					this->_points.back().pos = current;
 					// Устанавливаем размер журнала изменений ячеек захвата
 					this->_points.back().journal = this->_journal.size();
 					// Переходим к ветви с наибольшим приоритетом
-					pc = instruction.split.first;
+					programCounter = instruction.split.first;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2201,7 +2201,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 */
 				case static_cast <uint8_t> (opcode_t::JUMP): {
 					// Переходим к инструкции перехода
-					pc = instruction.jump.target;
+					programCounter = instruction.jump.target;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2212,7 +2212,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Сохраняем позицию в ячейке захвата
 					this->store(instruction.save.slot, current);
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2225,7 +2225,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if(assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, current, convention)){
 						// Переходим к следующей инструкции программы
-						pc++;
+						programCounter++;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2239,7 +2239,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Сохраняем позицию начала совпадения
 					this->store(0, current);
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2264,7 +2264,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Запоминаем глубину набора точек возврата
 					this->_marks.at(cell) = this->_points.size();
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2288,7 +2288,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							this->_points.resize(depth);
 					}
 					// Переходим к следующей инструкции программы
-					pc++;
+					programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2308,9 +2308,9 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if((cell < this->_slots.size()) && (this->_slots.at(cell) == current))
 						// Переходим к инструкции завершения повторения
-						pc = instruction.progress.target;
+						programCounter = instruction.progress.target;
 					// Переходим к следующей инструкции программы
-					else pc++;
+					else programCounter++;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2327,7 +2327,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						// Переходим к позиции за сопоставленным захваченным текстом
 						current += length;
 						// Переходим к следующей инструкции программы
-						pc++;
+						programCounter++;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2384,7 +2384,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						case static_cast <uint8_t> (test_t::ALWAYS): satisfied = true; break;
 					}
 					// Переходим к ветви условного выражения, соответствующей условию
-					pc = (satisfied ? instruction.condition.positive : instruction.condition.negative);
+					programCounter = (satisfied ? instruction.condition.positive : instruction.condition.negative);
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2439,7 +2439,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								// Устанавливаем флаг перебора длин проверки
 								entry.seek = 1;
 								// Устанавливаем адрес инструкции проверки окружения
-								entry.pc = static_cast <address_t> (pc);
+								entry.programCounter = static_cast <address_t> (programCounter);
 								// Устанавливаем позицию начала проверки окружения
 								entry.pos = current;
 								// Устанавливаем длины, испытываемой следующей
@@ -2453,7 +2453,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							current -= length;
 						}
 						// Переходим к телу проверки окружения
-						pc = instruction.look.body;
+						programCounter = instruction.look.body;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2552,7 +2552,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if(satisfied){
 						// Переходим к инструкции за проверкой окружения
-						pc = instruction.look.target;
+						programCounter = instruction.look.target;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2561,7 +2561,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if(instruction.look.alternate != INVALID_ADDRESS){
 						// Переходим к ветви невыполненного условия
-						pc = instruction.look.alternate;
+						programCounter = instruction.look.alternate;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2596,9 +2596,9 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Если прогон письменности сопоставлен
 					 */
-					if((entry != string_view::npos) && (entry <= current) && ::scripted(this->_text, entry, current, this->_program->flags)){
+					if((entry != string_view::npos) && (entry <= current) && ::__awh_scripted__(this->_text, entry, current, this->_program->flags)){
 						// Переходим к инструкции следующей
-						pc++;
+						programCounter++;
 						// Продолжаем исполнение программы регулярного выражения
 						continue;
 					}
@@ -2647,7 +2647,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Восстанавливаем позицию начала проверки окружения
 					current = entry;
 					// Переходим к инструкции за проверкой окружения
-					pc = instruction.reset.target;
+					programCounter = instruction.reset.target;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2716,7 +2716,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Заводим очередной кадр рекурсивного вызова
 					this->_frames.emplace_back();
 					// Устанавливаем адрес возврата из рекурсивного вызова
-					this->_frames.back().back = (pc + 1);
+					this->_frames.back().back = (programCounter + 1);
 					// Устанавливаем номер вызываемой группы
 					this->_frames.back().number = instruction.call.number;
 					// Устанавливаем размер журнала изменений ячеек захвата
@@ -2732,7 +2732,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Устанавливаем номер кадра исполняемого вызова
 					this->_current = (this->_frames.size() - 1);
 					// Переходим к телу вызываемого подвыражения
-					pc = instruction.call.body;
+					programCounter = instruction.call.body;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2857,7 +2857,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Восстанавливаем номер кадра вызывающего подвыражения
 					this->_current = frame.parent;
 					// Переходим к инструкции возврата из рекурсивного вызова
-					pc = frame.back;
+					programCounter = frame.back;
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
@@ -2924,7 +2924,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							// Переходим к позиции текста за совпавшими символами
 							current += passed;
 							// Переходим к инструкции за совпавшими символами
-							pc += static_cast <address_t> (passed);
+							programCounter += static_cast <address_t> (passed);
 							// Продолжаем исполнение программы регулярного выражения
 							continue;
 						}
@@ -3055,7 +3055,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							// Переходим к следующей позиции текста сопоставления
 							current += width;
 							// Переходим к следующей инструкции программы
-							pc++;
+							programCounter++;
 							// Продолжаем исполнение программы регулярного выражения
 							continue;
 						}
@@ -3091,7 +3091,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 								// Переходим к позиции текста за рядом
 								current += consumed;
 								// Переходим к инструкции, за рядом следующей
-								pc += static_cast <address_t> (series);
+								programCounter += static_cast <address_t> (series);
 								// Продолжаем исполнение программы регулярного выражения
 								continue;
 							}
@@ -3216,7 +3216,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 */
 						if(!failed){
 							// Переходим к инструкции, за рядом следующей
-							pc += static_cast <address_t> (series);
+							programCounter += static_cast <address_t> (series);
 							// Продолжаем исполнение программы регулярного выражения
 							continue;
 						}
@@ -3259,13 +3259,13 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				// Восстанавливаем состояние захвата групп
 				this->restore(entry.journal);
 				// Получаем инструкцию проверки окружения, точку разместившую
-				const instruction_t & look = this->_program->instructions.at(static_cast <size_t> (entry.pc));
+				const instruction_t & look = this->_program->instructions.item(static_cast <size_t> (entry.programCounter));
 				// Получаем длину проверяемой последовательности
 				const size_t length = entry.span;
 				// Отступаем на длину проверяемой последовательности
 				current = (entry.pos - length);
 				// Переходим к телу проверки окружения
-				pc = look.look.body;
+				programCounter = look.look.body;
 				/**
 				 * Если длина проверяемой последовательности наименьшая
 				 */
@@ -3290,7 +3290,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				// Восстанавливаем состояние захвата групп
 				this->restore(entry.journal);
 				// Возвращаем к сохранённому адресу инструкции
-				pc = entry.pc;
+				programCounter = entry.programCounter;
 				// Возвращаем к позиции очередного символа ряда
 				current = entry.pos;
 				// Переходим к позиции предшествующего символа ряда
@@ -3345,7 +3345,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					}
 				}
 				// Получаем инструкцию глагола управления, точку разместившего
-				const instruction_t & verb = this->_program->instructions.at(point.pc);
+				const instruction_t & verb = this->_program->instructions.item(point.programCounter);
 				/**
 				 * Если глагол переноса разыскивает отметку имени
 				 *
@@ -3422,7 +3422,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				continue;
 			}
 			// Возвращаем к сохранённому адресу инструкции
-			pc = point.pc;
+			programCounter = point.programCounter;
 			// Возвращаем к сохранённой позиции сопоставления
 			current = point.pos;
 			// Выходим из цикла возврата к сохранённой точке
@@ -4351,7 +4351,7 @@ awh::regex::Backtrack::Backtrack() noexcept :
  */
 awh::regex::Backtrack::Point::Point() noexcept :
  frame(false), seek(0), control(0), pos(0),
- span(0), journal(0), pc(0), cell(0) {}
+ span(0), journal(0), programCounter(0), cell(0) {}
 
 /**
  * @brief Конструктор

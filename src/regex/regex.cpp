@@ -100,7 +100,7 @@ namespace {
 	 * @return отчёт об ошибке потока исполнения
 	 *
 	 */
-	static report_t & report() noexcept {
+	static report_t & __awh_report__() noexcept {
 		// Создаём отчёт об ошибке потока исполнения
 		static thread_local report_t result;
 		// Выводим отчёт об ошибке потока исполнения
@@ -127,7 +127,7 @@ namespace {
 	 *          проверку следует снимать.
 	 *
 	 */
-	static bool verified(string_view text, const regular_t::exp_t & exp) noexcept {
+	static bool __awh_verified__(string_view text, const regular_t::exp_t & exp) noexcept {
 		/**
 		 * Если режим разбора текста посимвольно не установлен
 		 */
@@ -184,7 +184,7 @@ void awh::RegularExpression::receive() const noexcept {
 	 *          отчего снятие в момент чтения того же стоит.
 	 *
 	 */
-	report().defer = true;
+	__awh_report__().defer = true;
 }
 /**
  * @brief Метод извлечения кода ошибки последней операции
@@ -194,7 +194,7 @@ void awh::RegularExpression::receive() const noexcept {
  */
 awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	// Получаем ссылку на накопитель отчёта об ошибке
-	report_t & rep = report();
+	report_t & rep = __awh_report__();
 	/**
 	 * Если код ошибки сопоставления с движка снят не был
 	 */
@@ -221,7 +221,7 @@ awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
  */
 size_t awh::RegularExpression::offset() const noexcept {
 	// Выводим смещение ошибки в тексте регулярного выражения
-	return report().offset;
+	return __awh_report__().offset;
 }
 /**
  * @brief Метод извлечения имени отметки совпадения последнего
@@ -241,7 +241,7 @@ const string & awh::RegularExpression::marker() const noexcept {
  */
 const string & awh::RegularExpression::message() const noexcept {
 	// Получаем ссылку на накопитель отчёта об ошибке
-	report_t & rep = report();
+	report_t & rep = __awh_report__();
 	/**
 	 * Если код ошибки сопоставления с движка снят не был
 	 */
@@ -298,11 +298,11 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
 	 */
-	if(!verified(text, exp)){
+	if(!__awh_verified__(text, exp)){
 		// Снимаем признак отложенного снятия кода ошибки
-		report().defer = false;
+		__awh_report__().defer = false;
 		// Устанавливаем ошибку неверной записи текста сопоставления
-		report().error = error_t::BAD_UTF8_SUBJECT;
+		__awh_report__().error = error_t::BAD_UTF8_SUBJECT;
 		// Проверка наличия совпадения: отказ
 		return false;
 	}
@@ -347,11 +347,11 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
  */
 awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern, const uint32_t flags) const noexcept {
 	// Сбрасываем смещение ошибки в тексте выражения
-	report().offset = 0;
+	__awh_report__().offset = 0;
 	// Очищаем текст ошибки последней операции сборки
-	report().message.clear();
+	__awh_report__().message.clear();
 	// Сбрасываем код ошибки последней операции сборки
-	report().error = error_t::NONE;
+	__awh_report__().error = error_t::NONE;
 	// Создаём ключ кэша собранных регулярных выражений
 	const key_t key = make_pair(flags, string(pattern));
 	/**
@@ -363,13 +363,13 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 */
 	{
 		// Ищем ключ в кэше собранных выражений
-		auto i = this->_cache.find(key);
+		auto entry = this->_cache.find(key);
 		/**
 		 * Если ключ в кэше собранных выражений найден
 		 */
-		if(i != this->_cache.end()){
+		if(entry != this->_cache.end()){
 			// Получаем собранное ранее регулярное выражение
-			exp_t result = i->second.lock();
+			exp_t result = entry->second.lock();
 			/**
 			 * Если собранное ранее выражение ещё удерживается
 			 */
@@ -377,7 +377,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 				// Выводим собранное ранее регулярное выражение
 				return result;
 			// Удаляем освобождённого выражения из кэша
-			this->_cache.erase(i);
+			this->_cache.erase(entry);
 		}
 	}
 	// Создаём собираемое регулярное выражение
@@ -387,23 +387,23 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 */
 	if(!this->_engine.build(pattern, flags, * result)){
 		// Устанавливаем код ошибки последней операции сборки
-		report().error = this->_engine.error();
+		__awh_report__().error = this->_engine.error();
 		// Устанавливаем смещение ошибки в тексте выражения
-		report().offset = this->_engine.offset();
+		__awh_report__().offset = this->_engine.offset();
 		// Устанавливаем текст ошибки последней операции сборки
-		report().message = this->_engine.message();
+		__awh_report__().message = this->_engine.message();
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL, report().offset, report().message.c_str());
+			log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL, __awh_report__().offset, __awh_report__().message.c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Regular expression could not be built at offset %zu: %s", log::flag_t::CRITICAL, report().offset, report().message.c_str());
+			log::print("Regular expression could not be built at offset %zu: %s", log::flag_t::CRITICAL, __awh_report__().offset, __awh_report__().message.c_str());
 		#endif
 		// Выводим отсутствие собранного регулярного выражения
 		return exp_t();
@@ -451,15 +451,15 @@ uint32_t awh::RegularExpression::group(const exp_t & exp, string_view name) cons
 		// Выводим отсутствие именованной группы выражения
 		return 0;
 	// Ищем именю в соответствии имён групп наборам их номеров
-	auto i = exp->names.find(string(name));
+	auto entry = exp->names.find(string(name));
 	/**
 	 * Если имя в соответствии имён групп не найдено
 	 */
-	if((i == exp->names.end()) || i->second.empty())
+	if((entry == exp->names.end()) || entry->second.empty())
 		// Выводим отсутствие именованной группы выражения
 		return 0;
 	// Выводим номер именованной группы, объявленной первой
-	return i->second.front();
+	return entry->second.front();
 }
 /**
  * @brief Метод извлечения соответствия имён групп наборам их номеров
@@ -626,11 +626,11 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
 	 */
-	if(!verified(text, exp)){
+	if(!__awh_verified__(text, exp)){
 		// Устанавливаем ошибку неверной записи текста сопоставления
-		report().error = error_t::BAD_UTF8_SUBJECT;
+		__awh_report__().error = error_t::BAD_UTF8_SUBJECT;
 		// Снимаем признак отложенного снятия кода ошибки
-		report().defer = false;
+		__awh_report__().defer = false;
 		// Поиск совпадения: отказ
 		return false;
 	}
@@ -740,11 +740,11 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 		// Выводим отсутствие захваченного текста
 		return "";
 	// Ищем именю в соответствии имён групп наборам их номеров
-	auto i = exp->names.find(string(name));
+	auto entry = exp->names.find(string(name));
 	/**
 	 * Если имя в соответствии имён групп не найдено
 	 */
-	if(i == exp->names.end())
+	if(entry == exp->names.end())
 		// Выводим отсутствие захваченного текста
 		return "";
 	/**
@@ -755,7 +755,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	 *          перебор прекращается на первой выполнившей захват.
 	 *
 	 */
-	for(const uint32_t number : i->second){
+	for(const uint32_t number : entry->second){
 		/**
 		 * Если номер группы находится за пределами набора границ
 		 */

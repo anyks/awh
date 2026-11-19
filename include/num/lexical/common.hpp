@@ -98,13 +98,9 @@ namespace awh {
 		 * @brief Тип результата эквивалентного беззнакового целого типа той же ширины
 		 *
 		 */
-		using equivUint_t = typename conditional <
-			sizeof(T) == 1, uint8_t,
-			typename conditional <
-				sizeof(T) == 2, uint16_t,
-				typename conditional <sizeof(T) == 4, uint32_t, uint64_t>::type
-			>::type
-		>::type;
+		using equivUint_t = typename conditional <sizeof(T) == 1, uint8_t,
+			typename conditional <sizeof(T) == 2, uint16_t,
+			typename conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type;
 
 		/**
 		 * @brief Шаблон признака поддерживаемого типа с плавающей точкой
@@ -119,31 +115,38 @@ namespace awh {
 		 */
 		struct is_supported_float : integral_constant <bool,
 			is_same <T, float>::value ||
-			is_same <T, double>::value
+			is_same <T, double>::value ||
 			/**
 			 * Если поддерживаются 32-битные типы чисел с плавающей точкой стандарта C++23
 			 */
 			#if defined(__STDCPP_FLOAT32_T__)
-				|| is_same <T, float32_t>::value
+				// Признак поддержки типа float32_t
+				is_same <T, float32_t>::value ||
 			#endif
 			/**
 			 * Если поддерживаются 64-битные типы чисел с плавающей точкой стандарта C++23
 			 */
 			#if defined(__STDCPP_FLOAT64_T__)
-				|| is_same <T, float64_t>::value
+				// Признак поддержки типа float64_t
+				is_same <T, float64_t>::value ||
 			#endif
 			/**
 			 * Если поддерживается расширенный тип с плавающей запятой binary16 (16-битный формат)
 			 */
 			#if defined(__STDCPP_FLOAT16_T__)
-				|| is_same <T, float16_t>::value
+				// Признак поддержки типа float16_t
+				is_same <T, float16_t>::value ||
 			#endif
 			/**
 			 * Если компилятор поддерживает тип std::bfloat16_t стандарта C++23
 			 */
 			#if defined(__STDCPP_BFLOAT16_T__)
-				|| is_same <T, bfloat16_t>::value
+				// Признак поддержки типа bfloat16_t
+				is_same <T, bfloat16_t>::value ||
 			#endif
+			// Завершение перечня поддерживаемых типов
+			false
+		// Завершение признака поддерживаемого типа с плавающей точкой
 		> {};
 
 		/**
@@ -174,10 +177,17 @@ namespace awh {
 			is_same <UC, char>::value ||
 			is_same <UC, wchar_t>::value ||
 			is_same <UC, char16_t>::value ||
-			is_same <UC, char32_t>::value
+			is_same <UC, char32_t>::value ||
+			/**
+			 * Если компилятор поддерживает тип char8_t
+			 */
 			#if defined(__cpp_char8_t)
-				|| is_same <UC, char8_t>::value
+				// Признак поддержки типа char8_t
+				is_same <UC, char8_t>::value ||
 			#endif
+			// Завершение перечня поддерживаемых типов
+			false
+		// Завершение признака поддерживаемого символьного типа
 		> {};
 
 		/**
@@ -230,7 +240,7 @@ namespace awh {
 		 *
 		 */
 		constexpr format_t operator ~ (const format_t rhs) noexcept {
-			// Выполняем побитовое отрицание базового типа
+			// Побитовое отрицание базового типа
 			return static_cast <format_t> (~static_cast <underlying_type <format_t>::type> (rhs));
 		}
 		/**
@@ -242,7 +252,7 @@ namespace awh {
 		 *
 		 */
 		constexpr format_t operator & (const format_t lhs, const format_t rhs) noexcept {
-			// Выполняем побитовое «И» базовых типов
+			// Побитовое «И» базовых типов
 			return static_cast <format_t> (
 				static_cast <underlying_type <format_t>::type> (lhs) &
 				static_cast <underlying_type <format_t>::type> (rhs)
@@ -257,7 +267,7 @@ namespace awh {
 		 *
 		 */
 		constexpr format_t operator | (const format_t lhs, const format_t rhs) noexcept {
-			// Выполняем побитовое «ИЛИ» базовых типов
+			// Побитовое «ИЛИ» базовых типов
 			return static_cast <format_t> (
 				static_cast <underlying_type <format_t>::type> (lhs) |
 				static_cast <underlying_type <format_t>::type> (rhs)
@@ -272,7 +282,7 @@ namespace awh {
 		 *
 		 */
 		constexpr format_t operator ^ (const format_t lhs, const format_t rhs) noexcept {
-			// Выполняем побитовое исключающее «ИЛИ» базовых типов
+			// Побитовое исключающее «ИЛИ» базовых типов
 			return static_cast <format_t> (
 				static_cast <underlying_type <format_t>::type> (lhs) ^
 				static_cast <underlying_type <format_t>::type> (rhs)
@@ -287,7 +297,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr format_t & operator &= (format_t & lhs, const format_t rhs) noexcept {
-			// Выполняем применение операции к исходному формату
+			// Применение операции к исходному формату
 			return (lhs = (lhs & rhs));
 		}
 		/**
@@ -299,7 +309,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr format_t & operator |= (format_t & lhs, const format_t rhs) noexcept {
-			// Выполняем применение операции к исходному формату
+			// Применение операции к исходному формату
 			return (lhs = (lhs | rhs));
 		}
 		/**
@@ -311,7 +321,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr format_t & operator ^= (format_t & lhs, const format_t rhs) noexcept {
-			// Выполняем применение операции к исходному формату
+			// Применение операции к исходному формату
 			return (lhs = (lhs ^ rhs));
 		}
 		/**
@@ -323,7 +333,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr bool isFormat(const format_t format, const format_t flag) noexcept {
-			// Выполняем проверку наличия искомого флага
+			// Проверка наличия искомого флага
 			return ((format & flag) != format_t::NONE);
 		}
 
@@ -340,7 +350,7 @@ namespace awh {
 		 */
 		struct Result {
 			// Код ошибки стандартной библиотеки
-			errc ec;
+			errc errorCode;
 			// Код причины отказа при разборе числовой строки
 			error_t error;
 			// Указатель на первый символ за разобранным числом
@@ -353,18 +363,18 @@ namespace awh {
 			 */
 			constexpr explicit operator bool() const noexcept {
 				// Разбор успешен, если код ошибки не установлен
-				return (this->ec == errc());
+				return (this->errorCode == errc());
 			}
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param ptr   указатель на первый символ за разобранным числом
-			 * @param ec    код ошибки стандартной библиотеки
-			 * @param error код причины отказа при разборе числовой строки
+			 * @param ptr       указатель на первый символ за разобранным числом
+			 * @param errorCode код ошибки стандартной библиотеки
+			 * @param error     код причины отказа при разборе числовой строки
 			 *
 			 */
-			constexpr Result(const UC * ptr = nullptr, const errc ec = errc(), const error_t error = error_t::NONE) noexcept :
-			 ec(ec), error(error), ptr(ptr) {}
+			constexpr Result(const UC * ptr = nullptr, const errc errorCode = errc(), const error_t error = error_t::NONE) noexcept :
+			 errorCode(errorCode), error(error), ptr(ptr) {}
 		};
 		/**
 		 * @brief Шаблон типа символа результата разбора
@@ -576,7 +586,7 @@ namespace awh {
 			#if defined(AWH_LEXICAL_VISUAL_STUDIO) && (defined(_M_X64) || defined(_M_ARM64))
 				// Позиция старшего установленного бита
 				unsigned long result = 0;
-				// Выполняем поиск старшего установленного бита
+				// Поиск старшего установленного бита
 				_BitScanReverse64(&result, value);
 				// Выводим количество ведущих нулевых бит
 				return static_cast <int32_t> (63 - result);
@@ -590,35 +600,35 @@ namespace awh {
 				uint64_t number = value;
 				// Если старшее слово содержит значащие биты
 				if(number & 0xFFFFFFFF00000000ULL){
-					// Выполняем сдвиг на разрядность слова
+					// Сдвиг на разрядность слова
 					number >>= 32;
 					// Накапливаем позицию старшего бита
 					position |= 32;
 				}
 				// Если старшее полуслово содержит значащие биты
 				if(number & 0xFFFF0000ULL){
-					// Выполняем сдвиг на разрядность полуслова
+					// Сдвиг на разрядность полуслова
 					number >>= 16;
 					// Накапливаем позицию старшего бита
 					position |= 16;
 				}
 				// Если старший байт содержит значащие биты
 				if(number & 0xFF00ULL){
-					// Выполняем сдвиг на разрядность байта
+					// Сдвиг на разрядность байта
 					number >>= 8;
 					// Накапливаем позицию старшего бита
 					position |= 8;
 				}
 				// Если старший полубайт содержит значащие биты
 				if(number & 0xF0ULL){
-					// Выполняем сдвиг на разрядность полубайта
+					// Сдвиг на разрядность полубайта
 					number >>= 4;
 					// Накапливаем позицию старшего бита
 					position |= 4;
 				}
 				// Если старшая пара бит содержит значащие биты
 				if(number & 0x0CULL){
-					// Выполняем сдвиг на разрядность пары бит
+					// Сдвиг на разрядность пары бит
 					number >>= 2;
 					// Накапливаем позицию старшего бита
 					position |= 2;
@@ -646,7 +656,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr uint64_t multiply32(const uint32_t x, const uint32_t y) noexcept {
-			// Выполняем умножение с расширением разрядности
+			// Умножение с расширением разрядности
 			return (static_cast <uint64_t> (x) * static_cast <uint64_t> (y));
 		}
 		/**
@@ -687,7 +697,7 @@ namespace awh {
 			 * Для платформ с поддержкой 128-битного целого используем нативный тип
 			 */
 			#if defined(AWH_LEXICAL_64BIT) && defined(__SIZEOF_INT128__)
-				// Выполняем умножение с расширением разрядности
+				// Умножение с расширением разрядности
 				const __uint128_t result = (static_cast <__uint128_t> (x) * static_cast <__uint128_t> (y));
 				// Выводим результат умножения
 				return value128_t(static_cast <uint64_t> (result), static_cast <uint64_t> (result >> 64));
@@ -703,7 +713,7 @@ namespace awh {
 			#elif defined(_WIN64) && defined(AWH_LEXICAL_VISUAL_STUDIO)
 				// Старшие 64 бита результата
 				uint64_t high = 0;
-				// Выполняем умножение с расширением разрядности
+				// Умножение с расширением разрядности
 				const uint64_t low = _umul128(x, y, &high);
 				// Выводим результат умножения
 				return value128_t(low, high);
@@ -746,7 +756,7 @@ namespace awh {
 			 * @brief Создаём тип данных эквивалентного беззнакового целого
 			 *
 			 */
-			using equiv_uint = equivUint_t <T>;
+			using equivUint = equivUint_t <T>;
 			/**
 			 * @brief Функция получения максимального количества значащих десятичных цифр
 			 *
@@ -774,14 +784,14 @@ namespace awh {
 			 * @return маска показателя степени
 			 *
 			 */
-			static constexpr equiv_uint exponentMask() noexcept;
+			static constexpr equivUint exponentMask() noexcept;
 			/**
 			 * @brief Функция получения маски мантиссы
 			 *
 			 * @return маска мантиссы
 			 *
 			 */
-			static constexpr equiv_uint mantissaMask() noexcept;
+			static constexpr equivUint mantissaMask() noexcept;
 			/**
 			 * @brief Функция получения минимального показателя степени двойки
 			 *
@@ -795,7 +805,7 @@ namespace awh {
 			 * @return маска скрытого бита мантиссы
 			 *
 			 */
-			static constexpr equiv_uint hiddenBitMask() noexcept;
+			static constexpr equivUint hiddenBitMask() noexcept;
 			/**
 			 * @brief Функция получения наибольшего представимого показателя степени десяти
 			 *
@@ -1041,7 +1051,7 @@ namespace awh {
 		 * @return маска показателя степени
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <float>::equiv_uint binary_t <float>::exponentMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <float>::equivUint binary_t <float>::exponentMask() noexcept {
 			// Выводим маску показателя степени
 			return 0x7F800000UL;
 		}
@@ -1051,7 +1061,7 @@ namespace awh {
 		 * @return маска показателя степени
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <double>::equiv_uint binary_t <double>::exponentMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <double>::equivUint binary_t <double>::exponentMask() noexcept {
 			// Выводим маску показателя степени
 			return 0x7FF0000000000000ULL;
 		}
@@ -1061,7 +1071,7 @@ namespace awh {
 		 * @return маска мантиссы
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <float>::equiv_uint binary_t <float>::mantissaMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <float>::equivUint binary_t <float>::mantissaMask() noexcept {
 			// Выводим маску мантиссы
 			return 0x007FFFFFUL;
 		}
@@ -1071,7 +1081,7 @@ namespace awh {
 		 * @return маска мантиссы
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <double>::equiv_uint binary_t <double>::mantissaMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <double>::equivUint binary_t <double>::mantissaMask() noexcept {
 			// Выводим маску мантиссы
 			return 0x000FFFFFFFFFFFFFULL;
 		}
@@ -1101,7 +1111,7 @@ namespace awh {
 		 * @return маска скрытого бита мантиссы
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <float>::equiv_uint binary_t <float>::hiddenBitMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <float>::equivUint binary_t <float>::hiddenBitMask() noexcept {
 			// Выводим маску скрытого бита мантиссы
 			return 0x00800000UL;
 		}
@@ -1111,7 +1121,7 @@ namespace awh {
 		 * @return маска скрытого бита мантиссы
 		 *
 		 */
-		template <> __AWH_INLINE__ constexpr binary_t <double>::equiv_uint binary_t <double>::hiddenBitMask() noexcept {
+		template <> __AWH_INLINE__ constexpr binary_t <double>::equivUint binary_t <double>::hiddenBitMask() noexcept {
 			// Выводим маску скрытого бита мантиссы
 			return 0x0010000000000000ULL;
 		}
@@ -1415,7 +1425,7 @@ namespace awh {
 			 * @return маска показателя степени
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::exponentMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equivUint binary_t <float16_t>::exponentMask() noexcept {
 				// Выводим маску показателя степени
 				return 0x7C00;
 			}
@@ -1425,7 +1435,7 @@ namespace awh {
 			 * @return маска мантиссы
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::mantissaMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equivUint binary_t <float16_t>::mantissaMask() noexcept {
 				// Выводим маску мантиссы
 				return 0x03FF;
 			}
@@ -1445,7 +1455,7 @@ namespace awh {
 			 * @return маска скрытого бита мантиссы
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equiv_uint binary_t <float16_t>::hiddenBitMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <float16_t>::equivUint binary_t <float16_t>::hiddenBitMask() noexcept {
 				// Выводим маску скрытого бита мантиссы
 				return 0x0400;
 			}
@@ -1625,7 +1635,7 @@ namespace awh {
 			 * @return маска показателя степени
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::exponentMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equivUint binary_t <bfloat16_t>::exponentMask() noexcept {
 				// Выводим маску показателя степени
 				return 0x7F80;
 			}
@@ -1635,7 +1645,7 @@ namespace awh {
 			 * @return маска мантиссы
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::mantissaMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equivUint binary_t <bfloat16_t>::mantissaMask() noexcept {
 				// Выводим маску мантиссы
 				return 0x007F;
 			}
@@ -1655,7 +1665,7 @@ namespace awh {
 			 * @return маска скрытого бита мантиссы
 			 *
 			 */
-			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equiv_uint binary_t <bfloat16_t>::hiddenBitMask() noexcept {
+			template <> __AWH_INLINE__ constexpr binary_t <bfloat16_t>::equivUint binary_t <bfloat16_t>::hiddenBitMask() noexcept {
 				// Выводим маску скрытого бита мантиссы
 				return 0x0080;
 			}
@@ -1805,14 +1815,14 @@ namespace awh {
 			 * @brief Создаём тип данных эквивалентного беззнакового целого
 			 *
 			 */
-			using equiv_uint = equivUint_t <T>;
+			using equivUint = equivUint_t <T>;
 			// Формируем биты мантиссы
-			equiv_uint word = static_cast <equiv_uint> (mantissa.mantissa);
+			equivUint word = static_cast <equivUint> (mantissa.mantissa);
 			// Добавляем биты показателя степени
-			word = static_cast <equiv_uint> (word | (static_cast <equiv_uint> (mantissa.power2) << binary_t <T>::mantissaExplicitBits()));
+			word = static_cast <equivUint> (word | (static_cast <equivUint> (mantissa.power2) << binary_t <T>::mantissaExplicitBits()));
 			// Добавляем бит знака
-			word = static_cast <equiv_uint> (word | (static_cast <equiv_uint> (negative) << binary_t <T>::signIndex()));
-			// Выполняем побитовое копирование результата
+			word = static_cast <equivUint> (word | (static_cast <equivUint> (negative) << binary_t <T>::signIndex()));
+			// Побитовое копирование результата
 			::memcpy(&value, &word, sizeof(T));
 		}
 		/**
@@ -1834,14 +1844,14 @@ namespace awh {
 			 * @brief Создаём тип данных эквивалентного беззнакового целого
 			 *
 			 */
-			using equiv_uint = equivUint_t <T>;
+			using equivUint = equivUint_t <T>;
 			// Результат разбора двоичного представления
 			mantissa_t result;
 			// Смещение показателя степени относительно минимального
 			const int32_t bias = (binary_t <T>::mantissaExplicitBits() - binary_t <T>::minimumExponent());
 			// Биты двоичного представления числа
-			equiv_uint bits = 0;
-			// Выполняем побитовое копирование исходного значения
+			equivUint bits = 0;
+			// Побитовое копирование исходного значения
 			::memcpy(&bits, &value, sizeof(T));
 			// Если число является денормализованным
 			if((bits & binary_t <T>::exponentMask()) == 0){
@@ -1983,7 +1993,7 @@ namespace awh {
 		 */
 		__AWH_INLINE__ constexpr bool compareIgnoreCase(const UC * actual, const UC * expected, const size_t length) noexcept {
 			/**
-			 * Выполняем перебор всех сравниваемых символов
+			 * Перебор всех сравниваемых символов
 			 */
 			for(size_t i = 0; i < length; ++i){
 				// Получаем очередной символ фактической строки
@@ -2011,7 +2021,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr bool isSpace(const UC symbol) noexcept {
-			// Выполняем проверку по таблице пробельных символов
+			// Проверка по таблице пробельных символов
 			return ((symbol < 256) && luts_t <>::spaces[static_cast <uint8_t> (symbol)]);
 		}
 		/**
@@ -2029,7 +2039,7 @@ namespace awh {
 		 *
 		 */
 		__AWH_INLINE__ constexpr bool isDigit(const UC symbol) noexcept {
-			// Выполняем проверку попадания символа в диапазон десятичных цифр
+			// Проверка попадания символа в диапазон десятичных цифр
 			return !((symbol > UC('9')) || (symbol < UC('0')));
 		}
 		/**
@@ -2050,11 +2060,11 @@ namespace awh {
 			/**
 			 * Создаём тип данных беззнакового символа
 			 */
-			using unsigned_uc = typename make_unsigned <UC>::type;
+			using unsignedUc = typename make_unsigned <UC>::type;
 			// Приводим символ к беззнаковому представлению
-			const unsigned_uc value = static_cast <unsigned_uc> (symbol);
+			const unsignedUc value = static_cast <unsignedUc> (symbol);
 			// Формируем маску, обнуляющую символы за пределами таблицы
-			const unsigned_uc mask = static_cast <unsigned_uc> (-static_cast <int32_t> ((value & ~static_cast <uint64_t> (0xFF)) == 0));
+			const unsignedUc mask = static_cast <unsignedUc> (-static_cast <int32_t> ((value & ~static_cast <uint64_t> (0xFF)) == 0));
 			// Выводим значение цифры из таблицы
 			return luts_t <>::digits[static_cast <uint8_t> (value & mask)];
 		}
@@ -2213,7 +2223,7 @@ namespace awh {
 
 		// Выводим статическую проверку соответствия типа float размеру 32 бита
 		static_assert(is_same <equivUint_t <float>, uint32_t>::value, "AWH lexical: float must be 32-bit wide");
-		// Выполняем проверку соответствия платформы требованиям модуля
+		// Проверка соответствия платформы требованиям модуля
 		static_assert(is_same <equivUint_t <double>, uint64_t>::value, "AWH lexical: double must be 64-bit wide");
 		// Выводим статическую проверку соответствия типа float стандарту IEEE 754
 		static_assert(numeric_limits <float>::is_iec559, "AWH lexical: float must fulfill IEC 559 (IEEE 754)");

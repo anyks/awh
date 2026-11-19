@@ -116,7 +116,7 @@ using namespace std;
 		 * @param command размещаемая команда процессора
 		 *
 		 */
-		static __AWH_INLINE__ void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
+		static __AWH_INLINE__ void __awh_emit__(vector <uint8_t> & code, const uint32_t command) noexcept {
 			/**
 			 * Размещаем команду байтами от младшего
 			 */
@@ -132,7 +132,7 @@ using namespace std;
 		 * @param value    вписываемое значение полей команды
 		 *
 		 */
-		static __AWH_INLINE__ void patch(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
+		static __AWH_INLINE__ void __awh_patch__(vector <uint8_t> & code, const size_t position, const uint32_t value) noexcept {
 			// Собираемая размещённая команда процессора
 			uint32_t command = 0;
 			/**
@@ -158,7 +158,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t compare(const uint32_t first, const uint32_t second) noexcept {
+		static constexpr uint32_t __awh_compare__(const uint32_t first, const uint32_t second) noexcept {
 			// Выводим собранную команду «subs xzr, first, second»
 			return (0xEB000000u | (second << 16) | (first << 5) | 31u);
 		}
@@ -170,7 +170,7 @@ using namespace std;
 		 * @return      собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t compare(const uint32_t reg, const uint32_t value, const bool) noexcept {
+		static constexpr uint32_t __awh_compare__(const uint32_t reg, const uint32_t value, const bool) noexcept {
 			/**
 			 * Выводим собранную команду «subs xzr, xreg, #value»
 			 *
@@ -191,7 +191,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t add(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
+		static constexpr uint32_t __awh_add__(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
 			/**
 			 * Выводим собранную команду «add xtarget, xsource, #value»
 			 *
@@ -211,7 +211,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
+		static constexpr uint32_t __awh_sub__(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
 			/**
 			 * Выводим собранную команду «sub xtarget, xsource, #value»
 			 *
@@ -230,7 +230,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t move(const uint32_t target, const uint32_t source) noexcept {
+		static constexpr uint32_t __awh_move__(const uint32_t target, const uint32_t source) noexcept {
 			// Выводим собранную команду «orr xtarget, xzr, xsource»
 			return (0xAA0003E0u | (source << 16) | target);
 		}
@@ -244,7 +244,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t writing(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
+		static constexpr uint32_t __awh_writing__(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
 			// Выводим собранную команду «movz xtarget, #value, lsl #shift» либо «movk»
 			return ((keep ? 0xF2800000u : 0xD2800000u) | (shift << 21) | (value << 5) | target);
 		}
@@ -257,7 +257,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t load(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t __awh_load__(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «ldrb wtarget, [xbase, xoffset]»
 			return (0x38606800u | (offset << 16) | (base << 5) | target);
 		}
@@ -270,7 +270,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t fetch(const uint32_t target, const uint32_t base, const uint32_t index) noexcept {
+		static constexpr uint32_t __awh_fetch__(const uint32_t target, const uint32_t base, const uint32_t index) noexcept {
 			// Выводим собранную команду «ldr xtarget, [xbase, #(index * 8)]»
 			return (0xF9400000u | (index << 10) | (base << 5) | target);
 		}
@@ -283,7 +283,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t store(const uint32_t source, const uint32_t base, const uint32_t index) noexcept {
+		static constexpr uint32_t __awh_store__(const uint32_t source, const uint32_t base, const uint32_t index) noexcept {
 			// Выводим собранную команду «str xsource, [xbase, #(index * 8)]»
 			return (0xF9000000u | (index << 10) | (base << 5) | source);
 		}
@@ -296,7 +296,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t gather(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t __awh_gather__(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «ldr xtarget, [xbase, xoffset, lsl #3]»
 			return (0xF8607800u | (offset << 16) | (base << 5) | target);
 		}
@@ -309,7 +309,7 @@ using namespace std;
 		 * @return       собранная команда процессора
 		 *
 		 */
-		static constexpr uint32_t scatter(const uint32_t source, const uint32_t base, const uint32_t offset) noexcept {
+		static constexpr uint32_t __awh_scatter__(const uint32_t source, const uint32_t base, const uint32_t offset) noexcept {
 			// Выводим собранную команду «str xsource, [xbase, xoffset, lsl #3]»
 			return (0xF8207800u | (offset << 16) | (base << 5) | source);
 		}
@@ -602,7 +602,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 *          на подпрограммы обычные, метки свои несущие.
 		 *
 		 */
-		emit(this->_code, 0xD503245Fu);
+		__awh_emit__(this->_code, 0xD503245Fu);
 		// Устанавливаем количество мест кадра вызова, входом отведённых
 		this->_seats = (static_cast <size_t> (frame) / sizeof(size_t));
 		/**
@@ -700,7 +700,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::JUMP;
 		// Размещаем команду перехода, смещения ещё не несущей
-		::emit(this->_code, 0x14000000u);
+		::__awh_emit__(this->_code, 0x14000000u);
 	}
 	/**
 	 * @brief Метод размещения перехода к метке по условию
@@ -741,7 +741,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
 		// Размещаем команду перехода, смещения ещё не несущей
-		::emit(this->_code, 0x54000000u | static_cast <uint32_t> (cond));
+		::__awh_emit__(this->_code, 0x54000000u | static_cast <uint32_t> (cond));
 	}
 	/**
 	 * @brief Метод размещения сравнения значений регистров
@@ -752,7 +752,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcept {
 		// Размещаем команду сравнения значений регистров
-		::emit(this->_code, ::compare(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
+		::__awh_emit__(this->_code, ::__awh_compare__(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
 	}
 	/**
 	 * @brief Метод размещения сравнения значений регистров
@@ -772,7 +772,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			return;
 		}
 		// Размещаем команду сравнения значения регистра с числом
-		::emit(this->_code, ::compare(static_cast <uint32_t> (reg), value, true));
+		::__awh_emit__(this->_code, ::__awh_compare__(static_cast <uint32_t> (reg), value, true));
 	}
 	/**
 	 * @brief Метод размещения сложения значения регистра с числом
@@ -804,7 +804,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				return;
 			}
 			// Размещаем команду сложения старших разрядов числа
-			::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
+			::__awh_emit__(this->_code, ::__awh_add__(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
 			/**
 			 * Если младшие разряды числа пусты
 			 */
@@ -812,12 +812,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				// Выходим из метода размещения сложения
 				return;
 			// Размещаем команду сложения младших разрядов числа
-			::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
+			::__awh_emit__(this->_code, ::__awh_add__(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 			// Выходим из метода размещения сложения
 			return;
 		}
 		// Размещаем команду сложения значения регистра с числом
-		::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
+		::__awh_emit__(this->_code, ::__awh_add__(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 	}
 	/**
 	 * @brief Метод размещения вычитания числа из значения регистра
@@ -842,7 +842,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				return;
 			}
 			// Размещаем команду вычитания старших разрядов числа
-			::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
+			::__awh_emit__(this->_code, ::__awh_sub__(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
 			/**
 			 * Если младшие разряды числа пусты
 			 */
@@ -850,12 +850,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				// Выходим из метода размещения вычитания
 				return;
 			// Размещаем команду вычитания младших разрядов числа
-			::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
+			::__awh_emit__(this->_code, ::__awh_sub__(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 			// Выходим из метода размещения вычитания
 			return;
 		}
 		// Размещаем команду вычитания числа из значения регистра
-		::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
+		::__awh_emit__(this->_code, ::__awh_sub__(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 	}
 	/**
 	 * @brief Метод размещения переноса значения регистра
@@ -866,7 +866,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept {
 		// Размещаем команду переноса значения регистра
-		::emit(this->_code, ::move(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
+		::__awh_emit__(this->_code, ::__awh_move__(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
 	}
 	/**
 	 * @brief Метод размещения переноса значения регистра
@@ -914,7 +914,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 					continue;
 			}
 			// Размещаем команду записи части числа в регистр
-			::emit(this->_code, ::writing(reg, part, shift, written));
+			::__awh_emit__(this->_code, ::__awh_writing__(reg, part, shift, written));
 			// Устанавливаем флаг размещения первой части числа
 			written = true;
 		}
@@ -929,7 +929,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t offset) noexcept {
 		// Размещаем команду чтения байта по сумме регистров
-		::emit(this->_code, ::load(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
+		::__awh_emit__(this->_code, ::__awh_load__(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
 	 * @brief Метод размещения чтения значения обстановки исполнения
@@ -949,7 +949,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			return;
 		}
 		// Размещаем команду чтения значения обстановки исполнения
-		::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
+		::__awh_emit__(this->_code, ::__awh_fetch__(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
 	}
 	/**
 	 * @brief Метод размещения чтения значения из памяти
@@ -1016,7 +1016,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			}
 		}
 		// Размещаем команду чтения значения из памяти
-		::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
+		::__awh_emit__(this->_code, ::__awh_fetch__(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
 	}
 	/**
 	 * @brief Метод размещения записи значения регистра в память
@@ -1062,7 +1062,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			// Очищаем ряд записей в память
 			this->_stored.clear();
 		// Размещаем команду записи значения регистра в память
-		::emit(this->_code, ::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
+		::__awh_emit__(this->_code, ::__awh_store__(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
 		// Добавляем размещённой записи в ряд
 		this->_stored.emplace_back(source, base, index);
 		// Устанавливаем длину кода на миг завершения ряда
@@ -1078,7 +1078,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
 		// Размещаем команду чтения значения по адресу в регистре
-		::emit(this->_code, ::gather(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
+		::__awh_emit__(this->_code, ::__awh_gather__(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
 	 * @brief Метод размещения записи значения регистра в память
@@ -1090,7 +1090,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
 		// Размещаем команду записи значения по адресу в регистре
-		::emit(this->_code, ::scatter(static_cast <uint32_t> (source), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
+		::__awh_emit__(this->_code, ::__awh_scatter__(static_cast <uint32_t> (source), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
 	 * @brief Метод размещения вызова подпрограммы по адресу в регистре
@@ -1100,7 +1100,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::call(const reg_t reg) noexcept {
 		// Размещаем команду «blr xreg»
-		::emit(this->_code, 0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
+		::__awh_emit__(this->_code, 0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
 	}
 	/**
 	 * @brief Метод размещения вычисления адреса метки
@@ -1141,7 +1141,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
 		// Размещаем команду «adr xtarget, label», смещения ещё не несущей
-		::emit(this->_code, 0x10000000u | static_cast <uint32_t> (target));
+		::__awh_emit__(this->_code, 0x10000000u | static_cast <uint32_t> (target));
 	}
 	/**
 	 * @brief Метод размещения перехода по адресу в регистре
@@ -1151,7 +1151,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 		// Размещаем команду «br xreg»
-		::emit(this->_code, 0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
+		::__awh_emit__(this->_code, 0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
 	}
 	/**
 	 * @brief Метод размещения метки цели перехода по адресу в регистре
@@ -1170,7 +1170,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::landing() noexcept {
 		// Размещаем меткю цели перехода «bti j»
-		::emit(this->_code, 0xD503249Fu);
+		::__awh_emit__(this->_code, 0xD503249Fu);
 		// Обрываем ряд записей в память
 		this->_stamp = SIZE_MAX;
 	}
@@ -1180,7 +1180,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::ret() noexcept {
 		// Размещаем команду «ret»
-		::emit(this->_code, 0xD65F03C0u);
+		::__awh_emit__(this->_code, 0xD65F03C0u);
 	}
 	/**
 	 * @brief Метод разрешения отложенных переходов
@@ -1241,7 +1241,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				 */
 				case static_cast <uint8_t> (fixup_t::kind_t::BRANCH):
 					// Вписываем смещение в команду перехода по условию
-					::patch(this->_code, fixup.position, ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5));
+					::__awh_patch__(this->_code, fixup.position, ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5));
 				break;
 				/**
 				 * Если команда выполняет вычисление адреса метки
@@ -1255,12 +1255,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 					// Получаем смещение вычисления адреса метки в байтах
 					const uint32_t offset = static_cast <uint32_t> (delta * 4);
 					// Вписываем смещение в команду вычисления адреса
-					::patch(this->_code, fixup.position, (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5)));
+					::__awh_patch__(this->_code, fixup.position, (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5)));
 				} break;
 				/**
 				 * Если команда выполняет безусловный переход
 				 */
-				default: ::patch(this->_code, fixup.position, (static_cast <uint32_t> (delta) & 0x3FFFFFFu));
+				default: ::__awh_patch__(this->_code, fixup.position, (static_cast <uint32_t> (delta) & 0x3FFFFFFu));
 			}
 		}
 		// Очищаем набор разрешённых переходов
