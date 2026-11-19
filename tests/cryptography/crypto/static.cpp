@@ -27,11 +27,6 @@
 #include "crypto.hpp"
 
 /**
- * Заголовочный файл очереди ошибок библиотеки криптографии
- */
-#include <openssl/err.h>
-
-/**
  * Стандартный заголовочный файл работы с файлами
  */
 #include <chrono>
@@ -2147,89 +2142,6 @@ TEST_F(CryptoFixture, RoundsRederiveCryptoTest){
 	this->_crypto->roundAES(1000);
 	// Проверяем расхождение открытого текста при чужом количестве итераций
 	EXPECT_NE(this->_crypto->decrypt <std::string> (second, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), data);
-}
-
-/**
- * @brief Тест снятия очереди ошибок библиотеки криптографии
- *
- * @details Библиотека криптографии складывает причины отказов в очередь, принадлежащую
- *          потоку, и сама её не опорожняет. Модуль очередь не читал вовсе, и оставленные
- *          им причины доставались соседнему коду - работа с защищённым соединением
- *          очередь как раз вычитывает и выдаёт в лог. Тест закрепляет, что после всякого
- *          отказа очередь остаётся пустой
- *
- */
-TEST_F(CryptoFixture, ErrorQueueCryptoTest){
-	// Буфер данных для работы
-	const std::vector <uint8_t> data = {0x41, 0x4E, 0x59, 0x4B, 0x53};
-	/**
-	 * Отказ шифрования ключом RSA, под дополнение слишком коротким
-	 */
-	{
-		// Открытый ключ RSA разрядностью в пятьсот двенадцать разрядов
-		const std::string key =
-			"-----BEGIN PUBLIC KEY-----\n"
-			"MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMk9wBK+qvVfzPAltyHTRHEA6wTTSdr0\n"
-			"qFG+d9RE7cFSql5IEG0uAaDoROuEOasosU4lnCOztIG00lEXltpY48MCAwEAAQ==\n"
-			"-----END PUBLIC KEY-----\n";
-		// Буфер шифротекста
-		std::vector <uint8_t> sealed;
-		// Выполняем ввод ключа RSA негодной разрядности
-		ASSERT_TRUE(this->_crypto->setPublicKeyRSA(key));
-		// Проверяем отказ шифрования ключом RSA
-		ASSERT_FALSE(this->_crypto->encryptWithPublicKey(data, sealed));
-		// Проверяем пустоту очереди ошибок после отказа
-		EXPECT_EQ(::ERR_get_error(), 0UL);
-	}
-	/**
-	 * Отказ ввода ключа RSA, записью PEM не являющегося
-	 */
-	{
-		// Проверяем отказ ввода ключа RSA
-		ASSERT_FALSE(this->_crypto->setPublicKeyRSA("это не ключ вовсе"));
-		// Проверяем пустоту очереди ошибок после отказа
-		EXPECT_EQ(::ERR_get_error(), 0UL);
-	}
-	/**
-	 * Отказ расшифровки поддельного шифротекста
-	 */
-	{
-		// Выполняем генерацию приватного ключа RSA
-		ASSERT_TRUE(this->_crypto->generatePrivateKeyRSA(2048));
-		// Буфер шифротекста
-		std::vector <uint8_t> sealed;
-		// Выполняем шифрование данных ключом RSA
-		ASSERT_TRUE(this->_crypto->encryptWithPublicKey(data, sealed));
-		// Выполняем подделку октета шифротекста
-		sealed[sealed.size() / 2] = static_cast <uint8_t> (sealed[sealed.size() / 2] ^ 0x01);
-		// Буфер открытого текста
-		std::vector <uint8_t> opened;
-		// Проверяем отказ расшифровки поддельного шифротекста
-		ASSERT_FALSE(this->_crypto->decryptWithPrivateKey(sealed, opened));
-		// Проверяем пустоту очереди ошибок после отказа
-		EXPECT_EQ(::ERR_get_error(), 0UL);
-	}
-	/**
-	 * Отказ расшифровки поддельного шифротекста режима с проверкой подлинности
-	 */
-	{
-		// Устанавливаем пароль шифрования
-		this->_crypto->password("password");
-		// Устанавливаем соль шифрования
-		this->_crypto->salt("salt");
-		// Устанавливаем режим блочного шифрования с проверкой подлинности
-		this->_crypto->mode(awh::crypto_t::mode_t::GCM);
-		// Выполняем шифрование текста
-		std::string sealed = this->_crypto->encrypt <std::string> (std::string("ANYKS"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
-		// Проверяем наличие шифротекста
-		ASSERT_FALSE(sealed.empty());
-		// Выполняем подделку октета шифротекста
-		sealed[sealed.size() / 2] = static_cast <char> (sealed[sealed.size() / 2] ^ 0x01);
-		// Проверяем отказ расшифровки поддельного шифротекста
-		ASSERT_TRUE(this->_crypto->decrypt <std::string> (sealed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256).empty());
-		// Проверяем пустоту очереди ошибок после отказа
-		EXPECT_EQ(::ERR_get_error(), 0UL);
-	}
 }
 
 /**

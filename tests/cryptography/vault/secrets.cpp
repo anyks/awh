@@ -31,11 +31,6 @@
 #include <stdexcept>
 
 /**
- * Подключаем наши модули
- */
-#include "../../../include/alloc/alloc.hpp"
-
-/**
  * @brief Снятие содержимого рукояти через обращение к складу
  *
  * @note Указателя на содержимое у рукояти нет: оно доступно лишь внутри
@@ -49,9 +44,9 @@ static std::string secretOf(const awh::vault_t::Handle & handle) {
 	// Снимаемое содержимое тайны
 	std::string seen;
 	// Обращаемся к содержимому рукояти
-	static_cast <void> (handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+	static_cast <void> (handle.apply([&seen](const uint8_t * data, const size_t size) noexcept -> void {
 		// Снимаем поданное содержимое
-		seen = (data != nullptr ? std::string(data, size) : std::string(""));
+		seen = (data != nullptr ? std::string(reinterpret_cast <const char *> (data), size) : std::string(""));
 	}));
 	// Выводим снятое содержимое тайны
 	return seen;
@@ -88,19 +83,19 @@ TEST_F(VaultFixture, StoredSecretIsBorrowedBack){
 	// Уложенное содержимое обязано вернуться рукоятью
 	EXPECT_EQ(secretOf(handle), secret);
 	/**
-	 * Открытый текст обязан лежать в памяти НАШЕГО распределителя
+	 * Открытый текст обязан лежать в укрытой памяти склада
 	 *
 	 * Обычное хранилище языка отдало бы его в общую кучу - оттуда он ушёл бы в
 	 * подкачку и попал бы в снимок памяти при падении
 	 */
-	// Снимаем объём распределителя под адресом содержимого
-	size_t held = 0;
-	static_cast <void> (handle.apply([&held](const char * data, const size_t) noexcept -> void {
-		// Запоминаем объём нашего распределителя
-		held = awh::alloc::allocator::resolve(data).size;
+	// Снимаем признак принадлежности содержимого укрытому хранилищу
+	bool owned = false;
+	static_cast <void> (handle.apply([&owned](const uint8_t * data, const size_t) noexcept -> void {
+		// Запоминаем признак принадлежности укрытому хранилищу
+		owned = nts::sys::Vault::instance().owns(data);
 	}));
-	// Открытый текст обязан стоять в памяти нашего распределителя
-	EXPECT_GE(held, handle.size());
+	// Открытый текст обязан стоять в укрытой памяти склада
+	EXPECT_TRUE(owned);
 }
 /**
  * @brief Тест хранения тайны в шифрованном виде
@@ -156,7 +151,7 @@ TEST_F(VaultFixture, UnknownSecretGivesInvalidHandle){
 	EXPECT_FALSE(handle.valid());
 	EXPECT_EQ(handle.size(), static_cast <size_t> (0));
 	// Обращение к негодной рукояти обязано ответить отказом и не звать обработчик
-	EXPECT_FALSE(handle.apply([](const char *, const size_t) noexcept -> void {}));
+	EXPECT_FALSE(handle.apply([](const uint8_t *, const size_t) noexcept -> void {}));
 }
 /**
  * @brief Тест укладки пустой тайны
@@ -265,23 +260,21 @@ TEST_F(VaultFixture, RewrittenSecretReplacesTheFormerOne){
  */
 TEST_F(VaultFixture, VaultReportsAchievedShelter){
 	// Снимаем сведения о состоявшейся защите
-	const awh::alloc::shelter_t & shelter = this->_vault->shelter();
-	// Сведения обязаны совпасть с тем, что отвечает сам распределитель
-	awh::alloc::shelter_t expected;
-	void * probe = awh::alloc::allocator::secure(64, &expected);
-	ASSERT_NE(probe, nullptr);
-	awh::alloc::allocator::release(probe);
-	// Склад обязан отвечать то же, что и распределитель
+	const nts::sys::shelter_t & shelter = this->_vault->shelter();
+	// Сведения обязаны совпасть с тем, что отвечает само укрытое хранилище
+	const nts::sys::shelter_t & expected = nts::sys::Vault::instance().shelter();
+	// Склад обязан отвечать то же, что и укрытое хранилище
 	EXPECT_EQ(shelter.hidden, expected.hidden);
 	EXPECT_EQ(shelter.wired, expected.wired);
+	EXPECT_EQ(shelter.forked, expected.forked);
 	/**
 	 * Хоть одна защита обязана состояться на заявленных системах
 	 *
 	 * Укрытия от снимка нет у Linux, macOS и NetBSD, а запрет подкачки требует прав у
-	 * illumos: порознь каждый признак вправе быть ложным, но оба ложных разом означали
+	 * illumos: порознь каждый признак вправе быть ложным, но все ложные разом означали
 	 * бы, что укрытая выдача не даёт ничего сверх обычной
 	 */
-	EXPECT_TRUE(shelter.hidden || shelter.wired);
+	EXPECT_TRUE(shelter.hidden || shelter.wired || shelter.forked);
 	// Защита памяти к готовности склада отношения не имеет: шифрование состоится и без неё
 	EXPECT_TRUE(this->_vault->ready());
 }
@@ -306,11 +299,11 @@ TEST_F(VaultFixture, HandleAppliesContentToHandler){
 	// Число вызовов обработчика
 	size_t calls = 0;
 	// Обращаемся к содержимому тайны
-	EXPECT_TRUE(handle.apply([&seen, &calls](const char * data, const size_t size) noexcept -> void {
+	EXPECT_TRUE(handle.apply([&seen, &calls](const uint8_t * data, const size_t size) noexcept -> void {
 		// Считаем вызов обработчика
 		calls++;
 		// Снимаем содержимое тайны
-		seen.assign(data, size);
+		seen.assign(reinterpret_cast <const char *> (data), size);
 	}));
 	// Обработчик обязан быть зван ровно однажды
 	EXPECT_EQ(calls, static_cast <size_t> (1));
@@ -332,7 +325,7 @@ TEST_F(VaultFixture, HandleAppliesNothingWhenInvalid){
 	// Число вызовов обработчика
 	size_t calls = 0;
 	// Обращение обязано ответить отказом
-	EXPECT_FALSE(handle.apply([&calls](const char *, const size_t) noexcept -> void {
+	EXPECT_FALSE(handle.apply([&calls](const uint8_t *, const size_t) noexcept -> void {
 		// Считаем вызов обработчика
 		calls++;
 	}));
@@ -358,7 +351,7 @@ TEST_F(VaultFixture, HandleAppliesEmptySecret){
 	// Число вызовов обработчика
 	size_t calls = 0;
 	// Обращение обязано состояться
-	EXPECT_TRUE(handle.apply([&length, &calls](const char *, const size_t size) noexcept -> void {
+	EXPECT_TRUE(handle.apply([&length, &calls](const uint8_t *, const size_t size) noexcept -> void {
 		// Считаем вызов обработчика
 		calls++;
 		// Снимаем длину содержимого
@@ -393,7 +386,7 @@ TEST_F(VaultFixture, HandleStaysUsableWhenHandlerThrows){
 	 */
 	try {
 		// Обращаемся к содержимому тайны
-		static_cast <void> (handle.apply([](const char *, const size_t) -> void {
+		static_cast <void> (handle.apply([](const uint8_t *, const size_t) -> void {
 			// Уходим из обработчика исключением
 			throw std::runtime_error("уход из обработчика");
 		}));
@@ -418,9 +411,9 @@ TEST_F(VaultFixture, HandleStaysUsableWhenHandlerThrows){
 	// Содержимое, снятое обработчиком после ухода исключением
 	std::string seen;
 	// Обращение обязано состояться вновь
-	EXPECT_TRUE(handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+	EXPECT_TRUE(handle.apply([&seen](const uint8_t * data, const size_t size) noexcept -> void {
 		// Снимаем содержимое тайны
-		seen.assign(data, size);
+		seen.assign(reinterpret_cast <const char *> (data), size);
 	}));
 	// Содержимое обязано совпасть с уложенным
 	EXPECT_EQ(seen, secret);
@@ -458,9 +451,9 @@ TEST_F(VaultFixture, SecretIsStoredOutOfVessel){
 	// Содержимое, снятое обработчиком
 	std::string seen;
 	// Обращаемся к содержимому тайны
-	ASSERT_TRUE(handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+	ASSERT_TRUE(handle.apply([&seen](const uint8_t * data, const size_t size) noexcept -> void {
 		// Снимаем содержимое тайны
-		seen.assign(data, size);
+		seen.assign(reinterpret_cast <const char *> (data), size);
 	}));
 	// Содержимое обязано совпасть с влитым в приёмник
 	EXPECT_EQ(seen, secret);
@@ -562,9 +555,9 @@ TEST_F(VaultFixture, SharedVaultIsOneForTheProcess){
 	// Содержимое, снятое обработчиком
 	std::string seen;
 	// Обращаемся к содержимому тайны
-	ASSERT_TRUE(handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+	ASSERT_TRUE(handle.apply([&seen](const uint8_t * data, const size_t size) noexcept -> void {
 		// Снимаем содержимое тайны
-		seen.assign(data, size);
+		seen.assign(reinterpret_cast <const char *> (data), size);
 	}));
 	// Содержимое обязано совпасть с уложенным
 	EXPECT_EQ(seen, secret);
@@ -674,7 +667,7 @@ TEST_F(VaultFixture, SharedVaultKeepsCompositionUnderThreads){
 				// Если взятие удалось
 				if(handle.valid())
 					// Обращаемся к содержимому тайны
-					static_cast <void> (handle.apply([](const char *, const size_t) noexcept -> void {}));
+					static_cast <void> (handle.apply([](const uint8_t *, const size_t) noexcept -> void {}));
 			}
 		});
 	}
@@ -711,9 +704,9 @@ TEST_F(VaultFixture, SharedVaultKeepsCompositionUnderThreads){
 			// Содержимое, снятое обработчиком
 			std::string seen;
 			// Обращаемся к содержимому тайны
-			ASSERT_TRUE(handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+			ASSERT_TRUE(handle.apply([&seen](const uint8_t * data, const size_t size) noexcept -> void {
 				// Снимаем содержимое тайны
-				seen.assign(data, size);
+				seen.assign(reinterpret_cast <const char *> (data), size);
 			}));
 			// Содержимое обязано совпасть с уложенным
 			EXPECT_EQ(seen, ("содержимое " + name));
