@@ -253,9 +253,9 @@ class WebServer {
 						{":method", "GET"},
 						{":scheme", "https"},
 						{":path", "/stylesheets/screen.css"},
-						{":authority", "nghttp2.org"},
+						{":authority", "anyks.com"},
 						{"accept-encoding", "gzip, deflate"},
-						{"user-agent", "nghttp2/1.0.1-DEV"}
+						{"user-agent", "awh/4.5.0"}
 					};
 					// Выполняем отправку push-уведомлений
 					if(awh->push2(sid, bid, headers, awh::http2_t::flag_t::NONE) < 0)

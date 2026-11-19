@@ -13,7 +13,7 @@
  * @site https://anyks.com
  *
  * @brief Реализация класса работы с фреймами HTTP/2 — адаптер над парсером HTTP/2 AWH v5,
- *        сохраняющий интерфейс прежней реализации на библиотеке NGHTTP2
+ *        сохраняющий прежний интерфейс модуля
  *
  * @copyright Copyright © 2025
  *
@@ -96,6 +96,9 @@ awh::Http2::error_t awh::Http2::error(const uint32_t code) noexcept {
 	 * Определяем код ошибки протокола
 	 */
 	switch(static_cast <http::h2::error_t> (code)){
+		// Штатное завершение потока
+		case http::h2::error_t::NO_ERROR:
+			return error_t::NONE;
 		// Требование выполнения отмены запроса
 		case http::h2::error_t::CANCEL:
 			return error_t::CANCEL;

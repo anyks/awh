@@ -14,11 +14,11 @@
  *
  * \~russian
  * @brief Класс работы с фреймами HTTP/2 — адаптер над парсером HTTP/2 AWH v5,
- *        сохраняющий интерфейс прежней реализации на библиотеке NGHTTP2
+ *        сохраняющий прежний интерфейс модуля
  *
  * \~english
  * @brief Class of the work with the frames of HTTP/2 — an adapter over the HTTP/2 parser of AWH v5
- *        preserving the interface of the former implementation on the NGHTTP2 library
+ *        preserving the former interface of the module
  *
  * \~
  *
@@ -54,61 +54,6 @@
  * Подключаем парсер HTTP/2 из AWH v5
  */
 #include <proto/http/parser/http2/http.hpp>
-
-/**
- * \~russian
- * @brief Проверяем, что код возврата временного отказа обратного вызова не определён
- *
- * \~english
- * @brief Check that the return code of a temporary failure of a callback is not defined
- *
- * \~
- */
-#ifndef NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
-	/**
-	 * \~russian
-	 * @brief Код возврата временного отказа функции обратного вызова
-	 *
-	 * @details Значение сохранено от библиотеки NGHTTP2: на него опираются
-	 *          вызывающие модули, возвращая код из своих функций обратного вызова
-	 *
-	 * \~english
-	 * @brief Code of the return of a temporary failure of a callback function
-	 *
-	 * @details The value is preserved from the NGHTTP2 library: the calling modules
-	 *          rely on it returning the code from their callback functions
-	 *
-	 * \~
-	 */
-	#define NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE (-521)
-#endif
-/**
- * \~russian
- * @brief Проверяем, что код возврата отказа обратного вызова не определён
- *
- * \~english
- * @brief Check that the return code of a failure of a callback is not defined
- *
- * \~
- */
-#ifndef NGHTTP2_ERR_CALLBACK_FAILURE
-	/**
-	 * \~russian
-	 * @brief Код возврата отказа функции обратного вызова
-	 *
-	 * @details Значение сохранено от библиотеки NGHTTP2: на него опираются
-	 *          вызывающие модули, возвращая код из своих функций обратного вызова
-	 *
-	 * \~english
-	 * @brief Code of the return of a failure of a callback function
-	 *
-	 * @details The value is preserved from the NGHTTP2 library: the calling modules
-	 *          rely on it returning the code from their callback functions
-	 *
-	 * \~
-	 */
-	#define NGHTTP2_ERR_CALLBACK_FAILURE (-902)
-#endif
 
 /**
  * \~russian
@@ -322,6 +267,38 @@ namespace awh {
 			 * \~
 			 */
 			static constexpr uint32_t MAX_HEADER_LIST_SIZE = 0x10000;
+			/**
+			 * \~russian
+			 * @brief Код возврата временного отказа функции обратного вызова
+			 *
+			 * @details Значение сохранено от прежней библиотеки HTTP/2: на него
+			 *          опираются вызывающие модули, возвращая код из обработчиков
+			 *
+			 * \~english
+			 * @brief Code of the return of a temporary failure of a callback function
+			 *
+			 * @details The value is preserved from the former HTTP/2 library: the calling
+			 *          modules rely on it returning the code from their handlers
+			 *
+			 * \~
+			 */
+			static constexpr int32_t ERR_TEMPORAL_CALLBACK_FAILURE = -521;
+			/**
+			 * \~russian
+			 * @brief Код возврата отказа функции обратного вызова
+			 *
+			 * @details Значение сохранено от прежней библиотеки HTTP/2: на него
+			 *          опираются вызывающие модули, возвращая код из обработчиков
+			 *
+			 * \~english
+			 * @brief Code of the return of a failure of a callback function
+			 *
+			 * @details The value is preserved from the former HTTP/2 library: the calling
+			 *          modules rely on it returning the code from their handlers
+			 *
+			 * \~
+			 */
+			static constexpr int32_t ERR_CALLBACK_FAILURE = -902;
 		private:
 			/**
 			 * \~russian

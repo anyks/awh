@@ -475,7 +475,7 @@ int32_t awh::server::Websocket2::headerSignal(const int32_t sid, const uint64_t 
 		// Выводим сообщение об ошибке
 		this->_log->print("HTTP/2 header list of stream %d is too large [%zu bytes]", log_t::flag_t::WARNING, sid, bytes);
 		// Сбрасываем поток с ошибкой
-		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+		return http2_t::ERR_TEMPORAL_CALLBACK_FAILURE;
 	}
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
@@ -755,7 +755,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, bid, direct_t::RECV);
 												}
 												// Выходим из функции
-												return NGHTTP2_ERR_CALLBACK_FAILURE;
+												return http2_t::ERR_CALLBACK_FAILURE;
 											}
 										}
 										// Если парсер обработал какое-то количество байт
@@ -923,7 +923,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 															this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
 													}
 													// Выходим из функции
-													return NGHTTP2_ERR_CALLBACK_FAILURE;
+													return http2_t::ERR_CALLBACK_FAILURE;
 												}
 												// Если функция обратного вызова активности потока установлена
 												if(this->_callback.is("stream"))
@@ -1010,7 +1010,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 												this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
 										}
 										// Выходим из функции
-										return NGHTTP2_ERR_CALLBACK_FAILURE;
+										return http2_t::ERR_CALLBACK_FAILURE;
 									}
 									// Если тело запроса существует
 									if(!options->http.empty(awh::http_t::suite_t::BODY)){
@@ -1041,7 +1041,7 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", options->sid, bid, direct_t::RECV);
 												}
 												// Выходим из функции
-												return NGHTTP2_ERR_CALLBACK_FAILURE;
+												return http2_t::ERR_CALLBACK_FAILURE;
 											}
 										}
 									}

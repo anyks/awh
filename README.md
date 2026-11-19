@@ -347,12 +347,10 @@ in a debug configuration, the dependency archive, and on Windows it appends the 
 libraries to that list itself: `ws2_32`, `gdi32`, `crypt32`, `Iphlpapi`, `bcrypt`, `ole32`,
 `shell32`, `uuid`. Linking the single `${AWH_LIBRARY}` file would leave them out.
 
-**The allocator stays out of the merged archive.** `libdependence.lib` takes fourteen of the
-seventeen archives that were built. `tcmalloc_minimal.lib` and `common.lib` are kept apart and
-linked by name; the rest, `low_level_alloc.lib` among them, are kept out of the merge and are
-not linked at all. Merging the allocator in would break the allocation interception: the
-linker pulls an object out of an archive only when a symbol asks for it, and the interception
-needs the object pulled whole. The build attaches it with `/INCLUDE:__tcmalloc` itself.
+**The merged archive takes every built dependency.** `libdependence.lib` merges the archives
+the dependency step produced. The memory allocator is not a dependency any more: it lives
+inside `awh.lib` itself, and its interception works because the object carrying it is a direct
+part of that archive rather than a member pulled out of a merged one.
 
 **A static build proves less than it looks.** Producing `awh.lib` involves no linking at all —
 it is an archive of object files. A missing dependency therefore shows up only where something
