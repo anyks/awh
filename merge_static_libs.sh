@@ -68,11 +68,12 @@ fi
  # берётся лишь при наличии неразрешённой метки. Своя перехватывающая выдача
  # памяти (модуль alloc) входит в состав libawh напрямую и объединения не касается.
  #
- # Имена архивов gperftools остаются в списке нарочно: зависимость снята, но
- # каталоги third_party прежних стендов хранят собранный аллокатор, и влитые в
- # libdependence архивы tcmalloc дали бы двойное определение operator new/delete
- # при линковке AWH со своим модулем alloc. Сборка зависимостей с нуля этих
- # архивов больше не создаёт.
+ # Имена архивов снятых зависимостей остаются в списке нарочно: каталоги
+ # third_party прежних стендов хранят собранные nghttp2, pcre2 и аллокатор
+ # gperftools. Мёртвые архивы nghttp2 и pcre2 не должны попадать в объединение,
+ # а влитые архивы tcmalloc дали бы двойное определение operator new/delete при
+ # линковке AWH со своим модулем alloc. Сборка зависимостей с нуля этих архивов
+ # больше не создаёт.
  #
 # Список этот - ограждение второе; первое даёт сам каталог сборки, куда
  # библиотеки эти не копируются вовсе.
@@ -86,7 +87,7 @@ fi
  # имелось. Проверено на стенде FreeBSD 15.1 aarch64 с каталогом библиотек,
  # доставленным с macOS (03.10.2026)
  ##
-readonly EXCLUDES="libdependence libtcmalloc_minimal libcommon libtcmalloc libtcmalloc_debug libtcmalloc_minimal_debug libprofiler libstacktrace libsymbolize liblow_level_alloc liblibbacktrace librun_benchmark"
+readonly EXCLUDES="libdependence libnghttp2 libpcre2-8 libpcre2-16 libpcre2-32 libtcmalloc_minimal libcommon libtcmalloc libtcmalloc_debug libtcmalloc_minimal_debug libprofiler libstacktrace libsymbolize liblow_level_alloc liblibbacktrace librun_benchmark"
 
 ##
  # Функция проверки библиотеки на принадлежность к объединению
