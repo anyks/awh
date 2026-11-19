@@ -15,12 +15,12 @@
  * \~russian
  * @brief Заголовочный файл криптографического слоя QUIC (RFC 9001) — вывод начальных секретов,
  *        ключей и заголовочной защиты,
- *        шифрование и расшифровка пакетов на AEAD-примитивах BoringSSL без хранения состояния соединения
+ *        шифрование и расшифровка пакетов на AEAD-примитивах A-NTS без хранения состояния соединения
  *
  * \~english
  * @brief Header file of the QUIC cryptographic layer (RFC 9001) — the derivation of the initial secrets,
  *        of the keys and of the header protection,
- *        the encryption and the decryption of the packets on the AEAD primitives of BoringSSL without storing the state of a connection
+ *        the encryption and the decryption of the packets on the AEAD primitives of A-NTS without storing the state of a connection
  *
  * \~
  *
@@ -43,18 +43,6 @@
  */
 #include "quic.hpp"
 #include "../../sys/macro/global.hpp"
-
-/**
- * \~russian
- * @brief Предварительные объявления типов BoringSSL (реализация в crypto.cpp)
- *
- * \~english
- * @brief Preliminary declarations of the BoringSSL types (the implementation is in crypto.cpp)
- *
- * \~
- */
-struct aes_key_st;
-struct evp_aead_ctx_st;
 
 /**
  * \~russian
@@ -88,7 +76,7 @@ namespace awh {
 		 * @details Вывод ключей (HKDF-Expand-Label с метками "quic key"/"quic iv"/"quic hp"),
 		 *          пер-пакетное AEAD-шифрование, защита заголовка (header protection),
 		 *          обновление ключей ("quic ku") и тег целостности пакета Retry.
-		 *          Криптографические примитивы - BoringSSL. Слой не хранит состояния
+		 *          Криптографические примитивы - A-NTS. Слой не хранит состояния
 		 *          соединения - ключи передаются явно в каждую функцию.
 		 *
 		 * \~english
@@ -97,7 +85,7 @@ namespace awh {
 		 * @details The derivation of the keys (HKDF-Expand-Label with the labels "quic key"/"quic iv"/"quic hp"),
 		 *          the per-packet AEAD encryption, the header protection,
 		 *          the key update ("quic ku") and the integrity tag of a Retry packet.
-		 *          The cryptographic primitives are those of BoringSSL. The layer does not store the state of a
+		 *          The cryptographic primitives are those of A-NTS. The layer does not store the state of a
 		 *          connection — the keys are passed explicitly into every function.
 		 *
 		 * \~
@@ -151,6 +139,39 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Предварительное объявление непрозрачного контекста AEAD-защиты пакетов
+			 *
+			 * @details Полное определение скрыто в модуле реализации, что позволяет не подключать
+			 *          заголовочные файлы стороннего криптопровайдера (A-NTS) в публичный интерфейс
+			 *
+			 * \~english
+			 * @brief Forward declaration of the opaque context of the AEAD protection of packets
+			 *
+			 * @details The full definition is hidden in the implementation module, which makes it possible
+			 *          not to include the header files of the third-party cryptographic provider (A-NTS) in the public interface
+			 *
+			 * \~
+			 */
+			struct aead_t;
+			/**
+			 * \~russian
+			 * @brief Предварительное объявление непрозрачного развёрнутого ключа защиты заголовка
+			 *
+			 * @details Полное определение скрыто в модуле реализации, что позволяет не подключать
+			 *          заголовочные файлы стороннего криптопровайдера (A-NTS) в публичный интерфейс
+			 *
+			 * \~english
+			 * @brief Forward declaration of the opaque expanded key of the header protection
+			 *
+			 * @details The full definition is hidden in the implementation module, which makes it possible
+			 *          not to include the header files of the third-party cryptographic provider (A-NTS) in the public interface
+			 *
+			 * \~
+			 */
+			struct mask_t;
+
+			/**
+			 * \~russian
 			 * @brief Структура ключей защиты пакетов одного направления (RFC 9001 §5.1)
 			 *
 			 * \~english
@@ -182,7 +203,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				shared_ptr <evp_aead_ctx_st> aead;
+				shared_ptr <aead_t> aead;
 				/**
 				 * \~russian
 				 * @brief Развёрнутый ключ защиты заголовка для наборов на основе AES.
@@ -194,7 +215,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				shared_ptr <aes_key_st> mask;
+				shared_ptr <mask_t> mask;
 				/**
 				 * \~russian
 				 * @brief Конструктор

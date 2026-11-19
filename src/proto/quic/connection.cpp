@@ -27,12 +27,11 @@
 #include <algorithm>
 
 /**
- * Заголовочные файлы BoringSSL
+ * Заголовочные файлы библиотеки A-NTS
  */
-#include <openssl/mem.h>
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/digest.h>
+#include <digest/hmac.hpp>
+#include <entropy/entropy.hpp>
+#include <message/message.hpp>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -230,7 +229,7 @@ namespace {
 			 */
 			explicit Key() noexcept : ready(false), data(32, '\0') {
 				// Выполняем генерацию ключа подписи токенов
-				this->ready = (::RAND_bytes(reinterpret_cast <uint8_t *> (&this->data[0]), this->data.size()) == 1);
+				this->ready = nts::entropy::bytes(reinterpret_cast <uint8_t *> (&this->data[0]), this->data.size());
 			}
 		} key_t;
 		// Общий ключ подписи токенов проверки адреса
@@ -409,7 +408,7 @@ namespace {
 		// Устанавливаем длину идентификатора соединения
 		cid.size = CID_SIZE;
 		// Выполняем генерацию случайных данных идентификатора
-		return (::RAND_bytes(cid.data, CID_SIZE) == 1);
+		return nts::entropy::bytes(cid.data, CID_SIZE);
 	}
 };
 
@@ -1990,7 +1989,10 @@ bool awh::quic::Connection::stateless(const uint8_t * data, const size_t size) c
 		 * действительно получен: токены неиспользованных и выведенных из обращения
 		 * идентификаторов в опознании не участвуют (RFC 9000 §10.3.1)
 		 */
-		if(item.used && item.hasToken && (CRYPTO_memcmp(candidate, item.resetToken, proto::RESET_TOKEN_SIZE) == 0))
+		if(item.used && item.hasToken && nts::message::compare(
+			nts::view_t(candidate, proto::RESET_TOKEN_SIZE),
+			nts::view_t(item.resetToken, proto::RESET_TOKEN_SIZE)
+		))
 			// Выводим положительный результат
 			return true;
 	}
@@ -2055,16 +2057,15 @@ bool awh::quic::Connection::token(const uint8_t mark, const cid_t & odcid, strin
 		address.resize(address.size() - sizeof(uint16_t));
 	// Дописываем адрес клиента в заверяемые данные
 	signed_.append(address);
-	// Буфер кода аутентичности
-	uint8_t mac[EVP_MAX_MD_SIZE];
-	// Длина кода аутентичности
-	uint32_t length = 0;
+	// Буфер усечённого кода аутентичности
+	uint8_t mac[proto::RESET_TOKEN_SIZE];
 	// Вычисляем код аутентичности содержимого токена
-	if(::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (signed_.data()), signed_.size(), mac, &length) == nullptr)
-		// Формирование невозможно
-		return false;
-	// Если длина кода аутентичности недостаточна
-	if(length < proto::RESET_TOKEN_SIZE)
+	if(!nts::digest::hmac(
+		nts::digest::hash_t::SHA256,
+		nts::view_t(reinterpret_cast <const uint8_t *> (key.data()), key.size()),
+		nts::view_t(reinterpret_cast <const uint8_t *> (signed_.data()), signed_.size()),
+		mac, sizeof(mac)
+	))
 		// Формирование невозможно
 		return false;
 	// Дописываем усечённый код аутентичности в токен
@@ -2140,19 +2141,21 @@ bool awh::quic::Connection::validate(string_view token, cid_t & odcid, bool & re
 	// Дописываем адрес клиента в заверяемые данные
 	signed_.append(address);
 	// Буфер ожидаемого кода аутентичности
-	uint8_t mac[EVP_MAX_MD_SIZE];
-	// Длина кода аутентичности
-	uint32_t size = 0;
+	uint8_t mac[proto::RESET_TOKEN_SIZE];
 	// Вычисляем ожидаемый код аутентичности содержимого токена
-	if(::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (signed_.data()), signed_.size(), mac, &size) == nullptr)
-		// Проверка не пройдена
-		return false;
-	// Если длина кода аутентичности недостаточна
-	if(size < proto::RESET_TOKEN_SIZE)
+	if(!nts::digest::hmac(
+		nts::digest::hash_t::SHA256,
+		nts::view_t(reinterpret_cast <const uint8_t *> (key.data()), key.size()),
+		nts::view_t(reinterpret_cast <const uint8_t *> (signed_.data()), signed_.size()),
+		mac, sizeof(mac)
+	))
 		// Проверка не пройдена
 		return false;
 	// Сравниваем коды аутентичности за постоянное время
-	if(CRYPTO_memcmp(mac, token.data() + (token.size() - proto::RESET_TOKEN_SIZE), proto::RESET_TOKEN_SIZE) != 0)
+	if(!nts::message::compare(
+		nts::view_t(mac, proto::RESET_TOKEN_SIZE),
+		nts::view_t(reinterpret_cast <const uint8_t *> (token.data() + (token.size() - proto::RESET_TOKEN_SIZE)), proto::RESET_TOKEN_SIZE)
+	))
 		// Проверка не пройдена - токен выдан не этому адресу либо подделан
 		return false;
 	// Отметка времени выдачи токена
@@ -2458,7 +2461,7 @@ void awh::quic::Connection::issue() noexcept {
 		 */
 		if(!quic::resetToken(this->_token.reset, frame.cid, frame.resetToken)){
 			// Выполняем генерацию случайного токена сброса без сохранения состояния
-			if(::RAND_bytes(frame.resetToken, proto::RESET_TOKEN_SIZE) != 1)
+			if(!nts::entropy::bytes(frame.resetToken, proto::RESET_TOKEN_SIZE))
 				// Выходим из метода - ошибка генератора случайных чисел
 				return;
 		}
@@ -7027,7 +7030,7 @@ bool awh::quic::Connection::probe() noexcept {
 		// Выводим отрицательный результат
 		return false;
 	// Выполняем генерацию случайных данных проверки достижимости пути
-	if(::RAND_bytes(this->_path.probe, proto::PATH_DATA_SIZE) != 1)
+	if(!nts::entropy::bytes(this->_path.probe, proto::PATH_DATA_SIZE))
 		// Выводим отрицательный результат - ошибка генератора случайных чисел
 		return false;
 	// Устанавливаем флаг ожидания ответа на проверку пути

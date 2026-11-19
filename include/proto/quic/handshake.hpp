@@ -14,12 +14,12 @@
  *
  * \~russian
  * @brief Заголовочный файл криптографического рукопожатия QUIC — класс quic::Handshake,
- *        управляющий уровнями шифрования, обменом CRYPTO-данными с BoringSSL,
+ *        управляющий уровнями шифрования, обменом CRYPTO-данными с A-NTS,
  *        установкой ключей и передачей транспортных параметров как непрозрачных байт
  *
  * \~english
  * @brief Header file of the QUIC cryptographic handshake — the quic::Handshake class,
- *        which manages the encryption levels, the exchange of the CRYPTO data with BoringSSL,
+ *        which manages the encryption levels, the exchange of the CRYPTO data with A-NTS,
  *        the setting of the keys and the passing of the transport parameters as opaque bytes
  *
  * \~
@@ -35,6 +35,7 @@
  */
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <string_view>
 
@@ -56,15 +57,57 @@
 
 /**
  * \~russian
- * @brief Предварительные объявления типов BoringSSL (реализация в handshake.cpp)
+ * @brief Предварительные объявления типов связи TLS библиотеки A-NTS
  *
  * \~english
- * @brief Preliminary declarations of the BoringSSL types (the implementation is in handshake.cpp)
+ * @brief Preliminary declarations of the types of the TLS connection of the A-NTS library
  *
  * \~
  */
-struct ssl_st;
-struct ssl_ctx_st;
+namespace nts {
+	/**
+	 * \~russian
+	 * @brief Пространство имён связи клиента библиотеки A-NTS
+	 *
+	 * \~english
+	 * @brief Namespace of the client connection of the A-NTS library
+	 *
+	 * \~
+	 */
+	namespace client {
+		/**
+		 * \~russian
+		 * @brief Прототип класса связи клиента
+		 *
+		 * \~english
+		 * @brief Prototype of the client connection class
+		 *
+		 * \~
+		 */
+		class Context;
+	};
+	/**
+	 * \~russian
+	 * @brief Пространство имён связи сервера библиотеки A-NTS
+	 *
+	 * \~english
+	 * @brief Namespace of the server connection of the A-NTS library
+	 *
+	 * \~
+	 */
+	namespace server {
+		/**
+		 * \~russian
+		 * @brief Прототип класса связи сервера
+		 *
+		 * \~english
+		 * @brief Prototype of the server connection class
+		 *
+		 * \~
+		 */
+		class Context;
+	};
+};
 
 /**
  * \~russian
@@ -93,20 +136,9 @@ namespace awh {
 	namespace quic {
 		/**
 		 * \~russian
-		 * @brief Предварительное объявление класса доступа обратных вызовов BoringSSL
-		 *
-		 * \~english
-		 * @brief Preliminary declaration of the class of the access to the callbacks of BoringSSL
-		 *
-		 * \~
-		 */
-		class HandshakeHook;
-
-		/**
-		 * \~russian
 		 * @brief Класс криптографического хендшейка QUIC (RFC 9001 §4)
 		 *
-		 * @details Машина TLS 1.3 хендшейка поверх QUIC API BoringSSL (SSL_QUIC_METHOD).
+		 * @details Машина TLS 1.3 хендшейка поверх связи A-NTS переносом сообщениями по уровням.
 		 *          Работает без ввода-вывода (sans-IO): принимает данные CRYPTO-фреймов
 		 *          через crypto(), накапливает исходящие CRYPTO-данные по уровням
 		 *          шифрования (извлекаются через data()) и выводит ключи защиты пакетов
@@ -118,7 +150,7 @@ namespace awh {
 		 * \~english
 		 * @brief Class of the QUIC cryptographic handshake (RFC 9001 §4)
 		 *
-		 * @details A machine of the TLS 1.3 handshake on top of the QUIC API of BoringSSL (SSL_QUIC_METHOD).
+		 * @details A machine of the TLS 1.3 handshake on top of a connection of A-NTS with the transfer by messages on levels.
 		 *          Works without input-output (sans-IO): accepts the data of the CRYPTO frames
 		 *          through crypto(), accumulates the outgoing CRYPTO data by the encryption
 		 *          levels (they are extracted through data()) and derives the keys of the protection of the packets
@@ -195,29 +227,10 @@ namespace awh {
 				// Состояние хендшейка
 				state_t _state;
 			private:
-				// Код фатального TLS-алерта (RFC 9001 §4.8)
-				uint8_t _alert;
-				// Флаг получения фатального TLS-алерта
-				bool _hasAlert;
-			private:
-				/**
-				 * \~russian
-				 * @brief Контекст TLS, настроенный вызывающим кодом. Настройка шифров, групп,
-				 *        алгоритмов подписи, доверенных центров, списков отзыва и расширений
-				 *        выполняется на нём целиком, поэтому собственных настроек криптографии
-				 *        хендшейк не имеет. Владение контекстом остаётся за вызывающим кодом
-				 *
-				 * \~english
-				 * @brief TLS context, tuned by the calling code. A tuning of the ciphers, the groups,
-				 *        the signature algorithms, the trusted centres, the revocation lists and the extensions
-				 *        is performed on it entirely, therefore the handshake has no own
-				 *        settings of the cryptography. An ownership of a context stays with the calling code
-				 *
-				 * \~
-				 */
-				ssl_ctx_st * _ctx;
-				// Объект TLS-соединения
-				ssl_st * _ssl;
+				// Связь клиента TLS
+				unique_ptr <nts::client::Context> _client;
+				// Связь сервера TLS
+				unique_ptr <nts::server::Context> _server;
 			private:
 				// Сериализованные локальные транспортные параметры
 				string _params;
@@ -251,17 +264,6 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Дружественный класс доступа обратных вызовов BoringSSL QUIC API
-				 *
-				 * \~english
-				 * @brief Friendly class of the access to the callbacks of the BoringSSL QUIC API
-				 *
-				 * \~
-				 */
-				friend class HandshakeHook;
-			private:
-				/**
-				 * \~russian
 				 * @brief Метод продвижения TLS-хендшейка
 				 *
 				 * @return результат продвижения (OK - хендшейк продолжается или завершён)
@@ -274,6 +276,46 @@ namespace awh {
 				 * \~
 				 */
 				status_t process() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод продвижения TLS-хендшейка по связи
+				 *
+				 * @param ctx связь TLS
+				 * @return    результат продвижения (OK - хендшейк продолжается или завершён)
+				 *
+				 * \~english
+				 * @brief Method of advancing the TLS handshake by a connection
+				 *
+				 * @param ctx TLS connection
+				 * @return    result of the advancement (OK — the handshake continues or has been completed)
+				 *
+				 * \~
+				 */
+				template <typename T>
+				status_t processImpl(T & ctx) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод обработки входящих данных CRYPTO-фреймов по связи
+				 *
+				 * @param ctx   связь TLS
+				 * @param level уровень шифрования пакета с CRYPTO-фреймом
+				 * @param data  данные CRYPTO-фрейма
+				 * @param size  размер данных CRYPTO-фрейма
+				 * @return      результат обработки (OK/ERROR)
+				 *
+				 * \~english
+				 * @brief Method of processing the incoming data of the CRYPTO frames by a connection
+				 *
+				 * @param ctx   TLS connection
+				 * @param level encryption level of the packet with the CRYPTO frame
+				 * @param data  data of the CRYPTO frame
+				 * @param size  size of the data of the CRYPTO frame
+				 * @return      result of the processing (OK/ERROR)
+				 *
+				 * \~
+				 */
+				template <typename T>
+				status_t cryptoImpl(T & ctx, const level_t level, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -670,17 +712,20 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Запрещаем копирование и перемещение (объект владеет TLS-соединением,
-				 *        на которое BoringSSL хранит обратный указатель)
+				 *        которым владеет связь A-NTS)
 				 *
 				 * \~english
 				 * @brief Forbid the copying and the moving (the object owns a TLS connection,
-				 *        onto which BoringSSL keeps a back pointer)
+				 *        owned by the connection of A-NTS)
 				 *
 				 * \~
 				 */
 				Handshake(const Handshake &) = delete;
+				// Запрещаем перенос конструктором
 				Handshake(Handshake &&) = delete;
+				// Запрещаем копирование присваиванием
 				Handshake & operator = (const Handshake &) = delete;
+				// Запрещаем перенос присваиванием
 				Handshake & operator = (Handshake &&) = delete;
 			public:
 				/**

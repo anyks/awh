@@ -13,7 +13,7 @@
  * @site https://anyks.com
  *
  * @brief Реализация криптографического слоя QUIC (RFC 9001) — вывод начальных секретов,
- *        ключей пакетов и заголовочной защиты, шифрование и расшифровка пакетов на AEAD-примитивах BoringSSL
+ *        ключей пакетов и заголовочной защиты, шифрование и расшифровка пакетов на AEAD-примитивах A-NTS
  *
  * @copyright Copyright © 2026
  *
@@ -23,18 +23,22 @@
  * Стандартные заголовочные файлы
  */
 #include <new>
+#include <memory>
 #include <cstring>
 #include <utility>
 
 /**
- * Заголовочные файлы BoringSSL
+ * Заголовочные файлы библиотеки A-NTS
  */
-#include <openssl/aes.h>
-#include <openssl/mem.h>
-#include <openssl/aead.h>
-#include <openssl/hkdf.h>
-#include <openssl/chacha.h>
-#include <openssl/digest.h>
+#include <cipher/aes.hpp>
+#include <cipher/gcm.hpp>
+#include <cipher/mode.hpp>
+#include <cipher/chacha.hpp>
+#include <cipher/chachapoly.hpp>
+#include <digest/hash.hpp>
+#include <digest/hkdf.hpp>
+#include <sys/wipe.hpp>
+#include <message/message.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -46,6 +50,52 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Пространство имён AWH
+ *
+ */
+namespace awh {
+	/**
+	 * @brief Пространство имён транспортного протокола QUIC
+	 *
+	 */
+	namespace quic {
+		/**
+		 * @brief Пространство имён слоя защиты пакетов QUIC
+		 *
+		 */
+		namespace crypto {
+			/**
+			 * @brief Полное определение непрозрачного контекста AEAD-защиты пакетов
+			 *
+			 * @details Держит оба режима AEAD набора: GCM для AES-128/256-GCM и ChaCha20-Poly1305.
+			 *          Активен один из них - по набору шифрования ключей направления. Режим запускается
+			 *          один раз на время жизни ключей, нонс каждого пакета ставится перезапуском
+			 *
+			 */
+			struct aead_t {
+				// Набор шифрования (определяет используемый режим AEAD)
+				suite_t suite;
+				// Режим GCM (AES-128/256-GCM)
+				nts::cipher::Gcm gcm;
+				// Режим ChaCha20-Poly1305
+				nts::cipher::Chachapoly chacha;
+			};
+			/**
+			 * @brief Полное определение непрозрачного развёрнутого ключа защиты заголовка
+			 *
+			 * @details Держит блочный шифр AES с развёрнутым ключом защиты заголовка для наборов
+			 *          на основе AES. У ChaCha20 развёртки ключа нет - контекст не создаётся
+			 *
+			 */
+			struct mask_t {
+				// Блочный шифр AES с развёрнутым ключом защиты заголовка
+				nts::cipher::Aes aes;
+			};
+		};
+	};
+};
 
 /**
  * @brief Внутренние вспомогательные функции и константы слоя защиты пакетов
@@ -89,33 +139,9 @@ namespace {
 	 * @return      хеш-функция набора
 	 *
 	 */
-	inline const EVP_MD * digest(const crypto::suite_t suite) noexcept {
+	static nts::digest::hash_t __awh_suite_hash__(const crypto::suite_t suite) noexcept {
 		// Набор AES_256_GCM_SHA384 использует SHA-384, остальные - SHA-256
-		return ((suite == crypto::suite_t::AES_256_GCM_SHA384) ? EVP_sha384() : EVP_sha256());
-	}
-	/**
-	 * @brief Функция получения AEAD-алгоритма криптографического набора
-	 *
-	 * @param suite криптографический набор защиты пакетов
-	 * @return      AEAD-алгоритм набора
-	 *
-	 */
-	inline const EVP_AEAD * aead(const crypto::suite_t suite) noexcept {
-		/**
-		 * Определяем криптографический набор
-		 */
-		switch(static_cast <uint8_t> (suite)){
-			// Набор AES-256-GCM
-			case static_cast <uint8_t> (crypto::suite_t::AES_256_GCM_SHA384):
-				// Выводим AEAD-алгоритм набора
-				return EVP_aead_aes_256_gcm();
-			// Набор ChaCha20-Poly1305
-			case static_cast <uint8_t> (crypto::suite_t::CHACHA20_POLY1305_SHA256):
-				// Выводим AEAD-алгоритм набора
-				return EVP_aead_chacha20_poly1305();
-		}
-		// Набор AES-128-GCM
-		return EVP_aead_aes_128_gcm();
+		return ((suite == crypto::suite_t::AES_256_GCM_SHA384) ? nts::digest::hash_t::SHA384 : nts::digest::hash_t::SHA256);
 	}
 	/**
 	 * @brief Функция получения длины ключа AEAD криптографического набора
@@ -124,41 +150,9 @@ namespace {
 	 * @return      длина ключа AEAD в октетах
 	 *
 	 */
-	inline size_t keySize(const crypto::suite_t suite) noexcept {
+	static size_t __awh_key_size__(const crypto::suite_t suite) noexcept {
 		// Набор AES_128_GCM использует 16-октетный ключ, остальные - 32-октетный
 		return ((suite == crypto::suite_t::AES_128_GCM_SHA256) ? 16 : 32);
-	}
-	/**
-	 * @brief Функция освобождения AEAD-контекста
-	 *
-	 * @param ctx освобождаемый AEAD-контекст
-	 *
-	 */
-	inline void freeAead(EVP_AEAD_CTX * ctx) noexcept {
-		// Если контекст создан
-		if(ctx != nullptr)
-			// Освобождаем AEAD-контекст
-			EVP_AEAD_CTX_free(ctx);
-	}
-	/**
-	 * @brief Функция освобождения развёрнутого ключа защиты заголовка
-	 *
-	 * @param key освобождаемый развёрнутый ключ AES
-	 *
-	 * @note Затирает расписание раундовых ключей до освобождения памяти: AES_KEY -
-	 *       обычный POD, освобождаемый штатным delete без затирания, а из расписания
-	 *       раундов тривиально восстанавливается исходный ключ защиты заголовка
-	 *       (RFC 9001 §6, defense-in-depth)
-	 *
-	 */
-	inline void freeMask(aes_key_st * key) noexcept {
-		// Если развёрнутый ключ создан
-		if(key != nullptr){
-			// Затираем расписание раундовых ключей в памяти
-			OPENSSL_cleanse(key, sizeof(AES_KEY));
-			// Освобождаем развёрнутый ключ
-			delete key;
-		}
 	}
 	/**
 	 * @brief Функция формирования нонса AEAD из вектора инициализации и номера пакета (RFC 9001 §5.3)
@@ -168,7 +162,7 @@ namespace {
 	 * @param nonce сформированный нонс AEAD (12 октетов)
 	 *
 	 */
-	inline void makeNonce(const string & iv, const uint64_t pn, uint8_t nonce[12]) noexcept {
+	static void __awh_make_nonce__(const string & iv, const uint64_t pn, uint8_t nonce[12]) noexcept {
 		// Копируем вектор инициализации в нонс
 		::memcpy(nonce, iv.data(), 12);
 		/**
@@ -179,15 +173,73 @@ namespace {
 			nonce[11 - i] ^= static_cast <uint8_t> ((pn >> (i * 8)) & 0xFF);
 	}
 	/**
+	 * @brief Функция зашифрования нагрузки с тегом целостности по контексту AEAD
+	 *
+	 * @param aead       контекст AEAD-защиты пакетов
+	 * @param nonce      нонс пакета (12 октетов)
+	 * @param associated связанные данные, защищаемые лишь меткой
+	 * @param source     зашифровываемая нагрузка
+	 * @param result     место, в которое записывается зашифрованная нагрузка
+	 * @param tag        место, в которое записывается тег целостности
+	 * @return           результат зашифрования
+	 *
+	 */
+	static bool __awh_aead_seal__(crypto::aead_t & aead, const uint8_t * nonce, const nts::view_t & associated, const nts::view_t & source, uint8_t * result, uint8_t * tag) noexcept {
+		// Если набор использует ChaCha20-Poly1305
+		if(aead.suite == crypto::suite_t::CHACHA20_POLY1305_SHA256){
+			// Переводим режим на нонс пакета
+			if(!aead.chacha.restart(nts::view_t(nonce, 12)))
+				// Зашифрование невозможно
+				return false;
+			// Шифруем нагрузку с тегом целостности
+			return aead.chacha.encrypt(associated, source, result, tag);
+		}
+		// Переводим режим на нонс пакета
+		if(!aead.gcm.restart(nts::view_t(nonce, 12)))
+			// Зашифрование невозможно
+			return false;
+		// Шифруем нагрузку с тегом целостности
+		return aead.gcm.encrypt(associated, source, result, tag);
+	}
+	/**
+	 * @brief Функция расшифрования нагрузки с проверкой тега целостности по контексту AEAD
+	 *
+	 * @param aead       контекст AEAD-защиты пакетов
+	 * @param nonce      нонс пакета (12 октетов)
+	 * @param associated связанные данные, защищаемые лишь меткой
+	 * @param source     расшифровываемая нагрузка
+	 * @param result     место, в которое записывается расшифрованная нагрузка
+	 * @param tag        проверяемый тег целостности
+	 * @return           результат расшифрования
+	 *
+	 */
+	static bool __awh_aead_open__(crypto::aead_t & aead, const uint8_t * nonce, const nts::view_t & associated, const nts::view_t & source, uint8_t * result, const nts::view_t & tag) noexcept {
+		// Если набор использует ChaCha20-Poly1305
+		if(aead.suite == crypto::suite_t::CHACHA20_POLY1305_SHA256){
+			// Переводим режим на нонс пакета
+			if(!aead.chacha.restart(nts::view_t(nonce, 12)))
+				// Расшифрование невозможно
+				return false;
+			// Расшифровываем нагрузку с проверкой тега целостности
+			return aead.chacha.decrypt(associated, source, result, tag);
+		}
+		// Переводим режим на нонс пакета
+		if(!aead.gcm.restart(nts::view_t(nonce, 12)))
+			// Расшифрование невозможно
+			return false;
+		// Расшифровываем нагрузку с проверкой тега целостности
+		return aead.gcm.decrypt(associated, source, result, tag);
+	}
+	/**
 	 * @brief Функция вычисления тега целостности пакета Retry по псевдопакету (RFC 9001 §5.8)
 	 *
 	 * @param odcid  DCID первого пакета Initial клиента
 	 * @param packet пакет Retry без тега целостности
 	 * @param tag    вычисленный тег целостности (16 октетов)
-	 * @return       результат вычисления (false - ошибка криптографической библиотеки)
+	 * @return       результат вычисления
 	 *
 	 */
-	bool computeRetryTag(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
+	static bool __awh_retry_tag__(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
 		// Формируем псевдопакет Retry: октет длины ODCID, ODCID и пакет без тега
 		string pseudo;
 		// Резервируем память под псевдопакет
@@ -198,24 +250,32 @@ namespace {
 		pseudo.append(reinterpret_cast <const char *> (odcid.data), odcid.size);
 		// Дописываем пакет Retry без тега целостности
 		pseudo.append(packet);
-		// Создаём AEAD-контекст с фиксированным ключом Retry
-		EVP_AEAD_CTX * ctx = EVP_AEAD_CTX_new(EVP_aead_aes_128_gcm(), RETRY_KEY, sizeof(RETRY_KEY), EVP_AEAD_DEFAULT_TAG_LENGTH);
-		// Если контекст не создан
-		if(ctx == nullptr)
+		// Блочный шифр AES с фиксированным ключом Retry
+		nts::cipher::Aes aes;
+		// Режим GCM тега целостности
+		nts::cipher::Gcm gcm;
+		// Устанавливаем ключ Retry блочному шифру и запускаем режим
+		if(!aes.key(nts::view_t(RETRY_KEY, sizeof(RETRY_KEY))) || !gcm.start(nts::cipher::block_t(aes), nts::view_t(RETRY_NONCE, sizeof(RETRY_NONCE)), proto::RETRY_TAG_SIZE))
 			// Вычисление невозможно
 			return false;
-		// Длина результата шифрования
-		size_t length = 0;
-		// Шифруем пустую нагрузку с псевдопакетом в качестве дополнительных данных
-		const bool result = (EVP_AEAD_CTX_seal(
-			ctx, tag, &length, proto::RETRY_TAG_SIZE,
-			RETRY_NONCE, sizeof(RETRY_NONCE), nullptr, 0,
-			reinterpret_cast <const uint8_t *> (pseudo.data()), pseudo.size()
-		) == 1);
-		// Освобождаем AEAD-контекст
-		EVP_AEAD_CTX_free(ctx);
-		// Выводим результат вычисления с проверкой длины тега
-		return (result && (length == proto::RETRY_TAG_SIZE));
+		// Вычисляем тег целостности по пустой нагрузке с псевдопакетом в качестве связанных данных
+		return gcm.encrypt(nts::view_t(reinterpret_cast <const uint8_t *> (pseudo.data()), pseudo.size()), nts::view_t(nullptr, 0), nullptr, tag);
+	}
+	/**
+	 * @brief Функция затирания ключевого материала набора в памяти
+	 *
+	 * @param keys затираемый набор ключей
+	 *
+	 */
+	static void __awh_wipe_keys__(crypto::keys_t & keys) noexcept {
+		// Затираем секрет направления
+		nts::sys::wipe(keys.secret);
+		// Затираем ключ AEAD-шифрования нагрузки
+		nts::sys::wipe(keys.key);
+		// Затираем вектор инициализации AEAD
+		nts::sys::wipe(keys.iv);
+		// Затираем ключ защиты заголовка
+		nts::sys::wipe(keys.hp);
 	}
 };
 
@@ -224,34 +284,6 @@ namespace {
  *
  */
 awh::quic::crypto::Keys::Keys() noexcept : suite(suite_t::AES_128_GCM_SHA256) {}
-/**
- * @brief Функция затирания ключевого материала набора в памяти
- *
- * @note Затирает секрет и выведенные из него ключ, вектор инициализации и ключ
- *       защиты заголовка до освобождения либо перезаписи их буферов: ключевой
- *       материал не должен оставаться в куче после разрыва соединения, смены фазы
- *       или сброса уровня (RFC 9001 §6, defense-in-depth). Ключ развёрнутого
- *       контекста AEAD затирается криптографической библиотекой при освобождении
- *       контекста, а расписание раундов ключа защиты заголовка - затирающим
- *       делетером freeMask при освобождении shared_ptr
- *
- * @param keys затираемый набор ключей
- *
- */
-static void wipeKeys(awh::quic::crypto::keys_t & keys) noexcept {
-	if(!keys.secret.empty())
-		// Затираем секрет направления
-		OPENSSL_cleanse(&keys.secret[0], keys.secret.size());
-	if(!keys.key.empty())
-		// Затираем ключ AEAD-шифрования нагрузки
-		OPENSSL_cleanse(&keys.key[0], keys.key.size());
-	if(!keys.iv.empty())
-		// Затираем вектор инициализации AEAD
-		OPENSSL_cleanse(&keys.iv[0], keys.iv.size());
-	if(!keys.hp.empty())
-		// Затираем ключ защиты заголовка
-		OPENSSL_cleanse(&keys.hp[0], keys.hp.size());
-}
 /**
  * @brief Оператор копирующего присваивания
  *
@@ -263,16 +295,20 @@ awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (const Keys & keys
 	// Если присваивание выполняется не самому себе
 	if(this != &keys){
 		// Затираем прежний ключевой материал до его перезаписи
-		wipeKeys(* this);
+		::__awh_wipe_keys__(* this);
 		// Копируем криптографический набор
 		this->suite = keys.suite;
-		// Копируем секрет и выведенные ключи
+		// Копируем секрет направления
 		this->secret = keys.secret;
+		// Копируем ключ AEAD-шифрования нагрузки
 		this->key = keys.key;
+		// Копируем вектор инициализации AEAD
 		this->iv = keys.iv;
+		// Копируем ключ защиты заголовка
 		this->hp = keys.hp;
-		// Копируем разделяемые контексты защиты пакетов
+		// Копируем контекст AEAD-защиты пакетов
 		this->aead = keys.aead;
+		// Копируем развёрнутый ключ защиты заголовка
 		this->mask = keys.mask;
 	}
 	// Выводим текущий объект
@@ -289,16 +325,20 @@ awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (Keys && keys) noe
 	// Если присваивание выполняется не самому себе
 	if(this != &keys){
 		// Затираем прежний ключевой материал до его перезаписи
-		wipeKeys(* this);
+		::__awh_wipe_keys__(* this);
 		// Копируем криптографический набор
 		this->suite = keys.suite;
-		// Перемещаем секрет и выведенные ключи
+		// Перемещаем секрет направления
 		this->secret = std::move(keys.secret);
+		// Перемещаем ключ AEAD-шифрования нагрузки
 		this->key = std::move(keys.key);
+		// Перемещаем вектор инициализации AEAD
 		this->iv = std::move(keys.iv);
+		// Перемещаем ключ защиты заголовка
 		this->hp = std::move(keys.hp);
-		// Перемещаем разделяемые контексты защиты пакетов
+		// Перемещаем контекст AEAD-защиты пакетов
 		this->aead = std::move(keys.aead);
+		// Перемещаем развёрнутый ключ защиты заголовка
 		this->mask = std::move(keys.mask);
 	}
 	// Выводим текущий объект
@@ -310,7 +350,7 @@ awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (Keys && keys) noe
  */
 awh::quic::crypto::Keys::~Keys() noexcept {
 	// Затираем ключевой материал набора до освобождения его буферов
-	wipeKeys(* this);
+	::__awh_wipe_keys__(* this);
 }
 
 /**
@@ -321,43 +361,31 @@ awh::quic::crypto::Keys::~Keys() noexcept {
  * @param label  метка вывода (без префикса "tls13 ")
  * @param length требуемая длина выводимого материала
  * @param output выводимый ключевой материал
- * @return       результат вывода (false - ошибка криптографической библиотеки)
+ * @return       результат вывода
  *
  */
 bool awh::quic::crypto::hkdfExpandLabel(const suite_t suite, string_view secret, string_view label, const size_t length, string & output) noexcept {
-	// Формируем структуру HkdfLabel (RFC 8446 §7.1)
-	string info;
-	// Дописываем старший октет требуемой длины
-	info.push_back(static_cast <char> ((length >> 8) & 0xFF));
-	// Дописываем младший октет требуемой длины
-	info.push_back(static_cast <char> (length & 0xFF));
-	// Дописываем длину метки с префиксом "tls13 "
-	info.push_back(static_cast <char> (6 + label.size()));
-	// Дописываем префикс метки
-	info.append("tls13 ");
-	// Дописываем метку вывода
-	info.append(label);
-	// Дописываем нулевую длину контекста
-	info.push_back('\0');
 	// Выделяем память под выводимый материал
 	output.resize(length);
-	// Выполняем вывод ключевого материала HKDF-Expand
-	return (HKDF_expand(
-		reinterpret_cast <uint8_t *> (&output[0]), length, digest(suite),
-		reinterpret_cast <const uint8_t *> (secret.data()), secret.size(),
-		reinterpret_cast <const uint8_t *> (info.data()), info.size()
-	) == 1);
+	// Выводим ключевой материал HKDF-Expand-Label
+	return nts::digest::label(
+		::__awh_suite_hash__(suite),
+		nts::view_t(reinterpret_cast <const uint8_t *> (secret.data()), secret.size()),
+		nts::view_t(reinterpret_cast <const uint8_t *> (label.data()), label.size()),
+		nts::view_t(nullptr, 0),
+		reinterpret_cast <uint8_t *> (&output[0]), length
+	);
 }
 /**
  * @brief Функция вывода ключей защиты пакетов из секрета направления (RFC 9001 §5.1)
  *
  * @param keys ключи защиты пакетов (заполняются key/iv/hp)
- * @return     результат вывода (false - ошибка криптографической библиотеки)
+ * @return     результат вывода
  *
  */
 bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 	// Длина ключа AEAD криптографического набора
-	const size_t length = keySize(keys.suite);
+	const size_t length = ::__awh_key_size__(keys.suite);
 	// Сбрасываем кэш контекстов предыдущего ключевого материала
 	keys.aead.reset();
 	// Сбрасываем кэш развёрнутого ключа защиты заголовка
@@ -374,30 +402,45 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 	if(!hkdfExpandLabel(keys.suite, keys.secret, "quic hp", length, keys.hp))
 		// Вывод невозможен
 		return false;
-	// Создаём AEAD-контекст один раз на время жизни ключей (RFC 9001 §5.3)
-	EVP_AEAD_CTX * ctx = EVP_AEAD_CTX_new(aead(keys.suite), reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size(), EVP_AEAD_DEFAULT_TAG_LENGTH);
-	// Если AEAD-контекст не создан
-	if(ctx == nullptr)
-		// Вывод невозможен
-		return false;
+	// Создаём разделяемый контекст AEAD один раз на время жизни ключей (RFC 9001 §5.3)
+	auto aead = ::make_shared <aead_t> ();
+	// Устанавливаем набор шифрования контекста
+	aead->suite = keys.suite;
+	// Нулевой нонс для первичного запуска режима (нонс пакета ставится перезапуском)
+	const uint8_t zero[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	// Если набор использует ChaCha20-Poly1305
+	if(keys.suite == suite_t::CHACHA20_POLY1305_SHA256){
+		// Запускаем режим ChaCha20-Poly1305
+		if(!aead->chacha.start(nts::view_t(reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size()), nts::view_t(zero, 12)))
+			// Вывод невозможен
+			return false;
+	// Если набор использует AES-GCM
+	} else {
+		// Блочный шифр AES с ключом AEAD
+		nts::cipher::Aes aes;
+		// Устанавливаем ключ AEAD блочному шифру
+		if(!aes.key(nts::view_t(reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size())))
+			// Вывод невозможен
+			return false;
+		// Запускаем режим GCM (строит таблицы, нонс пакета ставится перезапуском)
+		if(!aead->gcm.start(nts::cipher::block_t(aes), nts::view_t(zero, 12), AEAD_TAG_SIZE))
+			// Вывод невозможен
+			return false;
+	}
 	// Передаём AEAD-контекст во владение ключам направления
-	keys.aead = shared_ptr <evp_aead_ctx_st> (ctx, &freeAead);
+	keys.aead = ::move(aead);
 	// Если набор использует ChaCha20 - развёртка ключа защиты заголовка не требуется (RFC 9001 §5.4.4)
 	if(keys.suite == suite_t::CHACHA20_POLY1305_SHA256)
 		// Вывод ключей выполнен успешно
 		return true;
-	// Создаём развёрнутый ключ защиты заголовка с затирающим делетером
-	shared_ptr <aes_key_st> key(new (std::nothrow) AES_KEY(), &freeMask);
-	// Если память под развёрнутый ключ не выделена
-	if(!key)
-		// Вывод невозможен
-		return false;
-	// Выполняем развёртку ключа защиты заголовка (RFC 9001 §5.4.3)
-	if(AES_set_encrypt_key(reinterpret_cast <const uint8_t *> (keys.hp.data()), static_cast <uint32_t> (keys.hp.size() * 8), key.get()) != 0)
+	// Создаём разделяемый развёрнутый ключ защиты заголовка
+	auto mask = ::make_shared <mask_t> ();
+	// Устанавливаем ключ защиты заголовка блочному шифру AES
+	if(!mask->aes.key(nts::view_t(reinterpret_cast <const uint8_t *> (keys.hp.data()), keys.hp.size())))
 		// Вывод невозможен
 		return false;
 	// Передаём развёрнутый ключ во владение ключам направления
-	keys.mask = ::move(key);
+	keys.mask = ::move(mask);
 	// Вывод ключей выполнен успешно
 	return true;
 }
@@ -407,22 +450,21 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
  * @param dcid   идентификатор соединения получателя первого пакета Initial клиента
  * @param client ключи защиты пакетов клиента
  * @param server ключи защиты пакетов сервера
- * @return       результат вывода (false - ошибка криптографической библиотеки)
+ * @return       результат вывода
  *
  */
 bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & server) noexcept {
 	// Общий секрет Initial (размер выхода SHA-256)
 	uint8_t secret[32];
-	// Длина общего секрета
-	size_t length = sizeof(secret);
-	// Выполняем извлечение общего секрета HKDF-Extract с солью QUIC v1
-	if(HKDF_extract(secret, &length, EVP_sha256(), dcid.data, dcid.size, INITIAL_SALT, sizeof(INITIAL_SALT)) != 1)
+	// Извлекаем общий секрет HKDF-Extract с солью QUIC v1
+	if(!nts::digest::extract(nts::digest::hash_t::SHA256, nts::view_t(INITIAL_SALT, sizeof(INITIAL_SALT)), nts::view_t(dcid.data, dcid.size), secret, sizeof(secret)))
 		// Вывод невозможен
 		return false;
 	// Представление общего секрета для вывода ключей
-	const string_view initialSecret(reinterpret_cast <const char *> (secret), length);
+	const string_view initialSecret(reinterpret_cast <const char *> (secret), sizeof(secret));
 	// Пакеты Initial всегда защищаются набором AES_128_GCM_SHA256 (RFC 9001 §5.2)
 	client.suite = suite_t::AES_128_GCM_SHA256;
+	// Пакеты Initial всегда защищаются набором AES_128_GCM_SHA256 (RFC 9001 §5.2)
 	server.suite = suite_t::AES_128_GCM_SHA256;
 	// Результат вывода секретов и ключей обоих направлений
 	const bool result = (
@@ -431,7 +473,7 @@ bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & se
 		derive(client) && derive(server)
 	);
 	// Затираем общий секрет Initial на стеке (RFC 9001 §6, defense-in-depth)
-	OPENSSL_cleanse(secret, sizeof(secret));
+	nts::sys::wipe(secret, sizeof(secret));
 	// Выводим результат вывода ключей
 	return result;
 }
@@ -440,14 +482,14 @@ bool awh::quic::crypto::initial(const cid_t & dcid, keys_t & client, keys_t & se
  *
  * @param current текущие ключи защиты пакетов
  * @param next    ключи защиты пакетов следующей фазы
- * @return        результат обновления (false - ошибка криптографической библиотеки)
+ * @return        результат обновления
  *
  */
 bool awh::quic::crypto::update(const keys_t & current, keys_t & next) noexcept {
 	// Криптографический набор не меняется
 	next.suite = current.suite;
 	// Длина секрета соответствует размеру выхода хеш-функции набора
-	const size_t length = static_cast <size_t> (EVP_MD_size(digest(current.suite)));
+	const size_t length = nts::digest::length(::__awh_suite_hash__(current.suite));
 	// Выводим секрет следующей фазы меткой "quic ku"
 	if(!hkdfExpandLabel(current.suite, current.secret, "quic ku", length, next.secret))
 		// Обновление невозможно
@@ -469,7 +511,7 @@ bool awh::quic::crypto::update(const keys_t & current, keys_t & next) noexcept {
  * @param keys   ключи защиты пакетов
  * @param sample выборка защищённой нагрузки (16 октетов)
  * @param mask   вычисленная маска защиты заголовка (5 октетов)
- * @return       результат вычисления (false - ошибка криптографической библиотеки)
+ * @return       результат вычисления
  *
  */
 bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMPLE_SIZE], uint8_t mask[HP_MASK_SIZE]) noexcept {
@@ -480,10 +522,14 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
 		                          (static_cast <uint32_t> (sample[2]) << 16) | (static_cast <uint32_t> (sample[3]) << 24));
 		// Нулевой блок для получения гаммы шифра
 		const uint8_t zeros[HP_MASK_SIZE] = {0, 0, 0, 0, 0};
-		// Шифруем нулевой блок потоком ChaCha20 (нонс - остальные октеты выборки)
-		CRYPTO_chacha_20(mask, zeros, HP_MASK_SIZE, reinterpret_cast <const uint8_t *> (keys.hp.data()), sample + 4, counter);
-		// Вычисление выполнено успешно
-		return true;
+		// Поточный шифр ChaCha20
+		nts::cipher::Chacha chacha;
+		// Запускаем поток ключом защиты заголовка и нонсом из остатка выборки
+		if(!chacha.start(nts::view_t(reinterpret_cast <const uint8_t *> (keys.hp.data()), keys.hp.size()), nts::view_t(sample + 4, 12), counter))
+			// Вычисление невозможно
+			return false;
+		// Шифруем нулевой блок потоком
+		return chacha.encrypt(nts::view_t(zeros, HP_MASK_SIZE), mask);
 	}
 	// Если развёрнутый ключ защиты заголовка не подготовлен выводом ключей
 	if(!keys.mask)
@@ -492,7 +538,9 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
 	// Блок результата шифрования AES-ECB
 	uint8_t block[16];
 	// Шифруем выборку одним блоком AES-ECB развёрнутым ключом (RFC 9001 §5.4.3)
-	AES_encrypt(sample, block, keys.mask.get());
+	if(!keys.mask->aes.encrypt(sample, block))
+		// Вычисление невозможно
+		return false;
 	// Маска - первые пять октетов зашифрованного блока
 	::memcpy(mask, block, HP_MASK_SIZE);
 	// Вычисление выполнено успешно
@@ -506,7 +554,7 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
  * @param pn      полный номер пакета (для нонса AEAD)
  * @param header  собранный незащищённый заголовок пакета (включая Packet Number)
  * @param payload незашифрованная нагрузка пакета (фреймы)
- * @return        результат защиты (false - ошибка криптографической библиотеки)
+ * @return        результат защиты
  *
  */
 bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_t pn, string_view header, string_view payload) noexcept {
@@ -532,7 +580,7 @@ bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_
 	// Нонс AEAD-шифрования
 	uint8_t nonce[12];
 	// Формируем нонс из вектора инициализации и номера пакета
-	makeNonce(keys.iv, pn, nonce);
+	::__awh_make_nonce__(keys.iv, pn, nonce);
 	// Смещение начала пакета в выходном буфере
 	const size_t start = output.size();
 	// Дописываем незащищённый заголовок пакета
@@ -541,16 +589,16 @@ bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_
 	const size_t sealed = output.size();
 	// Выделяем память под зашифрованную нагрузку с тегом AEAD
 	output.resize(sealed + payload.size() + AEAD_TAG_SIZE);
-	// Длина результата шифрования
-	size_t length = 0;
-	// Шифруем нагрузку с заголовком в качестве дополнительных данных
-	const bool result = (EVP_AEAD_CTX_seal(
-		keys.aead.get(), reinterpret_cast <uint8_t *> (&output[sealed]), &length, payload.size() + AEAD_TAG_SIZE,
-		nonce, sizeof(nonce), reinterpret_cast <const uint8_t *> (payload.data()), payload.size(),
-		reinterpret_cast <const uint8_t *> (header.data()), header.size()
-	) == 1);
-	// Если шифрование не выполнено или длина результата некорректна
-	if(!result || (length != (payload.size() + AEAD_TAG_SIZE))){
+	// Шифруем нагрузку с заголовком в качестве связанных данных
+	const bool result = ::__awh_aead_seal__(
+		* keys.aead, nonce,
+		nts::view_t(reinterpret_cast <const uint8_t *> (header.data()), header.size()),
+		nts::view_t(reinterpret_cast <const uint8_t *> (payload.data()), payload.size()),
+		reinterpret_cast <uint8_t *> (&output[sealed]),
+		reinterpret_cast <uint8_t *> (&output[sealed + payload.size()])
+	);
+	// Если шифрование не выполнено
+	if(!result){
 		// Откатываем выходной буфер к состоянию до сборки пакета
 		output.resize(start);
 		// Защита невозможна
@@ -640,28 +688,29 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
 	// Нонс AEAD-расшифровки
 	uint8_t nonce[12];
 	// Формируем нонс из вектора инициализации и номера пакета
-	makeNonce(keys.iv, pn, nonce);
+	::__awh_make_nonce__(keys.iv, pn, nonce);
 	// Смещение зашифрованной нагрузки
 	const size_t sealed = (pnOffset + pnSize);
 	// Если зашифрованная нагрузка не содержит даже тега AEAD
 	if(size < (sealed + AEAD_TAG_SIZE))
 		// Снятие защиты невозможно
 		return status_t::ERROR;
+	// Длина расшифрованной нагрузки
+	const size_t length = (size - sealed - AEAD_TAG_SIZE);
 	// Выделяем память под расшифрованную нагрузку
-	output.resize(size - sealed);
-	// Длина результата расшифровки
-	size_t length = 0;
-	// Расшифровываем нагрузку с расшифрованным заголовком в качестве дополнительных данных
-	const bool result = (EVP_AEAD_CTX_open(
-		keys.aead.get(), reinterpret_cast <uint8_t *> (&output[0]), &length, output.size(),
-		nonce, sizeof(nonce), packet + sealed, size - sealed, packet, sealed
-	) == 1);
+	output.resize(length);
+	// Расшифровываем нагрузку с расшифрованным заголовком в качестве связанных данных
+	const bool result = ::__awh_aead_open__(
+		* keys.aead, nonce,
+		nts::view_t(packet, sealed),
+		nts::view_t(packet + sealed, length),
+		reinterpret_cast <uint8_t *> (&output[0]),
+		nts::view_t(packet + sealed + length, AEAD_TAG_SIZE)
+	);
 	// Если расшифровка не выполнена (тег AEAD не сошёлся)
 	if(!result)
 		// Снятие защиты невозможно
 		return status_t::ERROR;
-	// Устанавливаем фактическую длину расшифрованной нагрузки до любых проверок
-	output.resize(length);
 	/**
 	 * Проверяем зарезервированные биты первого октета: они проверяются только после
 	 * снятия обеих защит, иначе неверные ключи давали бы ложное нарушение протокола
@@ -684,12 +733,12 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
  * @param odcid  DCID первого пакета Initial клиента
  * @param packet пакет Retry без тега целостности
  * @param tag    вычисленный тег целостности (16 октетов)
- * @return       результат вычисления (false - ошибка криптографической библиотеки)
+ * @return       результат вычисления
  *
  */
 bool awh::quic::crypto::retryTag(const cid_t & odcid, string_view packet, uint8_t tag[proto::RETRY_TAG_SIZE]) noexcept {
 	// Вычисляем тег целостности по псевдопакету
-	return computeRetryTag(odcid, packet, tag);
+	return ::__awh_retry_tag__(odcid, packet, tag);
 }
 /**
  * @brief Функция проверки тега целостности пакета Retry (RFC 9001 §5.8)
@@ -707,9 +756,12 @@ bool awh::quic::crypto::retryVerify(const cid_t & odcid, string_view packet) noe
 	// Ожидаемый тег целостности
 	uint8_t expected[proto::RETRY_TAG_SIZE];
 	// Вычисляем тег целостности по пакету без тега
-	if(!computeRetryTag(odcid, packet.substr(0, packet.size() - proto::RETRY_TAG_SIZE), expected))
+	if(!::__awh_retry_tag__(odcid, packet.substr(0, packet.size() - proto::RETRY_TAG_SIZE), expected))
 		// Проверка невозможна
 		return false;
 	// Сравниваем теги целостности за постоянное время
-	return (CRYPTO_memcmp(expected, packet.data() + (packet.size() - proto::RETRY_TAG_SIZE), proto::RETRY_TAG_SIZE) == 0);
+	return nts::message::compare(
+		nts::view_t(expected, proto::RETRY_TAG_SIZE),
+		nts::view_t(reinterpret_cast <const uint8_t *> (packet.data() + (packet.size() - proto::RETRY_TAG_SIZE)), proto::RETRY_TAG_SIZE)
+	);
 }

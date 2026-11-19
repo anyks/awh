@@ -146,11 +146,13 @@
     §4.3 их не флажит. Прочие 1-2-знаковые имена (`t`, `m`, `hi`, `ef`, `ab`)
     и там остаются нарушениями и переименовываются.
     Общепринятые аббревиатуры протоколов в публичных полях структур и геттерах
-    — `dh` (Diffie-Hellman), `sm2` (кривая SM2), `ja3`/`ja4` (отпечатки TLS) —
+    — `dh` (Diffie-Hellman), `sm2` (кривая SM2), `ja3`/`ja4` (отпечатки TLS),
+    `iv` (вектор инициализации, «quic iv»), `hp` (защита заголовка, «quic hp») —
     названы текстом стандарта, §4.3 их не флажит (образцы:
     `include/noise/noise.hpp` — `dh_t dh;`, `include/keys/keys.hpp` —
     `const sign::sm2_t & sm2()`, `include/fingerprint/fingerprint.hpp` —
-    `string ja3; string ja4;`).
+    `string ja3; string ja4;`, `include/proto/quic/crypto.hpp` —
+    `string iv; string hp;`).
     Ключевое слово инструкции перед коротким именем не считается типом:
     `return i;` — возврат счётчика цикла, а не объявление переменной, и §4.3
     его не флажит (равно `throw`, `goto`, `co_return`, `co_yield`).

@@ -2233,7 +2233,7 @@ TEST(Args, DepthRejectionsPreserveValuesAndSources) {
 			EXPECT_FALSE(args.config(record, format)) << static_cast <uint32_t> (format) << " depth=" << depth;
 			EXPECT_FALSE(args.errors().empty());
 			if(!args.errors().empty())
-				EXPECT_EQ(args.errors().back().first, error_t::CODEC);
+				EXPECT_EQ(args.errors().back().first, args::error_t::CODEC);
 			EXPECT_EQ(args.source("node"), source_t::DEFAULT);
 			EXPECT_TRUE(bridge.encode(args.root(), after, codec::Bridge::format_t::ABC));
 			EXPECT_EQ(before, after);

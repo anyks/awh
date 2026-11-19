@@ -15,12 +15,12 @@
  * \~russian
  * @brief Заголовочный файл модуля транспортного уровня безопасности — пространство имён tls::coder,
  *        управляющий контекстами TLS и DTLS, сертификатами, наборами шифров, ALPN,
- *        верификацией пиров и выполнением защищённого рукопожатия поверх BoringSSL
+ *        верификацией пиров и выполнением защищённого рукопожатия поверх A-NTS
  *
  * \~english
  * @brief Header file of the transport layer security module — the tls::coder namespace,
  *        managing the TLS and DTLS contexts, the certificates, the cipher suites, ALPN,
- *        the verification of the peers and the performance of the secured handshake on top of BoringSSL
+ *        the verification of the peers and the performance of the secured handshake on top of A-NTS
  *
  * \~
  *
@@ -972,6 +972,22 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ ssl_ctx_st * native(const id_t id) noexcept;
 			/**
 			 * \~russian
+			 * @brief Функция создания связи TLS с переносом рукопожатия по уровням (QUIC)
+			 *
+			 * @param id идентификатор шаблона контекста безопасности
+			 * @return   связь TLS во владение вызывающему коду либо nullptr
+			 *
+			 * \~english
+			 * @brief Function creating a TLS connection with the transport of the handshake by levels (QUIC)
+			 *
+			 * @param id identifier of the template security context
+			 * @return   TLS connection into the possession of the calling code or nullptr
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void * quicContext(const id_t id) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция создания идентификатора транспортного уровня
 			 *
 			 * @param id идентификатор шаблона контекста безопасности
@@ -1078,7 +1094,7 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция установки ключей EncryptedClientHello (ECH)
 			 *
-			 * @details Функция поддерживается только в BoringSSL. Поведение зависит от
+			 * @details Поведение зависит от
 			 *          типа узла (CLIENT/SERVER) и уровня (CTS/CTL).
 			 *
 			 *          <b>Клиент (CTS или CTL):</b> @p keys — сериализованный ECHConfigList
@@ -1118,7 +1134,7 @@ namespace awh {
 			 * \~english
 			 * @brief Function setting the EncryptedClientHello (ECH) keys
 			 *
-			 * @details The function is supported only in BoringSSL. The behaviour depends on
+			 * @details The behaviour depends on
 			 *          the type of the node (CLIENT/SERVER) and on the layer (CTS/CTL).
 			 *
 			 *          <b>Client (CTS or CTL):</b> @p keys is the serialized ECHConfigList

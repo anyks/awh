@@ -1221,8 +1221,9 @@ def check_file(path, lines, members, report, fixes=None):
                 if code[:vm.start()].rstrip():
                     continue
                 # Общепринятые аббревиатуры протоколов в публичных полях/методах:
-                # dh (Diffie-Hellman), sm2 (кривая SM2), ja3/ja4 (отпечатки TLS)
-                if short in ("ok", "id", "to", "in", "on", "no", "do", "if", "dh", "sm2", "ja3", "ja4"):
+                # dh (Diffie-Hellman), sm2 (кривая SM2), ja3/ja4 (отпечатки TLS),
+                # iv (вектор инициализации), hp (защита заголовка, «quic hp»)
+                if short in ("ok", "id", "to", "in", "on", "no", "do", "if", "dh", "sm2", "ja3", "ja4", "iv", "hp"):
                     continue
                 # Рабочие имена стандартов криптографии (FIPS 180-4 и родственные)
                 # в ядрах криптомодулей названы текстом стандарта — §4.3 молчит

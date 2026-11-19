@@ -26,11 +26,10 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочные файлы криптографической библиотеки
+ * Заголовочные файлы библиотеки A-NTS
  */
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/digest.h>
+#include <digest/hmac.hpp>
+#include <entropy/entropy.hpp>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -384,26 +383,17 @@ bool awh::quic::resetToken(string_view key, const cid_t & cid, uint8_t token[pro
 	if(key.empty())
 		// Выводим отрицательный результат - вывод токена невозможен
 		return false;
-	// Буфер кода аутентичности
-	uint8_t mac[EVP_MAX_MD_SIZE];
-	// Длина кода аутентичности
-	uint32_t length = 0;
 	/**
 	 * Выводим код аутентичности идентификатора соединения на общем ключе: токен
 	 * обязан воспроизводиться по одному лишь идентификатору, поэтому состояние
 	 * соединения в вывод не входит (RFC 9000 §10.3.2)
 	 */
-	if(::HMAC(::EVP_sha256(), key.data(), key.size(), cid.data, cid.size, mac, &length) == nullptr)
-		// Выводим отрицательный результат
-		return false;
-	// Если длина кода аутентичности недостаточна
-	if(length < proto::RESET_TOKEN_SIZE)
-		// Выводим отрицательный результат
-		return false;
-	// Копируем усечённый код аутентичности в токен сброса
-	::memcpy(token, mac, proto::RESET_TOKEN_SIZE);
-	// Выводим положительный результат
-	return true;
+	return nts::digest::hmac(
+		nts::digest::hash_t::SHA256,
+		nts::view_t(reinterpret_cast <const uint8_t *> (key.data()), key.size()),
+		nts::view_t(cid.data, cid.size),
+		token, proto::RESET_TOKEN_SIZE
+	);
 }
 /**
  * @brief Функция сборки пакета сброса без сохранения состояния (RFC 9000 §10.3)
@@ -447,7 +437,7 @@ bool awh::quic::reset(string & output, string_view key, const cid_t & cid, const
 	// Резервируем память под пакет сброса
 	output.resize(size);
 	// Если генерация непредсказуемых октетов пакета не выполнена
-	if(::RAND_bytes(reinterpret_cast <uint8_t *> (&output[0]), static_cast <int32_t> (size - proto::RESET_TOKEN_SIZE)) != 1){
+	if(!nts::entropy::bytes(reinterpret_cast <uint8_t *> (&output[0]), size - proto::RESET_TOKEN_SIZE)){
 		// Очищаем выходной буфер пакета сброса
 		output.clear();
 		// Выводим отрицательный результат
@@ -478,7 +468,7 @@ bool awh::quic::resetKey(string & output) noexcept {
 	// Резервируем память под общий ключ вывода токенов сброса
 	output.resize(SIZE);
 	// Если генерация общего ключа не выполнена
-	if(::RAND_bytes(reinterpret_cast <uint8_t *> (&output[0]), static_cast <int32_t> (SIZE)) != 1){
+	if(!nts::entropy::bytes(reinterpret_cast <uint8_t *> (&output[0]), SIZE)){
 		// Очищаем общий ключ вывода токенов сброса
 		output.clear();
 		// Выводим отрицательный результат

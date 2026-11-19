@@ -14,7 +14,7 @@
  *
  * @brief Реализация модуля транспортного уровня безопасности — создание и настройка контекстов TLS и DTLS,
  *        загрузка сертификатов и ключей, выбор наборов шифров и ALPN,
- *        верификация пиров и выполнение защищённого рукопожатия поверх BoringSSL
+ *        верификация пиров и выполнение защищённого рукопожатия поверх A-NTS
  *
  * @copyright Copyright © 2025
  *
@@ -3421,6 +3421,66 @@ ssl_ctx_st * awh::tls::coder::native([[maybe_unused]] const id_t id) noexcept {
 	return nullptr;
 }
 /**
+ * @brief Функция создания связи TLS с переносом рукопожатия по уровням (QUIC)
+ *
+ * @param id идентификатор шаблона контекста безопасности
+ * @return   связь TLS во владение вызывающему коду либо nullptr
+ *
+ */
+void * awh::tls::coder::quicContext(const id_t id) noexcept {
+	/**
+	 * Перехватываем ошибки
+	 */
+	try {
+		// Закрепляем участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
+			// Если уровень является шаблонным контекстом безопасности
+			if(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS){
+				// Извлекаем объект шаблона контекста безопасности
+				auto cts = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+				// Если узел является клиентом
+				if(cts->node == event::node_t::CLIENT){
+					// Создаём связь клиента TLS
+					auto ctx = ::make_unique <nts::client::context_t> ();
+					// Применяем настройки шаблона к связи
+					::ssl::applySettings<true>(* ctx, cts);
+					// Возвращаем связь во владение вызывающему коду
+					return reinterpret_cast <void *> (ctx.release());
+				// Если узел является сервером
+				} else if(cts->node == event::node_t::SERVER){
+					// Создаём связь сервера TLS
+					auto ctx = ::make_unique <nts::server::context_t> ();
+					// Применяем настройки шаблона к связи
+					::ssl::applySettings<false>(* ctx, cts);
+					// Возвращаем связь во владение вызывающему коду
+					return reinterpret_cast <void *> (ctx.release());
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем пустой результат
+	return nullptr;
+}
+/**
  * @brief Функция создания идентификатора транспортного уровня
  *
  * @param id идентификатор шаблона контекста безопасности
@@ -3713,7 +3773,7 @@ vector <uint8_t> awh::tls::coder::getKeysECH(const id_t id) noexcept {
  * @param keys ключи EncryptedClientHello (ECH)
  * @return     результат выполнения установки
  *
- * @details Функция поддерживается только в BoringSSL. Поведение зависит от
+ * @details Поведение зависит от
  *          типа узла (CLIENT/SERVER) и уровня (CTS/CTL).
  *
  *          <b>Клиент (CTS или CTL):</b> @p keys — сериализованный ECHConfigList
