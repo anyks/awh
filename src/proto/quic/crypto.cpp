@@ -77,6 +77,8 @@ namespace awh {
 			struct aead_t {
 				// Набор шифрования (определяет используемый режим AEAD)
 				suite_t suite;
+				// Блочный шифр AES с ключом AEAD (режим GCM держит на него указатель)
+				nts::cipher::Aes aes;
 				// Режим GCM (AES-128/256-GCM)
 				nts::cipher::Gcm gcm;
 				// Режим ChaCha20-Poly1305
@@ -416,14 +418,12 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 			return false;
 	// Если набор использует AES-GCM
 	} else {
-		// Блочный шифр AES с ключом AEAD
-		nts::cipher::Aes aes;
 		// Устанавливаем ключ AEAD блочному шифру
-		if(!aes.key(nts::view_t(reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size())))
+		if(!aead->aes.key(nts::view_t(reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size())))
 			// Вывод невозможен
 			return false;
 		// Запускаем режим GCM (строит таблицы, нонс пакета ставится перезапуском)
-		if(!aead->gcm.start(nts::cipher::block_t(aes), nts::view_t(zero, 12), AEAD_TAG_SIZE))
+		if(!aead->gcm.start(nts::cipher::block_t(aead->aes), nts::view_t(zero, 12), AEAD_TAG_SIZE))
 			// Вывод невозможен
 			return false;
 	}

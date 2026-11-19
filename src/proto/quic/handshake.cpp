@@ -569,6 +569,8 @@ string awh::quic::Handshake::data(const level_t level) noexcept {
 			this->_server->consume(ntsLevel, view.size);
 		}
 	}
+	// Продвигаем хендшейк: секреты уровня становятся доступны после снятия его данных
+	this->process();
 	// Выводим результат
 	return result;
 }
