@@ -12,22 +12,15 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл возврата системных макросов, подавленных заголовком suppress.hpp —
  *        восстанавливает прежние определения потребителя библиотеки
  *
- * \~english
- * @brief Header file of the restoration of the system macros suppressed by the suppress.hpp header —
- *        it restores the former definitions of the consumer of the library
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
  */
 
 /**
- * \~russian
  * @brief Возврат системных макросов, подавленных заголовком suppress.hpp
  *
  * @details Возвращает имена в том виде, в каком они были до снятия. Если макроса не
@@ -43,23 +36,6 @@
  * @warning Подключать заголовок этот следует только вслед за suppress.hpp. Возврат без
  *          предшествующего снятия поведения не определяет
  *
- * \~english
- * @brief Restoration of the system macros suppressed by the suppress.hpp header
- *
- * @details It brings the names back in the form they had before the removal. If a macro did not
- *          exist at all — and on the platforms other than MS Windows that is the case —
- *          the name stays non-existent, and the pair leaves no trace behind.
- *          Checked by experience on MinGW64.
- *
- *          The restoration goes in the order reverse to the removal.
- *
- * @note The header has no guard against repeated initialisation deliberately — for the same reason
- *       as suppress.hpp: there are as many includes as removals
- *
- * @warning This header should be included only after suppress.hpp. A restoration without
- *          a preceding removal leaves the behaviour undefined
- *
- * \~
  */
 #pragma pop_macro("SUSPENDED")
 #pragma pop_macro("SHARED")

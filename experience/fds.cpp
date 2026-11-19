@@ -1,3 +1,23 @@
+/**
+ * @file fds.cpp
+ * @date 2025-09-18
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Пример сетевого опыта AWH — fds
+ *
+ * @copyright Copyright © 2025
+ *
+ */
+
 // g++ --std=c++11 fds.cpp -o ./fds -Wno-deprecated-declarations
 
 #include <sys/resource.h>

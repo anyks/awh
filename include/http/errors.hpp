@@ -1,15 +1,21 @@
 /**
- * @file: errors.hpp
- * @date: 2023-09-27
+ * @file errors.hpp
+ * @date 2023-09-27
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля протокола HTTP
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_WEB_ERRORS__

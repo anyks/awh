@@ -12,22 +12,15 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл подавления системных макросов, занявших имена членов перечислений AWH —
  *        сохраняет прежние определения и снимает имена на время объявлений, возвращает же их restore.hpp
  *
- * \~english
- * @brief Header file of the suppression of the system macros that have taken the names of the members of the AWH enumerations —
- *        it keeps the former definitions and removes the names for the duration of the declarations, while restore.hpp brings them back
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
  */
 
 /**
- * \~russian
  * @brief Временное снятие макросов, занимающих имена членов перечислений AWH
  *
  * @details Системные заголовки MS Windows заводят макросами обычные английские слова —
@@ -76,56 +69,6 @@
  * @warning Заголовок этот обязан идти в паре с restore.hpp. Снятие без возврата
  *          отнимает имена у потребителя библиотеки — ровно то, чего пара избегает
  *
- * \~english
- * @brief Temporary removal of the macros taking the names of the members of the AWH enumerations
- *
- * @details The system headers of MS Windows introduce ordinary English words as macros —
- *          DELETE, ERROR, STRICT and others — while the preprocessor does not parse scopes
- *          and replaces the name even inside an enum class. The declaration `DELETE = 0x05` turns
- *          into `(0x00010000) = 0x05`, and the build answers with a failure.
- *
- *          The macros cannot be removed for good: those headers are public, and the removal would leak
- *          into the translation unit of the consumer of the library, taking away from it the names it
- *          is entitled to use. Therefore the names are removed only for the duration of the AWH declarations,
- *          while the former definitions are kept and brought back by the restore.hpp header.
- *
- *          The order of use is to include suppress.hpp after all the other includes
- *          of the header, and to place restore.hpp at the very end, before the closing #endif
- *          of the guard against repeated initialisation.
- *
- * @par To those using the library
- *
- *      This pair protects the **AWH declarations**, but not the references to them. Bringing the macros back
- *      afterwards is done deliberately — it leaves the names to whoever uses them for a reason —
- *      and the price for that is that the record `awh::event::error_t::INVALID_SOCKET` in
- *      **your own** code under MS Windows will collide with the restored macro exactly as
- *      the declaration itself would have collided.
- *
- *      Hence the single rule: whoever names such members at home protects their own file by the
- *      same pair — `#include <sys/macro/suppress.hpp>` after all the includes and
- *      `#include <sys/macro/restore.hpp>` at the end. There is no other way: removing the macros for good
- *      would mean taking them away from those who need them, and renaming the members of the enumerations
- *      would distort the notions of the contracts for the sake of one system.
- *
- *      Checked by experience: `tests/net/io/static.cpp` and `parameterized.cpp` answered
- *      with the failure «expected unqualified-id before '(' token» pointing at the line of the
- *      restoration itself, until that protection was put in place for them.
- *
- * @note The header has no guard against repeated initialisation deliberately: it is included
- *       as many times as needed, and every include has its own removal. Nesting
- *       is safe — the kept definitions are stacked, and the restoration goes in the
- *       reverse order
- *
- * @note The list is wider than what sys/macro/win32.hpp removes. There the removal is permanent, and therefore
- *       is limited to the names colliding right now: the function-like macros FAILED(hr) and
- *       TEXT(quote) expand only before an opening parenthesis and in a record of the
- *       `FAILED = 0x02` form are harmless. Here, on the other hand, the removal is temporary and costs nothing, therefore
- *       those names are taken as well — so that a future change of an enumeration does not uncover trouble
- *
- * @warning This header must go in a pair with restore.hpp. A removal without a restoration
- *          takes the names away from the consumer of the library — exactly what the pair avoids
- *
- * \~
  */
 #pragma push_macro("TEXT")
 #pragma push_macro("CALLBACK")
@@ -155,7 +98,6 @@
 #pragma push_macro("SUSPENDED")
 
 /**
- * \~russian
  * Имена, какие системные заголовки MS Windows заводят макросами
  *
  * @details Снимаем их сразу за сохранением, каков бы ни был состав: снятие временное
@@ -167,19 +109,6 @@
  *       признаки отображения - из sys/mman.h, и у каждого ряда своя запись о причине
  *       снятия
  *
- * \~english
- * Names the MS Windows system headers introduce as macros
- *
- * @details We remove them right after the saving, whatever the composition is: the removal is temporary
- *          and costs nothing. The list is wider than what would collide today — that argument
- *          is written down above, by the list of what is kept.
- *
- * @note The names from the other sources are set apart as the rows below: the segment pointers
- *       come from sys/regset.h, the character sizes of the serial link — from termios.h,
- *       the mapping flags — from sys/mman.h, and every row has its own record of the reason
- *       for the removal
- *
- * \~
  */
 #undef TEXT
 #undef CALLBACK
@@ -196,7 +125,6 @@
 #undef INVALID_SOCKET
 
 /**
- * \~russian
  * Имена указателей сегментов набора команд x86
  *
  * @details Заголовок sys/regset.h у Sun Solaris и illumos заводит макросами имена
@@ -210,21 +138,6 @@
  *       под члены перечислений годятся все, и снятие их ничего не стоит - ровно тот же
  *       довод, по какому выше взяты FAILED и TEXT
  *
- * \~english
- * Names of the segment pointers of the x86 instruction set
- *
- * @details The sys/regset.h header of Sun Solaris and illumos introduces as macros the names
- *          of the segment pointers — FS, ES, CS, SS, DS, GS — expanding them into the ordinal
- *          numbers of the process state. It comes not directly but through the headers for working
- *          with processes, and that is why the collision surfaces not everywhere: the enumeration
- *          address_t with the FS member built on Solaris and failed on OpenIndiana,
- *          where the set of included headers turned out differently.
- *
- * @note All six are removed rather than the single colliding FS: those names are short and common,
- *       all of them are fit for the members of enumerations, and removing them costs nothing — exactly the same
- *       argument by which FAILED and TEXT are taken above
- *
- * \~
  */
 #undef FS
 #undef ES
@@ -234,7 +147,6 @@
 #undef GS
 
 /**
- * \~russian
  * Имена размеров знака у настроек последовательной связи
  *
  * @details Заголовок <termios.h> заводит макросами имена CS5, CS6, CS7 и CS8, задающие
@@ -250,23 +162,6 @@
  * @note Снят и CS8, какого у перечисления сейчас нет: по доводу выше снятие временное и
  *       ничего не стоит, а имя из того же ряда
  *
- * \~english
- * Names of the character sizes of the settings of the serial link
- *
- * @details The <termios.h> header introduces as macros the names CS5, CS6, CS7 and CS8, setting
- *          the number of the bits in a character of a serial port. Those names coincide with
- *          the members of the dscp_t enumeration, where CS means something entirely different — the class
- *          of the service of a packet by RFC 2474.
- *
- * @note This collision is hidden: the tree builds only because nobody includes <termios.h>
- *       into it. At the consumer of the library working with a serial
- *       port, the declaration `CS5 = 0x28` would turn into `(0000000) = 0x28` — exactly the same
- *       failure with which MS Windows meets its own DELETE
- *
- * @note CS8 is removed as well, the one the enumeration does not have right now: by the argument above the removal is temporary and
- *       costs nothing, while the name is from the same row
- *
- * \~
  */
 #undef CS5
 #undef CS6
@@ -274,7 +169,6 @@
 #undef CS8
 
 /**
- * \~russian
  * Имена признаков отображения и состояния у Sun Solaris и illumos
  *
  * @details Заголовок <sys/mman.h> у Sun Solaris и illumos заводит макросами PRIVATE и
@@ -290,23 +184,6 @@
  *       подключаемых заголовков сложился шире. Снятие временное и ничего не стоит - по
  *       тому же доводу, что и ряды выше
  *
- * \~english
- * Names of the mapping flags and of the state of Sun Solaris and illumos
- *
- * @details The <sys/mman.h> header of Sun Solaris and illumos introduces as macros PRIVATE and
- *          SHARED — its own memory-mapping flags on top of the ordinary MAP_PRIVATE and
- *          MAP_SHARED — expanding them into 0x20 and 0x10. The name SUSPENDED comes from the set
- *          of the headers for working with processes and threads and surfaces only upon their joint
- *          inclusion. All three coincide with the members of the AWH enumerations: PRIVATE — with
- *          cryptography::key_t (a kind of a key), SHARED — with locker_t::mode_t (a shared
- *          lock), SUSPENDED — with fiber::state_t (the fiber sleeps on its own stack).
- *
- * @note This collision is hidden and system-dependent: PRIVATE and SHARED failed on both
- *       Solaris and OpenIndiana, while SUSPENDED — only on OpenIndiana, where the set of
- *       the included headers turned out wider. The removal is temporary and costs nothing — by
- *       the same argument as the rows above
- *
- * \~
  */
 #undef PRIVATE
 #undef SHARED

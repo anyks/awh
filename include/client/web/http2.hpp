@@ -1,15 +1,21 @@
 /**
- * @file: http2.hpp
- * @date: 2023-09-18
+ * @file http2.hpp
+ * @date 2023-09-18
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля клиентской части библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_WEB_HTTP2_CLIENT__

@@ -1,15 +1,21 @@
 /**
- * @file: sample.cpp
- * @date: 2023-10-18
+ * @file sample.cpp
+ * @date 2023-10-18
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Реализация модуля серверной части библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 /**

@@ -1,15 +1,21 @@
 /**
- * @file: ntp.hpp
- * @date: 2023-08-17
+ * @file ntp.hpp
+ * @date 2023-08-17
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля сетевого уровня
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_NTP_CLIENT__

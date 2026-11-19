@@ -390,7 +390,7 @@ namespace {
 	/**
 	 * Выдержка между опросами потока доклада в миллисекундах
 	 */
-	static constexpr int64_t TICK = 50;
+	static constexpr int64_t REPORT_PERIOD = 50;
 	/**
 	 * Длина кольца докладов о крупных выдачах
 	 */
@@ -669,7 +669,7 @@ namespace {
 	 * источника нет
 	 *
 	 * Зернистость от этого НЕ ухудшается ни на волос: обход отдачи по сроку и так
-	 * ходит раз в `TICK`, и публиковать чаще было бы незачем - потребитель отметки
+	 * ходит раз в `REPORT_PERIOD`, и публиковать чаще было бы незачем - потребитель отметки
 	 * движется тем же шагом, что и её издатель
 	 *
 	 * @warning У уклада «при освобождении» издателя-потока нет, и часы там публикуются
@@ -1983,7 +1983,7 @@ namespace {
 					machinery->central.purge(point, false);
 			}
 			// Спим до следующего опроса
-			std::this_thread::sleep_for(chrono::milliseconds(TICK));
+			std::this_thread::sleep_for(chrono::milliseconds(REPORT_PERIOD));
 		}
 	}
 	/**

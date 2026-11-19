@@ -262,8 +262,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	git fetch --all --tags
 	# Выполняем жесткое переключение на main
 	git reset --hard origin/main
-	# Переключаемся на main
-	git checkout main
+	# Переключаемся на main (ветка заводится от origin/main, если её ещё нет)
+	git checkout -B main origin/main
 	# Выполняем обновление данных
 	git pull origin main
 	# Удаляем старую ветку
@@ -301,6 +301,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_BENCHMARKS="OFF" \
 		 -DCMAKE_BUILD_SAMPLES="OFF" \
 		 -DCMAKE_BUILD_LIBFUZZER="OFF" \
+		 -DCMAKE_BUILD_APP="OFF" \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME=Windows \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -313,6 +314,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_BENCHMARKS="OFF" \
 		 -DCMAKE_BUILD_SAMPLES="OFF" \
 		 -DCMAKE_BUILD_LIBFUZZER="OFF" \
+		 -DCMAKE_BUILD_APP="OFF" \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 .. || exit 1

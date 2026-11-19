@@ -12,7 +12,6 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл движка регулярных выражений — класс Engine, объединяющий разбор,
  *        компиляцию прямой и развёрнутой программ, детерминированное исполнение и исполнение
  *        без возврата, и выбирающий способ сопоставления по свойствам выражения и текста
@@ -144,128 +143,6 @@
  *          «Regex.EngineReverseUnreachable»: выражения этих родов программы
  *          не получают, а соседние, привязки и режимов лишённые, - получают.
  *
- * \~english
- * @brief Header file of the regular expression engine — the Engine class, which unites parsing,
- *        compilation of the forward and the reversed programs, deterministic execution and execution
- *        without backtracking, and chooses the way of matching by the properties of the expression and of the text
- *
- * @section engine_decisions Deliberate decisions
- *
- * @details What is listed below looks like an incongruity, but was chosen deliberately and
- *          is not subject to correction. The section is introduced so that reading the code does not start
- *          every time from the same conclusions.
- *          <b>The backward pass starts from the end of the text rather than from the end of
- *          the found match.</b> A pass from the end of the match would cost orders of magnitude
- *          less, but would give a wrong answer: the forward pass finds
- *          the earliest end of a match, whereas the match with the earliest beginning
- *          is entitled to end further to the right and would not fall into the count from the found end.
- *          The divergence from the reference implementation on expressions
- *          of the «.b+.*a|b» form is confirmed by measurement — anchoring the reversed program to the end of the match
- *          was tried and rolled back.
- *          <b>The choice between the backward pass and execution without backtracking
- *          is determined by the presence of a leading literal</b> rather than by the length
- *          of the walked stretch of the text alone. The backward pass walks the text
- *          as a whole and costs the same for any expression, whereas execution
- *          without backtracking costs proportionally to the number of states it creates. A leading
- *          literal moves it straight to the positions of a possible beginning of a match,
- *          which is why it costs less than a pass over the text as a whole — measurement
- *          yielded an eightfold advantage on the «\bneedle\b» expression
- *          and a twelvefold lag on the «\w+@\w+\.\w+» expression,
- *          which has no leading literal.
- *          <b>The boundaries of a match on a short stretch of the text are established
- *          by execution with backtracking rather than by execution without backtracking.</b> The choice
- *          looks as if it contradicts the arrangement of the module, which allots to execution
- *          with backtracking only the non-regular subset of the syntax, but execution
- *          with backtracking keeps a single set of boundaries, changing it in place,
- *          whereas execution without backtracking keeps a set at every state
- *          and replaces it with a copy at every capture. Measurement on a text of a hundred
- *          bytes yielded seventy-two copies of the set per one match and
- *          an advantage of execution with backtracking of up to five times. The exponential growth
- *          of the time of execution with backtracking is bounded by an amount of work proportional to
- *          the stretch of the text and to the size of the program, and exhausting the amount returns
- *          the matching to execution without backtracking, whose time does not depend on the kind of the
- *          expression. The return is fixed by the «Regex.EngineBudget» test on an expression
- *          where the reference implementation, having execution with backtracking
- *          alone at its disposal, fails with the error of exhausting the match limit.
- *          <b>On a long stretch of the text execution with backtracking is applied only
- *          after the backward pass that has established the position where the match
- *          begins.</b> Unanchored execution with backtracking repeats the match
- *          attempt at every position of the text and becomes unfit on a long text:
- *          measurement yielded four hundred and fifty-seven milliseconds
- *          on the «\w+@\w+\.\w+» expression over a text of two hundred and fifty-six kilobytes
- *          against nine hundred microseconds for a pass over the text with execution without
- *          backtracking. Bounding the amount of work is no rescue from that: the failure on
- *          exhausting the amount was measured at two hundred and fifty milliseconds, since
- *          the amount is counted in steps while the time goes into allocating the backtracking points
- *          and the change log. A known position where the match begins removes the repetition
- *          of the attempt, and then execution with backtracking gives a twofold advantage
- *          on the «.*needle» expression while being equal on the others.
- *          An expression anchored to the position where the search begins needs no such pass:
- *          the position of its beginning is known in advance — it is the position of the search, —
- *          the attempt is a single one, and execution with backtracking is started at once for a
- *          stretch of any length. Formerly the backward pass went for it as well, walking the whole
- *          text for the sake of a known answer: on «^[a-z ]+X» with a match of twenty kilobytes over
- *          a text of sixty-four — 190 microseconds against 53 now. Pinned by the test
- *          «Regex.EngineAnchoredLong».
- *          <b>An expression with a leading literal is matched by execution with backtracking
- *          before checking the presence of a match by deterministic execution.</b>
- *          The order looks like giving up the fast check of the presence of a match, but
- *          a leading literal moves execution with backtracking straight to the positions
- *          where the literal occurs by the same sequence search that the presence
- *          check uses itself, which is why its pass turns out to be a second search
- *          for the same literal. The absence of a match is then established by execution with backtracking
- *          conclusively, since it walks the text as a whole, and only
- *          exhausting the admissible amount of work returns the matching to the former
- *          order. Measurement yielded an advantage of almost twofold on the expressions
- *          «\\bneedle\\b» and «^GET /\\S+ HTTP/1\\.1». The order is fixed by the
- *          «Regex.EngineLeading» test.
- *          <b>An expression beginning with an unbounded greedy repetition of any
- *          character is matched by execution with backtracking without the passes
- *          of deterministic execution.</b> Such a repetition absorbs the text
- *          up to a match beginning further to the right, which is why the match attempt
- *          is not repeated at every position of the text and one attempt establishes
- *          the boundaries as a whole. The former order walked the text three times — by the check
- *          of the presence of a match, by the search for its beginning and by the matching — and measurement
- *          yielded a threefold advantage on the «.*needle» expression.
- *          The indication is deliberately narrow and is not subject to extension: it requires
- *          the repetition of any character to be a single one and the absence of repetitions
- *          nested in one another. Both conditions were checked by measurement: the expression
- *          «.*needle.*tail» with two repetitions of any character is executed
- *          with backtracking forty times longer, and «.*(a+)+b» with nested repetitions
- *          exhausts the admissible amount of work. The narrowness is fixed by the
- *          «Regex.EngineSweeping» test.
- *          <b>The mandatory literal is searched for by the engine, before choosing the path,
- *          and the found occurrence is handed over to execution with backtracking.</b> This looks
- *          redundant: execution with backtracking can check the literal by itself. Formerly it
- *          did check it, and a match resolved by the probe searched for the literal
- *          twice - on «(?:fox|dog)trot» over the medium text this cost more than
- *          a third of the time. The simple correction, removing the check from the engine, was
- *          rejected by measurement: «(?:ab|cd)+z» on a short text without the literal lost
- *          57 per cent - the refusal moved behind the preparation of the execution, which costs
- *          more than the whole search. The handover acts on one match and is placed
- *          right before the call of execution with backtracking rather than before choosing the path:
- *          a path that does not call that execution would leave the occurrence of its own
- *          text to someone else's match. The order is fixed by the
- *          «Regex.EngineLocatedHandoff» test.
- *          <b>The reverse program is not built for every expression without a leading
- *          literal.</b> Its absence looks like a loss of the search for the position of the
- *          beginning, but such expressions cannot reach that search with any text, or its answer
- *          is known in advance. It is unreachable when deterministic execution does not apply
- *          to the expression — the UTF-8 and Unicode property modes, classes with properties,
- *          a non-default newline convention, — and when an empty match does not count as a
- *          match: the search method hands such an expression over to execution without
- *          backtracking before choosing the backward pass. The answer is known for an expression
- *          anchored to the position where the search begins, the anchoring being taken from the
- *          indication of the program, which is derived from the expression itself as well —
- *          «^» outside «MULTILINE», «\A», «\G», — rather than from the build mode alone.
- *          Measured on the measuring stand: building the expression «^(\d{1,3})\.…» is faster
- *          by a third, restoring the record by a fifth, the record is shorter, from 5514 bytes
- *          down to 3242; the set of 353 expressions in the UTF-8 mode built a reverse program
- *          for 114 expressions, all of them in vain — two fifths of their build. Pinned by the
- *          test «Regex.EngineReverseUnreachable»: expressions of these kinds receive no program,
- *          while the neighbouring ones, without the anchoring and the modes, do receive it.
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -298,13 +175,8 @@
 #include "backtrack.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -313,74 +185,41 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
-	 * \~english
-	 * @brief Namespace of the regular expression module
-	 *
-	 * \~
 	 */
 	namespace regex {
 		/**
-		 * \~russian
 		 * @brief Наименьшая длина участка текста, оправдывающая поиск начала совпадения
 		 *
 		 * @details Поиск позиции начала совпадения выполняется проходом по тексту
 		 *          в обратном направлении и оправдан лишь тогда, когда исполнение
 		 *          без возврата обошлось бы дороже.
 		 *
-		 * \~english
-		 * @brief Smallest length of a stretch of the text justifying the search for the beginning of a match
-		 *
-		 * @details The search for the position where a match begins is performed by a backward pass
-		 *          over the text and is justified only when execution
-		 *          without backtracking would cost more.
-		 *
-		 * \~
 		 */
 		constexpr size_t MIN_REVERSE = 512;
 
 		/**
-		 * \~russian
 		 * @brief Отношение стоимости исполнения без возврата к детерминированному
 		 *
 		 * @details Отношение получено измерением и определяет, во сколько раз более
 		 *          длинный участок текста допустимо пройти детерминированным
 		 *          исполнением взамен исполнения без возврата.
 		 *
-		 * \~english
-		 * @brief Ratio of the cost of execution without backtracking to the deterministic one
-		 *
-		 * @details The ratio was obtained by measurement and determines how many times longer
-		 *          a stretch of the text may be walked by deterministic
-		 *          execution instead of execution without backtracking.
-		 *
-		 * \~
 		 */
 		constexpr size_t REVERSE_RATIO = 40;
 
 		/**
-		 * \~russian
 		 * @brief Наибольшая длина участка текста, оправдывающая исполнение с возвратом
 		 *
 		 * @details Исполнение с возвратом устанавливает границы совпадения дешевле
 		 *          исполнения без возврата, но время его растёт с длиной текста
 		 *          показательно, поэтому длина участка ограничивается.
 		 *
-		 * \~english
-		 * @brief Largest length of a stretch of the text justifying execution with backtracking
-		 *
-		 * @details Execution with backtracking establishes the boundaries of a match cheaper than
-		 *          execution without backtracking, but its time grows with the length of the text
-		 *          exponentially, therefore the length of the stretch is bounded.
-		 *
-		 * \~
 		 */
 		constexpr size_t MAX_BACKTRACK = 0x1000;
 
 		/**
-		 * \~russian
 		 * @brief Наибольшая длина текста, при какой проход детерминированного исполнения излишен
 		 *
 		 * @details Детерминированное исполнение устанавливает НАЛИЧИЕ совпадения
@@ -392,23 +231,10 @@ namespace awh {
 		 *          занимал 171 наносекунду из 473 на выражении
 		 *          «(?m)^[A-Za-z0-9-]+: .+$».
 		 *
-		 * \~english
-		 * @brief Largest length of the text at which the pass of the deterministic execution is superfluous
-		 *
-		 * @details The deterministic execution establishes the PRESENCE of a match
-		 *          and the position of its end, while the boundaries are established by the execution
-		 *          with backtracking, which walks the text anew: on a long text the first
-		 *          pass pays off — it rejects a failure many times cheaper — while
-		 *          on a short one it is a pure overhead. Measurement on a text of one hundred
-		 *          and five bytes yielded: the pass of the deterministic execution
-		 *          took 171 nanoseconds out of 473 on the «(?m)^[A-Za-z0-9-]+: .+$» expression.
-		 *
-		 * \~
 		 */
 		constexpr size_t MAX_DIRECT = 0x100;
 
 		/**
-		 * \~russian
 		 * @brief Наибольшее число попыток пробы исполнением с возвратом
 		 *
 		 * @details Проба испытывает исполнение с возвратом прежде прохода
@@ -426,29 +252,10 @@ namespace awh {
 		 *          лежащее к концу короткого текста, стоило бы двух проходов
 		 *          вместо одного.
 		 *
-		 * \~english
-		 * @brief Largest number of attempts of the probe by execution with backtracking
-		 *
-		 * @details The probe tries the execution with backtracking before the pass
-		 *          of the deterministic execution, and its price is bound to remain
-		 *          a small share of that pass: a text exceeding the length threshold
-		 *          is given to the probe not as a whole but by a number of attempts. The attempts
-		 *          are what is counted: the selection by the mandatory literal steps over
-		 *          whole stretches of the text, and a limit by the positions would take away from it
-		 *          exactly what it is introduced for — measurement on «(?:HT|TP)/1»
-		 *          with a long text gave a ratio of 0.58 for the limit by the positions and
-		 *          forty four for the limit by the attempts.
-		 *          A text not exceeding the length threshold is given to the probe as a whole:
-		 *          the limit of the attempts would break it off halfway, and a match
-		 *          lying towards the end of a short text would cost two passes
-		 *          instead of one.
-		 *
-		 * \~
 		 */
 		constexpr size_t MAX_PROBES = 0x40;
 
 		/**
-		 * \~russian
 		 * @brief Отношение допустимого объёма работы исполнения с возвратом к его оценке
 		 *
 		 * @details Объём работы исполнения с возвратом, не прибегающего к перебору,
@@ -456,20 +263,10 @@ namespace awh {
 		 *          Отношение задаёт запас, при исчерпании которого сопоставление
 		 *          возвращается исполнению без возврата.
 		 *
-		 * \~english
-		 * @brief Ratio of the admissible amount of work of execution with backtracking to its estimate
-		 *
-		 * @details The amount of work of execution with backtracking that does not resort to enumeration
-		 *          is proportional to the product of the length of the stretch of the text by the size of the program.
-		 *          The ratio sets the margin, on exhausting which the matching
-		 *          returns to execution without backtracking.
-		 *
-		 * \~
 		 */
 		constexpr size_t BACKTRACK_RATIO = 4;
 
 		/**
-		 * \~russian
 		 * @brief Скомпилированное регулярное выражение
 		 *
 		 * @details Выражение собирается движком единожды и после сборки не изменяется,
@@ -477,21 +274,11 @@ namespace awh {
 		 *          согласования доступа. Рабочее состояние сопоставления выражению
 		 *          не принадлежит и хранится движком, исполняющим выражение.
 		 *
-		 * \~english
-		 * @brief Compiled regular expression
-		 *
-		 * @details The expression is built by the engine once and is not changed after building,
-		 *          thanks to which it is shared by several threads of execution without
-		 *          coordinating the access. The working state of the matching does not belong to the expression
-		 *          and is kept by the engine executing the expression.
-		 *
-		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Expression {
 			// Флаг готовности выражения к сопоставлению
 			bool ready;
 			/**
-			 * \~russian
 			 * Флаг применимости детерминированного исполнения к прямой программе
 			 *
 			 * @details Применимость есть чистая функция программы, и спрашивалась
@@ -500,22 +287,11 @@ namespace awh {
 			 *          хранилище выводит его из восстановленной программы само,
 			 *          записи не доверяя, и формат записи от него не зависит.
 			 *
-			 * \~english
-			 * Flag of the applicability of deterministic execution to the forward program
-			 *
-			 * @details The applicability is a pure function of the program, and formerly it was asked
-			 *          on every match - by a walk over all the classes in search of Unicode
-			 *          properties. The flag is computed by the build and by the storage:
-			 *          the storage derives it from the restored program by itself, not trusting the record,
-			 *          and the format of the record does not depend on it.
-			 *
-			 * \~
 			 */
 			bool automatic;
 			// Флаг применимости поиска позиции начала совпадения
 			bool reversible;
 			/**
-			 * \~russian
 			 * Флаг исполнения выражения с возвратом
 			 *
 			 * @details Флаг установлен, если выражение содержит конструкции вне
@@ -524,16 +300,6 @@ namespace awh {
 			 *          условные выражения, проверки окружения, атомарные группы,
 			 *          захватывающие кванторы и графемные кластеры.
 			 *
-			 * \~english
-			 * Flag of executing the expression with backtracking
-			 *
-			 * @details The flag is set if the expression holds constructs outside
-			 *          the regular subset of the syntax, unreachable by execution
-			 *          without backtracking: references to captured groups, recursive calls,
-			 *          conditional expressions, lookarounds, atomic groups,
-			 *          possessive quantifiers and grapheme clusters.
-			 *
-			 * \~
 			 */
 			bool backtracking;
 			// Программа сопоставления в прямом направлении
@@ -541,7 +307,6 @@ namespace awh {
 			// Программа сопоставления в обратном направлении
 			program_t backward;
 			/**
-			 * \~russian
 			 * Сопоставитель выражения в виде порождённого машинного кода
 			 *
 			 * @details Сопоставитель порождается сборкой в режиме «JIT», если
@@ -550,47 +315,23 @@ namespace awh {
 			 *          свободно, а порождённый код исполняется несколькими потоками
 			 *          одновременно, поскольку рабочего состояния он не несёт.
 			 *
-			 * \~english
-			 * Matcher of the expression in the form of generated machine code
-			 *
-			 * @details The matcher is generated by the build in the «JIT» mode if
-			 *          the expression belongs to the subset that receives code generation.
-			 *          Its ownership is shared: the expression is copied by the consumers
-			 *          freely, and the generated code is executed by several threads
-			 *          at once, since it carries no working state.
-			 *
-			 * \~
 			 */
 			shared_ptr <codegen_t> machine;
 			/**
-			 * \~russian
 			 * Соответствие имён именованных групп наборам их номеров
 			 *
 			 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
 			 *          поэтому имени отвечает набор их номеров в порядке объявления.
 			 *
-			 * \~english
-			 * Mapping of the names of the named groups to the sets of their numbers
-			 *
-			 * @details In the «DUPNAMES» mode one name is declared by several groups,
-			 *          therefore a name corresponds to a set of their numbers in declaration order.
-			 *
-			 * \~
 			 */
 			unordered_map <string, vector <uint32_t>> names;
 			/**
-			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
 			 */
 			explicit Expression() noexcept;
 		} expression_t;
 		/**
-		 * \~russian
 		 * @brief Класс движка регулярных выражений
 		 *
 		 * @details Класс объединяет способы сопоставления и выбирает между ними.
@@ -600,17 +341,6 @@ namespace awh {
 		 *          по тексту в обратном направлении, если исполнение без возврата
 		 *          обошлось бы дороже такого прохода.
 		 *
-		 * \~english
-		 * @brief Class of the regular expression engine
-		 *
-		 * @details The class unites the ways of matching and chooses between them.
-		 *          The presence of a match is determined by deterministic execution.
-		 *          The boundaries of the captured groups are established by execution without backtracking,
-		 *          which is preceded by the search for the position where a match begins by a backward pass
-		 *          over the text, if execution without backtracking
-		 *          would cost more than such a pass.
-		 *
-		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Engine {
 			private:
@@ -638,26 +368,16 @@ namespace awh {
 				expression_t _expression;
 			private:
 				/**
-				 * \~russian
 				 * Имя отметки, совпадением последним оставленной
 				 *
 				 * @details Имя выводится глаголом «(*MARK:имя)», отметившим путь,
 				 *          совпадение давший. Совпадение, глаголов отметки
 				 *          не прошедшее, имя оставляет пустым.
 				 *
-				 * \~english
-				 * Name of the mark left by the last match
-				 *
-				 * @details The name is yielded by the «(*MARK:name)» verb that marked the path
-				 *          which produced the match. A match that passed no mark verbs
-				 *          leaves the name empty.
-				 *
-				 * \~
 				 */
 				string _marker;
 			private:
 				/**
-				 * \~russian
 				 * Набор границ, отбрасываемый проверкой наличия совпадения
 				 *
 				 * @details Проверка наличия совпадения границ захвата не выдаёт,
@@ -669,24 +389,10 @@ namespace awh {
 				 *          принадлежит потоку исполнения, поэтому поле общим
 				 *          для потоков не становится.
 				 *
-				 * \~english
-				 * Set of boundaries discarded by the check of the presence of a match
-				 *
-				 * @details The check of the presence of a match yields no capture boundaries,
-				 *          but execution writes them, and a set for them is required by
-				 *          every call. The set is introduced as a field rather than as a variable of
-				 *          the call so that its allocation is performed once:
-				 *          the check is called at every position of the text, and
-				 *          the allocation cost more than the check itself. The engine
-				 *          belongs to the thread of execution, therefore the field does not become common
-				 *          to the threads.
-				 *
-				 * \~
 				 */
 				vector <pair <size_t, size_t>> _spare;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод пробы сопоставления исполнением с возвратом
 				 *
 				 * @details Проба испытывает исполнение с возвратом прежде прохода
@@ -708,34 +414,10 @@ namespace awh {
 				 *                   отказали, либо «npos», если проба пределом не прервана
 				 * @return           признак разрешения вопроса пробою
 				 *
-				 * \~english
-				 * @brief Method of the probe of matching by execution with backtracking
-				 *
-				 * @details The probe tries the execution with backtracking before the pass
-				 *          of the deterministic execution and removes it when
-				 *          the match lies close to the beginning of the search. The price of the probe
-				 *          is bounded by two limits — the number of attempts and the amount
-				 *          of work — and the arguments in favour of both are given at the definition
-				 *          of the method.
-				 *
-				 * @param expression matched regular expression
-				 * @param text       text to match
-				 * @param start      position to start the search for a match from
-				 * @param located    position of the occurrence of the mandatory literal found
-				 *                   by the check, or «npos» if the check was not performed
-				 * @param captures   set of the boundaries of the match and of the captured groups
-				 * @param result     outcome of the matching established by the probe
-				 * @param exhausted  indication of the exhaustion of the amount of work at the full amount
-				 * @param frontier   position to the left of which the attempts of the probe have failed
-				 *                   conclusively, or «npos» if the probe was not interrupted by a limit
-				 * @return           indication that the question was resolved by the probe
-				 *
-				 * \~
 				 */
 				bool probe(const expression_t & expression, string_view text, const size_t start, const size_t located, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод сброса отметки совпадения последнего
 				 *
 				 * @details Отметка чистится началом всякого сопоставления: имя,
@@ -743,20 +425,10 @@ namespace awh {
 				 *          принято быть не должно. Готовый путь исполнения вызывает
 				 *          сброс напрямую, минуя полный разбор «exec».
 				 *
-				 * \~english
-				 * @brief Method of resetting the mark of the last match
-				 *
-				 * @details The mark is cleared at the start of every match: a name left
-				 *          by a previous match must not be taken for the mark of the
-				 *          current one. The ready path of execution calls the reset
-				 *          directly, bypassing the full «exec».
-				 *
-				 * \~
 				 */
 				void reset() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод сборки регулярного выражения
 				 *
 				 * @details Отказ сборки с кодом ошибки «UNSUPPORTED» означает принадлежность
@@ -767,22 +439,9 @@ namespace awh {
 				 * @param flags   набор режимов компиляции регулярного выражения
 				 * @return        результат выполнения сборки
 				 *
-				 * \~english
-				 * @brief Method of building a regular expression
-				 *
-				 * @details A build failure with the «UNSUPPORTED» error code means that the expression
-				 *          belongs to the non-regular subset of the syntax and requires
-				 *          execution of the expression with backtracking.
-				 *
-				 * @param pattern text of the regular expression
-				 * @param flags   set of compilation modes of the regular expression
-				 * @return        result of performing the build
-				 *
-				 * \~
 				 */
 				bool build(string_view pattern, const uint32_t flags = 0) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод сборки регулярного выражения в отдельное выражение
 				 *
 				 * @details Собранное выражение движку не принадлежит и после сборки
@@ -794,42 +453,19 @@ namespace awh {
 				 * @param expression собираемое регулярное выражение
 				 * @return           результат выполнения сборки
 				 *
-				 * \~english
-				 * @brief Method of building a regular expression into a separate expression
-				 *
-				 * @details The built expression does not belong to the engine and is not changed
-				 *          after building, thanks to which it is executed by several
-				 *          engines at once.
-				 *
-				 * @param pattern    text of the regular expression
-				 * @param flags      set of compilation modes of the regular expression
-				 * @param expression regular expression being built
-				 * @return           result of performing the build
-				 *
-				 * \~
 				 */
 				bool build(string_view pattern, const uint32_t flags, expression_t & expression) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия совпадения в тексте
 				 *
 				 * @param text  текст для сопоставления
 				 * @param start позиция начала поиска совпадения
 				 * @return      результат проверки наличия совпадения
 				 *
-				 * \~english
-				 * @brief Method of checking the presence of a match in the text
-				 *
-				 * @param text  text to match
-				 * @param start position to start the search for a match from
-				 * @return      result of checking the presence of a match
-				 *
-				 * \~
 				 */
 				bool test(string_view text, const size_t start = 0) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия совпадения отдельного выражения
 				 *
 				 * @param expression исполняемое регулярное выражение
@@ -837,20 +473,10 @@ namespace awh {
 				 * @param start      позиция начала поиска совпадения
 				 * @return           результат проверки наличия совпадения
 				 *
-				 * \~english
-				 * @brief Method of checking the presence of a match of a separate expression
-				 *
-				 * @param expression regular expression being executed
-				 * @param text       text to match
-				 * @param start      position to start the search for a match from
-				 * @return           result of checking the presence of a match
-				 *
-				 * \~
 				 */
 				bool test(const expression_t & expression, string_view text, const size_t start = 0) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод сопоставления регулярного выражения с текстом
 				 *
 				 * @param text     текст для сопоставления
@@ -858,19 +484,9 @@ namespace awh {
 				 * @param captures набор границ совпадения и захваченных групп
 				 * @return         результат поиска совпадения
 				 *
-				 * \~english
-				 * @brief Method of matching a regular expression against the text
-				 *
-				 * @param text     text to match
-				 * @param start    position to start the search for a match from
-				 * @param captures set of the boundaries of the match and of the captured groups
-				 * @return         result of searching for a match
-				 *
-				 * \~
 				 */
 				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод сопоставления отдельного выражения с текстом
 				 *
 				 * @param expression исполняемое регулярное выражение
@@ -879,35 +495,17 @@ namespace awh {
 				 * @param captures   набор границ совпадения и захваченных групп
 				 * @return           результат поиска совпадения
 				 *
-				 * \~english
-				 * @brief Method of matching a separate expression against the text
-				 *
-				 * @param expression regular expression being executed
-				 * @param text       text to match
-				 * @param start      position to start the search for a match from
-				 * @param captures   set of the boundaries of the match and of the captured groups
-				 * @return           result of searching for a match
-				 *
-				 * \~
 				 */
 				bool exec(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод извлечения кода ошибки последней операции
 				 *
 				 * @return код ошибки последней операции движка
 				 *
-				 * \~english
-				 * @brief Method of getting the error code of the last operation
-				 *
-				 * @return error code of the last operation of the engine
-				 *
-				 * \~
 				 */
 				error_t error() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения имени отметки совпадения последнего
 				 *
 				 * @details Имя оставляет глагол «(*MARK:имя)», путь отметивший:
@@ -916,63 +514,31 @@ namespace awh {
 				 *
 				 * @return имя отметки совпадения последнего
 				 *
-				 * \~english
-				 * @brief Method of getting the name of the mark of the last match
-				 *
-				 * @details The name is left by the «(*MARK:name)» verb that marked the path:
-				 *          an expression carrying no mark verbs, and a match that passed
-				 *          none of them, yield an empty name.
-				 *
-				 * @return name of the mark of the last match
-				 *
-				 * \~
 				 */
 				const string & marker() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения текста ошибки последней операции
 				 *
 				 * @return текст ошибки последней операции движка
 				 *
-				 * \~english
-				 * @brief Method of getting the error text of the last operation
-				 *
-				 * @return error text of the last operation of the engine
-				 *
-				 * \~
 				 */
 				string message() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения смещения ошибки разбора выражения
 				 *
 				 * @return смещение ошибки в тексте регулярного выражения
 				 *
-				 * \~english
-				 * @brief Method of getting the offset of the parse error of the expression
-				 *
-				 * @return offset of the error in the text of the regular expression
-				 *
-				 * \~
 				 */
 				size_t offset() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения количества захватывающих групп
 				 *
 				 * @return количество захватывающих групп регулярного выражения
 				 *
-				 * \~english
-				 * @brief Method of getting the number of capturing groups
-				 *
-				 * @return number of capturing groups of the regular expression
-				 *
-				 * \~
 				 */
 				uint32_t captures() const noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
 				 *
 				 * @details Объём работы вычисляется движком от длины текста и длины программы,
@@ -984,23 +550,9 @@ namespace awh {
 				 *
 				 * @param limit наибольшее допустимое количество шагов сопоставления
 				 *
-				 * \~english
-				 * @brief Method of setting the largest admissible amount of work of the matching
-				 *
-				 * @details The amount of work is computed by the engine from the length of the text and
-				 *          the length of the program, and the ceiling truncates it. Exhausting the amount stops the
-				 *          execution with backtracking and moves the matching to the fallback way, whose
-				 *          time does not depend on the kind of the expression: lowering the ceiling moves
-				 *          to that way earlier, raising it allows a more difficult expression to
-				 *          be completed with backtracking. Zero removes the ceiling entirely.
-				 *
-				 * @param limit largest admissible number of matching steps
-				 *
-				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
 				 *
 				 * @details Глубина ограничивает вложенность рекурсивных вызовов подвыражений
@@ -1009,37 +561,17 @@ namespace awh {
 				 *
 				 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
 				 *
-				 * \~english
-				 * @brief Method of setting the largest admissible depth of recursive calls
-				 *
-				 * @details The depth bounds the nesting of recursive calls of subpatterns
-				 *          in the execution with backtracking: the memory of the call frames
-				 *          grows in proportion to it. Zero restores the depth of the default.
-				 *
-				 * @param nesting largest admissible depth of recursive calls
-				 *
-				 * \~
 				 */
 				void nesting(const size_t nesting) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
 				 */
 				explicit Engine() noexcept;
 				/**
-				 * \~russian
 				 * @brief Деструктор
 				 *
-				 * \~english
-				 * @brief Destructor
-				 *
-				 * \~
 				 */
 				~Engine() noexcept;
 		} engine_t;

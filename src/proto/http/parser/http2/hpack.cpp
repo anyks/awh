@@ -30,6 +30,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/http2/hpack.hpp>
+// Снимаем системные макросы Windows (ERROR, NO_ERROR, STRICT), занявшие имена значений перечислений
+#include "../../../../../include/sys/macro/suppress.hpp"
 
 /**
  * Подключаем внутренние помощники модуля
@@ -134,7 +136,7 @@ namespace {
 	 * @return      хеш пары название-значение
 	 *
 	 */
-	static __AWH_INLINE__ size_t pairHash(const size_t name, string_view value) noexcept {
+	static __AWH_INLINE__ size_t __awh_pair_hash__(const size_t name, string_view value) noexcept {
 		// Выводим хеш пары название-значение
 		return ((name * 31) ^ std::hash <string_view> {}(value));
 	}
@@ -183,21 +185,21 @@ namespace {
 			// Резервируем память под все записи статической таблицы
 			result.reserve(hpack::STATIC_TABLE_SIZE);
 			/**
-			 * Выполняем перебор всех записей статической таблицы
+			 * Перебираем все записи статической таблицы
 			 */
 			for(size_t i = 1; i <= hpack::STATIC_TABLE_SIZE; ++i){
 				// Вычисляем хеш названия очередной записи
 				const size_t hash = std::hash <string_view> {}(STATIC[i].name);
-				// Выполняем поиск диапазона записей с этим названием
-				const auto j = result.find(hash);
+				// Ищем диапазон записей с этим названием
+				const auto range = result.find(hash);
 				// Если диапазон с этим названием ещё не заведён
-				if(j == result.end())
+				if(range == result.end())
 					// Заводим диапазон из одной записи
 					result.emplace(hash, static_range_t{static_cast <uint32_t> (i), 1});
 				// Если диапазон продолжается той же записью - удлиняем его
-				else if(STATIC[j->second.first].name == STATIC[i].name)
+				else if(STATIC[range->second.first].name == STATIC[i].name)
 					// Удлиняем диапазон записей с этим названием
-					j->second.count++;
+					range->second.count++;
 			}
 			// Выводим построенный индекс
 			return result;
@@ -365,7 +367,7 @@ namespace {
 			// Создаём корень дерева
 			nodes.push_back(huff_node_t{ -1, { -1, -1 } });
 			/**
-			 * Выполняем перебор всех символов таблицы кодов
+			 * Перебираем все символы таблицы кодов
 			 */
 			for(int32_t sym = 0; sym < 256; ++sym){
 				// Получаем код текущего символа
@@ -375,7 +377,7 @@ namespace {
 				// Начинаем спуск от корня дерева
 				int32_t curent = 0;
 				/**
-				 * Выполняем перебор всех бит кода
+				 * Перебираем все биты кода
 				 */
 				for(uint8_t i = 0; i < nbits; ++i){
 					// Извлекаем очередной бит кода (от старшего к младшему)
@@ -418,7 +420,7 @@ namespace {
 	 * @return табличный декодер Huffman
 	 *
 	 */
-	static __AWH_INLINE__ const huff_table_t & huffTable() noexcept {
+	static __AWH_INLINE__ const huff_table_t & __awh_huff_table__() noexcept {
 		// Строим таблицу декодирования лениво при первом обращении
 		static const huff_table_t table = [](){
 			// Результат работы функции
@@ -441,13 +443,13 @@ namespace {
 			// Текущая позиция обхода
 			size_t position = 0;
 			/**
-			 * Выполняем обход всех узлов дерева
+			 * Обходим все узлы дерева
 			 */
 			while(position < queue.size()){
 				// Получаем очередной узел дерева
 				const int32_t node = queue[position++];
 				/**
-				 * Выполняем перебор обоих потомков узла
+				 * Перебираем обоих потомков узла
 				 */
 				for(int32_t bit = 0; bit < 2; ++bit){
 					// Получаем индекс дочернего узла
@@ -465,13 +467,13 @@ namespace {
 				}
 			}
 			/**
-			 * Выполняем перебор всех значений очередных шестнадцати бит входа
+			 * Перебираем все значения очередных шестнадцати бит входа
 			 */
 			for(size_t value = 0; value < HUFF_STEPS; ++value){
 				// Получаем ссылку на заполняемый шаг таблицы
 				huff_step_t & step = result.steps[value];
 				/**
-				 * Выполняем обнуление всех символов шага
+				 * Обнуляем все символы шага
 				 */
 				for(uint8_t i = 0; i < HUFF_SYMBOLS; ++i)
 					// Обнуляем очередной символ шага
@@ -483,7 +485,7 @@ namespace {
 				// Количество потреблённых шагом бит
 				uint8_t bits = 0;
 				/**
-				 * Выполняем перебор всех бит значения (от старшего к младшему)
+				 * Перебираем все биты значения (от старшего к младшему)
 				 */
 				for(uint8_t i = 0; i < HUFF_INDEX; ++i){
 					// Извлекаем очередной бит значения
@@ -538,7 +540,7 @@ namespace {
 	 * @return       указатель на выделенное место
 	 *
 	 */
-	static __AWH_INLINE__ char * reserveArena(string & arena, size_t & filled, const size_t size) noexcept {
+	static __AWH_INLINE__ char * __awh_reserve_arena__(string & arena, size_t & filled, const size_t size) noexcept {
 		// Требуемый размер арены
 		const size_t required = (filled + size);
 		// Если места в арене не хватает
@@ -577,7 +579,7 @@ namespace {
 	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 *
 	 */
-	static __AWH_INLINE__ status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, awh::http::h2::error_t & error) noexcept {
+	static __AWH_INLINE__ status_t __awh_decode_string__(const uint8_t * data, const size_t size, size_t & pos, string & arena, size_t & filled, string_view & output, awh::http::h2::error_t & error) noexcept {
 		// Запоминаем смещение начала строки в арене
 		const size_t offset = filled;
 		// Сбрасываем представление декодированной строки
@@ -592,7 +594,7 @@ namespace {
 		size_t used = 0;
 		// Длина закодированной строки
 		uint64_t encoded = 0;
-		// Выполняем декодирование длины строки (префикс 7 бит)
+		// Декодируем длину строки (префикс 7 бит)
 		const status_t status = hpack::prefixed::decode(data + pos, size - pos, 7, encoded, used);
 		// Если декодирование длины не удалось
 		if(status != status_t::OK){
@@ -621,8 +623,8 @@ namespace {
 			 * после декодирования, а проверять границу на каждый символ дороже самого
 			 * декодирования. Излишек возвращается арене сразу по его окончании
 			 */
-			char * target = reserveArena(arena, filled, hpack::huffman::space(static_cast <size_t> (encoded)));
-			// Выполняем декодирование строки прямо в арену
+			char * target = __awh_reserve_arena__(arena, filled, hpack::huffman::space(static_cast <size_t> (encoded)));
+			// Декодируем строку прямо в арену
 			const size_t decoded = hpack::huffman::decode(str, static_cast <size_t> (encoded), target);
 			// Если декодирование Huffman-строки не удалось
 			if(decoded == SIZE_MAX){
@@ -640,7 +642,7 @@ namespace {
 		// Строка передана литералом - переносим её в арену как есть
 		} else {
 			// Дописываем строку в арену
-			::memcpy(reserveArena(arena, filled, static_cast <size_t> (encoded)), str, static_cast <size_t> (encoded));
+			::memcpy(__awh_reserve_arena__(arena, filled, static_cast <size_t> (encoded)), str, static_cast <size_t> (encoded));
 			// Устанавливаем представление декодированной строки
 			output = string_view((arena.data() + offset), static_cast <size_t> (encoded));
 		}
@@ -658,7 +660,7 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	static __AWH_INLINE__ bool isSensitiveName(string_view name) noexcept {
+	static __AWH_INLINE__ bool __awh_is_sensitive_name__(string_view name) noexcept {
 		// Чувствительными считаются заголовки авторизации и cookie
 		return (
 			(name == "cookie") || (name == "set-cookie") ||
@@ -677,7 +679,7 @@ namespace {
 	 * @param length длина строки после кодирования, полученная из huffman::length()
 	 *
 	 */
-	static __AWH_INLINE__ void huffmanEncode(string_view input, string & output, const size_t length) noexcept {
+	static __AWH_INLINE__ void __awh_huffman_encode__(string_view input, string & output, const size_t length) noexcept {
 		// Число накопленных бит
 		int32_t count = 0;
 		// Битовый аккумулятор
@@ -694,7 +696,7 @@ namespace {
 		// Указатель на текущую позицию записи
 		char * cursor = (&output[0] + offset);
 		/**
-		 * Выполняем перебор всех символов строки
+		 * Перебираем все символы строки
 		 */
 		for(uint8_t letter : input){
 			// Получаем длину кода текущего символа в битах
@@ -706,7 +708,7 @@ namespace {
 			// Наращиваем число накопленных бит
 			count += nbits;
 			/**
-			 * Выполняем выгрузку целых байтов из аккумулятора
+			 * Выгружаем целые байты из аккумулятора
 			 */
 			while(count >= 8){
 				// Уменьшаем число накопленных бит на байт
@@ -735,7 +737,7 @@ namespace {
 	 * @param useHuffman применять Huffman-кодирование, если оно короче литерала
 	 *
 	 */
-	static __AWH_INLINE__ void encodeStringLiteral(string & output, string_view str, const bool useHuffman) noexcept {
+	static __AWH_INLINE__ void __awh_encode_string_literal__(string & output, string_view str, const bool useHuffman) noexcept {
 		/**
 		 * Вычисляем длину строки после Huffman-кодирования, только если оно разрешено:
 		 * это полный проход по строке, и при выключенном сжатии он был бы напрасным
@@ -751,7 +753,7 @@ namespace {
 			 */
 			hpack::prefixed::encode(output, length, 7, 0x80);
 			// Дописываем закодированную строку прямо в выходной буфер
-			::huffmanEncode(str, output, length);
+			::__awh_huffman_encode__(str, output, length);
 		// Кодируем строку литералом
 		} else {
 			// Дописываем длину строки без флага Huffman (H = 0)
@@ -822,7 +824,7 @@ size_t awh::http::h2::hpack::huffman::length(string_view input) noexcept {
 	// Суммарная длина кодов в битах
 	size_t bits = 0;
 	/**
-	 * Выполняем перебор всех символов строки
+	 * Перебираем все символы строки
 	 */
 	for(uint8_t letter : input)
 		// Наращиваем суммарную длину кодов
@@ -838,8 +840,8 @@ size_t awh::http::h2::hpack::huffman::length(string_view input) noexcept {
  *
  */
 void awh::http::h2::hpack::huffman::encode(string_view input, string & output) noexcept {
-	// Выполняем кодирование с вычисленной длиной результата
-	::huffmanEncode(input, output, length(input));
+	// Кодируем с вычисленной длиной результата
+	::__awh_huffman_encode__(input, output, length(input));
 }
 /**
  * @brief Функция вычисления места, требуемого под декодированную строку
@@ -868,7 +870,7 @@ size_t awh::http::h2::hpack::huffman::space(const size_t size) noexcept {
  */
 size_t awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, char * output) noexcept {
 	// Получаем табличный декодер Huffman
-	const ::huff_table_t & table = ::huffTable();
+	const ::huff_table_t & table = ::__awh_huff_table__();
 	// Получаем дерево декодирования Huffman
 	const vector <::huff_node_t> & tree = ::huffTree();
 	// Текущий узел дерева
@@ -890,7 +892,7 @@ size_t awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t 
 	// Количество значимых бит буфера
 	uint32_t available = 0;
 	/**
-	 * Выполняем разбор входа, пока в буфере остаются биты
+	 * Разбираем вход, пока в буфере остаются биты
 	 */
 	for(;;){
 		/**
@@ -1006,7 +1008,7 @@ bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t si
 	if(output.size() < bound)
 		// Расширяем буфер до оценки сверху
 		output.resize(bound);
-	// Выполняем декодирование строки в подготовленный буфер
+	// Декодируем строку в подготовленный буфер
 	const size_t length = decode(data, size, &output[0]);
 	// Если строка декодирована с ошибкой
 	if(length == SIZE_MAX){
@@ -1059,7 +1061,7 @@ void awh::http::h2::hpack::prefixed::encode(string & output, uint64_t value, con
 	// Вычитаем часть значения, ушедшую в префикс
 	value -= prefixMax;
 	/**
-	 * Выполняем запись байтов продолжения (7 бит на байт)
+	 * Записываем байты продолжения (7 бит на байт)
 	 */
 	while(value >= 0x80){
 		// Дописываем очередные 7 бит с признаком продолжения
@@ -1106,7 +1108,7 @@ awh::http::h2::status_t awh::http::h2::hpack::prefixed::decode(const uint8_t * d
 	// Текущий сдвиг продолжения (7 бит на байт, старший бит - признак продолжения)
 	uint32_t shift = 0;
 	/**
-	 * Выполняем чтение байтов продолжения
+	 * Читаем байты продолжения
 	 */
 	for(;;){
 		// Если данные закончились посреди продолжения
@@ -1157,7 +1159,7 @@ awh::http::h2::status_t awh::http::h2::hpack::prefixed::decode(const uint8_t * d
  */
 void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 	/**
-	 * Выполняем вытеснение записей, пока размер таблицы превышает лимит
+	 * Вытесняем записи, пока размер таблицы превышает лимит
 	 */
 	while((this->_size > this->_maxSize) && (this->_live > 0)){
 		// Получаем самую старую живую запись таблицы
@@ -1171,30 +1173,30 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 			// Вычисляем хеш названия вытесняемой записи
 			const size_t hashName = std::hash <string_view> {}(string_view(back.name));
 			// Получаем диапазон записей индекса с тем же хешем пары название-значение
-			const auto range = this->_index.equal_range(::pairHash(hashName, string_view(back.value)));
+			const auto range = this->_index.equal_range(::__awh_pair_hash__(hashName, string_view(back.value)));
 			/**
-			 * Выполняем перебор записей индекса с этим хешем пары
+			 * Перебираем записи индекса с этим хешем пары
 			 */
-			for(auto i = range.first; i != range.second; ++i){
+			for(auto record = range.first; record != range.second; ++record){
 				// Если найдена вытесняемая запись
-				if(i->second == seq){
+				if(record->second == seq){
 					// Удаляем запись из индекса
-					this->_index.erase(i);
+					this->_index.erase(record);
 					// Прекращаем перебор записей индекса
 					break;
 				}
 			}
 			// Получаем запись индекса названий с тем же хешем названия заголовка
-			const auto i = this->_names.find(hashName);
+			const auto record = this->_names.find(hashName);
 			/**
 			 * Удаляем запись индекса названий, только если вытесняется именно та запись,
 			 * на которую он ссылается. Вытеснение идёт с самой старой записи, а индекс
 			 * названий хранит самую свежую - значит запись удаляется, когда уходит
 			 * последняя запись с этим названием
 			 */
-			if((i != this->_names.end()) && (i->second == seq))
+			if((record != this->_names.end()) && (record->second == seq))
 				// Удаляем запись из индекса названий
-				this->_names.erase(i);
+				this->_names.erase(record);
 		}
 		/**
 		 * Запись выводится из живых, но с места не снимается: представление в её строки
@@ -1273,7 +1275,7 @@ void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noex
  * @return      указатель на запись либо nullptr
  *
  */
-const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(const size_t index) const noexcept {
+const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::record(const size_t index) const noexcept {
 	// Если индекс за пределами таблицы
 	if((index < 1) || (index > this->_live))
 		// Запись не найдена
@@ -1290,13 +1292,13 @@ const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(con
  */
 uint64_t awh::http::h2::hpack::DynamicTable::findName(const size_t hashName, string_view name) const noexcept {
 	// Получаем запись индекса названий с искомым хешем названия заголовка
-	const auto i = this->_names.find(hashName);
+	const auto record = this->_names.find(hashName);
 	// Если запись индекса названий не найдена
-	if(i == this->_names.end())
+	if(record == this->_names.end())
 		// Выводим отсутствие совпадения по названию заголовка
 		return 0;
 	// Вычисляем позицию записи по сквозному номеру
-	const size_t position = static_cast <size_t> (this->_inserts - i->second);
+	const size_t position = static_cast <size_t> (this->_inserts - record->second);
 	/**
 	 * Индекс названий хранит только самую свежую запись с этим названием, поэтому
 	 * перебирать нечего. Совпадение хешей названий сверяется строкой: при
@@ -1307,7 +1309,7 @@ uint64_t awh::http::h2::hpack::DynamicTable::findName(const size_t hashName, str
 		// Выводим отсутствие совпадения по названию заголовка
 		return 0;
 	// Выводим индекс совпадения по названию заголовка
-	return ((this->_inserts - i->second) + 1);
+	return ((this->_inserts - record->second) + 1);
 }
 /**
  * @brief Метод добавления записи в начало таблицы
@@ -1346,7 +1348,7 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
 		// Вычисляем хеш названия добавляемой записи
 		const size_t hashName = std::hash <string_view> {}(name);
 		// Дописываем запись в индекс по хешу пары название-значение
-		this->_index.emplace(::pairHash(hashName, value), this->_inserts);
+		this->_index.emplace(::__awh_pair_hash__(hashName, value), this->_inserts);
 		/**
 		 * Записываем добавленную запись в индекс названий: она самая свежая
 		 * с этим названием, а именно свежая и нужна для ссылки только по названию
@@ -1368,7 +1370,7 @@ void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value
  *
  */
 uint64_t awh::http::h2::hpack::DynamicTable::find(string_view name, string_view value, uint64_t & nameIndex) const noexcept {
-	// Выполняем поиск с вычисленным хешем названия заголовка
+	// Ищем с вычисленным хешем названия заголовка
 	return this->find(std::hash <string_view> {}(name), name, value, nameIndex, true);
 }
 /**
@@ -1385,9 +1387,9 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
 	// Результат работы функции - индекс полного совпадения
 	uint64_t result = 0;
 	// Получаем диапазон записей индекса с искомым хешем пары название-значение
-	const auto range = this->_index.equal_range(::pairHash(hashName, value));
+	const auto range = this->_index.equal_range(::__awh_pair_hash__(hashName, value));
 	/**
-	 * Выполняем перебор записей с искомым хешем пары. Ключом служит хеш пары,
+	 * Перебираем записи с искомым хешем пары. Ключом служит хеш пары,
 	 * а не одного названия: заголовков с одинаковым названием и разными значениями
 	 * в таблице бывают десятки (:path, cookie, set-cookie), и по хешу названия
 	 * они все попадали бы в одно ведро, вырождая поиск в перебор
@@ -1413,12 +1415,12 @@ uint64_t awh::http::h2::hpack::DynamicTable::find(const size_t hashName, string_
 			result = seq;
 	}
 	/**
-	 * Выполняем поиск по индексу названий, только если ссылка на название ещё нужна.
+	 * Ищем по индексу названий, только если ссылка на название ещё нужна.
 	 * Название заголовка чаще всего находится в статической таблице, и вызывающая
 	 * сторона уже получила индекс оттуда - тогда этот поиск отработал бы впустую
 	 */
 	if(needName)
-		// Выполняем поиск индекса совпадения по названию заголовка
+		// Ищем индекс совпадения по названию заголовка
 		nameIndex = this->findName(hashName, name);
 	// Выводим индекс полного совпадения
 	return ((result > 0) ? ((this->_inserts - result) + 1) : 0);
@@ -1545,7 +1547,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			return true;
 		}
 		// Получаем запись динамической таблицы
-		const field_t * field = this->_table.at(static_cast <size_t> (index - STATIC_TABLE_SIZE));
+		const field_t * field = this->_table.record(static_cast <size_t> (index - STATIC_TABLE_SIZE));
 		// Если запись не найдена
 		if(field == nullptr)
 			// Запись не найдена
@@ -1611,7 +1613,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 */
 	bool allowSizeUpdate = true;
 	/**
-	 * Выполняем разбор всего блока заголовков
+	 * Разбираем весь блок заголовков
 	 */
 	while(pos < size){
 		// Извлекаем первый байт представления
@@ -1681,14 +1683,14 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
+			} else if(::__awh_decode_string__(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
+			if(::__awh_decode_string__(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1739,14 +1741,14 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
+			} else if(::__awh_decode_string__(data, size, pos, this->_arena, this->_arenaLength, slice.name, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
+			if(::__awh_decode_string__(data, size, pos, this->_arena, this->_arenaLength, slice.value, error) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK (нехватка данных посреди блока - тоже ошибка)
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1810,7 +1812,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	// Резервируем память под представления декодированных заголовков
 	output.reserve(this->_slices.size());
 	/**
-	 * Выполняем перебор всех срезов декодированных заголовков
+	 * Перебираем все срезы декодированных заголовков
 	 */
 	for(const slice_t & slice : this->_slices){
 		// Создаём объект декодированного заголовка
@@ -1863,13 +1865,13 @@ uint64_t awh::http::h2::hpack::Encoder::lookupName(string_view name) const noexc
 	const size_t hashName = std::hash <string_view> {}(name);
 	// Получаем индекс статической таблицы по хешу названия заголовка
 	const auto & names = ::staticNames();
-	// Выполняем поиск названия заголовка в статической таблице (индексы 1..61)
-	const auto i = names.find(hashName);
+	// Ищем название заголовка в статической таблице (индексы 1..61)
+	const auto found = names.find(hashName);
 	// Если название заголовка найдено в статической таблице
-	if((i != names.end()) && hpack::sameText(::STATIC[i->second.first].name, name))
+	if((found != names.end()) && hpack::sameText(::STATIC[found->second.first].name, name))
 		// Выводим индекс совпадения по названию заголовка
-		return i->second.first;
-	// Выполняем поиск названия заголовка в динамической таблице (индексы 62..)
+		return found->second.first;
+	// Ищем название заголовка в динамической таблице (индексы 62..)
 	const uint64_t dynamicName = this->_table.findName(hashName, name);
 	// Выводим объединённый индекс совпадения по названию заголовка
 	return ((dynamicName > 0) ? (STATIC_TABLE_SIZE + dynamicName) : 0);
@@ -1894,26 +1896,26 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
 	const size_t hashName = std::hash <string_view> {}(name);
 	// Получаем индекс статической таблицы по хешу названия заголовка
 	const auto & names = ::staticNames();
-	// Выполняем поиск названия заголовка в статической таблице (индексы 1..61)
-	const auto i = names.find(hashName);
+	// Ищем название заголовка в статической таблице (индексы 1..61)
+	const auto found = names.find(hashName);
 	// Если название заголовка найдено в статической таблице
-	if((i != names.end()) && hpack::sameText(::STATIC[i->second.first].name, name)){
+	if((found != names.end()) && hpack::sameText(::STATIC[found->second.first].name, name)){
 		// Запоминаем индекс совпадения по имени
-		nameIndex = i->second.first;
+		nameIndex = found->second.first;
 		/**
-		 * Выполняем перебор записей с этим названием: они идут подряд, их количество
+		 * Перебираем записи с этим названием: они идут подряд, их количество
 		 * известно из индекса, и сверять название заново на каждом шаге не требуется
 		 */
-		for(uint32_t j = 0; j < i->second.count; ++j){
+		for(uint32_t j = 0; j < found->second.count; ++j){
 			// Если значение заголовка тоже совпадает
-			if(hpack::sameText(::STATIC[i->second.first + j].value, value))
+			if(hpack::sameText(::STATIC[found->second.first + j].value, value))
 				// Выводим индекс полного совпадения
-				return (i->second.first + j);
+				return (found->second.first + j);
 		}
 	}
 	// Индекс совпадения по названию заголовка в динамической таблице
 	uint64_t dynamicName = 0;
-	// Выполняем поиск в динамической таблице по индексу (индексы 62..)
+	// Ищем в динамической таблице по индексу (индексы 62..)
 	const uint64_t dynamicFull = this->_table.find(hashName, name, value, dynamicName, (nameIndex == 0));
 	// Если совпадение по имени в статической таблице не найдено
 	if((nameIndex == 0) && (dynamicName > 0))
@@ -2052,7 +2054,7 @@ void awh::http::h2::hpack::Encoder::encode(const vector <field_t> & fields, stri
 	// Дописываем отложенный Dynamic Table Size Update (если требуется)
 	this->begin(output);
 	/**
-	 * Выполняем перебор всех кодируемых заголовков
+	 * Перебираем все кодируемые заголовки
 	 */
 	for(const field_t & field : fields)
 		// Кодируем очередной заголовок
@@ -2070,7 +2072,7 @@ void awh::http::h2::hpack::Encoder::encode(const vector <field_view_t> & fields,
 	// Дописываем отложенный Dynamic Table Size Update (если требуется)
 	this->begin(output);
 	/**
-	 * Выполняем перебор всех кодируемых заголовков
+	 * Перебираем все кодируемые заголовки
 	 */
 	for(const field_view_t & field : fields)
 		// Кодируем очередной заголовок
@@ -2095,7 +2097,7 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 	// Индекс совпадения только по имени
 	uint64_t nameIndex = 0;
 	// Если значение заголовка чувствительное (явно или по названию заголовка)
-	if(sensitive || (this->_sensitiveHeuristic && ::isSensitiveName(name))){
+	if(sensitive || (this->_sensitiveHeuristic && ::__awh_is_sensitive_name__(name))){
 		/**
 		 * Literal Never Indexed (RFC 7541 §6.2.3, префикс 4 бита, паттерн 0001xxxx).
 		 * Значение не индексируется и не попадает в динамическую таблицу;
@@ -2107,13 +2109,13 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 		// Если совпадение по имени не найдено
 		if(nameIndex == 0)
 			// Дописываем название заголовка строкой
-			::encodeStringLiteral(output, name, useHuffman);
+			::__awh_encode_string_literal__(output, name, useHuffman);
 		// Дописываем значение заголовка строкой
-		::encodeStringLiteral(output, value, useHuffman);
+		::__awh_encode_string_literal__(output, value, useHuffman);
 		// В таблицу заголовок НЕ добавляем
 		return;
 	}
-	// Выполняем поиск заголовка в таблицах
+	// Ищем заголовок в таблицах
 	const uint64_t fullIndex = this->lookup(name, value, nameIndex);
 	// Если найдено полное совпадение (имя и значение уже в таблице)
 	if(fullIndex != 0){
@@ -2143,9 +2145,9 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 	// Если совпадение по имени не найдено
 	if(nameIndex == 0)
 		// Дописываем название заголовка строкой
-		::encodeStringLiteral(output, name, useHuffman);
+		::__awh_encode_string_literal__(output, name, useHuffman);
 	// Дописываем значение заголовка строкой
-	::encodeStringLiteral(output, value, useHuffman);
+	::__awh_encode_string_literal__(output, value, useHuffman);
 	// Если заголовок индексируется
 	if(indexing){
 		/**
@@ -2193,7 +2195,7 @@ bool awh::http::h2::hpack::Encoder::indexable(const string_view name, const stri
 	// Позиция найденного совпадения
 	size_t position = 0;
 	/**
-	 * Выполняем поиск хеша среди ранее встреченных
+	 * Ищем хеш среди ранее встреченных
 	 */
 	while(this->_history[position] != hash)
 		// Переходим к следующей позиции кольца

@@ -12,7 +12,6 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл приёмника тайн — побайтного приёма в защищённую память
  *
  * @section vessel_decisions Намеренные решения
@@ -46,46 +45,9 @@
  *          процесса в МОМЕНТ обращения: содержимое тогда раскрыто. Снимаются более
  *          дешёвые дороги - копия в куче, снимок памяти, подкачка, снимок при падении.
  *
- * \~english
- * @brief Header file of the secret vessel — byte-by-byte intake into protected memory
- *
- * @section vessel_decisions Deliberate decisions
- *
- * @details <b>Built for intake that cannot pass through the heap.</b> Reading a password
- *          from the terminal and assembling a key from material scattered across the
- *          image normally pass through an intermediate container, and every reallocation
- *          of that container leaves a copy in the heap that no one wipes. The vessel
- *          takes the content byte by byte straight into protected memory, and the
- *          intermediate container never appears at all.
- *
- *          <b>Capacity is set at establishment, and the vessel does NOT GROW.</b> Growth
- *          would mean reallocation, reallocation a copy of the previous content in the
- *          heap — exactly the trouble the vessel is built to avoid. Intake beyond
- *          capacity answers with a refusal, and the upper bound is declared by the
- *          caller: for a password it is known in advance. This requirement was set when
- *          the contract was agreed on 15.09.2026.
- *
- *          <b>Content is not handed out by pointer.</b> As long as a pointer crosses the
- *          contract boundary, protecting storage is pointless: the content is taken by a
- *          breakpoint at the entry to that very contract which itself carries it out.
- *          Hence access goes through a handler and lives for the duration of the call.
- *
- *          <b>Between accesses the vessel is CLOSED.</b> Pages are made inaccessible, and
- *          reading by address answers with a refusal, not with bytes. Reveals are counted
- *          by the allocator itself: the area is locked at zero, and only at zero —
- *          otherwise the thread that finished first would close the memory from under
- *          the second.
- *
- *          <b>What the vessel does NOT do.</b> It does not protect against one who reads
- *          process memory at the MOMENT of access: the content is revealed then. Cheaper
- *          paths are removed — a copy in the heap, a memory snapshot, swapping, a crash
- *          dump.
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
- * \~
  */
 
 /**
@@ -113,53 +75,29 @@
 #include "../sys/macro/suppress.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
-	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
-	 * \~english
-	 * @brief Namespace of the memory allocator
-	 *
-	 * \~
 	 */
 	namespace alloc {
 		/**
-		 * \~russian
 		 * @brief Строгость приёмника тайн
 		 *
 		 * @details Решает, как поступать, когда система не даёт обещанной защиты:
 		 *          отвечать отказом либо работать с пометкой в журнале.
 		 *
-		 * \~english
-		 * @brief Strictness of the secret vessel
-		 *
-		 *
-		 * @details Decides what to do when the system does not give the promised
-		 *          protection: answer with a refusal, or work with a note in the log.
-		 *
-		 * \~
 		 */
 		enum class secrecy_t : uint8_t {
 			STRICT  = 0x00, // Отвечать отказом, не получив обещанной защиты
 			RELAXED = 0x01  // Работать с пометкой в журнале о защите ниже обещанной
 		};
 		/**
-		 * \~russian
 		 * @brief Класс приёмника тайн
 		 *
-		 * \~english
-		 * @brief Class of the secret vessel
-		 *
-		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Vessel {
 			private:
@@ -175,35 +113,20 @@ namespace awh {
 				shelter_t _shelter;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод получения ёмкости приёмника
 				 *
 				 * @return ёмкость приёмника в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the capacity of the vessel
-				 *
-				 * @return capacity of the vessel in bytes
-				 *
-				 * \~
 				 */
 				size_t capacity() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения занятого в приёмнике
 				 *
 				 * @return занятое в приёмнике в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the length of the content
-				 *
-				 * @return occupied length in the vessel in bytes
-				 *
-				 * \~
 				 */
 				size_t size() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения сведений о состоявшейся защите
 				 *
 				 * @note Отвечает о том, что состоялось НА ДЕЛЕ, а не о том, о чём
@@ -211,34 +134,17 @@ namespace awh {
 				 *
 				 * @return сведения о состоявшейся защите
 				 *
-				 * \~english
-				 * @brief Method of getting information about the protection achieved
-				 *
-				 * @note Reports what happened IN FACT, not what was asked for: silent downgrade
-				 *       of protection is worse than an honest refusal
-				 *
-				 * @return information about the protection achieved
-				 *
-				 * \~
 				 */
 				const shelter_t & shelter() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки заведённости приёмника
 				 *
 				 * @return признак заведённого приёмника
 				 *
-				 * \~english
-				 * @brief Method of checking whether the vessel is established
-				 *
-				 * @return sign of an established vessel
-				 *
-				 * \~
 				 */
 				bool exists() const noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод заведения приёмника заданной ёмкости
 				 *
 				 * @note Ёмкость эта окончательна: приёмник не растёт, и приём сверх неё
@@ -247,37 +153,17 @@ namespace awh {
 				 * @param capacity ёмкость приёмника в байтах
 				 * @return         признак выполнения операции
 				 *
-				 * \~english
-				 * @brief Method of establishing a vessel of the given capacity
-				 *
-				 *
-				 * @note This capacity is final: the vessel does not grow, and intake beyond it
-				 *       answers with a refusal
-				 *
-				 * @param capacity capacity of the vessel in bytes
-				 * @return         sign of successful operation
-				 *
-				 * \~
 				 */
 				bool reserve(const size_t capacity) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод приёма очередного байта содержимого
 				 *
 				 * @param byte принимаемый байт
 				 * @return     признак выполнения операции
 				 *
-				 * \~english
-				 * @brief Method of accepting the next byte of the content
-				 *
-				 * @param byte the byte being accepted
-				 * @return     sign of successful operation
-				 *
-				 * \~
 				 */
 				bool pour(const uint8_t byte) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод снятия последнего принятого байта
 				 *
 				 * @note Заведён ради ввода с терминала: без него правка опечатки в
@@ -286,35 +172,17 @@ namespace awh {
 				 *
 				 * @return признак выполнения операции
 				 *
-				 * \~english
-				 * @brief Method of dropping the last accepted byte
-				 *
-				 * @note Built for terminal input: without it fixing a typo in a password is
-				 *       impossible at all, and the person has to start typing over. The dropped
-				 *       byte is wiped in place
-				 *
-				 * @return sign of successful operation
-				 *
-				 * \~
 				 */
 				bool drop() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Шаблон метода обращения к содержимому приёмника
 				 *
 				 * @tparam T тип обработчика содержимого
 				 *
-				 * \~english
-				 * @brief Template method of accessing the content of the vessel
-				 *
-				 * @tparam T type of the content handler
-				 *
-				 * \~
 				 */
 				template <typename T>
 				/**
-				 * \~russian
 				 * @brief Метод обращения к содержимому приёмника
 				 *
 				 * @note Содержимое раскрыто лишь на время вызова обработчика: выход из
@@ -337,31 +205,6 @@ namespace awh {
 				 * @param callback обработчик содержимого
 				 * @return         признак выполнения операции
 				 *
-				 * \~english
-				 * @brief Method of accessing the content of the vessel
-				 *
-				 *
-				 * @note Content is revealed only for the duration of the handler call: leaving it
-				 *       — normally, early, or by exception — seals the vessel on its own
-				 *
-				 * @note The handler must NOT remember the given address: outside the call the area
-				 *       is closed, and accessing it crashes the program
-				 *
-				 * @note Leaving the handler by exception is LEGAL: the vessel is sealed under it
-				 *       as well, and the exception itself goes outward untouched
-				 *
-				 * @note There is NO `noexcept` mark here on purpose
-				 *
-				 *       A handler is free to leave by an exception, and a sealing by a destructor
-				 *       is started exactly for the sake of this case. A mark, however, would turn such a leaving
-				 *       into an emergency stop of a process - that is, would cancel that very thing, what
-				 *       was aimed at. It is measured by a check `VesselIsSealedBackWhenHandlerThrows`:
-				 *       with a mark the suite fell down with `terminating due to uncaught exception`.
-				 *
-				 * @param callback content handler
-				 * @return         sign of successful operation
-				 *
-				 * \~
 				 */
 				bool apply(T callback){
 					// Если приёмник не заведён
@@ -389,13 +232,8 @@ namespace awh {
 						// Приёмник, подлежащий запечатыванию
 						Vessel * vessel;
 						/**
-						 * \~russian
 						 * @brief Деструктор
 						 *
-						 * \~english
-						 * @brief Destructor
-						 *
-						 * \~
 						 */
 						~Sealer() noexcept {
 							// Закрываем область приёмника
@@ -411,96 +249,51 @@ namespace awh {
 				}
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод затирания и освобождения приёмника
 				 *
 				 * @note Зовётся деструктором сам: держать тайну дольше надобности
 				 *       незачем, а забытое затирание есть самый частый изъян таких схем
 				 *
-				 * \~english
-				 * @brief Method of wiping and releasing the vessel
-				 *
-				 * @note Called by the destructor itself: keeping the secret longer than
-				 *       needed is pointless, and a forgotten wipe is the most common flaw
-				 *       of such schemes
-				 *
-				 * \~
 				 */
 				void wipe() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param secrecy строгость приёмника
 				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param secrecy strictness of the vessel
-				 *
-				 * \~
 				 */
 				explicit Vessel(const secrecy_t secrecy = secrecy_t::STRICT) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Копированию приёмник не подлежит
 				 *
 				 * @details Копия означала бы второе место, где лежит та же тайна, и второе место,
 				 *          какое кто-то обязан затереть. Перемещение же допустимо: оно места не удваивает.
 				 *
-				 * \~english
-				 * @brief A vessel is not liable to a copying
-				 *
-				 * @details A copy would mean a second place where the same secret lies, and a second place,
-				 *          which somebody is obliged to wipe. A moving, however, is admissible: it does not
-				 *          double a place.
-				 *
-				 * \~
 				 */
 				Vessel(const Vessel &) = delete;
 				// Запрещаем оператор копирования
 				Vessel & operator = (const Vessel &) = delete;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор переноса
 				 *
 				 * @param vessel переносимый приёмник
 				 *
-				 * \~english
-				 * @brief Move constructor
-				 *
-				 * @param vessel the vessel being moved
-				 *
-				 * \~
 				 */
 				Vessel(Vessel && vessel) noexcept;
 				/**
-				 * \~russian
 				 * @brief Оператор переноса
 				 *
 				 * @param vessel переносимый приёмник
 				 * @return       ссылка на текущий объект
 				 *
-				 * \~english
-				 * @brief Move assignment operator
-				 *
-				 * @param vessel the vessel being moved
-				 * @return       reference to the current object
-				 *
-				 * \~
 				 */
 				Vessel & operator = (Vessel && vessel) noexcept;
 				/**
-				 * \~russian
 				 * @brief Деструктор
 				 *
-				 * \~english
-				 * @brief Destructor
-				 *
-				 * \~
 				 */
 				~Vessel() noexcept;
 		} vessel_t;

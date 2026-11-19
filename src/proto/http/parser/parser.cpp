@@ -59,7 +59,7 @@ awh::http::Parser::status_t awh::http::Parser::status() const noexcept {
  *
  */
 void awh::http::Parser::clear() noexcept {
-	// Выполняем сброс состояния разбора
+	// Сбрасываем состояние разбора
 	this->reset();
 }
 /**

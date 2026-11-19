@@ -1,3 +1,23 @@
+/**
+ * @file mac.cpp
+ * @date 2021-10-26
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Пример сетевого опыта AWH — mac
+ *
+ * @copyright Copyright © 2021
+ *
+ */
+
 // g++ --std=c++11 mac.cpp -o ./mac -lws2_32 -lIphlpapi -lstdc++
 
 #include <winsock2.h>

@@ -12,13 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл сведений об удерживаемом блоке — запись, какую отдаёт перебор удерживаемых блоков
  *
- * \~english
- * @brief Header file of the held block information — the record returned by the held blocks enumeration
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -41,40 +36,21 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * \~russian
  * @brief Пространство имён фреймворка
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
-	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
-	 * \~english
-	 * @brief Namespace of the memory allocator
-	 *
-	 * \~
 	 */
 	namespace alloc {
 		/**
-		 * \~russian
 		 * @brief Сведения об удерживаемом прикладным кодом блоке
 		 *
 		 * @note Массив стека указывает на память самой записи: годен он лишь внутри
 		 *       отклика перебора, а нужен дольше - копировать
 		 *
-		 * \~english
-		 * @brief Information about a block held by the application
-		 *
-		 *
-		 * @note The frames array points to the record's own memory: it is valid only
-		 *       inside the enumeration callback; copy it if needed longer
-		 *
-		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Holding {
 			// Затребованный размер блока в байтах
@@ -88,13 +64,8 @@ namespace awh {
 			// Стек вызовов места выдачи
 			const void * const * frames;
 			/**
-			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
 			 */
 			explicit Holding() noexcept;
 		} holding_t;

@@ -27,6 +27,8 @@
  * Подключаем заголовочный файл модуля
  */
 #include <alloc/vessel.hpp>
+// Снимаем системные макросы Windows (STRICT), занявшие имя значения перечисления
+#include "../../include/sys/macro/suppress.hpp"
 
 /**
  * @brief Безымянное пространство имён

@@ -1,15 +1,21 @@
 /**
- * @file: reg.hpp
- * @date: 2023-12-14
+ * @file reg.hpp
+ * @date 2023-12-14
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля базовых утилит библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_REGEXP__
@@ -88,7 +94,7 @@ namespace awh {
 					// Исполнение регулярного выражения
 					shared_ptr <regex::Engine> _engine;
 					// Замок исполнения: движок ведёт состояние от шага к шагу
-					mutable mutex _locker;
+					mutable std::mutex _locker;
 				public:
 					/**
 					 * @brief Оператор проверки на инициализацию регулярного выражения

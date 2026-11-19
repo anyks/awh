@@ -30,6 +30,8 @@
 #include <proto/http/parser/http2/http.hpp>
 #include <sys/fmk.hpp>
 #include "../../../../../include/sys/log.hpp"
+// Снимаем системные макросы Windows (ERROR, NO_ERROR, STRICT), занявшие имена значений перечислений
+#include "../../../../../include/sys/macro/suppress.hpp"
 
 /**
  * Используем стандартное пространство имён
@@ -198,7 +200,7 @@ namespace {
 	 * @return            значение сигнала приоритета
 	 *
 	 */
-	string priorityValue(const uint8_t urgency, const bool incremental) noexcept {
+	string __awh_priority_value__(const uint8_t urgency, const bool incremental) noexcept {
 		// Собираемое значение сигнала приоритета
 		string result = "u=";
 		// Дописываем срочность потока
@@ -221,9 +223,9 @@ namespace {
 	 * @return       название заголовка в нижнем регистре
 	 *
 	 */
-	string_view lowerName(string_view name, string & buffer) noexcept {
+	string_view __awh_lower_name__(string_view name, string & buffer) noexcept {
 		/**
-		 * Выполняем поиск первой заглавной латинской буквы
+		 * Ищем первую заглавную латинскую букву
 		 */
 		for(size_t i = 0; i < name.size(); ++i){
 			// Если найдена заглавная латинская буква
@@ -266,7 +268,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	__AWH_INLINE__ bool isTokenChar(const uint8_t letter) noexcept {
+	__AWH_INLINE__ bool __awh_is_token_char__(const uint8_t letter) noexcept {
 		// Цифры и латинские буквы нижнего регистра допустимы
 		if(((letter >= '0') && (letter <= '9')) || ((letter >= 'a') && (letter <= 'z')))
 			// Символ допустим
@@ -296,7 +298,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	bool isHttpScheme(string_view scheme) noexcept {
+	bool __awh_is_http_scheme__(string_view scheme) noexcept {
 		// Если длина схемы не совпадает ни с одной из проверяемых
 		if((scheme.size() != 4) && (scheme.size() != 5))
 			// Схема протоколу HTTP не принадлежит
@@ -304,7 +306,7 @@ namespace {
 		// Собираемая схема в нижнем регистре
 		char letters[5] = {0};
 		/**
-		 * Выполняем приведение схемы к нижнему регистру
+		 * Приводим схему к нижнему регистру
 		 */
 		for(size_t i = 0; i < scheme.size(); i++)
 			// Приводим очередной символ схемы к нижнему регистру
@@ -323,13 +325,13 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isValidHeaderName(string_view name) noexcept {
+	bool __awh_is_valid_header_name__(string_view name) noexcept {
 		// Пустое имя заголовка недопустимо
 		if(name.empty())
 			// Имя заголовка некорректно
 			return false;
 		/**
-		 * Выполняем перебор всех символов имени заголовка
+		 * Перебираем все символы имени заголовка
 		 */
 		for(size_t i = 0; i < name.size(); ++i){
 			// Получаем очередной символ имени заголовка
@@ -344,7 +346,7 @@ namespace {
 				continue;
 			}
 			// Если найден символ вне набора token (включая верхний регистр и пробелы)
-			if(!isTokenChar(letter))
+			if(!__awh_is_token_char__(letter))
 				// Имя заголовка некорректно
 				return false;
 		}
@@ -362,9 +364,9 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isValidHeaderValue(string_view value) noexcept {
+	bool __awh_is_valid_header_value__(string_view value) noexcept {
 		/**
-		 * Выполняем перебор всех символов значения заголовка
+		 * Перебираем все символы значения заголовка
 		 */
 		for(const char letter : value){
 			// Если найден символ, разрывающий поле заголовка
@@ -400,9 +402,9 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isTranslatableValue(string_view value) noexcept {
+	bool __awh_is_translatable_value__(string_view value) noexcept {
 		/**
-		 * Выполняем перебор всех символов значения заголовка
+		 * Перебираем все символы значения заголовка
 		 */
 		for(const char item : value){
 			// Получаем очередной символ значения заголовка
@@ -429,9 +431,9 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isTranslatablePseudo(string_view value) noexcept {
+	bool __awh_is_translatable_pseudo__(string_view value) noexcept {
 		/**
-		 * Выполняем перебор всех символов значения псевдо-заголовка
+		 * Перебираем все символы значения псевдо-заголовка
 		 */
 		for(const char item : value){
 			// Получаем очередной символ значения псевдо-заголовка
@@ -456,13 +458,13 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isToken(string_view value) noexcept {
+	bool __awh_is_token__(string_view value) noexcept {
 		// Пустое значение токеном не является
 		if(value.empty())
 			// Значение набору token не принадлежит
 			return false;
 		/**
-		 * Выполняем перебор всех символов значения
+		 * Перебираем все символы значения
 		 */
 		for(const char item : value){
 			// Получаем очередной символ значения
@@ -472,7 +474,7 @@ namespace {
 				// Переходим к следующему символу значения
 				continue;
 			// Если найден символ вне набора token
-			if(!isTokenChar(letter))
+			if(!__awh_is_token_char__(letter))
 				// Значение набору token не принадлежит
 				return false;
 		}
@@ -489,8 +491,8 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isConnectionSpecific(string_view name) noexcept {
-		// Выполняем сравнение со списком запрещённых заголовков
+	bool __awh_is_connection_specific__(string_view name) noexcept {
+		// Сравниваем со списком запрещённых заголовков
 		return (
 			(name == header::UPGRADE) ||
 			(name == header::KEEP_ALIVE) ||
@@ -510,9 +512,9 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isForbiddenTrailer(string_view name) noexcept {
+	bool __awh_is_forbidden_trailer__(string_view name) noexcept {
 		/**
-		 * Выполняем проверку названия по списку запрещённых (диспетчер по первой букве):
+		 * Проверяем название по списку запрещённых (диспетчер по первой букве):
 		 * названия полей в этой версии протокола обязаны быть в нижнем регистре,
 		 * поэтому регистр приводить не нужно, а перебор всего списка на каждое поле
 		 * секции обходился бы тем дороже, чем полнее список
@@ -571,7 +573,7 @@ namespace {
 	 * @return                код ошибки протокола (NO_ERROR - блок корректен, PROTOCOL_ERROR - malformed)
 	 *
 	 */
-	http::h2::error_t validateHeaders(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const bool proxy, const bool websocket) noexcept {
+	http::h2::error_t __awh_validate_headers__(const vector <http::h2::hpack::field_view_t> & fields, const bool isRequest, const bool isTrailers, const bool connectProtocol, const bool proxy, const bool websocket) noexcept {
 		// Значение псевдо-заголовка [:method]
 		string_view method{""};
 		// Значение псевдо-заголовка [:authority]
@@ -603,7 +605,7 @@ namespace {
 			 hasStatus    = false,
 			 hasAuthority = false;
 		/**
-		 * Выполняем перебор всех заголовков блока
+		 * Перебираем все заголовки блока
 		 */
 		for(const auto & field : fields){
 			// Получаем имя заголовка
@@ -612,7 +614,7 @@ namespace {
 			 * Имя обязано быть непустым, в нижнем регистре и состоять из символов token,
 			 * значение - не содержать CR/LF/NUL и обрамляющих пробелов (RFC 9113 §8.2.1)
 			 */
-			if(!::isValidHeaderName(name) || !::isValidHeaderValue(field.value))
+			if(!::__awh_is_valid_header_name__(name) || !::__awh_is_valid_header_value__(field.value))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 			/**
@@ -620,7 +622,7 @@ namespace {
 			 * грамматике field-content целиком: конечному получателю достаточно
 			 * минимальной проверки, а транслирующему - нет (RFC 9113 §10.3)
 			 */
-			if(proxy && !::isTranslatableValue(field.value))
+			if(proxy && !::__awh_is_translatable_value__(field.value))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 			// Если заголовок является псевдо-заголовком
@@ -731,7 +733,7 @@ namespace {
 							// Блок заголовков некорректен
 							return http::h2::error_t::PROTOCOL_ERROR;
 						/**
-						 * Выполняем перебор всех символов статус-кода
+						 * Перебираем все символы статус-кода
 						 */
 						for(const char letter : field.value){
 							// Если найден символ не являющийся цифрой - блок некорректен
@@ -747,11 +749,11 @@ namespace {
 				// Помечаем что обычный заголовок встречен
 				seenRegular = true;
 				// В секции трейлеров допустимы не все заголовки (RFC 9110 §6.5.1)
-				if(isTrailers && ::isForbiddenTrailer(name))
+				if(isTrailers && ::__awh_is_forbidden_trailer__(name))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Connection-specific заголовки запрещены в HTTP/2 (RFC 9113 §8.2.2)
-				if(::isConnectionSpecific(name))
+				if(::__awh_is_connection_specific__(name))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Заголовок [te] допускает только значение [trailers] (RFC 9113 §8.2.2)
@@ -771,7 +773,7 @@ namespace {
 						// Блок заголовков некорректен
 						return http::h2::error_t::PROTOCOL_ERROR;
 					/**
-					 * Выполняем перебор всех символов длины тела
+					 * Перебираем все символы длины тела
 					 */
 					for(const char letter : field.value){
 						// Если найден символ не являющийся цифрой
@@ -814,11 +816,11 @@ namespace {
 			 */
 			if(proxy){
 				// Если метод запроса токеном не является
-				if(hasMethod && !::isToken(method))
+				if(hasMethod && !::__awh_is_token__(method))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 				// Если схема, адресат либо путь запроса к сборке стартовой строки непригодны
-				if(!::isTranslatablePseudo(scheme) || !::isTranslatablePseudo(authority) || !::isTranslatablePseudo(path))
+				if(!::__awh_is_translatable_pseudo__(scheme) || !::__awh_is_translatable_pseudo__(authority) || !::__awh_is_translatable_pseudo__(path))
 					// Блок заголовков некорректен
 					return http::h2::error_t::PROTOCOL_ERROR;
 			}
@@ -862,7 +864,7 @@ namespace {
 			 * допустима только методу OPTIONS - она адресует сервер целиком, а не
 			 * ресурс. Прочие схемы проверке не подлежат: их форму задаёт не HTTP
 			 */
-			if(::isHttpScheme(scheme) && hasPath){
+			if(::__awh_is_http_scheme__(scheme) && hasPath){
 				// Если путь не начинается с косой черты
 				if(path.empty() || (path.front() != '/')){
 					// Звёздочка допустима только методу OPTIONS
@@ -877,7 +879,7 @@ namespace {
 			 * (RFC 9113 §8.3.1). Классический CONNECT сюда не заходит: у него
 			 * нет схемы, а непустой :authority уже проверен выше
 			 */
-			if(::isHttpScheme(scheme)){
+			if(::__awh_is_http_scheme__(scheme)){
 				// Если адресат не задан ни псевдо-заголовком, ни полем Host
 				if(!hasAuthority && !hasHost)
 					// Блок заголовков некорректен
@@ -896,7 +898,7 @@ namespace {
 			 * и [https] (RFC 9113 §8.3.1): он переносил бы в запрос учётные данные,
 			 * которым место в заголовке авторизации. Отделяет его символ [@]
 			 */
-			if(::isHttpScheme(scheme) && (authority.find('@') != string_view::npos))
+			if(::__awh_is_http_scheme__(scheme) && (authority.find('@') != string_view::npos))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 			/**
@@ -909,7 +911,7 @@ namespace {
 			 * поднимает туннель любого зарегистрированного протокола, и правила
 			 * WebSocket к нему не относятся
 			 */
-			if(websocket && hasProtocol && fmk::compare("websocket", protocol) && !::isHttpScheme(scheme))
+			if(websocket && hasProtocol && fmk::compare("websocket", protocol) && !::__awh_is_http_scheme__(scheme))
 				// Блок заголовков некорректен
 				return http::h2::error_t::PROTOCOL_ERROR;
 		// Если блок принадлежит ответу сервера
@@ -1209,7 +1211,7 @@ void awh::http::Parser_HTTP2::flush() noexcept {
 		// Сбрасываем отданный префикс нового (пустого) буфера
 		this->_buffer.outputPos = 0;
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Отдаём исходящие байты сетевому слою
@@ -1283,7 +1285,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseFrame(const h2::frame::hea
 		// Фиксируем ошибку уровня соединения
 		return this->fail(error_t::PROTOCOL_ERROR, "expected CONTINUATION");
 	}
-	// Выполняем обработку полного фрейма
+	// Обрабатываем полный фрейм
 	const h2::status_t status = this->dispatch(header, payload);
 	// Если обработка фрейма завершилась ошибкой уровня соединения
 	if(status == h2::status_t::ERROR)
@@ -1374,7 +1376,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput(const uint8_t * buff
 			return h2::status_t::OK;
 		// Заголовок незавершённого фрейма
 		h2::frame::header_t header{};
-		// Выполняем разбор заголовка фрейма
+		// Разбираем заголовок фрейма
 		h2::frame::parser::header(reinterpret_cast <const uint8_t *> (this->_buffer.input.data()), this->_buffer.input.size(), header);
 		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
 		if(header.length > this->_local.maxFrameSize){
@@ -1392,7 +1394,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput(const uint8_t * buff
 		 * в пользовательские функции, а те вправе сбросить парсер
 		 */
 		const uint8_t * payload = (reinterpret_cast <const uint8_t *> (this->_buffer.input.data()) + h2::proto::FRAME_HEADER_SIZE);
-		// Выполняем обработку собранного фрейма
+		// Обрабатываем собранный фрейм
 		if(this->parseFrame(header, payload) == h2::status_t::ERROR)
 			// Прерываем разбор с ошибкой
 			return h2::status_t::ERROR;
@@ -1424,7 +1426,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput(const uint8_t * buff
 			break;
 		// Заголовок текущего фрейма
 		h2::frame::header_t header{};
-		// Выполняем разбор заголовка фрейма
+		// Разбираем заголовок фрейма
 		h2::frame::parser::header(buffer + pos, size - pos, header);
 		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
 		if(header.length > this->_local.maxFrameSize)
@@ -1434,7 +1436,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput(const uint8_t * buff
 		if((size - pos) < (h2::proto::FRAME_HEADER_SIZE + header.length))
 			// Прерываем разбор до прихода новых данных
 			break;
-		// Выполняем обработку полного фрейма прямо по буферу вызывающей стороны
+		// Обрабатываем полный фрейм прямо по буферу вызывающей стороны
 		if(this->parseFrame(header, (buffer + pos + h2::proto::FRAME_HEADER_SIZE)) == h2::status_t::ERROR)
 			// Прерываем разбор с ошибкой
 			return h2::status_t::ERROR;
@@ -1483,7 +1485,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 			// Применяем лимит из наших параметров SETTINGS
 			listLimit = this->_local.maxHeaderListSize;
 	}
-	// Выполняем декодирование накопленного блока заголовков
+	// Декодируем накопленный блок заголовков
 	const h2::status_t status = this->_decoder.decode(this->_hbc.buffer, fields, listLimit, err);
 	// Сбрасываем идентификатор потока собираемого блока (сборка завершена)
 	this->_hbc.stream = 0;
@@ -1526,7 +1528,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		return h2::status_t::OK;
 	// Блок принадлежит PUSH_PROMISE - это обещанный запрос для отдельного потока
 	if(promised != 0)
-		// Выполняем доставку декодированного блока обещанного запроса
+		// Доставляем декодированный блок обещанного запроса
 		return this->deliverPushPromise(streamId, promised, fields);
 	// Поток уже создан и провалидирован в обработчике HEADERS
 	stream_t * stream = this->findStream(streamId);
@@ -1552,8 +1554,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		// Обработка блока завершена
 		return h2::status_t::OK;
 	}
-	// Выполняем валидацию HTTP-семантики блока заголовков (RFC 9113 §8)
-	const error_t vErr = ::validateHeaders(fields, isRequest, isTrailers, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2));
+	// Валидируем HTTP-семантику блока заголовков (RFC 9113 §8)
+	const error_t vErr = ::__awh_validate_headers__(fields, isRequest, isTrailers, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2));
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный запрос/ответ - потоковая ошибка (RFC 9113 §8.1.1), соединение живёт
@@ -1581,7 +1583,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Если разбирается запрос клиента и это не блок трейлеров
 	if(isRequest && !isTrailers){
 		/**
-		 * Выполняем поиск псевдо-заголовка метода (его формат уже провалидирован)
+		 * Ищем псевдо-заголовок метода (его формат уже провалидирован)
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если псевдо-заголовок метода запроса найден
@@ -1597,7 +1599,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Если разбирается ответ сервера и это не блок трейлеров
 	} else if(!isRequest && !isTrailers) {
 		/**
-		 * Выполняем поиск псевдо-заголовка статуса (его формат уже провалидирован)
+		 * Ищем псевдо-заголовок статуса (его формат уже провалидирован)
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если псевдо-заголовок статуса найден
@@ -1639,7 +1641,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		 */
 		stream->contentLength = -1;
 		/**
-		 * Выполняем поиск объявленной длины тела в финальном блоке заголовков
+		 * Ищем объявленную длину тела в финальном блоке заголовков
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Промежуточный ответ тела не описывает - его длину не учитываем
@@ -1651,7 +1653,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				// Объявленная длина тела
 				uint64_t declared = 0;
 				/**
-				 * Выполняем перебор всех цифр объявленной длины тела
+				 * Перебираем все цифры объявленной длины тела
 				 */
 				for(const char letter : field.value){
 					// Если накопление переполняет допустимый диапазон - лимит и так будет превышен
@@ -1678,7 +1680,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		 */
 		if(!stream->prioritized){
 			/**
-			 * Выполняем поиск заголовка расширенного приоритета
+			 * Ищем заголовок расширенного приоритета
 			 */
 			for(const h2::hpack::field_view_t & field : fields){
 				// Если получен заголовок расширенного приоритета
@@ -1690,7 +1692,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				}
 			}
 		}
-		// Выполняем построение провайдера заголовков потока
+		// Строим провайдер заголовков потока
 		stream->headers = this->buildProvider(fields, isRequest);
 		// Если блок является финальным - уведомляем о начале приёма сообщения потока
 		if(!informational && !this->firePhase(streamId, phase_t::BEGIN, part_t::NONE))
@@ -1714,7 +1716,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		// Определяем часть сообщения, к которой относятся заголовки
 		const part_t part = (isTrailers ? part_t::TRAILER : part_t::HEADERS);
 		/**
-		 * Выполняем доставку всех декодированных заголовков блока
+		 * Доставляем все декодированные заголовки блока
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если функция обратного вызова потребовала сбросить поток
@@ -1880,7 +1882,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.error != nullptr){
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Уведомляем об ошибке уровня соединения
@@ -2023,7 +2025,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::ENHANCE_YOUR_CALM, "SETTINGS flood");
 			/**
-			 * Выполняем применение всех полученных параметров SETTINGS пира
+			 * Применяем все полученные параметры SETTINGS пира
 			 */
 			for(const auto & item : items){
 				/**
@@ -2078,7 +2080,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 						// Применяем полученное значение параметра
 						this->_remote.windowSize = newInit;
 						/**
-						 * Выполняем сдвиг окон отправки всех открытых потоков
+						 * Сдвигаем окна отправки всех открытых потоков
 						 */
 						for(auto & item : this->_transfer.streams){
 							// Вычисляем новое окно отправки потока
@@ -2211,7 +2213,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				this->_window.remote += static_cast <int32_t> (increment);
 			// Если обновляется окно конкретного потока
 			} else {
-				// Выполняем поиск потока
+				// Ищем поток
 				stream_t * stream = this->findStream(header.streamId);
 				// WINDOW_UPDATE на ещё не открытом (idle) потоке - ошибка соединения (RFC 9113 §5.1)
 				if((stream == nullptr) && this->idleStream(header.streamId))
@@ -2269,7 +2271,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Запоминаем поколение состояния соединения перед закрытием потоков
 			const uint64_t epoch = this->_epoch;
 			/**
-			 * Выполняем закрытие всех необработанных пиром потоков. Перебор идёт по индексу,
+			 * Закрываем все необработанные пиром потоки. Перебор идёт по индексу,
 			 * а не итератором: пользовательская функция обратного вызова закрытия работает
 			 * с живым объектом парсера, и любое перевыделение снимка оставило бы висячие
 			 * итераторы прямо посреди перебора
@@ -2333,7 +2335,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			bool refused = false;
 			// Запоминаем поколение состояния соединения перед пользовательскими вызовами
 			const uint64_t epoch = this->_epoch;
-			// Выполняем поиск потока
+			// Ищем поток
 			stream_t * stream = this->findStream(header.streamId);
 			// Если поток ещё не существует - пир открывает новый поток
 			if(stream == nullptr){
@@ -2525,7 +2527,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(error_t::ENHANCE_YOUR_CALM, "header block too large");
 			// Если блок заголовков завершён - декодируем и доставляем его
 			if(headers.endHeaders)
-				// Выполняем декодирование и доставку блока заголовков
+				// Декодируем и доставляем блок заголовков
 				return this->deliverHeaders();
 			// Иначе ждём фреймы CONTINUATION
 			return h2::status_t::OK;
@@ -2556,7 +2558,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(error_t::ENHANCE_YOUR_CALM, "header block too large");
 			// Если блок заголовков завершён - декодируем и доставляем его
 			if(endHeaders)
-				// Выполняем декодирование и доставку блока заголовков
+				// Декодируем и доставляем блок заголовков
 				return this->deliverHeaders();
 			// Иначе ждём следующие фреймы CONTINUATION
 			return h2::status_t::OK;
@@ -2577,7 +2579,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(static_cast <int32_t> (header.length) > this->_window.local)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::FLOW_CONTROL_ERROR, "connection receive window exhausted");
-			// Выполняем поиск потока
+			// Ищем поток
 			stream_t * stream = this->findStream(header.streamId);
 			// Если поток не найден
 			if(stream == nullptr){
@@ -2838,7 +2840,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if((header.streamId != 0) && (this->findStream(header.streamId) == nullptr))
 				// Кадр игнорируется
 				return h2::status_t::OK;
-			// Выполняем доставку анонса альтернативного сервиса
+			// Доставляем анонс альтернативного сервиса
 			this->_callbacks.altsvc(header.streamId, origin, value);
 			// Обработка кадра завершена
 			return h2::status_t::OK;
@@ -2870,10 +2872,10 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Запоминаем поколение состояния соединения перед доставкой набора
 			const uint64_t epoch = this->_epoch;
 			/**
-			 * Выполняем доставку всех origin набора
+			 * Доставляем все origin набора
 			 */
 			for(auto & item : origins){
-				// Выполняем доставку очередного origin
+				// Доставляем очередной origin
 				this->_callbacks.origin(item);
 				// Если состояние соединения сброшено из функции обратного вызова
 				if(this->_epoch != epoch)
@@ -2915,7 +2917,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			if(sid == 0)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::PROTOCOL_ERROR, "PRIORITY_UPDATE for stream 0");
-			// Выполняем поиск потока
+			// Ищем поток
 			stream_t * stream = this->findStream(sid);
 			// Если поток уже открыт
 			if(stream != nullptr){
@@ -3033,7 +3035,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				return this->fail(error_t::ENHANCE_YOUR_CALM, "header block too large");
 			// Если блок заголовков завершён - декодируем и доставляем его
 			if(promise.endHeaders)
-				// Выполняем декодирование и доставку блока заголовков
+				// Декодируем и доставляем блок заголовков
 				return this->deliverHeaders();
 			// Иначе ждём фреймы CONTINUATION
 			return h2::status_t::OK;
@@ -3052,14 +3054,14 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
  *
  */
 awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32_t sid, const uint32_t promisedSid, const vector <h2::hpack::field_view_t> & fields) noexcept {
-	// Выполняем поиск обещанного потока
+	// Ищем обещанный поток
 	stream_t * stream = this->findStream(promisedSid);
 	// Если обещанный поток исчез - внутренняя ошибка
 	if(stream == nullptr)
 		// Фиксируем ошибку уровня соединения
 		return this->fail(error_t::INTERNAL_ERROR, "promised stream vanished");
 	// Обещанный блок - это всегда запрос (псевдо-заголовки запроса), без трейлеров
-	const error_t vErr = ::validateHeaders(fields, true, false, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2));
+	const error_t vErr = ::__awh_validate_headers__(fields, true, false, this->connectProtocol(), (this->_proto == proto_t::PROXY2), (this->_proto == proto_t::WEBSOCKET2));
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный обещанный запрос - потоковая ошибка, соединение живёт
@@ -3110,7 +3112,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.header != nullptr){
 		/**
-		 * Выполняем доставку всех декодированных заголовков обещанного запроса
+		 * Доставляем все декодированные заголовки обещанного запроса
 		 */
 		for(const h2::hpack::field_view_t & field : fields){
 			// Если функция обратного вызова потребовала сбросить поток
@@ -3186,10 +3188,10 @@ awh::http::Parser_HTTP2::stream_t & awh::http::Parser_HTTP2::stream(const uint32
  *
  */
 awh::http::Parser_HTTP2::stream_t * awh::http::Parser_HTTP2::findStream(const uint32_t id) noexcept {
-	// Выполняем поиск потока в карте активных потоков
-	const auto i = this->_transfer.streams.find(id);
+	// Ищем поток в карте активных потоков
+	const auto stream = this->_transfer.streams.find(id);
 	// Выводим найденный объект потока либо nullptr
-	return ((i == this->_transfer.streams.end()) ? nullptr : &i->second);
+	return ((stream == this->_transfer.streams.end()) ? nullptr : &stream->second);
 }
 /**
  * @brief Метод применения отправленного нами END_STREAM (переход состояния, возможно закрытие потока)
@@ -3243,7 +3245,7 @@ void awh::http::Parser_HTTP2::applyRemoteEndStream(stream_t & stream) noexcept {
 bool awh::http::Parser_HTTP2::peerInitiated(const uint32_t id) const noexcept {
 	// Пир инициирует нечётные потоки, если мы - сервер (разбираем запросы)
 	const bool peerOdd = (this->_direct == direct_t::REQUEST);
-	// Выполняем сравнение чётности идентификатора потока
+	// Сравниваем чётность идентификатора потока
 	return (((id & 1u) != 0) == peerOdd);
 }
 /**
@@ -3277,7 +3279,7 @@ void awh::http::Parser_HTTP2::markReset(const uint32_t id, const bool local) noe
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем поиск потока в кольце: повторная запись того же идентификатора
+	 * Ищем поток в кольце: повторная запись того же идентификатора
 	 * вытеснила бы чужой, кадры которого ещё могут быть в полёте
 	 */
 	for(auto & item : this->_transfer.resetStreams){
@@ -3353,7 +3355,7 @@ bool awh::http::Parser_HTTP2::resetLocally(const uint32_t id) const noexcept {
 		// Выводим отрицательный результат
 		return false;
 	/**
-	 * Выполняем перебор кольца оборванных сбросом потоков
+	 * Перебираем кольцо оборванных сбросом потоков
 	 */
 	for(const auto & item : this->_transfer.resetStreams){
 		// Если идентификатор найден в кольце
@@ -3384,10 +3386,10 @@ void awh::http::Parser_HTTP2::rejectStream(const uint32_t id, const error_t code
  *
  */
 void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
-	// Выполняем поиск потока в карте активных потоков
-	const auto i = this->_transfer.streams.find(id);
+	// Ищем поток в карте активных потоков
+	const auto stream = this->_transfer.streams.find(id);
 	// Если поток не найден - удалять нечего
-	if(i == this->_transfer.streams.end())
+	if(stream == this->_transfer.streams.end())
 		// Выходим из метода
 		return;
 	// Если поток инициирован пиром - освобождаем слот в его лимите одновременных потоков
@@ -3401,7 +3403,7 @@ void awh::http::Parser_HTTP2::eraseStream(const uint32_t id) noexcept {
 		// Уменьшаем счётчик активных потоков, открытых нами
 		--this->_transfer.localStreamCount;
 	// Удаляем поток из карты активных потоков
-	this->_transfer.streams.erase(i);
+	this->_transfer.streams.erase(stream);
 }
 /**
  * @brief Метод закрытия потока с вызовом функции обратного вызова закрытия
@@ -3428,7 +3430,7 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.close != nullptr){
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Уведомляем о закрытии потока
@@ -3468,7 +3470,7 @@ bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, 
 		// Результат обработки пользовательской функцией
 		bool result = false;
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Уведомляем о фазе приёма сообщения потока
@@ -3517,7 +3519,7 @@ void awh::http::Parser_HTTP2::fireSettings() noexcept {
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о применённом SETTINGS пира
@@ -3553,7 +3555,7 @@ void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о готовности потока принимать данные
@@ -3590,7 +3592,7 @@ bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
 		// Продолжаем обработку
 		return true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем об открытии нового потока
@@ -3630,7 +3632,7 @@ bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promis
 		// Продолжаем обработку
 		return true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем об анонсе server push
@@ -3670,7 +3672,7 @@ void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code,
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о полученном GOAWAY
@@ -3709,7 +3711,7 @@ bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t *
 		// Продолжаем обработку
 		return true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о провайдере заголовков потока
@@ -3751,7 +3753,7 @@ bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, c
 		// Продолжаем обработку
 		return true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о фрагменте тела потока
@@ -3793,7 +3795,7 @@ bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view na
 		// Продолжаем обработку
 		return true;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Уведомляем о заголовке потока
@@ -3854,7 +3856,7 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 	 */
 	bool progress = this->_flags.inPump = true;
 	/**
-	 * Выполняем проходы прокачки, пока хоть один поток делает прогресс
+	 * Прокачиваем потоки, пока хоть один делает прогресс
 	 */
 	while(progress){
 		// Сбрасываем флаг прогресса отправки
@@ -3872,7 +3874,7 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		for(size_t i = 0; i < this->_transfer.readyIds.size(); i++){
 			// Получаем идентификатор очередного потока очереди
 			const uint32_t id = this->_transfer.readyIds[i];
-			// Выполняем поиск потока
+			// Ищем поток
 			stream_t * stream = this->findStream(id);
 			// Если поток удалён - запись очереди снимается вместе с ним
 			if(stream == nullptr)
@@ -3936,12 +3938,12 @@ void awh::http::Parser_HTTP2::pump() noexcept {
 		// Срочность группы последовательно обслуживаемых потоков
 		uint16_t served = 0xFFFF;
 		/**
-		 * Выполняем прокачку отправки по всем потокам снимка
+		 * Прокачиваем отправку по всем потокам снимка
 		 */
 		for(const transfer_t::slot_t & slot : this->_transfer.pumpIds){
 			// Получаем идентификатор очередного потока снимка
 			const uint32_t id = slot.id;
-			// Выполняем поиск потока (поток мог быть удалён на предыдущей итерации)
+			// Ищем поток (поток мог быть удалён на предыдущей итерации)
 			stream_t * stream = this->findStream(id);
 			// Если поток удалён - переходим к следующему
 			if(stream == nullptr)
@@ -4005,21 +4007,21 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	// Дозагружаем буфер отправки из pull-источника данных (источник может сбросить и удалить поток)
 	this->refillFromSource(stream);
 	// Перечитываем указатель на поток (источник данных мог удалить поток)
-	stream_t * sp = this->findStream(id);
+	stream_t * streamPointer = this->findStream(id);
 	// Если поток удалён - считаем это прогрессом (карта потоков изменилась)
-	if(sp == nullptr)
+	if(streamPointer == nullptr)
 		// Прогресс отправки есть
 		return true;
 	// Получаем актуальную ссылку на поток
-	stream_t & st = * sp;
+	stream_t & streamRef = * streamPointer;
 	// Получаем логический объём ещё не отправленных данных тела
-	const size_t remaining = st.pending();
+	const size_t remaining = streamRef.pending();
 	// Backpressure TCP-стадии: не раздуваем выходной буфер (по логическому объёму)
 	if(this->outputPending() >= this->_transfer.outputHighWater)
 		// Прогресса отправки нет
 		return false;
 	// Вычисляем доступное окно отправки (минимум окон соединения и потока)
-	const int32_t window = ::min(this->_window.remote, st.remoteWindow);
+	const int32_t window = ::min(this->_window.remote, streamRef.remoteWindow);
 	// Вычисляем свободное место в выходном буфере
 	const size_t cap = (this->_transfer.outputHighWater - this->outputPending());
 	// Вычисляем размер отправляемого фрагмента данных
@@ -4035,20 +4037,20 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 		 * Окно закрыто (данные остаются в буфере отправки) либо слать нечего.
 		 * Завершение потока пустым DATA с END_STREAM не списывает окно (длина 0)
 		 */
-		if((remaining == 0) && this->sourceDone(st) && !st.endStreamSent){
+		if((remaining == 0) && this->sourceDone(streamRef) && !streamRef.endStreamSent){
 			// Если на завершение тела отложена секция трейлеров - выпускаем её
-			if(this->flushTrailers(st))
+			if(this->flushTrailers(streamRef))
 				// Прогресс отправки есть
 				return true;
 		}
 		// Если тело отправлено полностью и требуется завершить поток
-		if((remaining == 0) && st.endStreamPending && this->sourceDone(st) && !st.endStreamSent){
+		if((remaining == 0) && streamRef.endStreamPending && this->sourceDone(streamRef) && !streamRef.endStreamSent){
 			// Отправляем пустой DATA-фрейм с флагом END_STREAM
-			h2::frame::serialize::data(this->_buffer.output, st.id, string_view{}, true);
+			h2::frame::serialize::data(this->_buffer.output, streamRef.id, string_view{}, true);
 			// Помечаем что END_STREAM отправлен
-			st.endStreamSent = true;
+			streamRef.endStreamSent = true;
 			// Применяем отправленный END_STREAM (ссылка на поток может стать недействительной)
-			this->applyLocalEndStream(st);
+			this->applyLocalEndStream(streamRef);
 			// Прогресс отправки есть
 			return true;
 		}
@@ -4059,35 +4061,35 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	 * Определяем является ли фрагмент последним (END_STREAM). Отложенная секция
 	 * трейлеров завершает поток вместо него, поэтому флаг на данные не ставится
 	 */
-	const bool last = (st.endStreamPending && (size == remaining) && this->sourceDone(st) && !st.trailersPending);
+	const bool last = (streamRef.endStreamPending && (size == remaining) && this->sourceDone(streamRef) && !streamRef.trailersPending);
 	// Отправляем DATA-фрейм с фрагментом данных тела
-	h2::frame::serialize::data(this->_buffer.output, st.id, string_view(st.sendBuffer.data() + st.sendOffset, size), last);
+	h2::frame::serialize::data(this->_buffer.output, streamRef.id, string_view(streamRef.sendBuffer.data() + streamRef.sendOffset, size), last);
 	// Отмечаем отправленный префикс без сдвига всего буфера
-	st.sendOffset += size;
-	// Выполняем амортизированную очистку/компактификацию буфера отправки
-	st.compactSendBuffer();
+	streamRef.sendOffset += size;
+	// Очищаем и компактифицируем буфер отправки амортизированно
+	streamRef.compactSendBuffer();
 	// Списываем отправленные байты из окна соединения
 	this->_window.remote -= static_cast <int32_t> (size);
 	// Списываем отправленные байты из окна потока
-	st.remoteWindow -= static_cast <int32_t> (size);
+	streamRef.remoteWindow -= static_cast <int32_t> (size);
 	// Сигнализируем о готовности потока принимать данные (если буфер просел)
-	this->maybeNotifyWritable(st);
+	this->maybeNotifyWritable(streamRef);
 	/**
 	 * Функция обратного вызова готовности могла реентрантно закрыть поток
 	 * (sendRstStream) и удалить его из карты - перечитываем указатель,
 	 * иначе дальнейшая запись по нему = use-after-free
 	 */
-	sp = this->findStream(id);
+	streamPointer = this->findStream(id);
 	// Если поток удалён - отправка всё равно состоялась
-	if(sp == nullptr)
+	if(streamPointer == nullptr)
 		// Прогресс отправки есть
 		return true;
 	// Если отправлен последний фрагмент
 	if(last){
 		// Помечаем что END_STREAM отправлен
-		sp->endStreamSent = true;
+		streamPointer->endStreamSent = true;
 		// Применяем отправленный END_STREAM (ссылка на поток может стать недействительной)
-		this->applyLocalEndStream(* sp);
+		this->applyLocalEndStream(* streamPointer);
 	}
 	// Прогресс отправки есть
 	return true;
@@ -4119,17 +4121,17 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 	// Запоминаем идентификатор потока
 	const uint32_t id = stream.id;
 	// Указатель на объект потока (источник данных вправе закрыть поток)
-	stream_t * sp = &stream;
+	stream_t * streamPointer = &stream;
 	/**
 	 * Держим буфер наполненным до high-water, запрашивая источник данных порциями
 	 */
-	while((sp->pending() < this->_transfer.sendHighWater) && !sp->sourceEof){
+	while((streamPointer->pending() < this->_transfer.sendHighWater) && !streamPointer->sourceEof){
 		// Вычисляем ёмкость запрашиваемой порции (не больше одного DATA-фрейма пира)
-		const size_t cap = ::min(static_cast <size_t> (this->_remote.maxFrameSize), this->_transfer.sendHighWater - sp->pending());
+		const size_t cap = ::min(static_cast <size_t> (this->_remote.maxFrameSize), this->_transfer.sendHighWater - streamPointer->pending());
 		// Запоминаем текущий размер буфера отправки
-		const size_t offset = sp->sendBuffer.size();
+		const size_t offset = streamPointer->sendBuffer.size();
 		// Резервируем место под порцию данных прямо в буфере отправки (без промежуточной копии)
-		sp->sendBuffer.resize(offset + cap);
+		streamPointer->sendBuffer.resize(offset + cap);
 		// Флаг достижения конца тела
 		bool eof = false;
 		// Результат запроса данных у источника
@@ -4139,13 +4141,13 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 		 * прямо из источника, а уничтожение вызываемого объекта под собственным вызовом
 		 * недопустимо
 		 */
-		data_source_callback_t source = ::move(sp->source);
+		data_source_callback_t source = ::move(streamPointer->source);
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Запрашиваем порцию данных у источника (источник пишет напрямую в буфер отправки)
-			bytes = source(id, reinterpret_cast <uint8_t *> (&sp->sendBuffer[offset]), cap, eof);
+			bytes = source(id, reinterpret_cast <uint8_t *> (&streamPointer->sendBuffer[offset]), cap, eof);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4165,17 +4167,17 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			#endif
 		}
 		// Перечитываем указатель на поток (источник данных мог его закрыть либо сбросить парсер)
-		sp = this->findStream(id);
+		streamPointer = this->findStream(id);
 		// Если поток удалён - буфер отправки уничтожен вместе с ним, дозагружать некуда
-		if(sp == nullptr)
+		if(streamPointer == nullptr)
 			// Выходим из метода
 			return;
 		// Возвращаем источник данных потоку, если из самого источника не назначен новый
-		if(sp->source == nullptr)
+		if(streamPointer->source == nullptr)
 			// Возвращаем источник данных обратно потоку
-			sp->source = ::move(source);
+			streamPointer->source = ::move(source);
 		// Обрезаем буфер отправки до фактически записанного источником размера
-		sp->sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
+		streamPointer->sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
 		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
 		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
 			// Сбрасываем поток с кодом INTERNAL_ERROR
@@ -4188,9 +4190,9 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 		// Если достигнут конец тела источника
 		if(eof){
 			// Помечаем что конец тела источника достигнут
-			sp->sourceEof = true;
+			streamPointer->sourceEof = true;
 			// Помечаем что на последнем фрагменте нужно выставить END_STREAM
-			sp->endStreamPending = true;
+			streamPointer->endStreamPending = true;
 		}
 		// Если источник временно без данных - прерываем дозагрузку
 		if((bytes == 0) && !eof)
@@ -4376,7 +4378,7 @@ bool awh::http::Parser_HTTP2::deferPriority(const uint32_t id, const string_view
 	// Разбираем сигнал приоритета в поля записи
 	this->parsePriority(value, pending.urgency, pending.incremental);
 	/**
-	 * Выполняем поиск прежней записи по этому же потоку
+	 * Ищем прежнюю запись по этому же потоку
 	 */
 	for(transfer_t::pending_t & item : this->_transfer.pendingPriorities){
 		// Если запись по этому потоку уже есть
@@ -4498,7 +4500,7 @@ void awh::http::Parser_HTTP2::checkPeerHeaderList(const uint32_t sid) const noex
  *
  */
 bool awh::http::Parser_HTTP2::checkBodyLength(const uint32_t sid) noexcept {
-	// Выполняем поиск потока
+	// Ищем поток
 	stream_t * stream = this->findStream(sid);
 	// Если поток отсутствует либо длина тела не объявлена - проверять нечего
 	if((stream == nullptr) || (stream->contentLength < 0))
@@ -4538,7 +4540,7 @@ bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_v
 		// Лимиты превышены
 		return false;
 	/**
-	 * Выполняем перебор всех заголовков блока
+	 * Перебираем все заголовки блока
 	 */
 	for(const h2::hpack::field_view_t & field : fields){
 		// Если длина имени заголовка превышает лимит
@@ -4568,7 +4570,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
 		// Отправка недопустима
 		return false;
 	}
-	// Выполняем поиск потока
+	// Ищем поток
 	const stream_t * stream = this->findStream(sid);
 	// Если поток существует - блок заголовков допустим не в каждом его состоянии
 	if(stream != nullptr){
@@ -4659,7 +4661,7 @@ bool awh::http::Parser_HTTP2::canSendHeaders(const uint32_t sid) noexcept {
  *
  */
 bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2::hpack::field_t> & fields, const bool endStream) noexcept {
-	// Выполняем поиск потока
+	// Ищем поток
 	stream_t * stream = this->findStream(sid);
 	// Если поток отсутствует либо его заголовки ещё не отправлены - откладывать нечего
 	if((stream == nullptr) || !stream->headersSent)
@@ -4677,7 +4679,7 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 		return true;
 	}
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Запоминаем заголовки секции трейлеров
@@ -4728,12 +4730,12 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
 	// Сбрасываем признак отложенной секции трейлеров
 	stream.trailersPending = false;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Закодированный HPACK-блок трейлеров
 		string block = "";
-		// Выполняем кодирование трейлеров в HPACK-блок
+		// Кодируем трейлеры в HPACK-блок
 		this->_encoder.encode(stream.trailers, block, true);
 		// Освобождаем память отложенных трейлеров
 		stream.trailers.clear();
@@ -4821,7 +4823,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 	// Результат работы функции - собранный провайдер заголовков
 	unique_ptr <provider_t> result = nullptr;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если собирается запрос клиента
@@ -4829,12 +4831,12 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			// Создаём объект провайдера запроса клиента
 			unique_ptr <request_t> provider(new request_t(version_t::HTTP2));
 			/**
-			 * Выполняем перебор всех заголовков блока
+			 * Перебираем все заголовки блока
 			 */
 			for(const h2::hpack::field_view_t & field : fields){
 				// Если получен псевдо-заголовок [:method] (имена уже провалидированы, сравнение строгое)
 				if(field.name == header::METHOD){
-					// Выполняем классификацию метода запроса по его имени
+					// Классифицируем метод запроса по его имени
 					provider->method = awh::http::classifyMethod(field.value);
 					// Если метод запроса синтаксически корректен, но не распознан
 					if(provider->method == method_t::NONE){
@@ -4859,7 +4861,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 			// Создаём объект провайдера ответа сервера
 			unique_ptr <response_t> provider(new response_t(version_t::HTTP2));
 			/**
-			 * Выполняем перебор всех заголовков блока
+			 * Перебираем все заголовки блока
 			 */
 			for(const h2::hpack::field_view_t & field : fields){
 				// Если получен псевдо-заголовок [:status] (имена уже провалидированы, сравнение строгое)
@@ -4867,7 +4869,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 					// Статус-код ответа сервера
 					uint16_t code = 0;
 					/**
-					 * Выполняем разбор трёх цифр статус-кода (формат провалидирован ранее)
+					 * Разбираем три цифры статус-кода (формат провалидирован ранее)
 					 */
 					for(const char letter : field.value)
 						// Накапливаем значение статус-кода
@@ -4925,7 +4927,7 @@ void awh::http::Parser_HTTP2::clear() noexcept {
 	this->_transfer.sendHighWater = SEND_HIGH_WATER;
 	// Возвращаем порог выходного буфера соединения к значению по умолчанию
 	this->_transfer.outputHighWater = OUTPUT_HIGH_WATER;
-	// Выполняем полный сброс состояния соединения
+	// Сбрасываем полностью состояние соединения
 	this->reset();
 }
 /**
@@ -4945,7 +4947,7 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	 * к уже освобождённым спискам заголовков и снимкам потоков
 	 */
 	++this->_epoch;
-	// Выполняем сброс состояния базового парсера (итоговый статус разбора)
+	// Сбрасываем состояние базового парсера (итоговый статус разбора)
 	parser_t::reset();
 	// Сбрасываем код ошибки уровня соединения
 	this->_error = error_t::NO_ERROR;
@@ -5065,7 +5067,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept
 	// Результат работы функции - копия объекта парсера
 	unique_ptr <parser_t> result = nullptr;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Создаём новый объект парсера с теми же направлением трафика и инфраструктурой
@@ -5153,7 +5155,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 		// Выводим количество обработанных байт данных
 		return size;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -5174,7 +5176,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 		this->_flags.inParse = true;
 		// Если данные для разбора переданы
 		if((buffer != nullptr) && (size > 0))
-			// Выполняем разбор переданной порции входящих байтов
+			// Разбираем переданную порцию входящих байтов
 			this->parseInput(static_cast <const uint8_t *> (buffer), size);
 		/**
 		 * Байты, накопленные реентрантными вызовами, разбираем здесь: в этой точке
@@ -5187,7 +5189,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 			const string deferred(::move(this->_buffer.deferred));
 			// Очищаем отложенный буфер
 			this->_buffer.deferred.clear();
-			// Выполняем разбор отложенных байтов
+			// Разбираем отложенные байты
 			this->parseInput(reinterpret_cast <const uint8_t *> (deferred.data()), deferred.size());
 		}
 		// Отбрасываем отложенные байты, оставшиеся после ошибки уровня соединения
@@ -5487,7 +5489,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 		// Запоминаем анонсируемое начальное окно приёма потока
 		this->_window.localInit = this->_local.windowSize;
 		/**
-		 * Выполняем сдвиг окон приёма всех открытых потоков. Переполнение здесь
+		 * Сдвигаем окна приёма всех открытых потоков. Переполнение здесь
 		 * невозможно: окно приёма потока никогда не превышает анонсированного
 		 * начального размера, а сам параметр приведён к допустимому диапазону
 		 * методом settings() - поэтому результат не выходит за новое начальное окно
@@ -5563,7 +5565,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 	// Отправляем SETTINGS-фрейм с собранными параметрами
 	h2::frame::serialize::settings(this->_buffer.output, items, count, false);
 	/**
-	 * Ждём подтверждения на каждый отправленный SETTINGS (RFC 9113 §6.5.3).
+	 * Подтверждение ожидается на каждый отправленный SETTINGS (RFC 9113 §6.5.3).
 	 * Флаг подтверждения снимается: новые параметры вступают в силу для пира
 	 * только после его ACK, и до тех пор isSettingsAcked() обязан отвечать
 	 * отрицательно - иначе таймер SETTINGS_TIMEOUT сторожит уже неактуальную отправку
@@ -5670,7 +5672,7 @@ void awh::http::Parser_HTTP2::sendPriority(const uint32_t sid, const uint8_t urg
 		// Выходим из метода
 		return;
 	// Формируем значение поля приоритета структурированным словарём (RFC 8941)
-	const string value = ::priorityValue(::min(urgency, h2::proto::MAX_URGENCY), incremental);
+	const string value = ::__awh_priority_value__(::min(urgency, h2::proto::MAX_URGENCY), incremental);
 	// Отправляем фрейм обновления расширенного приоритета
 	h2::frame::serialize::priorityUpdate(this->_buffer.output, sid, value);
 	// Если поток уже существует - применяем приоритет и к своей стороне
@@ -5798,7 +5800,7 @@ void awh::http::Parser_HTTP2::sendOrigin(const vector <string> & origins) noexce
 	// Размер полезной нагрузки кадра
 	size_t length = 0;
 	/**
-	 * Выполняем подсчёт размера полезной нагрузки: кадр целиком обязан уложиться
+	 * Считаем размер полезной нагрузки: кадр целиком обязан уложиться
 	 * в согласованный пиром предел, а делить набор между кадрами RFC не позволяет
 	 */
 	for(auto & item : origins)
@@ -5851,7 +5853,7 @@ void awh::http::Parser_HTTP2::sendWindowUpdate(const uint32_t sid, const uint32_
 		this->_window.local += static_cast <int32_t> (increment);
 	// Если кредит выдаётся окну конкретного потока
 	} else {
-		// Выполняем поиск потока
+		// Ищем поток
 		stream_t * stream = this->findStream(sid);
 		// Кредит несуществующему потоку пир вправе считать ошибкой - не отправляем
 		if(stream == nullptr)
@@ -5889,10 +5891,10 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 	// Результат работы функции - число принятых байт
 	size_t result = 0;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск потока
+		// Ищем поток
 		stream_t * stream = this->findStream(sid);
 		// Если поток не найден (неизвестный/закрытый поток) - данные не принимаются
 		if(stream == nullptr)
@@ -6031,7 +6033,7 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		// Push невозможен
 		return result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Резервируем чётный push-поток
@@ -6042,7 +6044,7 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 			return result;
 		// Закодированный HPACK-блок заголовков обещанного запроса
 		string block = "";
-		// Выполняем кодирование заголовков в HPACK-блок
+		// Кодируем заголовки в HPACK-блок
 		this->_encoder.encode(fields, block, true);
 		// Сверяем размер блока обещанного запроса с лимитом списка заголовков пира
 		this->checkPeerHeaderList(sid);
@@ -6113,7 +6115,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Закодированный HPACK-блок заголовков
@@ -6121,14 +6123,14 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		// Дописываем отложенный Dynamic Table Size Update (если требуется)
 		this->_encoder.begin(block);
 		/**
-		 * Выполняем перебор всех кодируемых заголовков
+		 * Перебираем все кодируемые заголовки
 		 */
 		for(const h2::hpack::field_t & field : fields){
 			/**
 			 * Connection-specific заголовки в HTTP/2 запрещены (RFC 9113 §8.2.2) и делают
 			 * сообщение малформированным на приёмной стороне - пропускаем их
 			 */
-			if(::isConnectionSpecific(field.name) || ((field.name == header::TE) && !fmk::compare(value::TRAILERS, field.value))){
+			if(::__awh_is_connection_specific__(field.name) || ((field.name == header::TE) && !fmk::compare(value::TRAILERS, field.value))){
 				// Записываем сообщение об ошибке в лог
 				log::print("HTTP/2 connection-specific header [%s] is not allowed and skipped", log::flag_t::WARNING, field.name.c_str());
 				// Переходим к следующему заголовку
@@ -6140,7 +6142,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			 * нештатного трафика, поэтому название не переписывается, но о нарушении
 			 * вызывающий узнаёт из лога
 			 */
-			if(!::isValidHeaderName(field.name))
+			if(!::__awh_is_valid_header_name__(field.name))
 				// Записываем сообщение об ошибке в лог
 				log::print("HTTP/2 header name [%s] is not a valid lowercase token", log::flag_t::WARNING, field.name.c_str());
 			// Кодируем очередной заголовок
@@ -6149,7 +6151,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
 		/**
-		 * Выполняем поиск псевдо-заголовков, задающих безтелесность сообщения:
+		 * Ищем псевдо-заголовки, задающие безтелесность сообщения:
 		 * ответ на HEAD объявляет content-length, но тела не несёт (RFC 9110 §9.3.2),
 		 * а отправляемые нами ответы 204 и 304 не несут ни тела, ни трейлеров
 		 * (§15.3.5, §15.4.5). В секции трейлеров ни того, ни другого нет
@@ -6159,7 +6161,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			if(field.name == header::METHOD){
 				// Если запрос выполняется методом HEAD
 				if(field.value == value::HEAD){
-					// Выполняем поиск потока
+					// Ищем поток
 					stream_t * stream = this->findStream(sid);
 					// Если поток найден
 					if(stream != nullptr)
@@ -6172,7 +6174,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 			} else if(field.name == header::STATUS) {
 				// Если ответ не несёт ни тела, ни трейлеров
 				if((field.value == value::NO_CONTENT) || (field.value == value::NOT_MODIFIED)){
-					// Выполняем поиск потока
+					// Ищем поток
 					stream_t * stream = this->findStream(sid);
 					// Если поток найден
 					if(stream != nullptr){
@@ -6233,10 +6235,10 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск потока
+		// Ищем поток
 		const stream_t * stream = this->findStream(sid);
 		/**
 		 * Если тело потока ещё не отправлено полностью - это секция трейлеров. Она
@@ -6252,13 +6254,13 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			// Переиспользуемый буфер для названий заголовков в нижнем регистре
 			string buffer = "";
 			/**
-			 * Выполняем перебор всех заголовков контейнера
+			 * Перебираем все заголовки контейнера
 			 */
 			for(const headers_t::header_t & header : headers){
 				// Приводим название заголовка к нижнему регистру (RFC 9113 §8.2.1)
-				const string_view name = ::lowerName(header.name, buffer);
+				const string_view name = ::__awh_lower_name__(header.name, buffer);
 				// Пропускаем запрещённые в HTTP/2 connection-specific заголовки (RFC 9113 §8.2.2)
-				if(::isConnectionSpecific(name) || (name == header::HOST))
+				if(::__awh_is_connection_specific__(name) || (name == header::HOST))
 					// Переходим к следующему заголовку
 					continue;
 				// Заголовок TE допустим только со значением "trailers" (RFC 9113 §8.2.2)
@@ -6304,7 +6306,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			 * приложение парсер не вправе - оно адресовало запрос осознанно
 			 */
 			if((this->_proto == proto_t::WEBSOCKET2) && (request->method == method_t::CONNECT) &&
-			   fmk::compare("websocket", request->protocol) && !::isHttpScheme(scheme)){
+			   fmk::compare("websocket", request->protocol) && !::__awh_is_http_scheme__(scheme)){
 				// Записываем сообщение об отказе в лог
 				log::print(
 					"HTTP/2 WebSocket target URI requires http or https scheme (RFC 8441), request for stream %u is not sent",
@@ -6365,7 +6367,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 					// Если контейнер содержит заголовок Host - конвертируем его в псевдо-заголовок [:authority]
 					else if(headers.has("host"))
 						// Кодируем псевдо-заголовок [:authority]
-						this->_encoder.encode(":authority", headers.at("host"), block);
+						this->_encoder.encode(":authority", headers.value("host"), block);
 					/**
 					 * Для метода CONNECT псевдо-заголовок [:authority] обязателен (RFC 9113 §8.5),
 					 * а заголовка Host в таком запросе может не быть - берём цель из URI запроса
@@ -6399,18 +6401,18 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		// Переиспользуемый буфер для названий заголовков в нижнем регистре
 		string buffer = "";
 		/**
-		 * Выполняем перебор всех заголовков контейнера
+		 * Перебираем все заголовки контейнера
 		 */
 		for(const headers_t::header_t & header : headers){
 			// Приводим название заголовка к нижнему регистру (RFC 9113 §8.2.1)
-			const string_view name = ::lowerName(header.name, buffer);
+			const string_view name = ::__awh_lower_name__(header.name, buffer);
 			/**
 			 * Пропускаем Host (конвертирован в [:authority]) и запрещённые
 			 * connection-specific заголовки (RFC 9113 §8.2.2). Список берётся
 			 * общей функцией, а не перечисляется здесь заново: два перечисления
 			 * одного списка расходятся от первой же правки одного из них
 			 */
-			if(::isConnectionSpecific(name) || (name == header::HOST))
+			if(::__awh_is_connection_specific__(name) || (name == header::HOST))
 				// Переходим к следующему заголовку
 				continue;
 			/**
@@ -6433,7 +6435,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		 */
 		if((stream != nullptr) && stream->announce && !headers.has("priority"))
 			// Кодируем заголовок сигнала приоритета
-			this->_encoder.encode("priority", ::priorityValue(stream->urgency, stream->incremental), block);
+			this->_encoder.encode("priority", ::__awh_priority_value__(stream->urgency, stream->incremental), block);
 		// Отправляем HPACK-блок заголовков потока
 		this->commitHeaders(sid, block, endStream);
 		/**
@@ -6441,7 +6443,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		 * его повторно в трейлерах бессмысленно
 		 */
 		if(stream != nullptr){
-			// Выполняем поиск потока заново: отправка секции могла его закрыть
+			// Ищем поток заново: отправка секции могла его закрыть
 			stream_t * current = this->findStream(sid);
 			// Если поток всё ещё существует
 			if(current != nullptr)
@@ -6451,7 +6453,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		// Если провайдер контейнера задаёт запрос методом HEAD
 		if((provider != nullptr) && (provider->direct == direct_t::REQUEST) &&
 		   (static_cast <const request_t *> (provider)->method == method_t::HEAD)){
-			// Выполняем поиск потока
+			// Ищем поток
 			stream_t * stream = this->findStream(sid);
 			// Если поток найден
 			if(stream != nullptr)
@@ -6466,7 +6468,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 			const uint16_t code = static_cast <const response_t *> (provider)->code;
 			// Если ответ не несёт ни тела, ни трейлеров
 			if((code == 204) || (code == 304)){
-				// Выполняем поиск потока
+				// Ищем поток
 				stream_t * stream = this->findStream(sid);
 				// Если поток найден
 				if(stream != nullptr){
@@ -6535,7 +6537,7 @@ uint32_t awh::http::Parser_HTTP2::nextStreamId() noexcept {
  *
  */
 void awh::http::Parser_HTTP2::dataSource(const uint32_t sid, data_source_callback_t source) noexcept {
-	// Выполняем поиск потока
+	// Ищем поток
 	stream_t * stream = this->findStream(sid);
 	// Если поток не найден - назначать источник данных некому
 	if(stream == nullptr)

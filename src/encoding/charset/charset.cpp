@@ -348,6 +348,7 @@ bool awh::charset::transcode(string_view text, const encoding_t from, const enco
 	 *
 	 * @details Запись символа в кодировке UTF-8 занимает до четырёх байтов,
 	 *          тогда как в однобайтовой кодировке — ровно один.
+	 *
 	 */
 	result.reserve((to == encoding_t::UTF8) ? (text.size() * 2) : text.size());
 	// Кодовое значение очередного разобранного символа

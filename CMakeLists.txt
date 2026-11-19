@@ -77,6 +77,20 @@ if (ARCHITECTURE STREQUAL "")
     endif()
 endif()
 
+##
+ # Оболочка x86_64 под подражанием отвечает `uname -m` про СВОЁ подражание, а не про
+ # набор команд машины: на Windows ARM64 оснастка CLANGARM64 - это x86_64-оболочка,
+ # и uname говорит «x86_64», тогда как компилятор целится в aarch64-w64-windows-gnu.
+ # Тогда архитектуру берём у цели компилятора (и у системы), иначе ARM-сборка
+ # получила бы флаги x86_64 и отказала на -march=core2
+ ##
+if (ARCHITECTURE MATCHES "x86_64" OR ARCHITECTURE MATCHES "AMD64" OR ARCHITECTURE MATCHES "amd64")
+    if (CMAKE_CXX_COMPILER_TARGET MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "[Aa][Rr][Mm]64")
+        # Устанавливаем поддерживаемую архитектуру
+        SET(ARCHITECTURE "aarch64")
+    endif()
+endif()
+
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Если операционной системой является Linux

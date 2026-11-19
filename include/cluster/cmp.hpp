@@ -1,15 +1,21 @@
 /**
- * @file: cmp.hpp
- * @date: 2024-10-03
+ * @file cmp.hpp
+ * @date 2024-10-03
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля кластерного обмена
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_CLUSTER_MESSAGE_PROTOCOL__

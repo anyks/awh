@@ -708,6 +708,7 @@ uint64_t awh::hashing::merge(const uint64_t seed1, const uint64_t seed2) noexcep
 	 * @details Значения разводятся разными константами прежде перемешивания,
 	 *          иначе пара равных ключей сводилась бы к нулю: сложение числа с
 	 *          самим собой по модулю два обнуляет его
+	 *
 	 */
 	return (avalanche(seed1 + KEYS[0]) ^ avalanche(seed2 + KEYS[3]));
 }

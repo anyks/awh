@@ -23,6 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/http2/h2.hpp>
+// Снимаем системные макросы Windows (ERROR, NO_ERROR, STRICT), занявшие имена значений перечислений
+#include "../../../../../include/sys/macro/suppress.hpp"
 
 /**
  * Используем стандартное пространство имён

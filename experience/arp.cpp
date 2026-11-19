@@ -1,3 +1,23 @@
+/**
+ * @file arp.cpp
+ * @date 2021-10-26
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Пример сетевого опыта AWH — arp
+ *
+ * @copyright Copyright © 2021
+ *
+ */
+
 // g++ --std=c++11 arp.cpp -o ./arp -lws2_32 -lIphlpapi -lstdc++
 
 #include <Winsock2.h>

@@ -1,3 +1,23 @@
+/**
+ * @file ip.cpp
+ * @date 2025-07-22
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Пример сетевого опыта AWH — ip
+ *
+ * @copyright Copyright © 2025
+ *
+ */
+
 // g++ --std=c++11 ip.cpp -o ./ip -lstdc++
 
 #include <cmath>

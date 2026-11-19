@@ -12,7 +12,6 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл поток-локальных кэшей блоков
  *
  * @section cache_decisions Намеренные решения
@@ -72,76 +71,9 @@
  *          означал бы у мелких разрядов килобайты, а у крупных - мегабайты, то есть
  *          не означал бы ничего. Приложению же нужен предел расхода памяти.
  *
- * \~english
- * @brief Header file of the thread-local block caches
- *
- * @section cache_decisions Deliberate decisions
- *
- * @details <b>The thread cache takes no lock at all.</b> That is its whole point:
- *          allocation and free on the hot path are done by taking a block off a list,
- *          and no other thread touches that list. A lock is taken only when exchanging
- *          batches with the central lists, that is, once per batch.
- *
- *          <b>Memory for the cache itself is taken from the page heap, not from
- *          malloc.</b> The cache is created from under the intercepted malloc, and
- *          asking it for memory would go into infinite recursion.
- *
- *          <b>The thread-local pointer is plain, and destruction hangs on a key.</b>
- *          A thread-local with a destructor is written via __cxa_thread_atexit, and
- *          that is free to ask for memory - from the same malloc. Hence the thread
- *          holds a bare pointer, and returning blocks on thread exit hangs on a
- *          pthread_key_create key (FlsAlloc on Windows), whose callback allocates
- *          nothing.
- *
- *          <b>Caches of finished threads are reused, not returned.</b> The number of
- *          simultaneously living threads is usually stable, and returning cache memory
- *          to the heap with new creation per thread would be wasted work.
- *
- *          <b>The list takes no lock, but counters are read by a foreign thread.</b>
- *          Querying consumption sums the accumulated occupied and the cache-held
- *          across ALL caches, hence these fields are atomic, though only the owner
- *          writes them. The conclusion nobody accesses the cache so plain fields
- *          suffice is wrong, and plain they once were - ThreadSanitizer reported both
- *          races. Counters are fixed by separate load and store, not an atomic RMW:
- *          only the owner may write them, and a prohibition on the fast path would
- *          cost for nothing.
- *
- *          <b>Returning the excess drops the cache BELOW the limit, not exactly to
- *          it.</b> The cache limit is still respected: returning starts exactly at it.
- *          But it used to stop exactly at it too - and the next free would return
- *          what was beyond the limit and trigger returning again. A cache that
- *          reached the limit went to the central lists on EVERY free, taking the
- *          shared lock once per action: exactly what the cache was built to avoid. A
- *          reserve of a quarter limit gives the cache a batch of actions before the
- *          next return, and it costs only that the cache holds a quarter less memory.
- *          The depth of the reserve does not affect the measurement at all - half,
- *          quarter and eighth all gave the same - what matters is the presence of
- *          the reserve. Measurements and analysis are recorded at Cache::relieve.
- *
- *          <b>The working limit serves as a lever for the yield request.</b> The
- *          request is read by the owner on cold paths, not on every free: that would
- *          cost about five hundredths on three benchmark scenarios. A thread that
- *          only frees never goes to class refill - hence whoever sets the request
- *          drops the working limit to zero, and excess returning starts on the very
- *          first free. The limit set by the application is stored separately and
- *          restored once the request is fulfilled. The order of the two writes
- *          matters: the lever is dropped BEFORE the request - and the same window is
- *          closed a second time by self-healing in Cache::relieve. The cost of a miss
- *          is proven by substitution: a cache with the dropped lever empties on every
- *          free and holds nothing - 92.57 ns/op and ZERO bytes in cache versus 9.15
- *          ns/op and 32768 bytes. Confirmed by the CacheWorksAfterPurge check, which
- *          also proved the ability to refuse on the same substitution.
- *
- *          <b>The cache limit is set in bytes, not in blocks.</b> A limit in blocks
- *          would mean kilobytes for small classes and megabytes for large ones, that
- *          is, nothing at all. What the application needs is a memory consumption
- *          limit.
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
- * \~
  */
 
 #pragma once
@@ -177,13 +109,8 @@
 #include "../../../include/sys/macro/global.hpp"
 
 /**
- * \~russian
  * @brief Пространство имён фреймворка
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -192,34 +119,19 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён распределителя памяти
 	 *
-	 * \~english
-	 * @brief Namespace of the memory allocator
-	 *
-	 * \~
 	 */
 	namespace alloc {
 		/**
-		 * \~russian
 		 * @brief Класс поток-локального кэша блоков
 		 *
-		 * \~english
-		 * @brief Thread-local block cache class
-		 *
-		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Cache {
 			private:
 				/**
-				 * \~russian
 				 * @brief Управляющий кэшами имеет доступ к связи и занятости
 				 *
-				 * \~english
-				 * @brief A manager of the caches has an access to a linkage and an occupancy
-				 *
-				 * \~
 				 */
 				friend class Caches;
 			public:
@@ -258,13 +170,8 @@ namespace awh {
 				static constexpr size_t LIMIT = (4u * 1024u * 1024u);
 			private:
 				/**
-				 * \~russian
 				 * @brief Структура списка свободных блоков одного разряда
 				 *
-				 * \~english
-				 * @brief Structure of the free-block list for a single rank
-				 *
-				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ List {
 					// Число свободных блоков в списке
@@ -272,13 +179,8 @@ namespace awh {
 					// Голова списка свободных блоков
 					void * free;
 					/**
-					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 */
 					explicit List() noexcept;
 				} list_t;
@@ -316,7 +218,6 @@ namespace awh {
 				 */
 				atomic_size_t _kept;
 				/**
-				 * \~russian
 				 * @brief Лежащее в кэше НЕДЕЛИМО по той же причине, что и накопленное
 				 *
 				 * @details Складывает его чужой поток - опрос лежащего в кэшах и отдача излишка
@@ -325,20 +226,9 @@ namespace awh {
 				 *          загрузкой и записью порознь: пишет один поток, и неделимая правка со
 				 *          своим запретом стоила бы на быстром пути ни за что.
 				 *
-				 * \~english
-				 * @brief The LYING IN THE CACHE is INDIVISIBLE for the same reason as the accumulated
-				 *
-				 * @details An alien thread adds to it - a polling of the lying in the caches and a giving of the excess
-				 *          to the central lists, - and the owner writes it on every issue and every
-				 *          osvobozhdenii: dolozheno ThreadSanitizer'om v `Caches::cached`. Pравится
-				 *          zagruzkoj i zapiskoj porozn: pishet odin potok, i nedelimaya pravka so
-				 *          svoim zapretom stoila by na bystrom pute ni za chto.
-				 *
-				 * \~
 				 */
 				atomic_size_t _bytes;
 				/**
-				 * \~russian
 				 * @brief Предел кэша НЕДЕЛИМ по той же причине, что и лежащее в кэше
 				 *
 				 * @details Пишет его ЧУЖОЙ поток - установщик настроек обходит все заведённые кэши
@@ -353,27 +243,10 @@ namespace awh {
 				 *          Быстрый путь от этого не дорожает: чтение без порядка складывается в ту
 				 *          же одну команду, что и чтение обычного числа.
 				 *
-				 * \~english
-				 * @brief A cache limit is INDIVISIBLE for the same reason as the lying in the cache
-				 *
-				 * @details An ALIEN thread writes it - an installer of the settings walks over all the started caches
-				 *          and edits a limit for each, - and the owner reads it on every release, and
-				 *          reads WITHOUT a lock. A lock of the installer does not hold the owner back, a race is
-				 *          on the face. Before, a limit lay as an ordinary number: on our systems a reading and a
-				 *          writing of an aligned word are indivisible as well, so the trouble did not come out,
-				 *          - but by the standard it is a race, and ThreadSanitizer will name it. The parsing
-				 *          of the lying in the cache two lines above says exactly the same, and a limit was not brought
-				 *          under it.
-				 *
-				 *          A fast path does not grow dearer from this: a reading without an order folds into the
-				 *          same one command as a reading of an ordinary number.
-				 *
-				 * \~
 				 */
 				atomic_size_t _limit;
 			private:
 				/**
-				 * \~russian
 				 * @brief Учёт занятого прикладным кодом, накопленный этим потоком
 				 *
 				 * @details Общий счётчик, правимый на КАЖДОЙ выдаче и КАЖДОМ освобождении, обращает
@@ -390,29 +263,10 @@ namespace awh {
 				 *          писать в него вправе один поток, и неделимая правка со своим запретом
 				 *          стоила бы на быстром пути ни за что.
 				 *
-				 * \~english
-				 * @brief Accounting of the occupied by the application, accumulated by this thread
-				 *
-				 * @details A shared counter, edited on EVERY issue and EVERY free, turns eight threads
-				 *          into a queue for one line of memory: measurements gave 87 nanoseconds per action
-				 *          versus 5 without it. Hence the counting goes here, at the thread, and the shared
-				 *          one gets only the accumulated in a batch.
-				 *
-				 * @note The accumulator is INDIVISIBLE, though it has only one owner
-				 *
-				 * @details An alien thread reads it - a consumption query sums the accumulated across all
-				 *          caches, - and a plain field would give a race by the standard: reported
-				 *          by ThreadSanitizer, a read in `Caches::pending` versus a write by the owner.
-				 *          It is fixed by a LOAD AND STORE separately, not a read-modify-write: only one
-				 *          thread may write to it, and an indivisible edit with its own prohibition would
-				 *          cost on the fast path for nothing.
-				 *
-				 * \~
 				 */
 				atomic_int64_t _tally;
 			private:
 				/**
-				 * \~russian
 				 * @brief Просьба опустошиться, поставленная чужим потоком
 				 *
 				 * @details Кэш потока НЕ ЗАЩИЩЁН замком, и в том весь его смысл: обращается
@@ -443,39 +297,6 @@ namespace awh {
 				 *          20, то ни одного. Судить следует по числу гонок, какие называет
 				 *          ThreadSanitizer
 				 *
-				 * \~english
-				 * @brief Request to yield the cache, set by a foreign thread
-				 *
-				 * @details The thread cache is NOT protected by a lock, and that is its whole
-				 *          point: only the owning thread accesses it, and access costs a few
-				 *          instructions. Hence touching a foreign cache is forbidden AT ALL -
-				 *          and it was done before: returning memory to the system
-				 *          (allocator::purge) emptied all thread caches in a row, including
-				 *          those working right now.
-				 *
-				 * @details The corruption looked like this: a live block owned by the
-				 *          application ended up in the free list, and list traversal hit
-				 *          application data instead of a pointer. Found by the fuzzer
-				 *          tools/fuzz/alloc.cpp on 23.08.2026, proven by ThreadSanitizer:
-				 *          Caches::flush edited the lists of a foreign cache (cache.cpp:255-265)
-				 *          while the owner was writing them in Cache::refill.
-				 *
-				 * @details Instead a request is set on the foreign cache, and the owner
-				 *          empties it THEMSELVES next time they go the cold path.
-				 *
-				 * @warning A thread cache that has slept for long will NOT be emptied by a
-				 *          foreign request: nobody can take memory from it until it wakes up.
-				 *          It cannot be otherwise - taking memory from a working thread
-				 *          without its participation is impossible - but returning memory to
-				 *          the system became less complete because of it. A finishing thread
-				 *          cache is returned entirely, and that did not change
-				 *
-				 * @warning Counting fuzzer crashes as a measure does NOT work here: it depends
-				 *          on machine load, and the same build gave either 16 failures out of
-				 *          20 or none at all. Judgement should go by the number of races that
-				 *          ThreadSanitizer names
-				 *
-				 * \~
 				 */
 				atomic_bool _yield;
 			private:
@@ -514,7 +335,6 @@ namespace awh {
 				list_t _lists[classes_t::LIMIT];
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод пополнения разряда пачкой блоков у центральных списков
 				 *
 				 * @warning Список разряда обязан быть ПУСТ: взятая пачка кладётся головой
@@ -530,62 +350,28 @@ namespace awh {
 				 * @param index номер разряда
 				 * @return      адрес выданного блока либо nullptr
 				 *
-				 * \~english
-				 * @brief Method of refilling a class with a batch from the central lists
-				 *
-				 * @warning The class list MUST be empty: the batch taken is placed at the head
-				 *          directly, and whatever lay in the list before would be lost silently -
-				 *          the blocks would remain issued to the cache forever. The only caller,
-				 *          `alloc`, enters here only with the list exhausted, and the flush
-				 *          request executed right here empties all classes before taking
-				 *
-				 * @note Cold tail of the fast allocation path: moved into the code file so that
-				 *       the substitution carries only taking a block off the list head
-				 *
-				 * @param index class index
-				 * @return      address of the issued block or nullptr
-				 *
-				 * \~
 				 */
 				void * refill(const size_t index) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отдачи излишка центральным спискам
 				 *
 				 * @note Холодный хвост быстрого пути возврата: перебор предела - случай
 				 *       редкий, и держать его в подставляемом теле незачем
 				 *
-				 * \~english
-				 * @brief Method of giving the excess back to the central lists
-				 *
-				 * @note Only the excess beyond the cache limit is returned: the cache keeps a
-				 *       working set at hand
-				 *
-				 * \~
 				 */
 				void relieve() noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод возврата пачки блоков разряда центральным спискам
 				 *
 				 * @param index номер разряда
 				 * @param count требуемое число возвращаемых блоков
 				 * @return      действительно возвращённое число блоков
 				 *
-				 * \~english
-				 * @brief Method of returning a batch of blocks to the central lists
-				 *
-				 * @param index class index
-				 * @param count number of blocks being returned
-				 * @return      number of blocks actually returned
-				 *
-				 * \~
 				 */
 				size_t drain(const size_t index, const size_t count) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод заведения кэша
 				 *
 				 * @param central центральные списки
@@ -593,79 +379,40 @@ namespace awh {
 				 * @param limit   предел кэша в байтах
 				 * @return        признак заведения кэша
 				 *
-				 * \~english
-				 * @brief Method of initializing the cache
-				 *
-				 * @param central central lists
-				 * @param classes size classes
-				 * @param limit   cache limit in bytes
-				 * @return        sign of the cache having been initialized
-				 *
-				 * \~
 				 */
 				bool init(central_t * central, classes_t * classes, const size_t limit) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отдачи всех блоков кэша центральным спискам
 				 *
-				 * \~english
-				 * @brief Method of returning all cached blocks to the central lists
-				 *
-				 * \~
 				 */
 				void flush() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отвязки кэша от завершившегося потока
 				 *
 				 * @note Зовётся откликом системы, а не приложением: отклик получает лишь
 				 *       сам кэш, оттого управляющий и хранится в нём
 				 *
-				 * \~english
-				 * @brief Method of detaching the cache from a finished thread
-				 *
-				 * @note The cache is returned to the pool for reuse by a new thread:
-				 *       its blocks go back to the central lists
-				 *
-				 * \~
 				 */
 				void release() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод выдачи блока разряда
 				 *
 				 * @param index номер разряда
 				 * @return      адрес выданного блока либо nullptr
 				 *
-				 * \~english
-				 * @brief Method of allocating a block of a class
-				 *
-				 * @param index class index
-				 * @return      address of the allocated block or nullptr
-				 *
-				 * \~
 				 */
 				__AWH_INLINE__ void * alloc(const size_t index) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод возврата блока разряда
 				 *
 				 * @param index номер разряда
 				 * @param addr  адрес возвращаемого блока
 				 *
-				 * \~english
-				 * @brief Method of returning a block of a class
-				 *
-				 * @param index class index
-				 * @param addr  address of the block being returned
-				 *
-				 * \~
 				 */
 				__AWH_INLINE__ void free(const size_t index, void * addr) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод накопления занятого прикладным кодом
 				 *
 				 * @note Замка не берёт вовсе: кэш принадлежит одному потоку
@@ -674,34 +421,16 @@ namespace awh {
 				 * @param batch величина, по достижении которой накопленное отдаётся наружу
 				 * @return      отдаваемое наружу накопленное, либо нуль
 				 *
-				 * \~english
-				 * @brief Method of accumulating the memory occupied by the application
-				 *
-				 * @note Takes no lock at all: the cache belongs to a single thread
-				 *
-				 * @param delta change of the occupied memory in bytes
-				 * @param batch value upon reaching which the accumulated amount is handed out
-				 * @return      the accumulated amount handed out, or zero
-				 *
-				 * \~
 				 */
 				__AWH_INLINE__ int64_t tally(const int64_t delta, const int64_t batch) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения накопленного, но не отданного наружу
 				 *
 				 * @return накопленное этим потоком в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting what is accumulated but not yet handed out
-				 *
-				 * @return accumulated value in bytes
-				 *
-				 * \~
 				 */
 				int64_t pending() const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод накопления освобождённого до шага проверки
 				 *
 				 * @note Замка не берёт вовсе: кэш принадлежит одному потоку. Затем и
@@ -714,74 +443,34 @@ namespace awh {
 				 * @param step  шаг, по достижении которого пора проверять порог
 				 * @return      признак того, что шаг пройден и порог пора проверить
 				 *
-				 * \~english
-				 * @brief Method of accumulating freed memory up to a check step
-				 *
-				 * @note Takes no lock at all: the cache belongs to a single thread. That is why it
-				 *       was built: checking the return threshold goes to the heap UNDER THE SHARED
-				 *       LOCK, and asking it on every free would give 194 nanoseconds per action
-				 *       instead of four (measured). With a counter the shared lock is taken once
-				 *       per step, not once per free
-				 *
-				 * @param delta freed memory change in bytes
-				 * @param step  step upon reaching which the threshold is due to be checked
-				 * @return      sign that the step has been passed and the threshold is due
-				 *
-				 * \~
 				 */
 				bool stepped(const size_t delta, const size_t step) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения места под подсказку поиска куска
 				 *
 				 * @return место под подсказку поиска
 				 *
-				 * \~english
-				 * @brief Method of getting the slot for the chunk lookup hint
-				 *
-				 * @return hint slot address
-				 *
-				 * \~
 				 */
 				__AWH_INLINE__ void ** hint() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод задания предела кэша
 				 *
 				 * @param limit предел кэша в байтах
 				 *
-				 * \~english
-				 * @brief Method of setting the cache limit
-				 *
-				 * @param limit cache limit in bytes
-				 *
-				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения объёма лежащего в кэше
 				 *
 				 * @return объём лежащего в кэше в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the amount held in the cache
-				 *
-				 * @return amount held in bytes
-				 *
-				 * \~
 				 */
 				size_t bytes() const noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
 				 */
 				explicit Cache() noexcept;
 		} cache_t;
@@ -806,50 +495,29 @@ namespace awh {
 		 */
 		#if defined(__APPLE__) || defined(__MACH__)
 			/**
-			 * \~russian
 			 * @brief Место потока хранится ключом системы
 			 *
-			 * \~english
-			 * @brief A place of a thread is stored by a key of the system
-			 *
-			 * \~
 			 */
 			#define AWH_ALLOC_TSD 1 
 
 			/**
-			 * \~russian
 			 * @brief Ключ места потока
 			 *
-			 * \~english
-			 * @brief Flow location key
-			 *
-			 * \~
 			 */
 			extern pthread_key_t __awh_alloc_tsd__;
 
 			/**
-			 * \~russian
 			 * @brief Признак готовности захвата
 			 *
-			 * \~english
-			 * @brief Indication that a target is ready to be locked on
-			 *
-			 * \~
 			 */
 			extern atomic_bool __awh_alloc_armed__;
 			/**
-			 * \~russian
 			 * @brief Номер места потока для прямого чтения, либо AWH_ALLOC_NOSLOT
 			 *
-			 * \~english
-			 * @brief Stream slot number for direct reading, or AWH_ALLOC_NOSLOT
-			 *
-			 * \~
 			 */
 			extern atomic_size_t __awh_alloc_direct__;
 
 			/**
-			 * \~russian
 			 * @brief Прямое чтение места потока, минуя вызов
 			 *
 			 * @details Чтение ключа вызовом стоит 1.502 наносекунды, прямое обращение к месту
@@ -866,39 +534,14 @@ namespace awh {
 			 *          Хранится здесь номер места, а не признак: сличение с `NOSLOT` разом
 			 *          отвечает и на вопрос «проверено ли», и на вопрос «где лежит».
 			 *
-			 * \~english
-			 * @brief A direct reading of a place of a thread, bypassing a call
-			 *
-			 * @details A reading of a key by a call costs 1.502 nanoseconds, a direct address to a place
-			 *          of a thread - 0.351 (measured on this machine, 20 mln entries). But dearer than the
-			 *          difference itself costs a CALL as such: the live values have to be held in
-			 *          the saved registers, and a prologue of an issue saved EIGHT of them on every
-			 *          address - nine prologue commands and five epilogue ones for every issue.
-			 *
-			 *          The device of a place of a thread by macOS is not declared by a contract, and to rely on
-			 *          it blindly is impossible. Therefore it is CHECKED at a starting of a key: we lay
-			 *          a mark by an ordinary means, read by a direct address and compare. They diverged -
-			 *          a direct path is not started at all, and a reading goes by a call, as it went.
-			 *
-			 *          A place number is stored here, and not a sign: a comparison with `NOSLOT` at once
-			 *          answers both to a question `is it checked` and to a question `where it lies`.
-			 *
-			 * \~
 			 */
 			static constexpr size_t AWH_ALLOC_NOSLOT = static_cast <size_t> (-1);
 
 			/**
-			 * \~russian
 			 * @brief Функция получения основания места потока
 			 *
 			 * @return основание места потока, либо nullptr у неведомого набора команд
 			 *
-			 * \~english
-			 * @brief Function of getting the thread-specific storage base
-			 *
-			 * @return thread-specific storage base address
-			 *
-			 * \~
 			 */
 			__AWH_INLINE__ void ** __awh_alloc_slots__() noexcept;
 		#endif
@@ -913,41 +556,25 @@ namespace awh {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64) && !defined(__APPLE__) && !defined(__MACH__) && !defined(__OpenBSD__)
 			/**
-			 * \~russian
 			 * @brief Зеркало места потока хранится переменной TLS
 			 *
-			 * \~english
-			 * @brief A mirror of a place of a thread is stored by a TLS variable
-			 *
-			 * \~
 			 */
 			#define AWH_ALLOC_MIRROR 1
 
 			/**
-			 * \~russian
 			 * @brief Зеркало места потока
 			 *
-			 * \~english
-			 * @brief Mirror of the flow's location
-			 *
-			 * \~
 			 */
 			extern __thread cache_t * __awh_alloc_mirror__ __attribute__((tls_model("initial-exec")));
 		#endif
 
 		/**
-		 * \~russian
 		 * @brief Класс управления поток-локальными кэшами
 		 *
-		 * \~english
-		 * @brief Thread-local caches manager class
-		 *
-		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Caches {
 			private:
 				/**
-				 * \~russian
 				 * @brief Наименьшая доля запаса, отводимая кэшу потока
 				 *
 				 * @details Доля, делённая на многие сотни потоков, обратилась бы в ничто, и кэш
@@ -955,19 +582,9 @@ namespace awh {
 				 *          - в общий замок центральных списков. Ниже этой границы доля не идёт, и
 				 *          запас при многих потоках честно перебирается
 				 *
-				 * \~english
-				 * @brief The least share of a reserve, allotted to a cache of a thread
-				 *
-				 * @details A share, divided by many hundreds of threads, would turn into a nothing, and a cache
-				 *          would stop working as a cache at all: a consumption would run into a reserve, and a speed
-				 *          - into a common lock of the central lists. Below this bound a share does not go, and a
-				 *          reserve at many threads is honestly overspent.
-				 *
-				 * \~
 				 */
 				static constexpr size_t SHARE = (1u * 1024u * 1024u);
 				/**
-				 * \~russian
 				 * @brief Общий на процесс запас кэшей потоков в байтах
 				 *
 				 * @details Предел кэша ЗАДАННЫЙ приложением - предел каждого кэша порознь, и
@@ -993,33 +610,6 @@ namespace awh {
 				 *          256 МБ вернуло на освобождении крупной кучи подряд более чем вдвое
 				 *          (50 против 21 нс на действие).
 				 *
-				 * \~english
-				 * @brief A common per process reserve of the caches of the threads in bytes
-				 *
-				 * @details A cache limit SET by an application is a limit of each cache separately, and
-				 *          a consumption at it grows by a number of the threads without any bound: a hundred threads
-				 *          at a limit of four megabytes hold four hundred. A reserve, however, is common: a share
-				 *          of a thread is derived from it by a division by a number of the started caches, and a consumption
-				 *          is limited by a reserve, however many threads there were.
-				 *
-				 *          By the same it is FASTER than a constant limit. A measurement of the holding of sixty
-				 *          five thousand blocks in pieces - a working set of nine megabytes - at
-				 *          different limits: 1 MB gave 18.32 ns/op, 2 MB - 17.45, 4 MB - 16.06,
-				 *          8 MB - 12.68, 16 MB - 9.97, 64 MB - 9.66. A constant four megabytes
-				 *          turned out to be twice less than a working set, and a cache went darting to the central
-				 *          lists all the way. A single-threaded application now gets the whole
-				 *          reserve, and sixteen threads - the same four megabytes for each.
-				 *
-				 *          A value of the reserve is taken from tcmalloc: there a common reserve of the caches of the threads is also
-				 *          set per process and by default is of the same order.
-				 *
-				 *          The former 64 MB are removed on a nine-megabyte working set and are reserved for it as
-				 *          well. The codecs build and ruin a tree of hundreds of megabytes: at 64 MB a cache
-				 *          overspends the reserve all the way and darts to the central lists. A raising to
-				 *          256 MB returned on a release of a large heap in a row more than twice
-				 *          (50 against 21 ns per action).
-				 *
-				 * \~
 				 */
 				static constexpr size_t BUDGET = (256u * 1024u * 1024u);
 			private:
@@ -1033,7 +623,6 @@ namespace awh {
 				spin_t _lock;
 			private:
 				/**
-				 * \~russian
 				 * @brief Предел кэша потока НЕДЕЛИМ: читается он не только под замком
 				 *
 				 * @details Пишет его установщик настроек под замком общего списка, а `Caches::create`
@@ -1042,16 +631,6 @@ namespace awh {
 				 *          работники заводят себе кэши; разбор мой прежде говорил, будто поле это
 				 *          всюду под замком, и был неверен.
 				 *
-				 * \~english
-				 * @brief A limit of a cache of a thread is INDIVISIBLE: it is read not only under a lock
-				 *
-				 * @details An installer of the settings writes it under a lock of a common list, and `Caches::create`
-				 *          reads it AFTER leaving the lock - a starting of a cache goes outside of it on purpose.
-				 *          It was named by ThreadSanitizer on a probe, where an alien thread edits a limit while
-				 *          the workers start their caches; my parsing before said as if this field was
-				 *          everywhere under a lock, and was wrong.
-				 *
-				 * \~
 				 */
 				atomic_size_t _limit;
 				// Общий на процесс запас кэшей потоков в байтах
@@ -1065,21 +644,13 @@ namespace awh {
 				classes_t * _classes;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод заведения кэша текущему потоку
 				 *
 				 * @return заведённый кэш либо nullptr
 				 *
-				 * \~english
-				 * @brief Method of creating a cache for the current thread
-				 *
-				 * @return sign of successful creation
-				 *
-				 * \~
 				 */
 				cache_t * create() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод раздачи доли общего запаса заведённым кэшам
 				 *
 				 * @note Зовётся ПОД ЗАМКОМ общего списка кэшей: перебирает его весь
@@ -1087,40 +658,19 @@ namespace awh {
 				 * @note Ничего не делает, когда предел задан приложением: заданный предел
 				 *       - предел каждого кэша порознь, и делить его не на что
 				 *
-				 * \~english
-				 * @brief Method of handing out the shares of the common budget
-				 *
-				 * @note The budget is shared between all caches: each gets a fair share
-				 *
-				 * @note The budget is recalculated when caches are created or destroyed:
-				 *       the share depends on the number of active caches and the total
-				 *       limit set by the application. A single cache gets the whole
-				 *       budget, and two caches get half each
-				 *
-				 * \~
 				 */
 				void reshare() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод заведения управляющего кэшами
 				 *
 				 * @param central центральные списки
 				 * @param classes разряды размеров
 				 * @return        признак заведения
 				 *
-				 * \~english
-				 * @brief Method of initializing the caches manager
-				 *
-				 * @param central central lists
-				 * @param classes size classes
-				 * @return        sign of successful initialization
-				 *
-				 * \~
 				 */
 				bool init(central_t * central, classes_t * classes) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод заведения ключа хранения кэшей потоков
 				 *
 				 * @note Зовётся ОТДЕЛЬНО от заведения и ПОЗЖЕ него: заведение приходится
@@ -1130,34 +680,17 @@ namespace awh {
 				 *
 				 * @return признак заведённого ключа
 				 *
-				 * \~english
-				 * @brief Method of creating the thread cache storage key
-				 *
-				 * @note The key is created once per process and destroyed on exit:
-				 *       no per-thread cleanup is needed
-				 *
-				 * @return sign of successful creation
-				 *
-				 * \~
 				 */
 				bool arm() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод разрушения управляющего кэшами
 				 *
 				 * @note Отдаёт центральным спискам блоки всех кэшей
 				 *
-				 * \~english
-				 * @brief Method of destroying the caches manager
-				 *
-				 * @note All caches are emptied and the pool is released
-				 *
-				 * \~
 				 */
 				void destroy() noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод заведения кэша текущему потоку
 				 *
 				 * @note Холодный хвост `local`: сюда приходят лишь первым обращением
@@ -1165,89 +698,44 @@ namespace awh {
 				 *
 				 * @return кэш текущего потока либо nullptr
 				 *
-				 * \~english
-				 * @brief Method of creating a cache for the current thread
-				 *
-				 * @note The cache is taken from the pool or created fresh:
-				 *       the pool is checked first to avoid allocation
-				 *
-				 * @return sign of successful creation
-				 *
-				 * \~
 				 */
 				cache_t * enter() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод получения кэша текущего потока
 				 *
 				 * @note Заводит кэш при первом обращении потока
 				 *
 				 * @return кэш текущего потока либо nullptr
 				 *
-				 * \~english
-				 * @brief Method of getting the current thread cache
-				 *
-				 * @note The cache is created on first access for the thread:
-				 *       no upfront allocation is needed, and threads that never allocate
-				 *       never get a cache. The cache is destroyed on thread exit
-				 *
-				 * @return current thread cache or nullptr
-				 *
-				 * \~
 				 */
 				__AWH_INLINE__ cache_t * local() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отвязки кэша от завершившегося потока
 				 *
 				 * @param cache отвязываемый кэш
 				 *
-				 * \~english
-				 * @brief Method of detaching a cache from a finished thread
-				 *
-				 * @param cache cache being detached
-				 *
-				 * \~
 				 */
 				void retire(cache_t * cache) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод задания предела кэша потока
 				 *
 				 * @note Действует и на уже заведённые кэши
 				 *
 				 * @param limit предел кэша в байтах
 				 *
-				 * \~english
-				 * @brief Method of setting the per-thread cache limit
-				 *
-				 * @note The limit applies to new caches: existing ones keep their limit
-				 *
-				 * @param limit cache limit in bytes
-				 *
-				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения объёма, лежащего во всех кэшах
 				 *
 				 * @param count число заведённых кэшей
 				 * @return      объём лежащего в кэшах в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the amount held in all caches
-				 *
-				 * @param count number of initialized caches
-				 * @return      amount held in the caches in bytes
-				 *
-				 * \~
 				 */
 				size_t cached(size_t * count) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод получения накопленного кэшами, но не отданного наружу
 				 *
 				 * @note Складывает накопленное ВСЕМИ кэшами, включая кэши завершившихся
@@ -1256,55 +744,27 @@ namespace awh {
 				 *
 				 * @return накопленное всеми кэшами в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting what the caches accumulated but have not handed out
-				 *
-				 * @note The value is approximate: it is read without locks, and other
-				 *       threads may be adding or removing blocks at the same time.
-				 *       The exact value is not needed for the purpose of this method
-				 *
-				 * @return accumulated value in bytes
-				 *
-				 * \~
 				 */
 				int64_t pending() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отдачи центральным спискам блоков всех кэшей
 				 *
 				 * @return объём отданного в байтах
 				 *
-				 * \~english
-				 * @brief Method of returning all cached blocks to the central lists
-				 *
-				 * @return number of blocks actually returned
-				 *
-				 * \~
 				 */
 				size_t flush() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод захвата замка перед ветвлением процесса
 				 *
-				 * \~english
-				 * @brief Method of acquiring the lock before forking
-				 *
-				 * \~
 				 */
 				void prepare() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод освобождения замка после ветвления процесса
 				 *
-				 * \~english
-				 * @brief Method of releasing the lock after forking
-				 *
-				 * \~
 				 */
 				void resume() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод приведения кэшей в порядок у потомка ветвления
 				 *
 				 * @note Зовётся СТРОГО ПОСЛЕ `Central::adopt`: отдача блоков идёт в
@@ -1314,27 +774,12 @@ namespace awh {
 				 * @note Потомку достаётся один поток, а кэши прочих потоков родителя
 				 *       держат блоки, вернуть которые больше некому
 				 *
-				 * \~english
-				 * @brief Method of reconciling the caches in the forked child
-				 *
-				 * @note The child gets a copy of the parent's caches with locks in an undefined
-				 *       state: they must be reset before any use
-				 *
-				 * @note The cache pool is cleared: the child starts with fresh caches,
-				 *       and any cache pointers held by the parent are invalid
-				 *
-				 * \~
 				 */
 				void adopt() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
 				 */
 				explicit Caches() noexcept;
 		} caches_t;

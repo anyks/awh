@@ -12,17 +12,10 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл формирования кратчайшей записи числа с плавающей точкой —
  *        выбор десятичного представления с наименьшим количеством значащих цифр,
  *        читаемого обратно тем же самым числом вплоть до последнего бита мантиссы
  *
- * \~english
- * @brief Header file of the forming of the shortest record of a floating-point number —
- *        the choice of the decimal representation with the least number of significant digits,
- *        which is read back as the very same number down to the last bit of the mantissa
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -45,13 +38,8 @@
 #include "common.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -60,31 +48,17 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
-	 * \~english
-	 * @brief Namespace of the number parsing module
-	 *
-	 * \~
 	 */
 	namespace lexical {
 		/**
-		 * \~russian
 		 * @brief Структура десятичного представления числа с плавающей точкой
 		 *
 		 * @details Значение числа равно mantissa * 10^exponent, где мантисса записана
 		 *          наименьшим количеством значащих цифр, при котором запись читается
 		 *          обратно тем же самым числом.
 		 *
-		 * \~english
-		 * @brief Structure of the decimal representation of a floating-point number
-		 *
-		 * @details The value of the number equals mantissa * 10^exponent, where the mantissa is written
-		 *          with the least number of significant digits at which the record is read
-		 *          back as the very same number.
-		 *
-		 * \~
 		 */
 		typedef struct Decimal {
 			// Показатель степени десяти десятичного представления числа
@@ -92,26 +66,17 @@ namespace awh {
 			// Мантисса десятичного представления числа
 			uint64_t mantissa;
 			/**
-			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param mantissa мантисса десятичного представления числа
 			 * @param exponent показатель степени десяти десятичного представления числа
 			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * @param mantissa mantissa of the decimal representation of the number
-			 * @param exponent exponent of the power of ten of the decimal representation of the number
-			 *
-			 * \~
 			 */
 			constexpr Decimal(const uint64_t mantissa = 0, const int32_t exponent = 0) noexcept :
 			 exponent(exponent), mantissa(mantissa) {}
 		} decimal_t;
 
 		/**
-		 * \~russian
 		 * @brief Функция извлечения целой части двоичного логарифма степени двойки по основанию десять
 		 *
 		 * @details Приближение задано целочисленной дробью и точно совпадает с истинным
@@ -120,75 +85,40 @@ namespace awh {
 		 * @param exponent показатель степени двойки в диапазоне от нуля до 1650
 		 * @return         целая часть логарифма
 		 *
-		 * \~english
-		 * @brief Function of extracting the integer part of the base ten logarithm of a power of two
-		 *
-		 * @details The approximation is set by an integer fraction and exactly matches the true
-		 *          value over the whole range of the exponents met while writing numbers.
-		 *
-		 * @param exponent exponent of the power of two in the range from zero to 1650
-		 * @return         integer part of the logarithm
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr int32_t log10PowerOfTwo(const int32_t exponent) noexcept {
 			// Выводим целую часть логарифма степени двойки по основанию десять
 			return static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 78913u) >> 18);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция извлечения целой части логарифма степени пятёрки по основанию десять
 		 *
 		 * @param exponent показатель степени пятёрки в диапазоне от нуля до 2620
 		 * @return         целая часть логарифма
 		 *
-		 * \~english
-		 * @brief Function of extracting the integer part of the base ten logarithm of a power of five
-		 *
-		 * @param exponent exponent of the power of five in the range from zero to 2620
-		 * @return         integer part of the logarithm
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr int32_t log10PowerOfFive(const int32_t exponent) noexcept {
 			// Выводим целую часть логарифма степени пятёрки по основанию десять
 			return static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 732923u) >> 20);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция извлечения количества двоичных разрядов степени пятёрки
 		 *
 		 * @param exponent показатель степени пятёрки в диапазоне от нуля до 3528
 		 * @return         количество двоичных разрядов
 		 *
-		 * \~english
-		 * @brief Function of extracting the number of the binary digits of a power of five
-		 *
-		 * @param exponent exponent of the power of five in the range from zero to 3528
-		 * @return         number of the binary digits
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr int32_t bitsPowerOfFive(const int32_t exponent) noexcept {
 			// Выводим количество двоичных разрядов степени пятёрки
 			return (static_cast <int32_t> ((static_cast <uint32_t> (exponent) * 1217359u) >> 19) + 1);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция извлечения кратности значения степени пятёрки
 		 *
 		 * @param value    проверяемое значение
 		 * @param exponent показатель степени пятёрки
 		 * @return         результат проверки
 		 *
-		 * \~english
-		 * @brief Function of extracting the divisibility of a value by a power of five
-		 *
-		 * @param value    checked value
-		 * @param exponent exponent of the power of five
-		 * @return         result of the check
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ bool multipleOfPowerOfFive(const uint64_t value, const int32_t exponent) noexcept {
 			// Количество множителей пятёрки в проверяемом значении
@@ -208,28 +138,18 @@ namespace awh {
 			return (count >= exponent);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция извлечения кратности значения степени двойки
 		 *
 		 * @param value    проверяемое значение
 		 * @param exponent показатель степени двойки меньший разрядности значения
 		 * @return         результат проверки
 		 *
-		 * \~english
-		 * @brief Function of extracting the divisibility of a value by a power of two
-		 *
-		 * @param value    checked value
-		 * @param exponent exponent of the power of two smaller than the bit width of the value
-		 * @return         result of the check
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr bool multipleOfPowerOfTwo(const uint64_t value, const int32_t exponent) noexcept {
 			// Выводим результат проверки кратности значения степени двойки
 			return ((value & ((1ull << exponent) - 1ull)) == 0ull);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция умножения значения на степень пятёрки со сдвигом
 		 *
 		 * @details Младшие разряды произведения на младшее слово множителя на результат
@@ -244,22 +164,6 @@ namespace awh {
 		 * @param shift количество разрядов сдвига в диапазоне от 64 до 127
 		 * @return      результат умножения со сдвигом
 		 *
-		 * \~english
-		 * @brief Function of multiplying a value by a power of five with a shift
-		 *
-		 * @details The low digits of the product by the low word of the multiplier do not influence
-		 *          the result and therefore are not computed: the multiplicand does not exceed
-		 *          fifty six digits, while the shift makes up no less than one hundred
-		 *          and eighteen digits, from which the discarded part is knowingly smaller
-		 *          than the unit of the least digit of the result.
-		 *
-		 * @param value value to multiply
-		 * @param high  high word of the multiplier
-		 * @param low   low word of the multiplier
-		 * @param shift number of the digits of the shift in the range from 64 to 127
-		 * @return      result of the multiplication with the shift
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ uint64_t multiplyShift(const uint64_t value, const uint64_t high, const uint64_t low, const int32_t shift) noexcept {
 			// Выполняем умножение значения на младшее слово множителя
@@ -276,21 +180,13 @@ namespace awh {
 			return ((sum >> count) | (carry << (64 - count)));
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
-		 * \~english
-		 * @brief Template of the floating-point type
-		 *
-		 * @tparam T floating-point type
-		 *
-		 * \~
 		 */
 		template <typename T>
 		/**
-		 * \~russian
 		 * @brief Функция формирования кратчайшего десятичного представления числа
 		 *
 		 * @details Функция принимает разобранное на части двоичное представление конечного
@@ -304,21 +200,6 @@ namespace awh {
 		 * @param exponent значение поля порядка двоичного представления
 		 * @return         кратчайшее десятичное представление числа
 		 *
-		 * \~english
-		 * @brief Function of forming the shortest decimal representation of a number
-		 *
-		 * @details The function takes the binary representation of a finite non-zero number parsed
-		 *          into parts and outputs the decimal representation with the least number
-		 *          of significant digits among those which are read back as this very same
-		 *          number. The exponent is chosen from the interval of the values rounded
-		 *          to the source number, from which the record is reversible under any way
-		 *          of parsing which observes the rounding to the nearest.
-		 *
-		 * @param mantissa value of the mantissa field of the binary representation
-		 * @param exponent value of the exponent field of the binary representation
-		 * @return         shortest decimal representation of the number
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ decimal_t shortest(const uint64_t mantissa, const int32_t exponent) noexcept {
 			// Получаем количество явных разрядов мантиссы формата числа
@@ -385,19 +266,11 @@ namespace awh {
 				// Выполняем приведение нижней границы промежутка
 				lower = multiplyShift((middle - 1ull) - correction, high, low, shift);
 				/**
-				 * \~russian
 				 * @brief Если показатель степени десяти допускает наличие незначащих разрядов
 				 *
 				 * @note Предел взят по разрядности середины промежутка: большая степень
 				 *       пятёрки её заведомо превосходит и делителем быть не может
 				 *
-				 * \~english
-				 * @brief If an exponent of a degree of ten admits a presence of the insignificant digits
-				 *
-				 * @note A bound is taken by a bitness of a middle of an interval: a greater degree
-				 *      of a five knowingly surpasses it and can not be a divisor
-				 *
-				 * \~
 				 */
 				if(index <= 21){
 					/**
@@ -469,19 +342,11 @@ namespace awh {
 			// Результирующая мантисса десятичного представления
 			uint64_t result = 0;
 			/**
-			 * \~russian
 			 * @brief Если промежуток содержит записи без значащих разрядов ниже границ
 			 *
 			 * @note Ветвь эта редка и отброс разрядов ведётся в ней по одному, зато с
 			 *       отслеживанием точности: обычная ветвь ниже отбрасывает разряды парами
 			 *
-			 * \~english
-			 * @brief If an interval contains records without significant digits below the bounds
-			 *
-			 * @note This branch is rare and a rejection of the digits is led in it one by one, but with
-			 *       a tracking of an accuracy: a usual branch below rejects the digits in pairs
-			 *
-			 * \~
 			 */
 			if(lowerZeros || middleZeros){
 				/**

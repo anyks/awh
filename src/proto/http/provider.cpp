@@ -57,7 +57,7 @@ unique_ptr <awh::http::provider_t> awh::http::Request::clone() const noexcept {
 	// Результат работы функции - копия объекта запроса
 	unique_ptr <provider_t> result = nullptr;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Создаём копию текущего объекта запроса без срезки производной части
@@ -79,7 +79,7 @@ awh::http::Request & awh::http::Request::operator = (request_t && request) noexc
 	this->uri = ::move(request.uri);
 	// Перемещаем оригинальное написание метода HTTP-запроса
 	this->methodName = ::move(request.methodName);
-	// Выполняем перемещение протокола расширенного метода CONNECT
+	// Перемещаем протокол расширенного метода CONNECT
 	this->protocol = ::move(request.protocol);
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
@@ -104,7 +104,7 @@ awh::http::Request & awh::http::Request::operator = (const request_t & request) 
 	this->uri = request.uri;
 	// Копируем оригинальное написание метода HTTP-запроса
 	this->methodName = request.methodName;
-	// Выполняем копирование протокола расширенного метода CONNECT
+	// Копируем протокол расширенного метода CONNECT
 	this->protocol = request.protocol;
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
@@ -121,7 +121,7 @@ awh::http::Request & awh::http::Request::operator = (const request_t & request) 
  *
  */
 bool awh::http::Request::operator == (const request_t & request) const noexcept {
-	// Выполняем сравнение параметров запроса клиента
+	// Сравниваем параметры запроса клиента
 	return (
 		(this->method == request.method) &&
 		(this->version == request.version) &&
@@ -138,7 +138,7 @@ bool awh::http::Request::operator == (const request_t & request) const noexcept 
  *
  */
 bool awh::http::Request::operator != (const request_t & request) const noexcept {
-	// Выполняем сравнение параметров запроса клиента
+	// Сравниваем параметры запроса клиента
 	return !((* this) == request);
 }
 /**
@@ -152,7 +152,7 @@ awh::http::Request::Request(request_t && request) noexcept : provider_t(direct_t
 	this->uri = ::move(request.uri);
 	// Перемещаем оригинальное написание метода HTTP-запроса
 	this->methodName = ::move(request.methodName);
-	// Выполняем перемещение протокола расширенного метода CONNECT
+	// Перемещаем протокол расширенного метода CONNECT
 	this->protocol = ::move(request.protocol);
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
@@ -174,7 +174,7 @@ awh::http::Request::Request(const request_t & request) noexcept : provider_t(dir
 	this->uri = request.uri;
 	// Копируем оригинальное написание метода HTTP-запроса
 	this->methodName = request.methodName;
-	// Выполняем копирование протокола расширенного метода CONNECT
+	// Копируем протокол расширенного метода CONNECT
 	this->protocol = request.protocol;
 	// Копируем метод HTTP-запроса
 	this->method = request.method;
@@ -259,7 +259,7 @@ unique_ptr <awh::http::provider_t> awh::http::Response::clone() const noexcept {
 	// Результат работы функции - копия объекта ответа
 	unique_ptr <provider_t> result = nullptr;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Создаём копию текущего объекта ответа без срезки производной части
@@ -315,7 +315,7 @@ awh::http::Response & awh::http::Response::operator = (const response_t & respon
  *
  */
 bool awh::http::Response::operator == (const response_t & response) const noexcept {
-	// Выполняем сравнение параметров ответа сервера
+	// Сравниваем параметры ответа сервера
 	return (
 		(this->code == response.code) &&
 		(this->version == response.version) &&
@@ -330,7 +330,7 @@ bool awh::http::Response::operator == (const response_t & response) const noexce
  *
  */
 bool awh::http::Response::operator != (const response_t & response) const noexcept {
-	// Выполняем сравнение параметров ответа сервера
+	// Сравниваем параметры ответа сервера
 	return !((* this) == response);
 }
 /**
@@ -505,7 +505,7 @@ string_view awh::http::statusMessage(const uint16_t code) noexcept {
 		{505, "HTTP Version Not Supported"}
 	};
 	/**
-	 * Выполняем перебор таблицы стандартных сообщений
+	 * Перебираем таблицу стандартных сообщений
 	 */
 	for(const auto & item : messages){
 		// Если код ответа совпадает - возвращаем соответствующее стандартное сообщение
@@ -576,7 +576,7 @@ awh::http::method_t awh::http::classifyMethod(string_view method) noexcept {
 		{"UNSUBSCRIBE", http::method_t::UNSUBSCRIBE}
 	};
 	/**
-	 * Выполняем перебор таблицы соответствия имён методов запроса
+	 * Перебираем таблицу соответствия имён методов запроса
 	 */
 	for(const auto & item : methods){
 		// Если имя метода запроса совпадает - выводим распознанный метод запроса
@@ -804,13 +804,13 @@ string_view awh::http::targetPath(const string_view path, string & buffer) noexc
  *
  */
 bool awh::http::splitTarget(const string_view target, string_view & scheme, string_view & authority, string_view & path) noexcept {
-	// Выполняем сброс выдаваемых составляющих цели запроса
+	// Сбрасываем выдаваемые составляющие цели запроса
 	scheme = string_view{};
-	// Выполняем сброс авторитета цели запроса
+	// Сбрасываем авторитет цели запроса
 	authority = string_view{};
-	// Выполняем сброс пути цели запроса
+	// Сбрасываем путь цели запроса
 	path = string_view{};
-	// Выполняем поиск разделителя схемы: его наличие и означает абсолютную форму цели
+	// Ищем разделитель схемы: его наличие и означает абсолютную форму цели
 	const size_t separator = target.find("://");
 	/**
 	 * Цель без разделителя схемы задана в происхождённой форме либо является

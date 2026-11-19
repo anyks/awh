@@ -1,3 +1,23 @@
+/**
+ * @file srv.cpp
+ * @date 2025-07-03
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Пример сетевого опыта AWH — srv
+ *
+ * @copyright Copyright © 2025
+ *
+ */
+
 // g++ --std=c++11 srv.cpp -o ./srv -Wno-deprecated-declarations
 
 #include <sys/socket.h>

@@ -84,7 +84,7 @@ namespace {
 	 * @return       символ в нижнем регистре
 	 *
 	 */
-	uint8_t toLower(const uint8_t letter) noexcept {
+	uint8_t __awh_to_lower__(const uint8_t letter) noexcept {
 		// Если символ является заглавной латинской буквой - приводим его к нижнему регистру
 		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <uint8_t> (letter + 32) : letter);
 	}
@@ -95,7 +95,7 @@ namespace {
 	 * @return       результат проверки
 	 *
 	 */
-	bool isSpace(const uint8_t letter) noexcept {
+	bool __awh_is_space__(const uint8_t letter) noexcept {
 		// Проверяем принадлежность символа к набору пробельных символов ASCII
 		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\v') || (letter == '\f') || (letter == '\r'));
 	}
@@ -112,7 +112,7 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isFieldValue(string_view value) noexcept {
+	bool __awh_is_field_value__(string_view value) noexcept {
 		/**
 		 * Перебираем октеты проверяемого участка
 		 */
@@ -143,7 +143,7 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isToken(string_view value) noexcept {
+	bool __awh_is_token__(string_view value) noexcept {
 		// Пустой участок токеном не является
 		if(value.empty())
 			// Выводим отрицательный результат проверки
@@ -183,7 +183,7 @@ namespace {
 	 * @param value добавочный хеш-код
 	 *
 	 */
-	void combine(size_t & seed, const size_t value) noexcept {
+	void __awh_combine__(size_t & seed, const size_t value) noexcept {
 		// Комбинируем хеш-коды (константа - дробная часть золотого сечения в 64 битах)
 		seed ^= (value + 0x9E3779B97F4A7C15ULL + (seed << 6) + (seed >> 2));
 	}
@@ -194,7 +194,7 @@ namespace {
 	 * @return     хеш-код названия заголовка без учёта регистра
 	 *
 	 */
-	size_t hashing(string_view name) noexcept {
+	size_t __awh_hashing__(string_view name) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -202,7 +202,7 @@ namespace {
 		 */
 		for(const auto letter : name)
 			// Комбинируем хеш-код очередного символа названия заголовка (в нижнем регистре)
-			::combine(result, hash <uint8_t> {}(toLower(static_cast <uint8_t> (letter))));
+			::__awh_combine__(result, hash <uint8_t> {}(__awh_to_lower__(static_cast <uint8_t> (letter))));
 		// Возвращаем хеш-код
 		return result;
 	}
@@ -217,17 +217,17 @@ namespace {
 	 * @return       результат сравнения строк без учёта регистра
 	 *
 	 */
-	bool equals(string_view first, string_view second) noexcept {
+	bool __awh_equals__(string_view first, string_view second) noexcept {
 		// Если длины строк не совпадают - строки заведомо не равны
 		if(first.size() != second.size())
 			// Возвращаем значение по умолчанию
 			return false;
 		/**
-		 * Выполняем последовательное побуквенное сравнение с приведением к нижнему регистру
+		 * Сравниваем побуквенно, приводя к нижнему регистру
 		 */
 		for(size_t i = 0; i < first.size(); i++){
 			// Если очередная пара букв не совпадает - строки не равны
-			if(toLower(static_cast <uint8_t> (first[i])) != toLower(static_cast <uint8_t> (second[i])))
+			if(__awh_to_lower__(static_cast <uint8_t> (first[i])) != __awh_to_lower__(static_cast <uint8_t> (second[i])))
 				// Возвращаем значение по умолчанию
 				return false;
 		}
@@ -246,17 +246,17 @@ namespace {
 	 * @return      участок без окружающих пробельных символов
 	 *
 	 */
-	string_view trim(string_view value) noexcept {
+	string_view __awh_trim__(string_view value) noexcept {
 		/**
 		 * Отбрасываем пробельные символы в начале участка
 		 */
-		while(!value.empty() && isSpace(static_cast <uint8_t> (value.front())))
+		while(!value.empty() && __awh_is_space__(static_cast <uint8_t> (value.front())))
 			// Смещаем начало участка
 			value.remove_prefix(1);
 		/**
 		 * Отбрасываем пробельные символы в конце участка
 		 */
-		while(!value.empty() && isSpace(static_cast <uint8_t> (value.back())))
+		while(!value.empty() && __awh_is_space__(static_cast <uint8_t> (value.back())))
 			// Смещаем конец участка
 			value.remove_suffix(1);
 		// Выводим участок без окружающих пробельных символов
@@ -276,17 +276,17 @@ namespace {
 	 *
 	 */
 	template <typename T>
-	string_view firstValue(T first, T last, string_view name) noexcept {
+	string_view __awh_first_value__(T first, T last, string_view name) noexcept {
 		/**
-		 * Выполняем перебор заголовков в поисках первого непустого значения
+		 * Перебираем заголовки в поисках первого непустого значения
 		 */
 		for(auto i = first; i != last; ++i){
 			// Если название заголовка с искомым не совпадает - пропускаем его
-			if(!::equals(i->name, name))
+			if(!::__awh_equals__(i->name, name))
 				// Переходим к следующему заголовку
 				continue;
 			// Снимаем с значения окружающие отступы: к значению поля они не относятся (RFC 9110 §5.5)
-			const string_view value = ::trim(i->value);
+			const string_view value = ::__awh_trim__(i->value);
 			// Если значение не опустело - выводим его
 			if(!value.empty())
 				// Выводим найденное значение заголовка
@@ -312,13 +312,13 @@ namespace {
 	 * @return         результат проверки
 	 *
 	 */
-	bool isAllowedPseudo(string_view name, const bool response, const bool connect, const bool extended) noexcept {
+	bool __awh_is_allowed_pseudo__(string_view name, const bool response, const bool connect, const bool extended) noexcept {
 		// Для ответа сервера допустим единственный псевдозаголовок кода ответа
 		if(response)
 			// Выводим результат сравнения с псевдозаголовком кода ответа
-			return ::equals(name, ":status");
+			return ::__awh_equals__(name, ":status");
 		// Метод и авторитет допустимы во всяком запросе клиента, включая классический туннель
-		if(::equals(name, ":method") || ::equals(name, ":authority"))
+		if(::__awh_equals__(name, ":method") || ::__awh_equals__(name, ":authority"))
 			// Выводим положительный результат проверки
 			return true;
 		/**
@@ -329,11 +329,11 @@ namespace {
 			// Выводим отрицательный результат проверки
 			return false;
 		// Псевдозаголовок протокола туннеля несёт только расширенный метод CONNECT (RFC 8441 §4)
-		if(::equals(name, ":protocol"))
+		if(::__awh_equals__(name, ":protocol"))
 			// Выводим признак принадлежности запроса к расширенному туннелю
 			return extended;
 		// Выводим результат сравнения с остальными псевдозаголовками запроса клиента
-		return (::equals(name, ":scheme") || ::equals(name, ":path"));
+		return (::__awh_equals__(name, ":scheme") || ::__awh_equals__(name, ":path"));
 	}
 	/**
 	 * @brief Функция проверки принадлежности заголовка к управляющим соединением
@@ -347,14 +347,14 @@ namespace {
 	 * @return     результат проверки
 	 *
 	 */
-	bool isConnectionSpecific(string_view name) noexcept {
-		// Выполняем сравнение названия заголовка со списком управляющих соединением
+	bool __awh_is_connection_specific__(string_view name) noexcept {
+		// Сравниваем название заголовка со списком управляющих соединением
 		return (
-			::equals(name, "Upgrade") ||
-			::equals(name, "Keep-Alive") ||
-			::equals(name, "Connection") ||
-			::equals(name, "Proxy-Connection") ||
-			::equals(name, "Transfer-Encoding")
+			::__awh_equals__(name, "Upgrade") ||
+			::__awh_equals__(name, "Keep-Alive") ||
+			::__awh_equals__(name, "Connection") ||
+			::__awh_equals__(name, "Proxy-Connection") ||
+			::__awh_equals__(name, "Transfer-Encoding")
 		);
 	}
 	/**
@@ -368,7 +368,7 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	bool isBinaryProto(const http::proto_t proto) noexcept {
+	bool __awh_is_binary_proto__(const http::proto_t proto) noexcept {
 		/**
 		 * Определяем принадлежность протокола к семейству HTTP/2
 		 */
@@ -402,13 +402,13 @@ namespace {
 	 * @return      итератор найденного заголовка либо end
 	 *
 	 */
-	Iterator findByName(Iterator begin, Iterator end, string_view name) noexcept {
+	Iterator __awh_find_by_name__(Iterator begin, Iterator end, string_view name) noexcept {
 		/**
-		 * Выполняем перебор заголовков для поиска совпадения по названию без учёта регистра
+		 * Перебираем заголовки в поисках совпадения по названию без учёта регистра
 		 */
 		for(auto i = begin; i != end; ++i){
 			// Если название заголовка совпадает с указанным
-			if(equals(i->name, name))
+			if(__awh_equals__(i->name, name))
 				// Возвращаем итератор найденного заголовка
 				return i;
 		}
@@ -429,15 +429,15 @@ namespace {
 	 * @return       метод HTTP-запроса
 	 *
 	 */
-	http::method_t method(string_view method) noexcept {
-		// Выполняем распознавание метода запроса по канонической таблице провайдера
+	http::method_t __awh_method__(string_view method) noexcept {
+		// Распознаём метод запроса по канонической таблице провайдера
 		const http::method_t result = http::classifyMethod(method);
 		// Если метод запроса распознан - выводим его
 		if(result != http::method_t::NONE)
 			// Выводим распознанный метод запроса
 			return result;
 		// Если название метода является корректным токеном - считаем метод нераспознанным, но допустимым
-		return (::isToken(method) ? http::method_t::UNKNOWN : http::method_t::NONE);
+		return (::__awh_is_token__(method) ? http::method_t::UNKNOWN : http::method_t::NONE);
 	}
 	/**
 	 * @brief Функция форматирования версии протокола HTTP в текстовый вид
@@ -453,7 +453,7 @@ namespace {
 	 * @return        версия протокола HTTP в текстовом виде (например "1.1")
 	 *
 	 */
-	string versionName(const http::version_t version) noexcept {
+	string __awh_version_name__(const http::version_t version) noexcept {
 		/**
 		 * Определяем текстовое представление версии протокола HTTP
 		 */
@@ -506,7 +506,7 @@ namespace {
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 *
 	 */
-	void applyCaseRange(char * data, const size_t length, const http::proto_t proto) noexcept {
+	void __awh_apply_case_range__(char * data, const size_t length, const http::proto_t proto) noexcept {
 		/**
 		 * Определяем версию протокола передачи данных
 		 *
@@ -529,7 +529,7 @@ namespace {
 				 */
 				for(size_t i = 0; i < length; i++)
 					// Приводим очередной символ названия заголовка к нижнему регистру
-					data[i] = static_cast <char> (toLower(static_cast <uint8_t> (data[i])));
+					data[i] = static_cast <char> (__awh_to_lower__(static_cast <uint8_t> (data[i])));
 			} break;
 			// Для остальных версий протокола название заголовка приводится к «умному» регистру
 			default: {
@@ -542,7 +542,7 @@ namespace {
 					// Получаем символ с которым ведётся работа в данный момент
 					const char letter = data[i];
 					// Приводим символ к нижнему регистру
-					const uint8_t lower = toLower(static_cast <uint8_t> (letter));
+					const uint8_t lower = __awh_to_lower__(static_cast <uint8_t> (letter));
 					// Если флаг перевода в верхний регистр активирован
 					if(mode)
 						// Переводим строчную латинскую букву в верхний регистр, прочие символы оставляем без изменений
@@ -550,7 +550,7 @@ namespace {
 					// Переводим остальные символы в нижний регистр
 					else data[i] = static_cast <char> (lower);
 					// Если найден спецсимвол, устанавливаем флаг детекции
-					mode = ((letter == '-') || (letter == '_') || isSpace(static_cast <uint8_t> (letter)));
+					mode = ((letter == '-') || (letter == '_') || __awh_is_space__(static_cast <uint8_t> (letter)));
 				}
 			}
 		}
@@ -566,9 +566,9 @@ namespace {
 	 * @param proto версия протокола HTTP-запроса/ответа
 	 *
 	 */
-	void applyCaseName(string & name, const http::proto_t proto) noexcept {
+	void __awh_apply_case_name__(string & name, const http::proto_t proto) noexcept {
 		// Приводим название заголовка к канонической форме протокола по месту
-		applyCaseRange(&name[0], name.size(), proto);
+		__awh_apply_case_range__(&name[0], name.size(), proto);
 	}
 	/**
 	 * @brief Функция дописывания названия HTTP-заголовка с приведением регистра к канонической форме протокола
@@ -586,13 +586,13 @@ namespace {
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 *
 	 */
-	void appendCasedName(string & result, string_view name, const http::proto_t proto) noexcept {
+	void __awh_append_cased_name__(string & result, string_view name, const http::proto_t proto) noexcept {
 		// Запоминаем позицию, с которой начинается дописанное название
 		const size_t offset = result.size();
 		// Дописываем название заголовка в исходном виде одним куском
 		result.append(name.data(), name.size());
 		// Приводим дописанное название к канонической форме протокола по месту
-		applyCaseRange(&result[offset], name.size(), proto);
+		__awh_apply_case_range__(&result[offset], name.size(), proto);
 	}
 	/**
 	 * @brief Функция дописывания одной строки HTTP-заголовка с учётом версии протокола
@@ -605,9 +605,9 @@ namespace {
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 *
 	 */
-	void appendHeader(string & result, const http::Headers::header_t & header, const http::proto_t proto) noexcept {
+	void __awh_append_header__(string & result, const http::Headers::header_t & header, const http::proto_t proto) noexcept {
 		// Дописываем название заголовка в канонической для протокола форме
-		appendCasedName(result, header.name, proto);
+		__awh_append_cased_name__(result, header.name, proto);
 		// Дописываем разделитель названия и значения заголовка
 		result.append(": ");
 		// Дописываем значение заголовка
@@ -633,7 +633,7 @@ namespace {
 	 * @return        определённая версия протокола HTTP
 	 *
 	 */
-	http::proto_t detectProto(const Range & headers) noexcept {
+	http::proto_t __awh_detect_proto__(const Range & headers) noexcept {
 		// Флаг наличия хотя бы одного заголовка для анализа
 		bool hasHeaders = false;
 		/**
@@ -668,7 +668,7 @@ namespace {
 	 * @return          компонент авторитета без посторонних подкомпонентов
 	 *
 	 */
-	string cleanAuthority(string_view authority) noexcept {
+	string __awh_clean_authority__(string_view authority) noexcept {
 		/**
 		 * Снимаем окружающие отступы здесь же, а не у вызывающей стороны: авторитет
 		 * приходит четырьмя путями - из цели обычного запроса, из цели туннеля,
@@ -676,7 +676,7 @@ namespace {
 		 * вызова означало бы четыре места, где о нём можно забыть. Один такой путь
 		 * уже оказывался забытым
 		 */
-		string result(::trim(authority));
+		string result(::__awh_trim__(authority));
 		// Ищем начало якоря
 		const size_t fragment = result.find('#');
 		// Если якорь присутствует - отбрасываем его вместе с разделителем
@@ -694,7 +694,7 @@ namespace {
 		 * о пользователе и узлом либо перед якорем, - и после отбрасывания
 		 * этих частей оказаться по краям
 		 */
-		const string_view trimmed = ::trim(result);
+		const string_view trimmed = ::__awh_trim__(result);
 		// Если после отбрасывания частей по краям остались отступы - снимаем их
 		if(trimmed.size() != result.size())
 			// Оставляем в авторитете только часть без окружающих отступов
@@ -715,7 +715,7 @@ namespace {
 	 * @return       результат сравнения
 	 *
 	 */
-	bool equalsProvider(const http::provider_t * first, const http::provider_t * second) noexcept {
+	bool __awh_equals_provider__(const http::provider_t * first, const http::provider_t * second) noexcept {
 		// Если оба провайдера отсутствуют - они равны
 		if((first == nullptr) && (second == nullptr))
 			// Выводим положительный результат сравнения
@@ -758,7 +758,7 @@ namespace {
 	 * @return        результат разбора
 	 *
 	 */
-	bool parseVersion(string_view text, http::version_t & version) noexcept {
+	bool __awh_parse_version__(string_view text, http::version_t & version) noexcept {
 		/**
 		 * Запись без младшего номера ("HTTP/2") тоже допустима: так записывают версию
 		 * протоколы с бинарным кадрированием, у которых стартовой строки нет вовсе,
@@ -826,9 +826,9 @@ namespace {
 	 * @return         уточнённый протокол
 	 *
 	 */
-	http::proto_t refineProto(const http::proto_t current, const http::proto_t detected) noexcept {
+	http::proto_t __awh_refine_proto__(const http::proto_t current, const http::proto_t detected) noexcept {
 		// Если контейнер уже настроен на протокол семейства HTTP/2 - сохраняем настроенный протокол
-		if(isBinaryProto(current))
+		if(__awh_is_binary_proto__(current))
 			// Выводим текущий протокол контейнера
 			return current;
 		// Выводим обнаруженный протокол
@@ -889,7 +889,7 @@ namespace {
 					 * и путь, которых классический туннель не несёт вовсе (RFC 9113 §8.5).
 					 * Тем же порядком разновидность определяется и по набору без провайдера
 					 */
-					const string_view protocol = ::trim(request->protocol);
+					const string_view protocol = ::__awh_trim__(request->protocol);
 					// Определяем принадлежность запроса к расширенному методу CONNECT
 					const bool extended = (!protocol.empty() && (request->method == http::method_t::CONNECT));
 					/**
@@ -915,7 +915,7 @@ namespace {
 							 */
 							const bool absolute = awh::http::splitTarget(request->uri, uriScheme, uriAuthority, uriPath);
 							// Очищаем цель запроса от сведений о пользователе и якоря
-							const string authority = ::cleanAuthority(absolute ? uriAuthority : string_view(request->uri));
+							const string authority = ::__awh_clean_authority__(absolute ? uriAuthority : string_view(request->uri));
 							/**
 							 * Если после очистки авторитет опустел - псевдозаголовком он не передаётся:
 							 * пустой авторитет не указывает ни на какой узел, а принимающая сторона
@@ -957,13 +957,13 @@ namespace {
 						 */
 						scheme.reserve(uriScheme.size());
 						/**
-						 * Выполняем перебор октетов схемы цели запроса
+						 * Перебираем октеты схемы цели запроса
 						 */
 						for(const auto letter : uriScheme)
 							// Дописываем очередной символ схемы в нижнем регистре
-							scheme.append(1, static_cast <char> (::toLower(static_cast <uint8_t> (letter))));
+							scheme.append(1, static_cast <char> (::__awh_to_lower__(static_cast <uint8_t> (letter))));
 						// Отбрасываем из авторитета сведения о пользователе и якорь
-						authority = ::cleanAuthority(uriAuthority);
+						authority = ::__awh_clean_authority__(uriAuthority);
 						// Переносим путь цели запроса вместе со строкой запроса
 						path.assign(uriPath);
 					}
@@ -1087,7 +1087,7 @@ namespace {
 	 * @return        набор заголовков
 	 *
 	 */
-	http::Headers::fields_t convert(const http::Headers::multimap_t & headers) noexcept {
+	http::Headers::fields_t __awh_convert__(const http::Headers::multimap_t & headers) noexcept {
 		// Результирующий список заголовков
 		http::Headers::fields_t result;
 		/**
@@ -1128,7 +1128,7 @@ namespace {
 	 * @param flag    флаг важности сообщения
 	 *
 	 */
-	void printError([[maybe_unused]] const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) noexcept {
+	void __awh_print_error__([[maybe_unused]] const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1146,7 +1146,7 @@ namespace {
 };
 
 /**
- * @brief Фабричный метод создания HTTP-заголовка
+ * @brief Метод создания HTTP-заголовка (фабричный)
  *
  * @param name  название HTTP-заголовка
  * @param value значение HTTP-заголовка
@@ -1190,7 +1190,7 @@ bool awh::http::Headers::Header::operator == (const header_t & other) const noex
 	 * не требуется: заголовки с общим названием и разными значениями попадут в одну
 	 * корзину и различатся уже сравнением
 	 */
-	return (::equals(this->name, other.name) && (this->value == other.value));
+	return (::__awh_equals__(this->name, other.name) && (this->value == other.value));
 }
 
 /**
@@ -1202,7 +1202,7 @@ bool awh::http::Headers::Header::operator == (const header_t & other) const noex
  */
 size_t awh::http::Headers::Header_Hash::operator()(const header_t & header) const noexcept {
 	// Вычисляем хеш-код названия заголовка без учёта регистра
-	return ::hashing(header.name);
+	return ::__awh_hashing__(header.name);
 }
 
 /**
@@ -1214,7 +1214,7 @@ size_t awh::http::Headers::Header_Hash::operator()(const header_t & header) cons
  */
 size_t awh::http::Headers::Header_Name_Hash::operator()(const string & name) const noexcept {
 	// Вычисляем хеш-код названия заголовка без учёта регистра
-	return ::hashing(name);
+	return ::__awh_hashing__(name);
 }
 
 /**
@@ -1226,8 +1226,8 @@ size_t awh::http::Headers::Header_Name_Hash::operator()(const string & name) con
  *
  */
 bool awh::http::Headers::Header_Name_Equal::operator()(const string & first, const string & second) const noexcept {
-	// Выполняем регистронезависимое сравнение названий заголовков
-	return ::equals(first, second);
+	// Сравниваем названия заголовков без учёта регистра
+	return ::__awh_equals__(first, second);
 }
 
 /**
@@ -1240,7 +1240,7 @@ bool awh::http::Headers::Header_Name_Equal::operator()(const string & first, con
  */
 void awh::http::Headers::Iterator::_error(const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
-	::printError(func, message, flag);
+	::__awh_print_error__(func, message, flag);
 }
 /**
  * @brief Оператор преобразования в сырой итератор
@@ -1280,10 +1280,10 @@ awh::http::Headers::Iterator::reference awh::http::Headers::Iterator::operator *
  */
 awh::http::Headers::Iterator & awh::http::Headers::Iterator::operator ++ () noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем смещение итератора
+		// Смещаем итератор
 		++this->_it;
 	/**
 	 * Если возникает ошибка
@@ -1358,7 +1358,7 @@ awh::http::Headers::Iterator::Iterator(iterator it) noexcept :
  */
 void awh::http::Headers::Const_Iterator::_error(const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
-	::printError(func, message, flag);
+	::__awh_print_error__(func, message, flag);
 }
 /**
  * @brief Оператор преобразования в сырой константный итератор
@@ -1398,10 +1398,10 @@ awh::http::Headers::Const_Iterator::reference awh::http::Headers::Const_Iterator
  */
 awh::http::Headers::Const_Iterator & awh::http::Headers::Const_Iterator::operator ++ () noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем смещение итератора
+		// Смещаем итератор
 		++this->_it;
 	/**
 	 * Если возникает ошибка
@@ -1493,7 +1493,7 @@ awh::http::Headers::Max::Max() noexcept :
  */
 void awh::http::Headers::_recase() noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -1501,7 +1501,7 @@ void awh::http::Headers::_recase() noexcept {
 		 */
 		for(auto & header : this->_headers)
 			// Нормализуем регистр названия заголовка по месту (длина не меняется, поэтому счётчик памяти корректировать не требуется)
-			::applyCaseName(header.name, this->_proto);
+			::__awh_apply_case_name__(header.name, this->_proto);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1528,7 +1528,7 @@ template <typename Name, typename Content>
  */
 size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Формируем новый заголовок
@@ -1538,7 +1538,7 @@ size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
 			// Устанавливаем название заголовка (перемещаем строку при передаче временного объекта, сохраняя её буфер)
 			header.name = ::forward <Name> (name);
 			// Приводим название заголовка к канонической для текущего протокола форме по месту (без перевыделения памяти)
-			::applyCaseName(header.name, this->_proto);
+			::__awh_apply_case_name__(header.name, this->_proto);
 			// Устанавливаем значение заголовка (перемещаем строку при передаче временного объекта)
 			header.value = ::forward <Content> (content);
 		}
@@ -1561,6 +1561,7 @@ size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
 			 *       отрицательно. Слияние отказ записывает - оно отвергается целиком
 			 *       и однократно. Причина - в README модуля, раздел «Решения,
 			 *       принятые сознательно»
+			 *
 			 */
 			if(this->_headers.size() < this->_max.records){
 				// Вычисляем объём полезной нагрузки добавляемого заголовка (название и значение)
@@ -1625,11 +1626,11 @@ bool awh::http::Headers::_fits(string_view name, const size_t payload) const noe
 	// Объём полезной нагрузки, освобождаемый удалением прежних вхождений
 	size_t released = 0;
 	/**
-	 * Выполняем перебор всех заголовков, собирая объём, который освободит удаление
+	 * Перебираем все заголовки, собирая объём, который освободит удаление
 	 */
 	for(const auto & header : this->_headers){
 		// Если название заголовка совпадает с указанным
-		if(::equals(header.name, name)){
+		if(::__awh_equals__(header.name, name)){
 			// Увеличиваем количество удаляемых записей
 			records++;
 			// Увеличиваем освобождаемый объём полезной нагрузки
@@ -1657,11 +1658,11 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 	// Результат работы функции - собранный набор заголовков
 	fields_t result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если протокол к семейству HTTP/2 не относится - набор отдаётся как есть
-		if(!::isBinaryProto(proto)){
+		if(!::__awh_is_binary_proto__(proto)){
 			// Резервируем память под набор заголовков
 			result.reserve(this->_headers.size());
 			// Копируем набор заголовков в результат без изменений
@@ -1682,7 +1683,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 			// Запоминаем, был ли сформирован псевдозаголовок авторитета
 			// Сверяем название общим правилом: названия полей сравниваются без учёта регистра (RFC 9110 §5.1),
 			// и точное сравнение держалось бы на том, что сборщик псевдозаголовков всегда даёт нижний регистр
-			authority = (authority || ::equals(header.name, ":authority"));
+			authority = (authority || ::__awh_equals__(header.name, ":authority"));
 			// Добавляем псевдозаголовок в результат
 			result.push_back(::move(header));
 		}
@@ -1711,11 +1712,11 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 			 */
 			for(const auto & header : this->_headers){
 				// Если заголовок псевдозаголовком авторитета не является - пропускаем его
-				if(!::equals(header.name, ":authority"))
+				if(!::__awh_equals__(header.name, ":authority"))
 					// Переходим к следующему заголовку
 					continue;
 				// Запоминаем, пережил ли авторитет очистку
-				authority = !::cleanAuthority(header.value).empty();
+				authority = !::__awh_clean_authority__(header.value).empty();
 				// Если авторитет место занял - перебор прекращаем
 				if(authority)
 					// Прерываем перебор установленных заголовков
@@ -1734,7 +1735,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 		 */
 		const bool response = ((this->_provider != nullptr) ?
 			(this->_provider->direct == direct_t::RESPONSE) :
-			!::firstValue(this->_headers.begin(), this->_headers.end(), ":status").empty()
+			!::__awh_first_value__(this->_headers.begin(), this->_headers.end(), ":status").empty()
 		);
 		// Определяем принадлежность сообщения к запросам клиента
 		const bool request = !response;
@@ -1754,7 +1755,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				// Запоминаем принадлежность запроса к туннелю
 				connect = (source->method == http::method_t::CONNECT);
 				// Запоминаем принадлежность туннеля к расширенной разновидности
-				extended = (connect && !::trim(source->protocol).empty());
+				extended = (connect && !::__awh_trim__(source->protocol).empty());
 			// Если объект провайдера отсутствует - метод берётся из набора
 			} else {
 				/**
@@ -1762,14 +1763,14 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				 * и пустое первое вхождение отменяло бы годное второе. Названия методов
 				 * сравниваются с учётом регистра (RFC 9110 §9.1)
 				 */
-				connect = (::firstValue(this->_headers.begin(), this->_headers.end(), ":method") == "CONNECT");
+				connect = (::__awh_first_value__(this->_headers.begin(), this->_headers.end(), ":method") == "CONNECT");
 				/**
 				 * Расширенным туннель делает не наличие псевдозаголовка протокола, а его
 				 * значение: пустой протокол ничего не поднимает поверх туннеля, и признать
 				 * по нему туннель расширенным значило бы пропустить в сообщение схему
 				 * и путь, которых классический туннель не несёт вовсе (RFC 9113 §8.5)
 				 */
-				extended = (connect && !::firstValue(this->_headers.begin(), this->_headers.end(), ":protocol").empty());
+				extended = (connect && !::__awh_first_value__(this->_headers.begin(), this->_headers.end(), ":protocol").empty());
 			}
 		}
 		/**
@@ -1787,7 +1788,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 			 */
 			for(const auto & header : this->_headers){
 				// Если заголовок адресатом не является - пропускаем его
-				if(!::equals(header.name, "Host"))
+				if(!::__awh_equals__(header.name, "Host"))
 					// Переходим к следующему заголовку
 					continue;
 				/**
@@ -1795,7 +1796,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				 * URI-адреса: запрет на сведения о пользователе и на якорь общий,
 				 * а окружающие отступы к значению поля не относятся (RFC 9110 §5.5)
 				 */
-				const string authority = ::cleanAuthority(header.value);
+				const string authority = ::__awh_clean_authority__(header.value);
 				/**
 				 * Если после очистки авторитет опустел - переходим к следующему вхождению:
 				 * пустой авторитет псевдозаголовком не передаётся, он не указывает ни на какой
@@ -1822,11 +1823,11 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 		 */
 		vector <string_view> hop;
 		/**
-		 * Выполняем перебор всех установленных заголовков в поисках заголовка Connection
+		 * Перебираем все установленные заголовки в поисках заголовка Connection
 		 */
 		for(const auto & header : this->_headers){
 			// Если заголовок не является заголовком управления соединением - переходим к следующему
-			if(!::equals(header.name, "Connection"))
+			if(!::__awh_equals__(header.name, "Connection"))
 				// Переходим к следующему заголовку
 				continue;
 			// Позиция начала очередного названия в значении заголовка
@@ -1840,7 +1841,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				// Определяем конец очередного названия
 				const size_t finish = ((comma == string::npos) ? header.value.size() : comma);
 				// Извлекаем очередное название, отбрасывая окружающие пробелы
-				const string_view name = ::trim(string_view(header.value).substr(start, (finish - start)));
+				const string_view name = ::__awh_trim__(string_view(header.value).substr(start, (finish - start)));
 				// Если название извлечено - запоминаем его
 				if(!name.empty())
 					// Добавляем название в список полей одного участка передачи
@@ -1862,7 +1863,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 		 */
 		for(uint8_t pass = 0; pass < 2; pass++){
 			/**
-			 * Выполняем перебор всех установленных заголовков, отсеивая непригодные
+			 * Перебираем все установленные заголовки, отсеивая непригодные
 			 */
 			for(const auto & header : this->_headers){
 				// Определяем принадлежность заголовка к псевдозаголовкам
@@ -1883,11 +1884,11 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 					// Признак того, что такой же псевдозаголовок уже собран из провайдера
 					bool duplicate = false;
 					/**
-					 * Выполняем перебор псевдозаголовков, собранных из провайдера
+					 * Перебираем псевдозаголовки, собранные из провайдера
 					 */
 					for(size_t i = 0; !duplicate && (i < generated); i++)
 						// Запоминаем совпадение названия с уже собранным псевдозаголовком
-						duplicate = ::equals(result.at(i).name, header.name);
+						duplicate = ::__awh_equals__(result.at(i).name, header.name);
 					// Если такой псевдозаголовок уже собран - пропускаем его
 					if(duplicate)
 						// Переходим к следующему заголовку
@@ -1897,7 +1898,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 					 * не попадает: набор их задан стандартом и направлением закрыт наглухо,
 					 * а лишний обязывает принимающую сторону отвергнуть сообщение целиком
 					 */
-					if(!::isAllowedPseudo(header.name, response, connect, extended))
+					if(!::__awh_is_allowed_pseudo__(header.name, response, connect, extended))
 						// Переходим к следующему заголовку
 						continue;
 					/**
@@ -1908,22 +1909,22 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 					 * узел, заданный заголовком адресата и псевдозаголовком, давал бы на проводе
 					 * разное, а сведения о пользователе уехали бы туда, откуда их убирают
 					 */
-					string value(::trim(header.value));
+					string value(::__awh_trim__(header.value));
 					// Если псевдозаголовок несёт авторитет запроса
-					if(::equals(header.name, ":authority"))
+					if(::__awh_equals__(header.name, ":authority"))
 						// Очищаем авторитет от сведений о пользователе и якоря
-						value = ::cleanAuthority(value);
+						value = ::__awh_clean_authority__(value);
 					// Если псевдозаголовок несёт схему запроса
-					else if(::equals(header.name, ":scheme")) {
+					else if(::__awh_equals__(header.name, ":scheme")) {
 						/**
-						 * Выполняем перебор октетов схемы: схема регистронезависима,
+						 * Перебираем октеты схемы: схема регистронезависима,
 						 * и канонической считается запись строчными буквами (RFC 3986 §3.1)
 						 */
 						for(auto & letter : value)
 							// Приводим очередной символ схемы к нижнему регистру
-							letter = static_cast <char> (::toLower(static_cast <uint8_t> (letter)));
+							letter = static_cast <char> (::__awh_to_lower__(static_cast <uint8_t> (letter)));
 					// Если псевдозаголовок несёт путь запроса
-					} else if(::equals(header.name, ":path")) {
+					} else if(::__awh_equals__(header.name, ":path")) {
 						/**
 						 * Отбрасываем якорь: он обрабатывается принимающей стороной
 						 * и в запрос не отправляется вовсе (RFC 9112 §3.2.1)
@@ -1965,7 +1966,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 					continue;
 				}
 				// Если заголовок управляет соединением - пропускаем его
-				if(::isConnectionSpecific(header.name))
+				if(::__awh_is_connection_specific__(header.name))
 					// Переходим к следующему заголовку
 					continue;
 				/**
@@ -1975,7 +1976,7 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				 * а сам заголовок к управляющим соединением не отнесён, и снятие
 				 * молча теряло бы поле, которое стандарт передавать не запрещает
 				 */
-				if(request && ::equals(header.name, "Host"))
+				if(request && ::__awh_equals__(header.name, "Host"))
 					// Переходим к следующему заголовку
 					continue;
 				/**
@@ -1988,19 +1989,19 @@ awh::http::Headers::fields_t awh::http::Headers::_compose(const http::proto_t pr
 				 *       протоколах запрещены, и поле с ними на провод не уходит
 				 *
 				 */
-				const bool trailers = (::equals(header.name, "TE") && ::equals(::trim(header.value), "trailers"));
+				const bool trailers = (::__awh_equals__(header.name, "TE") && ::__awh_equals__(::__awh_trim__(header.value), "trailers"));
 				// Если заголовок [TE] несёт значение, отличное от [trailers] - пропускаем его
-				if(::equals(header.name, "TE") && !trailers)
+				if(::__awh_equals__(header.name, "TE") && !trailers)
 					// Переходим к следующему заголовку
 					continue;
 				// Признак принадлежности заголовка к полям одного участка передачи
 				bool skip = false;
 				/**
-				 * Выполняем перебор названий, перечисленных в заголовке Connection
+				 * Перебираем названия, перечисленные в заголовке Connection
 				 */
 				for(const auto & name : hop)
 					// Запоминаем совпадение названия заголовка с перечисленным
-					skip = (skip || ::equals(header.name, name));
+					skip = (skip || ::__awh_equals__(header.name, name));
 				/**
 				 * Если заголовок перечислен в значении заголовка Connection - пропускаем его.
 				 * Поле [TE] со значением [trailers] исключение: оно единственное из полей
@@ -2069,7 +2070,7 @@ void awh::http::Headers::_trim() noexcept {
  */
 void awh::http::Headers::_error(const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
-	::printError(func, message, flag);
+	::__awh_print_error__(func, message, flag);
 }
 /**
  * @brief Метод очистки всех данных заголовков
@@ -2078,7 +2079,7 @@ void awh::http::Headers::_error(const char * func, const char * message, const a
 void awh::http::Headers::clear() noexcept {
 	// Сбрасываем счётчик потребляемой памяти
 	this->_memory = 0;
-	// Выполняем сброс списка заголовков
+	// Сбрасываем список заголовков
 	this->_headers.clear();
 	/**
 	 * Сбрасываем объект провайдера: он описывает то же сообщение, что и заголовки,
@@ -2096,7 +2097,7 @@ void awh::http::Headers::clear() noexcept {
 void awh::http::Headers::reset() noexcept {
 	// Сбрасываем счётчик потребляемой памяти
 	this->_memory = 0;
-	// Выполняем освобождение памяти индекса
+	// Освобождаем память индекса
 	fields_t().swap(this->_headers);
 	/**
 	 * Сбрасываем объект провайдера: сброс контейнера полный, и оставшийся провайдер
@@ -2201,11 +2202,11 @@ string awh::http::Headers::date(const uint64_t date) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Создаем структуру времени
-		std::tm tm = {};
+		std::tm timeInfo = {};
 		// Создаём объект потока
 		stringstream ss{};
 		/**
@@ -2274,11 +2275,11 @@ string awh::http::Headers::date(const uint64_t date) const noexcept {
 		}
 		// Формируем локальное время
 		// Если разложить отметку времени не удалось - выводим пустой результат
-		if(gmtime_r(&value, &tm) == nullptr)
+		if(gmtime_r(&value, &timeInfo) == nullptr)
 			// Выводим результат
 			return result;
-		// Выполняем извлечение даты
-		ss << ::put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+		// Извлекаем дату
+		ss << ::put_time(&timeInfo, "%a, %d %b %Y %H:%M:%S GMT");
 		// Выводим полученное значение даты
 		return ss.str();
 	/**
@@ -2291,7 +2292,7 @@ string awh::http::Headers::date(const uint64_t date) const noexcept {
 		 * логирования разыменовало бы пустой указатель, а метод объявлен как noexcept
 		 * и вызывается при формировании заголовка Date, то есть на штатном пути
 		 */
-		::printError(__PRETTY_FUNCTION__, error.what(), awh::log::flag_t::WARNING);
+		::__awh_print_error__(__PRETTY_FUNCTION__, error.what(), awh::log::flag_t::WARNING);
 	}
 	// Выводим результат
 	return result;
@@ -2346,43 +2347,43 @@ string awh::http::Headers::ident() const noexcept {
 			 */
 			#if defined(_WIN32)
 				// Устанавливаем название операционной системы
-				const char * os = "Windows";
+				const char * platform = "Windows";
 			/**
 			 * Операционной системой является Windows 64bit
 			 */
 			#elif defined(_WIN64)
 				// Устанавливаем название операционной системы
-				const char * os = "Windows";
+				const char * platform = "Windows";
 			/**
 			 * Операционной системой является macOS
 			 */
 			#elif defined(__APPLE__) || defined(__MACH__)
 				// Устанавливаем название операционной системы
-				const char * os = "macOS";
+				const char * platform = "macOS";
 			/**
 			 * Операционной системой является Linux
 			 */
 			#elif defined(__linux__)
 				// Устанавливаем название операционной системы
-				const char * os = "Linux";
+				const char * platform = "Linux";
 			/**
 			 * Операционной системой является FreeBSD
 			 */
 			#elif defined(__FreeBSD__)
 				// Устанавливаем название операционной системы
-				const char * os = "FreeBSD";
+				const char * platform = "FreeBSD";
 			/**
 			 * Операционной системой является NetBSD
 			 */
 			#elif defined(__NetBSD__)
 				// Устанавливаем название операционной системы
-				const char * os = "NetBSD";
+				const char * platform = "NetBSD";
 			/**
 			 * Операционной системой является OpenBSD
 			 */
 			#elif defined(__OpenBSD__)
 				// Устанавливаем название операционной системы
-				const char * os = "OpenBSD";
+				const char * platform = "OpenBSD";
 			/**
 			 * Реализация под Sun Solaris
 			 */
@@ -2392,37 +2393,40 @@ string awh::http::Headers::ident() const noexcept {
 				 */
 				#if defined(__illumos__)
 					// Устанавливаем название операционной системы
-					const char * os = "OpenSolaris";
+					const char * platform = "OpenSolaris";
+				/**
+				 * Операционной системой является Solaris
+				 */
 				#else
 					// Устанавливаем название операционной системы
-					const char * os = "Solaris";
+					const char * platform = "Solaris";
 				#endif
 			/**
 			 * Операционной системой является Unix
 			 */
 			#elif defined(__unix) || defined(__unix__)
 				// Устанавливаем название операционной системы
-				const char * os = "Unix";
+				const char * platform = "Unix";
 			/**
 			 * Операционной системой не распознана
 			 */
 			#else
 				// Устанавливаем название операционной системы
-				const char * os = "Unknown OS";
+				const char * platform = "Unknown OS";
 			#endif
 			/**
-			 * Выполняем генерацию User-Agent клиента выполняющего HTTP-запрос:
+			 * Генерируем User-Agent клиента выполняющего HTTP-запрос:
 			 * значение складывается напрямую, без объекта фреймворка - контейнер
 			 * заголовков создаётся и без него, а вызов его метода по пустому
 			 * указателю является неопределённым поведением
 			 */
-			result.append(this->_ident.name).append(" (").append(os).append("; ");
+			result.append(this->_ident.name).append(" (").append(platform).append("; ");
 			// Добавляем идентификатор и версию сервиса
 			result.append(this->_ident.id).append("/").append(this->_ident.version).append(")");
 		} break;
 		// Если установлен ответ сервера
 		case static_cast <uint8_t> (direct_t::RESPONSE):
-			// Выполняем генерацию X-Powered-By сервера, формирующего HTTP-ответ
+			// Генерируем X-Powered-By сервера, формирующего HTTP-ответ
 			result.append(this->_ident.id).append("/").append(this->_ident.version);
 		break;
 	}
@@ -2461,7 +2465,7 @@ void awh::http::Headers::ident(string_view id, string_view name, string_view ver
 			// Выходим из функции
 			return;
 		// Если составляющая пригодна к записи в значение поля
-		if(::isFieldValue(value)){
+		if(::__awh_is_field_value__(value)){
 			// Устанавливаем составляющую идентификации сервиса
 			target = value;
 			// Выходим из функции
@@ -2476,7 +2480,7 @@ void awh::http::Headers::ident(string_view id, string_view name, string_view ver
 		 * создаётся и без объекта логирования, а составляющая не применяется в любом
 		 * случае - остаться об этом без следа хуже, чем записать в поток ошибок
 		 */
-		::printError(__PRETTY_FUNCTION__, message, awh::log::flag_t::CRITICAL);
+		::__awh_print_error__(__PRETTY_FUNCTION__, message, awh::log::flag_t::CRITICAL);
 	};
 	// Применяем идентификатор сервиса
 	apply(this->_ident.id, id, "identifier");
@@ -2506,7 +2510,7 @@ bool awh::http::Headers::provider(unique_ptr <provider_t> & provider) const noex
 	// Результат работы функции
 	bool result = false;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Проверяем наличие объекта провайдера HTTP-запроса/ответа
@@ -2535,7 +2539,7 @@ bool awh::http::Headers::provider(unique_ptr <provider_t> & provider) const noex
  */
 void awh::http::Headers::provider(const provider_t * provider) noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если объект провайдера HTTP-запроса/ответа передан
@@ -2574,7 +2578,7 @@ string awh::http::Headers::startline() const noexcept {
 	// Результат работы функции - собранная стартовая строка HTTP-запроса/ответа
 	string result = "";
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если объект провайдера HTTP-запроса/ответа установлен
@@ -2605,7 +2609,7 @@ string awh::http::Headers::startline() const noexcept {
 					// Добавляем разделитель между URI и версией протокола
 					result.append(" HTTP/");
 					// Формируем строку версии протокола в формате "HTTP/Версия"
-					result.append(::versionName(request->version));
+					result.append(::__awh_version_name__(request->version));
 				} break;
 				// Если установлен ответ сервера
 				case static_cast <uint8_t> (direct_t::RESPONSE): {
@@ -2620,7 +2624,7 @@ string awh::http::Headers::startline() const noexcept {
 					// Формируем стартовую строку ответа сервера в формате "HTTP/Версия Код Сообщение"
 					result.append("HTTP/");
 					// Формируем строку версии протокола в формате "HTTP/Версия"
-					result.append(::versionName(response->version));
+					result.append(::__awh_version_name__(response->version));
 					// Добавляем разделитель между версией протокола и кодом ответа
 					result.append(1, ' ');
 					// Добавляем код ответа сервера
@@ -2650,7 +2654,7 @@ string awh::http::Headers::startline() const noexcept {
  */
 void awh::http::Headers::startline(const string_view startline) noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если переданная стартовая строка пустая - сбрасываем текущий объект провайдера
@@ -2691,7 +2695,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
 			// Версия протокола по умолчанию
 			version_t version = version_t::HTTP1_1;
 			// Если версия протокола не разобрана - строка состояния имеет некорректный формат
-			if(!::parseVersion(token1, version)){
+			if(!::__awh_parse_version__(token1, version)){
 				// Сбрасываем объект провайдера, чтобы не выдавать прежнее сообщение за разобранное
 				this->_provider.reset(nullptr);
 				// Прерываем выполнение метода
@@ -2730,7 +2734,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
 			// Собираемый код ответа сервера
 			uint16_t code = 0;
 			/**
-			 * Выполняем перебор символов кода ответа сервера
+			 * Перебираем символы кода ответа сервера
 			 */
 			for(const auto letter : codeText){
 				// Если символ не является цифрой - строка состояния имеет некорректный формат
@@ -2777,7 +2781,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
 				const string_view versionText = startline.substr(start3);
 				// Если версия протокола запроса указана в формате "HTTP/Версия"
 				// Если версия протокола не разобрана - строка запроса имеет некорректный формат
-				if(!::parseVersion(versionText, version)){
+				if(!::__awh_parse_version__(versionText, version)){
 					// Сбрасываем объект провайдера, чтобы не выдавать прежнее сообщение за разобранное
 					this->_provider.reset(nullptr);
 					// Прерываем выполнение метода
@@ -2785,7 +2789,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
 				}
 			}
 			// Определяем метод запроса клиента по его текстовому названию
-			const method_t method = ::method(token1);
+			const method_t method = ::__awh_method__(token1);
 			// Если метод запроса не является корректным токеном - стартовая строка имеет некорректный формат
 			if(method == method_t::NONE){
 				// Сбрасываем объект провайдера, чтобы не выдавать прежнее сообщение за разобранное
@@ -2828,7 +2832,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
  */
 void awh::http::Headers::erase(string_view name) noexcept {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -2848,11 +2852,11 @@ void awh::http::Headers::erase(string_view name) noexcept {
 		 */
 		auto target = this->_headers.begin();
 		/**
-		 * Выполняем перебор всех заголовков, оставляя не совпадающие по названию без учёта регистра
+		 * Перебираем все заголовки, оставляя не совпадающие по названию без учёта регистра
 		 */
 		for(auto i = this->_headers.begin(); i != this->_headers.end(); ++i){
 			// Если название заголовка совпадает с указанным
-			if(::equals(i->name, key)){
+			if(::__awh_equals__(i->name, key)){
 				// Вычисляем объём полезной нагрузки удаляемого заголовка
 				const size_t payload = (i->name.size() + i->value.size());
 				// Уменьшаем счётчик потребляемой памяти, не допуская переполнения вниз при возможной внешней рассинхронизации
@@ -2878,7 +2882,7 @@ void awh::http::Headers::erase(string_view name) noexcept {
 	}
 }
 /**
- * @brief erase Метод удаления заголовка
+ * @brief Метод удаления заголовка
  *
  * @param it идетартор заголовка для удаления
  * @return   следующий итератор
@@ -2888,7 +2892,7 @@ awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) 
 	// Результат работы функции - итератор следующий за удалённым элементом
 	iterator_t result = this->end();
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Создаём копию входного итератора, поскольку операторы доступа класса Iterator объявлены не const
@@ -2925,11 +2929,11 @@ awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) 
  */
 bool awh::http::Headers::has(string_view name) const noexcept {
 	/**
-	 * Выполняем перебор всех заголовков для проверки существования заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
+	 * Перебираем все заголовки, проверяя существование заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
 	 */
 	for(auto & header : this->_headers){
 		// Если название заголовка совпадает с указанным
-		if(::equals(header.name, name))
+		if(::__awh_equals__(header.name, name))
 			// Возвращаем положительный результат проверки
 			return true;
 	}
@@ -2947,7 +2951,7 @@ size_t awh::http::Headers::size() const noexcept {
 	return this->_headers.size();
 }
 /**
- * @brief Количество добавленных заголовков
+ * @brief Метод подсчёта добавленных заголовков
  *
  * @param name название заголовка количество которых нужно определить
  * @return     количество добавленных заголовков
@@ -2961,11 +2965,11 @@ size_t awh::http::Headers::count(string_view name) const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	/**
-	 * Выполняем перебор всех заголовков для проверки существования заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
+	 * Перебираем все заголовки, проверяя существование заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
 	 */
 	for(auto & header : this->_headers){
 		// Если название заголовка совпадает с указанным
-		if(::equals(header.name, name))
+		if(::__awh_equals__(header.name, name))
 			// Увеличиваем счётчик совпадений
 			result++;
 	}
@@ -2979,15 +2983,15 @@ size_t awh::http::Headers::count(string_view name) const noexcept {
  * @return     содержимое заголовка
  *
  */
-const string & awh::http::Headers::at(string_view name) const noexcept {
+const string & awh::http::Headers::value(string_view name) const noexcept {
 	// Статическая пустая строка, возвращаемая если заголовок с указанным названием не найден
 	static const string result = "";
 	/**
-	 * Выполняем перебор всех заголовков для проверки существования заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
+	 * Перебираем все заголовки, проверяя существование заголовка с указанным названием без учёта регистра (O(n) в худшем случае)
 	 */
 	for(auto & header : this->_headers){
 		// Если название заголовка совпадает с указанным
-		if(::equals(header.name, name))
+		if(::__awh_equals__(header.name, name))
 			// Возвращаем значение найденного заголовка
 			return header.value;
 	}
@@ -3004,7 +3008,7 @@ vector <string> awh::http::Headers::names() const noexcept {
 	// Результат работы функции - список уникальных названий заголовков
 	vector <string> result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Резервируем память под список названий заголовков
@@ -3043,15 +3047,15 @@ vector <string> awh::http::Headers::range(string_view name) const noexcept {
 	// Результат работы функции - список значений заголовков с указанным названием
 	vector <string> result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
-		 * Выполняем перебор всех заголовков и собираем значения совпадающих по названию без учёта регистра
+		 * Перебираем все заголовки и собираем значения совпадающих по названию без учёта регистра
 		 */
 		for(const auto & header : this->_headers){
 			// Если название заголовка совпадает с указанным
-			if(::equals(header.name, name))
+			if(::__awh_equals__(header.name, name))
 				// Добавляем значение заголовка в результирующий список
 				result.push_back(header.value);
 		}
@@ -3311,7 +3315,7 @@ string awh::http::Headers::print(const http::proto_t proto) const noexcept {
 	// Результат работы функции - все заголовки в текстовом виде
 	string result = "";
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Резервируем память под результирующую строку с небольшим запасом на служебные символы, стартовую строку/псевдозаголовки и завершающий перевод строки
@@ -3350,23 +3354,23 @@ string awh::http::Headers::print(const http::proto_t proto) const noexcept {
 		 * копирует его целиком ради одного лишь перебора - там печать идёт
 		 * по самому набору, и вид получается тот же самый
 		 */
-		if(!::isBinaryProto(proto)){
+		if(!::__awh_is_binary_proto__(proto)){
 			/**
-			 * Выполняем перебор набора заголовков напрямую
+			 * Перебираем набор заголовков напрямую
 			 */
 			for(const auto & header : this->_headers)
 				// Дописываем отформатированную строку заголовка к результату
-				::appendHeader(result, header, proto);
+				::__awh_append_header__(result, header, proto);
 		/**
 		 * Для семейства HTTP/2 набор собирается общим сборщиком
 		 */
 		} else {
 			/**
-			 * Выполняем перебор набора, собранного под указанный протокол
+			 * Перебираем набор, собранный под указанный протокол
 			 */
 			for(const auto & header : this->_compose(proto))
 				// Дописываем отформатированную строку заголовка к результату
-				::appendHeader(result, header, proto);
+				::__awh_append_header__(result, header, proto);
 		}
 		// Добавляем завершающую пустую строку, отделяющую блок заголовков от тела сообщения
 		result.append("\r\n");
@@ -3413,11 +3417,11 @@ string awh::http::Headers::print(string_view name, const http::proto_t proto) co
 	// Результат работы функции - отформатированные строки заголовков с указанным названием
 	string result = "";
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
-		 * Выполняем перебор набора, собранного под указанный протокол, и печатаем
+		 * Перебираем набор, собранный под указанный протокол, и печатаем
 		 * совпадающие по названию без учёта регистра. Перебор исходного набора
 		 * показывал бы для семейства HTTP/2 поля, которых в сообщении быть не может:
 		 * запрос [host] выдавал бы заголовок адресата, тогда как полная печать
@@ -3426,28 +3430,28 @@ string awh::http::Headers::print(string_view name, const http::proto_t proto) co
 		 * копирует его целиком ради одного лишь перебора - там печать идёт
 		 * по самому набору, и вид получается тот же самый
 		 */
-		if(!::isBinaryProto(proto)){
+		if(!::__awh_is_binary_proto__(proto)){
 			/**
-			 * Выполняем перебор набора заголовков напрямую
+			 * Перебираем набор заголовков напрямую
 			 */
 			for(const auto & header : this->_headers){
 				// Если название заголовка совпадает с указанным
-				if(::equals(header.name, name))
+				if(::__awh_equals__(header.name, name))
 					// Дописываем отформатированную строку заголовка к результату
-					::appendHeader(result, header, proto);
+					::__awh_append_header__(result, header, proto);
 			}
 		/**
 		 * Для семейства HTTP/2 набор собирается общим сборщиком
 		 */
 		} else {
 			/**
-			 * Выполняем перебор набора, собранного под указанный протокол
+			 * Перебираем набор, собранный под указанный протокол
 			 */
 			for(const auto & header : this->_compose(proto)){
 				// Если название заголовка совпадает с указанным
-				if(::equals(header.name, name))
+				if(::__awh_equals__(header.name, name))
 					// Дописываем отформатированную строку заголовка к результату
-					::appendHeader(result, header, proto);
+					::__awh_append_header__(result, header, proto);
 			}
 		}
 	/**
@@ -3565,7 +3569,7 @@ void awh::http::Headers::merge(const Headers & headers, const mode_t mode) noexc
 		// Выходим из метода
 		return;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Объём полезной нагрузки, освобождаемый удалением прежних вхождений
@@ -3586,15 +3590,15 @@ void awh::http::Headers::merge(const Headers & headers, const mode_t mode) noexc
 		 */
 		if(mode == mode_t::REPLACE){
 			/**
-			 * Выполняем перебор всех установленных заголовков
+			 * Перебираем все установленные заголовки
 			 */
 			for(const auto & header : this->_headers){
 				/**
-				 * Выполняем поиск названия текущего заголовка среди сливаемых
+				 * Ищем название текущего заголовка среди сливаемых
 				 */
 				for(const auto & source : headers._headers){
 					// Если название заголовка совпадает с названием сливаемого
-					if(::equals(header.name, source.name)){
+					if(::__awh_equals__(header.name, source.name)){
 						// Увеличиваем количество освобождаемых записей
 						vacated++;
 						// Увеличиваем освобождаемый объём полезной нагрузки
@@ -3747,8 +3751,8 @@ awh::http::Headers::const_iterator_t awh::http::Headers::cbegin() const noexcept
  *
  */
 awh::http::Headers::iterator_t awh::http::Headers::find(string_view name) noexcept {
-	// Выполняем поиск заголовка линейным перебором без учёта регистра
-	return iterator_t(::findByName(this->_headers.begin(), this->_headers.end(), name));
+	// Ищем заголовок линейным перебором без учёта регистра
+	return iterator_t(::__awh_find_by_name__(this->_headers.begin(), this->_headers.end(), name));
 }
 /**
  * @brief Метод поиска указанного заголовка
@@ -3758,8 +3762,8 @@ awh::http::Headers::iterator_t awh::http::Headers::find(string_view name) noexce
  *
  */
 awh::http::Headers::const_iterator_t awh::http::Headers::find(string_view name) const noexcept {
-	// Выполняем поиск заголовка линейным перебором без учёта регистра
-	return const_iterator_t(::findByName(this->_headers.cbegin(), this->_headers.cend(), name));
+	// Ищем заголовок линейным перебором без учёта регистра
+	return const_iterator_t(::__awh_find_by_name__(this->_headers.cbegin(), this->_headers.cend(), name));
 }
 /**
  * @brief Оператор получения количество заголовков
@@ -3811,7 +3815,7 @@ awh::http::Headers::operator unique_ptr <awh::http::provider_t> () const noexcep
 	// Результат работы функции - копия объекта провайдера HTTP-запроса/ответа
 	unique_ptr <provider_t> result = nullptr;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если объект провайдера установлен
@@ -3843,7 +3847,7 @@ awh::http::Headers::operator fields_t() const noexcept {
 	// Результат работы функции - список всех добавленных заголовков
 	fields_t result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -3877,7 +3881,7 @@ awh::http::Headers::operator entries_t() const noexcept {
 	// Результат работы функции - набор заголовков
 	entries_t result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -3885,11 +3889,11 @@ awh::http::Headers::operator entries_t() const noexcept {
 		 * то есть копирует его целиком ради одного лишь перебора - там заголовки
 		 * берутся из самого набора, и вид получается тот же самый
 		 */
-		if(!::isBinaryProto(this->_proto)){
+		if(!::__awh_is_binary_proto__(this->_proto)){
 			// Резервируем память под набор заголовков
 			result.reserve(this->_headers.size());
 			/**
-			 * Выполняем перебор набора заголовков напрямую
+			 * Перебираем набор заголовков напрямую
 			 */
 			for(const auto & header : this->_headers)
 				// Добавляем заголовок в результирующий набор
@@ -3936,7 +3940,7 @@ awh::http::Headers::operator map_t() const noexcept {
 	// Результат работы функции - карта заголовков (при дублирующихся именах сохраняется первое встретившееся значение)
 	map_t result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Резервируем память под карту заголовков
@@ -3971,7 +3975,7 @@ awh::http::Headers::operator multimap_t() const noexcept {
 	// Результат работы функции - множественная карта заголовков
 	multimap_t result;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Резервируем память под множественную карту заголовков
@@ -4005,8 +4009,8 @@ awh::http::Headers::operator multimap_t() const noexcept {
  *
  */
 const string & awh::http::Headers::operator[](string_view name) const noexcept {
-	// Возвращаем значение заголовка через метод at()
-	return this->at(name);
+	// Возвращаем значение заголовка через метод value()
+	return this->value(name);
 }
 /**
  * @brief Оператор слияния заголовков
@@ -4016,7 +4020,7 @@ const string & awh::http::Headers::operator[](string_view name) const noexcept {
  *
  */
 awh::http::Headers & awh::http::Headers::operator += (const Headers & headers) noexcept {
-	// Выполняем слияние заголовков текущего контейнера с переданным
+	// Сливаем заголовки текущего контейнера с переданными
 	this->merge(headers);
 	// Возвращаем текущий контейнер заголовков
 	return (* this);
@@ -4043,11 +4047,11 @@ bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
 	 * Идентификация сервиса в сравнении не участвует - она задаёт, чем заполнять
 	 * заголовки по умолчанию, а не что в сообщении находится
 	 */
-	if(!::equalsProvider(this->_provider.get(), headers._provider.get()))
+	if(!::__awh_equals_provider__(this->_provider.get(), headers._provider.get()))
 		// Возвращаем результат сравнения
 		return false;
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Тип последовательности значений одного названия заголовка в порядке добавления
@@ -4067,7 +4071,7 @@ bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
 			// Резервируем память под группировку значений
 			result.reserve(fields.size());
 			/**
-			 * Выполняем перебор всех заголовков набора, складывая значения в порядке добавления
+			 * Перебираем все заголовки набора, складывая значения в порядке добавления
 			 */
 			for(const auto & header : fields)
 				// Дописываем значение к последовательности соответствующего названия
@@ -4143,7 +4147,7 @@ awh::http::Headers & awh::http::Headers::operator = (const Headers & headers) no
 	// Если передан не текущий объект
 	if(this != &headers){
 		/**
-		 * Выполняем отлов ошибок
+		 * Выполняем перехват ошибок
 		 */
 		try {
 			/**
@@ -4234,7 +4238,7 @@ awh::http::Headers & awh::http::Headers::operator = (const fields_t & headers) n
 	// Очищаем текущий набор заголовков перед копированием
 	this->clear();
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Флаг наличия хотя бы одного псевдозаголовка HTTP/2 среди переданных заголовков
@@ -4251,7 +4255,7 @@ awh::http::Headers & awh::http::Headers::operator = (const fields_t & headers) n
 				http2 = true;
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
-		this->_proto = ::refineProto(this->_proto, (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
+		this->_proto = ::__awh_refine_proto__(this->_proto, (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
 		// Приводим названия всех заголовков к канонической форме определённого протокола
 		this->_recase();
 	/**
@@ -4275,7 +4279,7 @@ awh::http::Headers & awh::http::Headers::operator = (const entries_t & headers) 
 	// Очищаем текущий набор заголовков перед копированием
 	this->clear();
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -4285,7 +4289,7 @@ awh::http::Headers & awh::http::Headers::operator = (const entries_t & headers) 
 			// Добавляем заголовок в текущий набор с сохранением дубликатов
 			this->_emplace(header.name, header.value);
 		// Автоматически определяем протокол на основе состава переданных заголовков
-		this->_proto = ::refineProto(this->_proto, ::detectProto(headers));
+		this->_proto = ::__awh_refine_proto__(this->_proto, ::__awh_detect_proto__(headers));
 		// Приводим названия всех заголовков к канонической форме определённого протокола
 		this->_recase();
 	/**
@@ -4309,7 +4313,7 @@ awh::http::Headers & awh::http::Headers::operator = (const multimap_t & headers)
 	// Очищаем текущий набор заголовок перед копированием
 	this->clear();
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Флаг наличия хотя бы одного псевдозаголовка HTTP/2 среди переданных заголовков
@@ -4326,7 +4330,7 @@ awh::http::Headers & awh::http::Headers::operator = (const multimap_t & headers)
 				http2 = true;
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
-		this->_proto = ::refineProto(this->_proto, (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
+		this->_proto = ::__awh_refine_proto__(this->_proto, (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
 		// Приводим названия всех заголовков к канонической форме определённого протокола
 		this->_recase();
 	/**
@@ -4350,7 +4354,7 @@ awh::http::Headers & awh::http::Headers::operator = (initializer_list <header_t>
 	// Очищаем текущий набор заголовков перед копированием
 	this->clear();
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Флаг наличия хотя бы одного псевдозаголовка HTTP/2 среди переданных заголовков
@@ -4367,7 +4371,7 @@ awh::http::Headers & awh::http::Headers::operator = (initializer_list <header_t>
 				http2 = true;
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
-		this->_proto = ::refineProto(this->_proto, ((headers.size() == 0) ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
+		this->_proto = ::__awh_refine_proto__(this->_proto, ((headers.size() == 0) ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1)));
 		// Приводим названия всех заголовков к канонической форме определённого протокола
 		this->_recase();
 	/**
@@ -4452,7 +4456,7 @@ awh::http::Headers::Headers(const entries_t & headers) noexcept :
  *
  */
 awh::http::Headers::Headers(const multimap_t & headers) noexcept :
- Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), ::convert(headers)) {}
+ Headers(proto_t::NONE, static_cast <const provider_t *> (nullptr), ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *
@@ -4487,7 +4491,7 @@ awh::http::Headers::Headers(const proto_t proto, const entries_t & headers) noex
  *
  */
 awh::http::Headers::Headers(const proto_t proto, const multimap_t & headers) noexcept :
- Headers(proto, static_cast <const provider_t *> (nullptr), ::convert(headers)) {}
+ Headers(proto, static_cast <const provider_t *> (nullptr), ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *
@@ -4523,7 +4527,7 @@ awh::http::Headers::Headers(const provider_t * provider, const entries_t & heade
  *
  */
 awh::http::Headers::Headers(const provider_t * provider, const multimap_t & headers) noexcept :
- Headers(proto_t::NONE, provider, ::convert(headers)) {}
+ Headers(proto_t::NONE, provider, ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *
@@ -4559,7 +4563,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const entries_t
  *
  */
 awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept :
- Headers(proto_t::NONE, ::move(provider), ::convert(headers)) {}
+ Headers(proto_t::NONE, ::move(provider), ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *
@@ -4580,7 +4584,7 @@ awh::http::Headers::Headers(unique_ptr <provider_t> && provider, initializer_lis
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const fields_t & headers) noexcept :
  _memory(0), _proto(proto), _provider(nullptr) {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если объект провайдера передан - создаём его копию без срезки производной части
@@ -4596,7 +4600,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
 		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
-			this->_proto = ::detectProto(headers);
+			this->_proto = ::__awh_detect_proto__(headers);
 			// Приводим названия всех заголовков к канонической форме определённого протокола
 			this->_recase();
 		}
@@ -4619,7 +4623,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const entries_t & headers) noexcept :
  _memory(0), _proto(proto), _provider(nullptr) {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Если объект провайдера передан - создаём его копию без срезки производной части
@@ -4635,7 +4639,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
 		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
-			this->_proto = ::detectProto(headers);
+			this->_proto = ::__awh_detect_proto__(headers);
 			// Приводим названия всех заголовков к канонической форме определённого протокола
 			this->_recase();
 		}
@@ -4656,7 +4660,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
  *
  */
 awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers) noexcept :
- Headers(proto, provider, ::convert(headers)) {}
+ Headers(proto, provider, ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *
@@ -4678,7 +4682,7 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, in
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers) noexcept :
  _memory(0), _proto(proto), _provider(::move(provider)) {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -4690,7 +4694,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
 		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
-			this->_proto = ::detectProto(headers);
+			this->_proto = ::__awh_detect_proto__(headers);
 			// Приводим названия всех заголовков к канонической форме определённого протокола
 			this->_recase();
 		}
@@ -4713,7 +4717,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers) noexcept :
  _memory(0), _proto(proto), _provider(::move(provider)) {
 	/**
-	 * Выполняем отлов ошибок
+	 * Выполняем перехват ошибок
 	 */
 	try {
 		/**
@@ -4725,7 +4729,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
 		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
-			this->_proto = ::detectProto(headers);
+			this->_proto = ::__awh_detect_proto__(headers);
 			// Приводим названия всех заголовков к канонической форме определённого протокола
 			this->_recase();
 		}
@@ -4746,7 +4750,7 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
  *
  */
 awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers) noexcept :
- Headers(proto, ::move(provider), ::convert(headers)) {}
+ Headers(proto, ::move(provider), ::__awh_convert__(headers)) {}
 /**
  * @brief Конструктор
  *

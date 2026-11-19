@@ -12,17 +12,10 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл учёта путей исполнения сопоставления — счётчики,
  *        показывающие, каким путём прошло сопоставление, и позволяющие проверкам
  *        удостоверять применение ускорителей, вердикта не меняющих
  *
- * \~english
- * @brief Header file of the accounting of the execution paths of matching — the counters
- *        showing which path the matching took and allowing the tests to certify the use
- *        of the accelerators that do not change the verdict
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -41,27 +34,16 @@
 #include "../sys/macro/global.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
-	 * \~english
-	 * @brief Namespace of the regular expression module
-	 *
-	 * \~
 	 */
 	namespace regex {
 		/**
-		 * \~russian
 		 * @brief Путь исполнения сопоставления, учёту подлежащий
 		 *
 		 * @details Учитываются пути, вердикта не меняющие: всякий из них лишь
@@ -71,21 +53,9 @@ namespace awh {
 		 *          не сорвав ни одной проверки набора, - порождённый машинный
 		 *          код в их числе.
 		 *
-		 * \~english
-		 * @brief Execution path of matching subject to accounting
-		 *
-		 * @details The paths accounted for are those that do not change the verdict: each of
-		 *          them only speeds up the search, while turning it off leaves the outcome
-		 *          correct. Comparing verdicts does not notice such a switch-off at all,
-		 *          and a probe of switching them off showed that seven such paths could be
-		 *          switched off without failing a single test of the suite, the generated
-		 *          machine code among them.
-		 *
-		 * \~
 		 */
 		enum class path_t : uint8_t {
 			/**
-			 * \~russian
 			 * @brief Сопоставление порождённым машинным кодом
 			 *
 			 * @warning Путь этот НЕЛЬЗЯ звать «MACHINE»: FreeBSD объявляет это имя
@@ -97,20 +67,6 @@ namespace awh {
 			 *          выражения, о чём сказано у `flag_t::JIT`, и повторился здесь.
 			 *          Заводя новые пути, имя следует сличать с системными макросами.
 			 *
-			 * \~english
-			 * @brief Matching by the generated machine code
-			 *
-			 * @warning This path must NOT be named "MACHINE": FreeBSD defines this name
-			 *          as a macro in `<machine/param.h>`, substituting the handler name
-			 *          string in its place. Enumeration scope offers no protection against
-			 *          this—the preprocessor is unaware of it and modifies the text prior
-			 *          to parsing—causing the FreeBSD build to fail with an "expected
-			 *          identifier" error. This same pitfall previously affected
-			 *          the expression compilation mode (as noted regarding `flag_t::JIT`)
-			 *          and has recurred here. When introducing new paths, the name should
-			 *          be checked against system macros.
-			 *
-			 * \~
 			 */
 			JITTED      = 0x00,
 			PLAIN       = 0x01, // Поиск последовательности выражения, литералом сопоставляемого
@@ -147,7 +103,6 @@ namespace awh {
 			COUNT       = 0x20  // Количество учитываемых путей исполнения
 		};
 		/**
-		 * \~russian
 		 * @brief Мера работы сопоставления, учёту подлежащая
 		 *
 		 * @details Мера работы от пути исполнения отличается родом, а не величиной,
@@ -163,25 +118,6 @@ namespace awh {
 		 *          же операций от выравнивания и от загрузки машины не зависит
 		 *          вовсе и меняется скачком, отчего и годится доводом.
 		 *
-		 * \~english
-		 * @brief Measure of the work of matching subject to accounting
-		 *
-		 * @details A measure of work differs from an execution path in kind, not in size,
-		 *          and is therefore defined as a separate enumeration. A path is an
-		 *          accelerator that does not change the verdict: it can be switched off
-		 *          and the outcome stays correct. A measure of work cannot be switched off
-		 *          at all — a step of the loop or a save of a capture cell is the matching
-		 *          itself, not an acceleration of it.
-		 *
-		 *          The measure is introduced for the sake of an argument about causation.
-		 *          The time of an edit in a hot translation unit proves nothing: every edit
-		 *          shifts the alignment of the tight loops in that same unit, and that shift
-		 *          reached fifteen hundredths — more than the edit being measured. The count
-		 *          of operations, on the contrary, does not depend on alignment or on the
-		 *          load of the machine at all and changes stepwise, which is what makes it
-		 *          an argument.
-		 *
-		 * \~
 		 */
 		enum class work_t : uint8_t {
 			STEPS  = 0x00, // Шаги цикла исполнения с возвратом
@@ -190,7 +126,6 @@ namespace awh {
 			POINTS = 0x03, // Размещения точки возврата
 			FRAMES = 0x04, // Заведения кадра вызова подвыражения
 			/**
-			 * \~russian
 			 * @brief Обходы цикла исполнения с возвратом
 			 *
 			 * @details Мера эта от «STEPS» отличается тем, что шаг считает
@@ -200,25 +135,9 @@ namespace awh {
 			 *          остаётся прежней, а обходов становится меньше, и мера
 			 *          эта выигрыш прохода рядом единственная и показывает.
 			 *
-			 * \~english
-			 * @brief Rounds of the backtracking execution loop
-			 *
-			 * @details This metric differs from "STEPS" in that a "step"
-			 *          counts the actual work performed, whereas a "pass"
-			 *          corresponds to entering the code-parsing routine
-			 *          for an operation. A sequence of identical instructions
-			 *          is processed in a single pass, consuming a number
-			 *          of bytes equal to the sequence's total length;
-			 *          the workload remains unchanged, but the number
-			 *          of passes decreases—and this metric is unique
-			 *          in that it specifically captures the efficiency
-			 *          gained by processing such sequences in a single pass.
-			 *
-			 * \~
 			 */
 			ROUNDS = 0x05,
 			/**
-			 * \~russian
 			 * @brief Попытки сопоставления исполнением с возвратом
 			 *
 			 * @details Мера эта считает заходы в попытку: сброс ячеек захвата,
@@ -228,104 +147,51 @@ namespace awh {
 			 *          большую долю времени - мера эта долю ту и раскладывает
 			 *          по сценариям.
 			 *
-			 * \~english
-			 * @brief Attempts of the backtracking matching
-			 *
-			 * @details This metric counts "attempts"—specifically, the resetting
-			 *          of capture cells, the clearing of sets, and entry into the
-			 *          execution loop. The cost of an attempt is independent
-			 *          of the work performed within it; for an expression involving
-			 *          many attempts with little work per attempt, this overhead
-			 *          accounts for a significant share of the total time—and this
-			 *          metric breaks down that share by scenario.
-			 *
-			 * \~
 			 */
 			ATTEMPTS = 0x06,
 			/**
-			 * \~russian
 			 * @brief Количество учитываемых мер работы
 			 *
-			 * \~english
-			 * @brief Number of work measures taken into account
-			 *
-			 * \~
 			 */
 			COUNT = 0x07
 		};
 
 		/**
-		 * \~russian
 		 * @brief Функция проверки заведения учёта путей исполнения
 		 *
 		 * @return признак заведения учёта путей исполнения
 		 *
-		 * \~english
-		 * @brief Function of checking whether the accounting of the execution paths is compiled in
-		 *
-		 * @return indication that the accounting of the execution paths is compiled in
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool enabled() noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция сброса счётчиков путей исполнения
 		 *
-		 * \~english
-		 * @brief Function of resetting the counters of the execution paths
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void reset() noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция извлечения счётчика пути исполнения
 		 *
 		 * @param path учитываемый путь исполнения сопоставления
 		 * @return     количество прохождений пути исполнения
 		 *
-		 * \~english
-		 * @brief Function of getting the counter of an execution path
-		 *
-		 * @param path execution path of matching being accounted for
-		 * @return     number of passes of the execution path
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t count(const path_t path) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция учёта прохождения пути исполнения
 		 *
 		 * @param path пройденный путь исполнения сопоставления
 		 *
-		 * \~english
-		 * @brief Function of accounting for a pass of an execution path
-		 *
-		 * @param path execution path of matching that was passed
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void tick(const path_t path) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция извлечения счётчика меры работы
 		 *
 		 * @param work учитываемая мера работы сопоставления
 		 * @return     количество операций учитываемой меры
 		 *
-		 * \~english
-		 * @brief Function of getting the counter of a measure of work
-		 *
-		 * @param work measure of the work of matching being accounted for
-		 * @return     number of operations of the measure being accounted for
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t amount(const work_t work) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция учёта выполненных операций меры работы
 		 *
 		 * @param work  выполненная мера работы сопоставления
@@ -337,19 +203,6 @@ namespace awh {
 		 *          на каждом шаге обошлось бы дороже самого шага и исказило бы
 		 *          образец стека, по какому и ведётся разыскание.
 		 *
-		 * \~english
-		 * @brief Function of accounting for the operations performed of a measure of work
-		 *
-		 * @param work  measure of the work of matching that was performed
-		 * @param count number of operations performed
-		 *
-		 * @details The count is taken as a quantity rather than as a unit, because the
-		 *          execution loop keeps its step counter in a local variable and adds it
-		 *          in one go upon completion: incrementing a shared counter at every step
-		 *          would cost more than the step itself and would distort the stack
-		 *          sample by which the investigation is carried out.
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void spend(const work_t work, const uint64_t count) noexcept;
 	};
@@ -360,33 +213,18 @@ namespace awh {
  */
 #if defined(AWH_REGEX_PROBING)
 	/**
-	 * \~russian
 	 * @brief Учёт прохождения пути исполнения сопоставления
 	 *
-	 * \~english
-	 * @brief An account of a passing of an execution path of a matching
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_TICK(PATH) awh::regex::tick(PATH)
 	/**
-	 * \~russian
 	 * @brief Учёт выполненных операций меры работы сопоставления
 	 *
-	 * \~english
-	 * @brief An account of the performed operations of a measure of a matching work
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_SPEND(WORK, COUNT) awh::regex::spend(WORK, COUNT)
 	/**
-	 * \~russian
 	 * @brief Приращение местного счётчика меры работы, полем исполнителя ведомого
 	 *
-	 * \~english
-	 * @brief An increment of a local counter of a work measure, known by a field of an executor
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_COUNTED(FIELD) ((FIELD)++)
 /**
@@ -394,33 +232,18 @@ namespace awh {
  */
 #else
 	/**
-	 * \~russian
 	 * @brief Учёт не ведётся: приращение счётчика расхода стоит дороже пути учитываемого
 	 *
-	 * \~english
-	 * @brief An account is not kept: an increment of a consumption counter costs dearer than the accounted path
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_TICK(PATH) ((void) 0)
 	/**
-	 * \~russian
 	 * @brief Учёт не ведётся: приращение счётчика стоит дороже операции учитываемой
 	 *
-	 * \~english
-	 * @brief An account is not kept: an increment of a counter costs dearer than an accounted operation
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_SPEND(WORK, COUNT) ((void) 0)
 	/**
-	 * \~russian
 	 * @brief Учёт не ведётся: приращение поля стоит дороже операции учитываемой
 	 *
-	 * \~english
-	 * @brief An account is not kept: an increment of a field costs dearer than an accounted operation
-	 *
-	 * \~
 	 */
 	#define AWH_REGEX_COUNTED(FIELD) ((void) 0)
 #endif

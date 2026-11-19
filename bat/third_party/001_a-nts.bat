@@ -76,7 +76,7 @@ rem  его открыто, но до потребителя, взявшего �
 rem  без него заголовки объявляют символы импортом из DLL, и связывание
 rem  отвечает сворой __imp_
 rem ----------------------------------------------------------------------------
-call "%~dp0_common.bat" :build "%NAME%" "%VERSION%" "-DCMAKE_BUILD_TESTS=OFF -DCMAKE_BUILD_SANITIZE=OFF -DCMAKE_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_SAMPLES=OFF -DCMAKE_BUILD_LIBFUZZER=OFF"
+call "%~dp0_common.bat" :build "%NAME%" "%VERSION%" "-DCMAKE_BUILD_TESTS=OFF -DCMAKE_BUILD_SANITIZE=OFF -DCMAKE_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_SAMPLES=OFF -DCMAKE_BUILD_LIBFUZZER=OFF -DCMAKE_BUILD_APP=OFF"
 if errorlevel 1 exit /b 1
 
 rem Заголовки установка кладёт в include\anyks\nts сама, раскладка им не нужна

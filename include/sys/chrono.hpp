@@ -1,15 +1,21 @@
 /**
- * @file: chrono.hpp
- * @date: 2025-03-12
+ * @file chrono.hpp
+ * @date 2025-03-12
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля базовых утилит библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_CHRONO__

@@ -12,17 +12,10 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл общих определений модуля перекодировки — обозначения
  *        кодировок, порядок обращения с непредставимыми символами и виды записей
  *        таблиц соответствия кодировок Юникоду
  *
- * \~english
- * @brief Header file of the common definitions of the transcoding module — designations of
- *        encodings, the manner of handling unrepresentable characters and the kinds of entries
- *        of the tables of correspondence of encodings to Unicode
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -52,13 +45,8 @@
 #include "../../sys/macro/suppress.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -67,28 +55,17 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля перекодировки
 	 *
-	 * \~english
-	 * @brief Namespace of the transcoding module
-	 *
-	 * \~
 	 */
 	namespace charset {
 		/**
-		 * \~russian
 		 * @brief Признак отсутствия соответствия символа кодировке
 		 *
-		 * \~english
-		 * @brief Sign of the absence of a correspondence of a character to an encoding
-		 *
-		 * \~
 		 */
 		constexpr uint16_t UNMAPPED = 0xFFFF;
 
 		/**
-		 * \~russian
 		 * @brief Обозначение кодировки текста
 		 *
 		 * @details Набор кодировок задан стандартом кодировок консорциума WHATWG,
@@ -96,15 +73,6 @@ namespace awh {
 		 *          кодировками ASCII и ISO-8859-1, задаваемыми отдельными стандартами.
 		 *          Многобайтовые кодировки восточных письменностей модулем не задаются.
 		 *
-		 * \~english
-		 * @brief Designation of the text encoding
-		 *
-		 * @details The set of encodings is defined by the encoding standard of the WHATWG consortium,
-		 *          enumerating the encodings mandatory for support on the web, and is supplemented with
-		 *          the ASCII and ISO-8859-1 encodings defined by separate standards.
-		 *          Multi-byte encodings of Eastern scripts are not defined by the module.
-		 *
-		 * \~
 		 */
 		enum class encoding_t : uint8_t {
 			NONE         = 0x00, // Кодировка не установлена
@@ -143,13 +111,8 @@ namespace awh {
 		};
 
 		/**
-		 * \~russian
 		 * @brief Порядок обращения с символами, кодировке не представимыми
 		 *
-		 * \~english
-		 * @brief Manner of handling characters unrepresentable in an encoding
-		 *
-		 * \~
 		 */
 		enum class replace_t : uint8_t {
 			STRICT  = 0x00, // Перекодировка отклоняется целиком
@@ -158,13 +121,8 @@ namespace awh {
 		};
 
 		/**
-		 * \~russian
 		 * @brief Соответствие кодового значения Юникода байту кодировки
 		 *
-		 * \~english
-		 * @brief Correspondence of a Unicode code value to a byte of an encoding
-		 *
-		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Mapping {
 			// Кодовое значение символа Юникода
@@ -174,13 +132,8 @@ namespace awh {
 		} mapping_t;
 
 		/**
-		 * \~russian
 		 * @brief Таблица соответствия однобайтовой кодировки Юникоду
 		 *
-		 * \~english
-		 * @brief Table of correspondence of a single-byte encoding to Unicode
-		 *
-		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Table {
 			// Обозначение кодировки текста
@@ -196,13 +149,8 @@ namespace awh {
 		} table_t;
 
 		/**
-		 * \~russian
 		 * @brief Соответствие имени кодировки её обозначению
 		 *
-		 * \~english
-		 * @brief Correspondence of an encoding name to its designation
-		 *
-		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Labeling {
 			// Имя кодировки, приведённое к нормальному виду

@@ -1,15 +1,21 @@
 /**
- * @file: ver.hpp
- * @date: 2024-01-27
+ * @file ver.hpp
+ * @date 2024-01-27
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля базовых утилит библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_VERSION__

@@ -29,6 +29,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/http2/frame.hpp>
+// Снимаем системные макросы Windows (ERROR, NO_ERROR, STRICT), занявшие имена значений перечислений
+#include "../../../../../include/sys/macro/suppress.hpp"
 
 /**
  * Используем стандартное пространство имён
@@ -52,7 +54,7 @@ namespace {
 	 * @return       прочитанное число
 	 *
 	 */
-	inline uint16_t rd16(const uint8_t * buffer) noexcept {
+	inline uint16_t __awh_rd16__(const uint8_t * buffer) noexcept {
 		// Собираем число из двух байт в сетевом порядке
 		return static_cast <uint16_t> ((static_cast <uint16_t> (buffer[0]) << 8) | buffer[1]);
 	}
@@ -63,7 +65,7 @@ namespace {
 	 * @return       прочитанное число
 	 *
 	 */
-	inline uint32_t rd24(const uint8_t * buffer) noexcept {
+	inline uint32_t __awh_rd24__(const uint8_t * buffer) noexcept {
 		// Собираем число из трёх байт в сетевом порядке
 		return (static_cast <uint32_t> (buffer[0]) << 16) | (static_cast <uint32_t> (buffer[1]) << 8) | buffer[2];
 	}
@@ -74,7 +76,7 @@ namespace {
 	 * @return       прочитанное число
 	 *
 	 */
-	inline uint32_t rd32(const uint8_t * buffer) noexcept {
+	inline uint32_t __awh_rd32__(const uint8_t * buffer) noexcept {
 		// Собираем число из четырёх байт в сетевом порядке
 		return (static_cast <uint32_t> (buffer[0]) << 24) | (static_cast <uint32_t> (buffer[1]) << 16) |
 		       (static_cast <uint32_t> (buffer[2]) << 8)  |  static_cast <uint32_t> (buffer[3]);
@@ -86,7 +88,7 @@ namespace {
 	 * @param num записываемое число
 	 *
 	 */
-	inline void wr16(string & output, const uint16_t num) noexcept {
+	inline void __awh_wr16__(string & output, const uint16_t num) noexcept {
 		// Дописываем старший байт числа
 		output.push_back(static_cast <char> ((num >> 8) & 0xFF));
 		// Дописываем младший байт числа
@@ -99,7 +101,7 @@ namespace {
 	 * @param num записываемое число
 	 *
 	 */
-	inline void wr32(string & output, const uint32_t num) noexcept {
+	inline void __awh_wr32__(string & output, const uint32_t num) noexcept {
 		// Дописываем старший байт числа
 		output.push_back(static_cast <char> ((num >> 24) & 0xFF));
 		// Дописываем второй байт числа
@@ -121,7 +123,7 @@ namespace {
 	 * @return        результат снятия (false - Pad Length некорректен, PROTOCOL_ERROR)
 	 *
 	 */
-	inline bool stripPadding(const bool padded, const uint8_t *& payload, size_t & length) noexcept {
+	inline bool __awh_strip_padding__(const bool padded, const uint8_t *& payload, size_t & length) noexcept {
 		// Если флаг PADDED не установлен - снимать нечего
 		if(!padded)
 			// Продолжаем разбор
@@ -155,7 +157,7 @@ namespace {
 	 * @param streamId идентификатор потока
 	 *
 	 */
-	inline void wrHeader(string & output, const uint32_t length, const frame_t type, const uint8_t flags, const uint32_t streamId) noexcept {
+	inline void __awh_wr_header__(string & output, const uint32_t length, const frame_t type, const uint8_t flags, const uint32_t streamId) noexcept {
 		/**
 		 * Заголовок собирается на стеке и дописывается одной операцией: поочерёдная
 		 * запись девяти октетов стоит девяти проверок ёмкости строки, а размер
@@ -255,13 +257,13 @@ bool awh::http::h2::frame::parser::header(const uint8_t * data, const size_t siz
 		// Заголовок разобрать невозможно
 		return false;
 	// Извлекаем 24-битную длину полезной нагрузки
-	output.length = ::rd24(data);
+	output.length = ::__awh_rd24__(data);
 	// Извлекаем тип фрейма
 	output.type = static_cast <frame_t> (data[3]);
 	// Извлекаем флаги фрейма
 	output.flags = data[4];
 	// Извлекаем 31-битный идентификатор потока (сбрасывая reserved-бит)
-	output.streamId = (::rd32(data + 5) & proto::STREAM_ID_MASK);
+	output.streamId = (::__awh_rd32__(data + 5) & proto::STREAM_ID_MASK);
 	// Заголовок фрейма разобран
 	return true;
 }
@@ -288,7 +290,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::data(const header_t & head
 	// Буфер текущей позиции полезной нагрузки
 	const uint8_t * buffer = payload;
 	// Если снятие padding не удалось
-	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
+	if(!::__awh_strip_padding__(header.flags & flag::PADDED, buffer, length)){
 		// Фиксируем нарушение протокола
 		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
@@ -327,7 +329,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::ping(const header_t & head
 		return status_t::ERROR;
 	}
 	/**
-	 * Выполняем копирование всех opaque-данных
+	 * Копируем все opaque-данные
 	 */
 	for(uint8_t i = 0; i < 8; ++i)
 		// Копируем очередной байт opaque-данных
@@ -361,7 +363,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::rstStream(const header_t &
 		return status_t::ERROR;
 	}
 	// Извлекаем код ошибки, с которым сброшен поток
-	code = static_cast <error_t> (::rd32(payload));
+	code = static_cast <error_t> (::__awh_rd32__(payload));
 	// Полезная нагрузка разобрана
 	return status_t::OK;
 }
@@ -391,9 +393,9 @@ awh::http::h2::status_t awh::http::h2::frame::parser::goaway(const header_t & he
 		return status_t::ERROR;
 	}
 	// Извлекаем наибольший идентификатор обработанного потока (сбрасывая reserved-бит)
-	output.lastStreamId = (::rd32(payload) & proto::STREAM_ID_MASK);
+	output.lastStreamId = (::__awh_rd32__(payload) & proto::STREAM_ID_MASK);
 	// Извлекаем код ошибки завершения соединения
-	output.code = static_cast <error_t> (::rd32(payload + 4));
+	output.code = static_cast <error_t> (::__awh_rd32__(payload + 4));
 	// Извлекаем отладочные данные (zero-copy во входной буфер)
 	output.debugData = string_view(reinterpret_cast <const char *> (payload + 8), header.length - 8);
 	// Полезная нагрузка разобрана
@@ -422,7 +424,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::headers(const header_t & h
 	// Буфер текущей позиции полезной нагрузки
 	const uint8_t * buffer = payload;
 	// Если снятие padding не удалось
-	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
+	if(!::__awh_strip_padding__(header.flags & flag::PADDED, buffer, length)){
 		// Фиксируем нарушение протокола
 		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
@@ -444,7 +446,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::headers(const header_t & h
 			return status_t::ERROR;
 		}
 		// Извлекаем зависимость потока (32 бита)
-		const uint32_t dep = ::rd32(buffer);
+		const uint32_t dep = ::__awh_rd32__(buffer);
 		// Извлекаем флаг эксклюзивной зависимости (старший бит)
 		output.exclusive = ((dep & 0x80000000u) != 0);
 		// Извлекаем идентификатор потока, от которого зависит текущий
@@ -487,7 +489,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::priority(const header_t & 
 		return status_t::ERROR;
 	}
 	// Извлекаем зависимость потока (32 бита)
-	const uint32_t dep = ::rd32(payload);
+	const uint32_t dep = ::__awh_rd32__(payload);
 	// Извлекаем флаг эксклюзивной зависимости (старший бит)
 	output.exclusive = ((dep & 0x80000000u) != 0);
 	// Извлекаем идентификатор потока, от которого зависит текущий
@@ -516,7 +518,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::windowUpdate(const header_
 		return status_t::ERROR;
 	}
 	// Извлекаем инкремент окна (сбрасывая reserved-бит)
-	increment = (::rd32(payload) & proto::STREAM_ID_MASK);
+	increment = (::__awh_rd32__(payload) & proto::STREAM_ID_MASK);
 	// Если получен нулевой инкремент (PROTOCOL_ERROR по RFC 9113 §6.9)
 	if(increment == 0){
 		// Фиксируем нарушение протокола
@@ -550,7 +552,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::pushPromise(const header_t
 	// Буфер текущей позиции полезной нагрузки
 	const uint8_t * buffer = payload;
 	// Если снятие padding не удалось
-	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
+	if(!::__awh_strip_padding__(header.flags & flag::PADDED, buffer, length)){
 		// Фиксируем нарушение протокола
 		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
@@ -566,7 +568,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::pushPromise(const header_t
 	// Извлекаем флаг завершения блока заголовков
 	output.endHeaders = ((header.flags & flag::END_HEADERS) != 0);
 	// Извлекаем идентификатор обещанного потока (сбрасывая reserved-бит)
-	output.promisedStreamId = (::rd32(buffer) & proto::STREAM_ID_MASK);
+	output.promisedStreamId = (::__awh_rd32__(buffer) & proto::STREAM_ID_MASK);
 	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
 	output.block = string_view(reinterpret_cast <const char *> (buffer + 4), length - 4);
 	// Полезная нагрузка разобрана
@@ -616,15 +618,15 @@ awh::http::h2::status_t awh::http::h2::frame::parser::settings(const header_t & 
 	// Буфер текущей позиции полезной нагрузки
 	const uint8_t * buffer = payload;
 	/**
-	 * Выполняем перебор всех параметров нагрузки
+	 * Перебираем все параметры нагрузки
 	 */
 	for(size_t i = 0; i < count; ++i){
 		// Создаём объект параметра
 		setting_entry_t entry;
 		// Извлекаем идентификатор параметра
-		entry.id = static_cast <setting_t> (::rd16(buffer));
+		entry.id = static_cast <setting_t> (::__awh_rd16__(buffer));
 		// Извлекаем значение параметра
-		entry.value = ::rd32(buffer + 2);
+		entry.value = ::__awh_rd32__(buffer + 2);
 		// Дописываем параметр в список
 		output.push_back(entry);
 		// Сдвигаем указатель на следующий параметр
@@ -670,7 +672,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::continuation(const header_
  */
 void awh::http::h2::frame::serialize::ping(string & output, const uint8_t opaque[8], const bool ack) noexcept {
 	// Дописываем заголовок фрейма PING
-	::wrHeader(output, 8, frame_t::PING, (ack ? flag::ACK : flag::NONE), 0);
+	::__awh_wr_header__(output, 8, frame_t::PING, (ack ? flag::ACK : flag::NONE), 0);
 	// Дописываем opaque-данные
 	output.append(reinterpret_cast <const char *> (opaque), 8);
 }
@@ -684,9 +686,9 @@ void awh::http::h2::frame::serialize::ping(string & output, const uint8_t opaque
  */
 void awh::http::h2::frame::serialize::rstStream(string & output, const uint32_t streamId, const error_t error) noexcept {
 	// Дописываем заголовок фрейма RST_STREAM
-	::wrHeader(output, 4, frame_t::RST_STREAM, flag::NONE, streamId);
+	::__awh_wr_header__(output, 4, frame_t::RST_STREAM, flag::NONE, streamId);
 	// Дописываем код ошибки сброса потока
-	::wr32(output, static_cast <uint32_t> (error));
+	::__awh_wr32__(output, static_cast <uint32_t> (error));
 }
 /**
  * @brief Функция сборки фрейма WINDOW_UPDATE (заголовок + нагрузка дописываются в output)
@@ -698,9 +700,9 @@ void awh::http::h2::frame::serialize::rstStream(string & output, const uint32_t 
  */
 void awh::http::h2::frame::serialize::windowUpdate(string & output, const uint32_t streamId, const uint32_t increment) noexcept {
 	// Дописываем заголовок фрейма WINDOW_UPDATE
-	::wrHeader(output, 4, frame_t::WINDOW_UPDATE, flag::NONE, streamId);
+	::__awh_wr_header__(output, 4, frame_t::WINDOW_UPDATE, flag::NONE, streamId);
 	// Дописываем инкремент окна (сбрасывая reserved-бит)
-	::wr32(output, increment & proto::STREAM_ID_MASK);
+	::__awh_wr32__(output, increment & proto::STREAM_ID_MASK);
 }
 /**
  * @brief Функция сборки фрейма DATA (заголовок + нагрузка дописываются в output)
@@ -713,7 +715,7 @@ void awh::http::h2::frame::serialize::windowUpdate(string & output, const uint32
  */
 void awh::http::h2::frame::serialize::data(string & output, const uint32_t streamId, string_view data, const bool endStream) noexcept {
 	// Дописываем заголовок фрейма DATA
-	::wrHeader(output, static_cast <uint32_t> (data.size()), frame_t::DATA, (endStream ? flag::END_STREAM : flag::NONE), streamId);
+	::__awh_wr_header__(output, static_cast <uint32_t> (data.size()), frame_t::DATA, (endStream ? flag::END_STREAM : flag::NONE), streamId);
 	// Дописываем данные тела
 	output.append(data.data(), data.size());
 }
@@ -730,20 +732,20 @@ void awh::http::h2::frame::serialize::settings(string & output, const setting_en
 	// Если требуется подтверждение получения SETTINGS пира
 	if(ack){
 		// Дописываем пустой фрейм SETTINGS с флагом ACK
-		::wrHeader(output, 0, frame_t::SETTINGS, flag::ACK, 0);
+		::__awh_wr_header__(output, 0, frame_t::SETTINGS, flag::ACK, 0);
 		// Выходим из функции
 		return;
 	}
 	// Дописываем заголовок фрейма SETTINGS
-	::wrHeader(output, static_cast <uint32_t> (count * 6), frame_t::SETTINGS, flag::NONE, 0);
+	::__awh_wr_header__(output, static_cast <uint32_t> (count * 6), frame_t::SETTINGS, flag::NONE, 0);
 	/**
-	 * Выполняем перебор всех параметров
+	 * Перебираем все параметры
 	 */
 	for(size_t i = 0; i < count; ++i){
 		// Дописываем идентификатор параметра
-		::wr16(output, static_cast <uint16_t> (items[i].id));
+		::__awh_wr16__(output, static_cast <uint16_t> (items[i].id));
 		// Дописываем значение параметра
-		::wr32(output, items[i].value);
+		::__awh_wr32__(output, items[i].value);
 	}
 }
 /**
@@ -757,11 +759,11 @@ void awh::http::h2::frame::serialize::settings(string & output, const setting_en
  */
 void awh::http::h2::frame::serialize::goaway(string & output, const uint32_t lastStreamId, const error_t error, string_view debugData) noexcept {
 	// Дописываем заголовок фрейма GOAWAY
-	::wrHeader(output, static_cast <uint32_t> (debugData.size() + 8), frame_t::GOAWAY, flag::NONE, 0);
+	::__awh_wr_header__(output, static_cast <uint32_t> (debugData.size() + 8), frame_t::GOAWAY, flag::NONE, 0);
 	// Дописываем наибольший идентификатор обработанного потока (сбрасывая reserved-бит)
-	::wr32(output, lastStreamId & proto::STREAM_ID_MASK);
+	::__awh_wr32__(output, lastStreamId & proto::STREAM_ID_MASK);
 	// Дописываем код ошибки завершения соединения
-	::wr32(output, static_cast <uint32_t> (error));
+	::__awh_wr32__(output, static_cast <uint32_t> (error));
 	// Дописываем отладочные данные
 	output.append(debugData.data(), debugData.size());
 }
@@ -776,7 +778,7 @@ void awh::http::h2::frame::serialize::goaway(string & output, const uint32_t las
  */
 void awh::http::h2::frame::serialize::continuation(string & output, const uint32_t streamId, string_view block, const bool endHeaders) noexcept {
 	// Дописываем заголовок фрейма CONTINUATION
-	::wrHeader(output, static_cast <uint32_t> (block.size()), frame_t::CONTINUATION, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
+	::__awh_wr_header__(output, static_cast <uint32_t> (block.size()), frame_t::CONTINUATION, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
 	// Дописываем фрагмент блока заголовков
 	output.append(block.data(), block.size());
 }
@@ -802,7 +804,7 @@ void awh::http::h2::frame::serialize::headers(string & output, const uint32_t st
 		// Устанавливаем флаг завершения блока заголовков
 		flags |= flag::END_HEADERS;
 	// Дописываем заголовок фрейма HEADERS
-	::wrHeader(output, static_cast <uint32_t> (block.size()), frame_t::HEADERS, flags, streamId);
+	::__awh_wr_header__(output, static_cast <uint32_t> (block.size()), frame_t::HEADERS, flags, streamId);
 	// Дописываем фрагмент блока заголовков
 	output.append(block.data(), block.size());
 }
@@ -818,9 +820,9 @@ void awh::http::h2::frame::serialize::headers(string & output, const uint32_t st
  */
 void awh::http::h2::frame::serialize::priority(string & output, const uint32_t streamId, const bool exclusive, const uint32_t streamDep, const uint8_t weight) noexcept {
 	// Дописываем заголовок фрейма PRIORITY
-	::wrHeader(output, 5, frame_t::PRIORITY, flag::NONE, streamId);
+	::__awh_wr_header__(output, 5, frame_t::PRIORITY, flag::NONE, streamId);
 	// Дописываем зависимость потока с флагом эксклюзивности в старшем бите
-	::wr32(output, (streamDep & proto::STREAM_ID_MASK) | (exclusive ? 0x80000000u : 0));
+	::__awh_wr32__(output, (streamDep & proto::STREAM_ID_MASK) | (exclusive ? 0x80000000u : 0));
 	// Дописываем вес потока
 	output.push_back(static_cast <char> (weight));
 }
@@ -853,7 +855,7 @@ void awh::http::h2::frame::serialize::headerBlock(string & output, const uint32_
 	// Текущее смещение в блоке заголовков
 	size_t offset = 0;
 	/**
-	 * Выполняем нарезку блока на фреймы HEADERS + CONTINUATION
+	 * Нарезаем блок на фреймы HEADERS + CONTINUATION
 	 */
 	while(offset < block.size()){
 		// Определяем размер очередного фрагмента блока
@@ -886,9 +888,9 @@ void awh::http::h2::frame::serialize::headerBlock(string & output, const uint32_
  */
 void awh::http::h2::frame::serialize::pushPromise(string & output, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, const bool endHeaders) noexcept {
 	// Дописываем заголовок фрейма PUSH_PROMISE (нагрузка включает 4 октета Promised Stream ID)
-	::wrHeader(output, static_cast <uint32_t> (block.size() + 4), frame_t::PUSH_PROMISE, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
+	::__awh_wr_header__(output, static_cast <uint32_t> (block.size() + 4), frame_t::PUSH_PROMISE, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
 	// Дописываем идентификатор обещанного потока (сбрасывая reserved-бит)
-	::wr32(output, promisedStreamId & proto::STREAM_ID_MASK);
+	::__awh_wr32__(output, promisedStreamId & proto::STREAM_ID_MASK);
 	// Дописываем фрагмент блока заголовков
 	output.append(block.data(), block.size());
 }
@@ -929,7 +931,7 @@ void awh::http::h2::frame::serialize::pushPromiseBlock(string & output, const ui
 	// Максимальный размер одного фрагмента блока
 	const size_t maxChunk = static_cast <size_t> (maxFramePayload);
 	/**
-	 * Выполняем нарезку остатка блока на фреймы CONTINUATION
+	 * Нарезаем остаток блока на фреймы CONTINUATION
 	 */
 	while(offset < block.size()){
 		// Определяем размер очередного фрагмента блока
@@ -969,7 +971,7 @@ awh::http::h2::status_t awh::http::h2::frame::parser::priorityUpdate(const heade
 		return status_t::ERROR;
 	}
 	// Извлекаем идентификатор приоритизируемого потока (сбрасывая reserved-бит)
-	streamId = (::rd32(payload) & proto::STREAM_ID_MASK);
+	streamId = (::__awh_rd32__(payload) & proto::STREAM_ID_MASK);
 	// Извлекаем значение поля приоритета (zero-copy во входной буфер)
 	value = string_view(reinterpret_cast <const char *> (payload + 4), header.length - 4);
 	// Полезная нагрузка разобрана
@@ -985,9 +987,9 @@ awh::http::h2::status_t awh::http::h2::frame::parser::priorityUpdate(const heade
  */
 void awh::http::h2::frame::serialize::priorityUpdate(string & output, const uint32_t streamId, string_view value) noexcept {
 	// Дописываем заголовок фрейма PRIORITY_UPDATE (нагрузка включает 4 октета идентификатора потока)
-	::wrHeader(output, static_cast <uint32_t> (value.size() + 4), frame_t::PRIORITY_UPDATE, flag::NONE, 0);
+	::__awh_wr_header__(output, static_cast <uint32_t> (value.size() + 4), frame_t::PRIORITY_UPDATE, flag::NONE, 0);
 	// Дописываем идентификатор приоритизируемого потока (сбрасывая reserved-бит)
-	::wr32(output, streamId & proto::STREAM_ID_MASK);
+	::__awh_wr32__(output, streamId & proto::STREAM_ID_MASK);
 	// Дописываем значение поля приоритета
 	output.append(value.data(), value.size());
 }
@@ -1007,7 +1009,7 @@ bool awh::http::h2::frame::parser::altsvc(const header_t & header, const uint8_t
 		// Кадр подлежит игнорированию
 		return false;
 	// Извлекаем длину origin
-	const uint16_t length = ::rd16(payload);
+	const uint16_t length = ::__awh_rd16__(payload);
 	// Если origin не помещается в нагрузку
 	if((static_cast <uint32_t> (length) + 2) > header.length)
 		// Кадр подлежит игнорированию
@@ -1037,7 +1039,7 @@ bool awh::http::h2::frame::parser::altsvc(const header_t & header, const uint8_t
  *
  */
 bool awh::http::h2::frame::parser::origin(const header_t & header, const uint8_t * payload, vector <string_view> & origins) noexcept {
-	// Выполняем очистку набора origin
+	// Очищаем набор origin
 	origins.clear();
 	/**
 	 * Кадр относится к соединению целиком, поэтому в потоке он бессмыслен
@@ -1049,23 +1051,23 @@ bool awh::http::h2::frame::parser::origin(const header_t & header, const uint8_t
 	// Позиция разбора в полезной нагрузке
 	uint32_t pos = 0;
 	/**
-	 * Выполняем разбор всех записей набора origin
+	 * Разбираем все записи набора origin
 	 */
 	while(pos < header.length){
 		// Если запись не содержит обязательные два октета длины
 		if((header.length - pos) < 2){
-			// Выполняем очистку набора origin
+			// Очищаем набор origin
 			origins.clear();
 			// Кадр подлежит игнорированию целиком
 			return false;
 		}
 		// Извлекаем длину очередного origin
-		const uint16_t length = ::rd16(payload + pos);
+		const uint16_t length = ::__awh_rd16__(payload + pos);
 		// Сдвигаем позицию разбора за длину
 		pos += 2;
 		// Если origin не помещается в оставшуюся нагрузку
 		if(length > (header.length - pos)){
-			// Выполняем очистку набора origin
+			// Очищаем набор origin
 			origins.clear();
 			// Кадр подлежит игнорированию целиком
 			return false;
@@ -1089,9 +1091,9 @@ bool awh::http::h2::frame::parser::origin(const header_t & header, const uint8_t
  */
 void awh::http::h2::frame::serialize::altsvc(string & output, const uint32_t streamId, string_view origin, string_view value) noexcept {
 	// Дописываем заголовок фрейма ALTSVC (нагрузка включает 2 октета длины origin)
-	::wrHeader(output, static_cast <uint32_t> (origin.size() + value.size() + 2), frame_t::ALTSVC, flag::NONE, streamId);
+	::__awh_wr_header__(output, static_cast <uint32_t> (origin.size() + value.size() + 2), frame_t::ALTSVC, flag::NONE, streamId);
 	// Дописываем длину origin анонсируемого сервиса
-	::wr16(output, static_cast <uint16_t> (origin.size()));
+	::__awh_wr16__(output, static_cast <uint16_t> (origin.size()));
 	// Дописываем origin анонсируемого сервиса
 	output.append(origin.data(), origin.size());
 	// Дописываем значение поля Alt-Svc
@@ -1108,20 +1110,20 @@ void awh::http::h2::frame::serialize::origin(string & output, const vector <stri
 	// Размер полезной нагрузки кадра
 	size_t length = 0;
 	/**
-	 * Выполняем подсчёт размера полезной нагрузки заранее: он входит в заголовок,
+	 * Считаем размер полезной нагрузки заранее: он входит в заголовок,
 	 * а тот пишется до самой нагрузки
 	 */
 	for(auto & item : origins)
 		// Наращиваем размер нагрузки на запись набора
 		length += (item.size() + 2);
 	// Дописываем заголовок фрейма ORIGIN
-	::wrHeader(output, static_cast <uint32_t> (length), frame_t::ORIGIN, flag::NONE, 0);
+	::__awh_wr_header__(output, static_cast <uint32_t> (length), frame_t::ORIGIN, flag::NONE, 0);
 	/**
-	 * Выполняем запись всех записей набора origin
+	 * Записываем все записи набора origin
 	 */
 	for(auto & item : origins){
 		// Дописываем длину очередного origin
-		::wr16(output, static_cast <uint16_t> (item.size()));
+		::__awh_wr16__(output, static_cast <uint16_t> (item.size()));
 		// Дописываем очередной origin
 		output.append(item);
 	}

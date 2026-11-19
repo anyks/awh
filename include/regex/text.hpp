@@ -12,7 +12,6 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл операций над текстом сопоставления — извлечение кодового
  *        значения символа, проверка привязок к позиции в тексте и проверка принадлежности
  *        символа классу символов, общие для всех способов исполнения регулярного выражения
@@ -40,33 +39,6 @@
  *          к таблицам этого модуля, воспроизводят его вывод на всех кодовых
  *          значениях без единого расхождения.
  *
- * \~english
- * @brief Header file of the operations on the matched text — getting the code point
- *        value of a character, checking the anchors to a position in the text and checking whether
- *        a character belongs to a character class, common to all ways of executing a regular expression
- *
- * @section text_decisions Deliberate decisions
- *
- * @details What is listed below diverges from the behaviour of the reference PCRE2 implementation,
- *          but was chosen deliberately and is not subject to correction. The section is introduced so that
- *          reading the code does not start every time from the same conclusions.
- *          <b>Splitting into grapheme clusters follows the current revision
- *          of annex UAX #29 of the Unicode standard</b> rather than the PCRE2 splitting table.
- *          The divergences affect three rules: a preceding mark joins
- *          a pictographic character (GB9b), a regional indicator joins
- *          continuing characters, spacing marks and the joiner (GB9), and consonants
- *          of the Indic scripts joined by a virama are not separated (GB9c).
- *          PCRE2 does not have the first two rules in its table, and the third one appeared
- *          in the standard later and does not take part in the PCRE2 splitting at all, although the
- *          Indic_Conjunct_Break property is recognised by that implementation.
- *          Splitting the text into signs perceived by the reader is an obligation to the standard,
- *          not to a third-party implementation.
- *          The classification of characters by the Grapheme_Cluster_Break property at the same time
- *          matches PCRE2 exactly: the PCRE2 splitting rules applied
- *          to the tables of this module reproduce its output on all code point
- *          values without a single divergence.
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -89,13 +61,8 @@
 #include "common.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -104,17 +71,11 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
-	 * \~english
-	 * @brief Namespace of the regular expression module
-	 *
-	 * \~
 	 */
 	namespace regex {
 		/**
-		 * \~russian
 		 * @brief Функция приведения кодового значения символа к нижнему регистру
 		 *
 		 * @details Приведение выполняется для символов набора ASCII. Приведение символов
@@ -123,20 +84,9 @@ namespace awh {
 		 * @param code кодовое значение приводимого символа
 		 * @return     приведённое кодовое значение символа
 		 *
-		 * \~english
-		 * @brief Function of converting the code point value of a character to lower case
-		 *
-		 * @details The conversion is performed for the characters of the ASCII set. Converting characters
-		 *          beyond the ASCII set requires the Unicode property tables.
-		 *
-		 * @param code code point value of the character to convert
-		 * @return     converted code point value of the character
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint32_t fold(const uint32_t code) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция приведения кодового значения символа к нижнему регистру
 		 *
 		 * @details В режимах «UTF» и «UCP» приведение выполняется по таблицам
@@ -147,38 +97,17 @@ namespace awh {
 		 * @param flags набор режимов компиляции инструкции
 		 * @return      приведённое кодовое значение символа
 		 *
-		 * \~english
-		 * @brief Function of converting the code point value of a character to lower case
-		 *
-		 * @details In the «UTF» and «UCP» modes the conversion is performed by the case
-		 *          conversion tables of the Unicode standard, otherwise it is limited to
-		 *          the characters of the ASCII set.
-		 *
-		 * @param code  code point value of the character to convert
-		 * @param flags set of compilation modes of the instruction
-		 * @return      converted code point value of the character
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint32_t fold(const uint32_t code, const uint32_t flags) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция проверки принадлежности символа символам слова
 		 *
 		 * @param code кодовое значение проверяемого символа
 		 * @return     результат проверки принадлежности символа символам слова
 		 *
-		 * \~english
-		 * @brief Function of checking whether a character belongs to the word characters
-		 *
-		 * @param code code point value of the character to check
-		 * @return     result of checking whether the character belongs to the word characters
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool isWord(const uint32_t code) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция извлечения кодового значения символа в позиции текста
 		 *
 		 * @details В режиме «UTF» функция разбирает последовательность UTF-8 целиком,
@@ -191,24 +120,9 @@ namespace awh {
 		 * @param width длина символа в байтах
 		 * @return      кодовое значение символа в позиции текста
 		 *
-		 * \~english
-		 * @brief Function of getting the code point value of the character at a position in the text
-		 *
-		 * @details In the «UTF» mode the function parses the whole UTF-8 sequence,
-		 *          otherwise it returns the code point value of a single byte. An invalid
-		 *          sequence is parsed as a single byte.
-		 *
-		 * @param text  text to match
-		 * @param pos   position of the character in the text
-		 * @param flags set of compilation modes of the instruction
-		 * @param width length of the character in bytes
-		 * @return      code point value of the character at the position in the text
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint32_t decode(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция извлечения длины символа, предшествующего позиции текста
 		 *
 		 * @details В режиме «UTF» функция отступает к началу последовательности UTF-8,
@@ -220,23 +134,9 @@ namespace awh {
 		 * @param flags набор режимов компиляции инструкции
 		 * @return      длина предшествующего позиции символа в байтах
 		 *
-		 * \~english
-		 * @brief Function of getting the length of the character preceding a position in the text
-		 *
-		 * @details In the «UTF» mode the function steps back to the beginning of the UTF-8 sequence,
-		 *          otherwise it steps back by one byte. The function is used by execution
-		 *          that advances through the text backwards.
-		 *
-		 * @param text  text to match
-		 * @param pos   position the character preceding which is measured
-		 * @param flags set of compilation modes of the instruction
-		 * @return      length in bytes of the character preceding the position
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t behind(string_view text, const size_t pos, const uint32_t flags) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция проверки привязки к позиции в тексте
 		 *
 		 * @param text       текст для сопоставления
@@ -247,22 +147,9 @@ namespace awh {
 		 * @param convention соглашение о переводе строки выражения
 		 * @return           результат проверки привязки к позиции в тексте
 		 *
-		 * \~english
-		 * @brief Function of checking an anchor to a position in the text
-		 *
-		 * @param text       text to match
-		 * @param start      position of the beginning of the match attempt
-		 * @param type       type of the checked anchor to a position in the text
-		 * @param flags      set of compilation modes of the instruction
-		 * @param pos        position in the text to check
-		 * @param convention newline convention of the expression
-		 * @return           result of checking the anchor to a position in the text
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool assertion(string_view text, const size_t start, const anchor_t type, const uint32_t flags, const size_t pos, const newline_t convention = newline_t::LF) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция проверки принадлежности символа классу символов
 		 *
 		 * @param value класс символов регулярного выражения
@@ -270,19 +157,9 @@ namespace awh {
 		 * @param flags набор режимов компиляции инструкции
 		 * @return      результат проверки принадлежности символа классу
 		 *
-		 * \~english
-		 * @brief Function of checking whether a character belongs to a character class
-		 *
-		 * @param value character class of the regular expression
-		 * @param code  code point value of the character to check
-		 * @param flags set of compilation modes of the instruction
-		 * @return      result of checking whether the character belongs to the class
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool belongs(const classview_t & value, const uint32_t code, const uint32_t flags) noexcept;
 		/**
-		 * \~russian
 		 * @brief Функция извлечения длины графемного кластера в позиции текста
 		 *
 		 * @details Графемный кластер объединяет символы, воспринимаемые читателем как
@@ -293,18 +170,6 @@ namespace awh {
 		 * @param flags набор режимов компиляции инструкции
 		 * @return      длина графемного кластера в байтах
 		 *
-		 * \~english
-		 * @brief Function of getting the length of the grapheme cluster at a position in the text
-		 *
-		 * @details A grapheme cluster joins the characters perceived by the reader as
-		 *          a single sign, by the text splitting rules of the Unicode standard.
-		 *
-		 * @param text  text to match
-		 * @param pos   position of the beginning of the grapheme cluster in the text
-		 * @param flags set of compilation modes of the instruction
-		 * @return      length of the grapheme cluster in bytes
-		 *
-		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t grapheme(string_view text, const size_t pos, const uint32_t flags) noexcept;
 	};

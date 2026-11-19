@@ -1,15 +1,21 @@
 /**
- * @file: timer.cpp
- * @date: 2024-07-15
+ * @file timer.cpp
+ * @date 2024-07-15
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Реализация модуля ядра библиотеки
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 /**

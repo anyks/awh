@@ -1,15 +1,21 @@
 /**
- * @file: server.hpp
- * @date: 2022-09-03
+ * @file server.hpp
+ * @date 2022-09-03
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Заголовочный файл модуля авторизации HTTP
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 #ifndef __AWH_AUTH_SERVER__

@@ -1,15 +1,21 @@
 /**
- * @file: web2.cpp
- * @date: 2023-11-29
+ * @file web2.cpp
+ * @date 2023-11-29
+ *
  * @license{LicenseRef-AWH-1.0}
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @author Yuriy Lobarev
  *
- * @copyright: Copyright © 2025
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Реализация модуля схем сетевых подключений
+ *
+ * @copyright Copyright © 2025
+ *
  */
 
 /**

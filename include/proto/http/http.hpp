@@ -12,17 +12,10 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл общих типов HTTP-протокола — перечисления направления обмена, версий протокола,
  *        поддерживаемых прикладных протоколов и методов запроса, общие для парсеров HTTP/1.x,
  *        HTTP/2 и провайдеров сообщений
  *
- * \~english
- * @brief Header file of the common types of the HTTP protocol — the enumerations of the direction of the exchange, of the versions of the protocol,
- *        of the supported application protocols and of the request methods, common to the parsers of HTTP/1.x,
- *        of HTTP/2 and to the providers of the messages
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -43,13 +36,8 @@
 #include "../../sys/macro/suppress.hpp"
 
 /**
- * \~russian
  * @brief основное пространство имён
  *
- * \~english
- * @brief main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -58,23 +46,13 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
 	 *
-	 * \~english
-	 * @brief HTTP protocol namespace
-	 *
-	 * \~
 	 */
 	namespace http {
 		/**
-		 * \~russian
 		 * @brief Направление трафика (запрос/ответ)
 		 *
-		 * \~english
-		 * @brief Direction of the traffic (request/response)
-		 *
-		 * \~
 		 */
 		enum class direct_t : uint8_t {
 			NONE     = 0x00, // Нет направления (не определено)
@@ -82,13 +60,8 @@ namespace awh {
 			RESPONSE = 0x02  // Ответ сервера
 		};
 		/**
-		 * \~russian
 		 * @brief Версии HTTP-протоколов
 		 *
-		 * \~english
-		 * @brief Versions of the HTTP protocols
-		 *
-		 * \~
 		 */
 		enum class version_t : uint8_t {
 			NONE    = 0x00, // Версия протокола не определена
@@ -100,13 +73,8 @@ namespace awh {
 			HTTP5   = 0x06  // Версия протокола HTTP/5
 		};
 		/**
-		 * \~russian
 		 * @brief Версии HTTP-протоколов соответствия
 		 *
-		 * \~english
-		 * @brief Versions of the HTTP protocols of the correspondence
-		 *
-		 * \~
 		 */
 		enum class proto_t : uint8_t {
 			NONE       = 0x00, // Протокол не установлен
@@ -122,7 +90,6 @@ namespace awh {
 			WEBSOCKET3 = 0x0A  // Протокол принадлежит Websocket over HTTP/3
 		};
 		/**
-		 * \~russian
 		 * @brief Распознанный HTTP-метод
 		 *
 		 * @details Помимо основных методов HTTP/1.1 распознаются методы WebDAV (RFC 4918)
@@ -131,28 +98,13 @@ namespace awh {
 		 *          написание метода сохраняется в поле request_t::methodName (прозрачное
 		 *          проксирование экзотических методов).
 		 *
-		 * \~english
-		 * @brief Recognized HTTP method
-		 *
-		 * @details Besides the main methods of HTTP/1.1 the WebDAV methods (RFC 4918)
-		 *          and a number of the extensions (RFC 5789, UPnP, ICAL and others) are recognized. Any unrecognized but
-		 *          syntactically correct method gives UNKNOWN, while the original
-		 *          spelling of the method is preserved in the request_t::methodName field (a transparent
-		 *          proxying of the exotic methods).
-		 *
-		 * \~
 		 */
 		enum class method_t : uint8_t {
 			// Метод не установлен
 			NONE = 0x00,
 			/**
-			 * \~russian
 			 * @brief Основные (RFC 7231) + PATCH (RFC 5789)
 			 *
-			 * \~english
-			 * @brief Main (RFC 7231) + PATCH (RFC 5789)
-			 *
-			 * \~
 			 */
 			GET     = 0x01, // Метод GET (RFC 7231)
 			PUT     = 0x02, // Метод PUT (RFC 7231)
@@ -164,13 +116,8 @@ namespace awh {
 			OPTIONS = 0x08, // Метод OPTIONS (RFC 7231)
 			CONNECT = 0x09, // Метод CONNECT (RFC 7231)
 			/**
-			 * \~russian
 			 * @brief WebDAV (RFC 4918) и расширения версионирования (RFC 3253)
 			 *
-			 * \~english
-			 * @brief WebDAV (RFC 4918) and the extensions of the versioning (RFC 3253)
-			 *
-			 * \~
 			 */
 			ACL        = 0x0A, // Метод ACL (WebDAV)
 			COPY       = 0x0B, // Метод COPY (WebDAV)
@@ -189,13 +136,8 @@ namespace awh {
 			PROPPATCH  = 0x18, // Метод PROPPATCH (WebDAV)
 			MKACTIVITY = 0x19, // Метод MKACTIVITY (WebDAV)
 			/**
-			 * \~russian
 			 * @brief Прочие распространённые расширения
 			 *
-			 * \~english
-			 * @brief Other common extensions
-			 *
-			 * \~
 			 */
 			PRI         = 0x1A, // Метод PRI (HTTP/2)
 			LINK        = 0x1B, // Метод LINK (RFC 2068)
@@ -208,13 +150,8 @@ namespace awh {
 			MKCALENDAR  = 0x22, // Метод MKCALENDAR (RFC 4791)
 			UNSUBSCRIBE = 0x23, // Метод UNSUBSCRIBE (UPnP)
 			/**
-			 * \~russian
 			 * @brief Нераспознанные методы
 			 *
-			 * \~english
-			 * @brief Unrecognized methods
-			 *
-			 * \~
 			 */
 			UNKNOWN = 0x24  // Синтаксически корректный, но нераспознанный метод (оригинал в request_t::methodName)
 		};

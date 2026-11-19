@@ -12,7 +12,6 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл компиляции регулярных выражений — класс Compiler, преобразующий
  *        синтаксическое дерево в программу недетерминированного конечного автомата,
  *        пригодную для исполнения без возврата
@@ -278,283 +277,6 @@
  *          литералом и у выражения привязанного - литерал придётся выводить ему вновь,
  *          и тест на то укажет.
  *
- * \~english
- * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
- *        a syntax tree into a program of a nondeterministic finite automaton
- *        fit for execution without backtracking
- *
- * @section compiler_decisions Deliberate decisions
- *
- * @details What is listed below looks like an incongruity, but was chosen deliberately and
- *          is not subject to correction. The section is introduced so that reading the code does not start
- *          every time from the same conclusions.
- *          <b>The check of the advance through the text is placed for every unbounded
- *          repetition except the repetition of a single character.</b> The circle of bodies for which
- *          the check is omitted looks unduly narrow: many other bodies also admit
- *          no empty match. However, an empty match of a body
- *          holding constructs outside the regular subset is inferred unreliably,
- *          and the absence of the check on an empty match leaves the repetition
- *          without any termination at all. A single character, a character class, any character
- *          and a single encoding unit advance through the text with any composition
- *          of the expression, and that is what limits the circle. The extension of the circle is fixed by the test
- *          «Regex.EngineProgress»: including groups in it leaves the expressions of the test
- *          without correct boundaries. Removing the check from the repetition of a single character
- *          gives by measurement an advantage of up to one and a half times, since it relieves
- *          every turn of the repetition of saving the position and checking it.
- *          <b>Repetitions of a single character are marked by a separate set.</b>
- *          The mark looks like a duplication of information already held in the program,
- *          but recognising the arrangement of a repetition at execution time would cost
- *          several checks per every turn, whereas it is performed
- *          once at compilation. The mark allows backtracking execution
- *          to walk a run of matching characters in one move instead of executing three
- *          instructions per every character, which by measurement gives another quarter.
- *
- *          <b>The giving up of the backtracking points of an atomic script run is placed
- *          BEFORE the check of the run rather than after it.</b> The order looks reversed:
- *          the check is a part of the run, and cutting off the points before it means
- *          depriving it of a retreat. That is what the reference requires: an atomic run
- *          is not equal to the wrapper «(?>(*sr:...))» — «(*asr:.*)» on the text «αа»
- *          refuses at the first position and finds the match from the second,
- *          whereas the wrapper retreats through the body and yields «α». The rule was taken
- *          by experiment, the decision is pinned by the test «Regex.InterfaceScriptRuns».
- *
- *          <b>The mark of a literal is set when a character is placed and to the forward
- *          program alone, and nobody zeroes the mark of the other character codes.</b>
- *          Both things look like an oversight: the reverse program is left without the
- *          mark, while the backtracking execution reads the mark of every character code
- *          without checking the operation code. The reverse program is executed by the
- *          deterministic execution alone, which does not read the mark, and the restoration
- *          of a record accepts the absence of the mark. The mark of the other codes is kept
- *          at zero by construction: an instruction is placed only by the placement method,
- *          at the end and with operands zeroed by the constructor, nobody rewrites an
- *          operation code in place, and only the mark of a literal writes the gap of the
- *          operands. The pass over the program that set the mark before and zeroed the gap
- *          of every character code cost the building 4.1 per cent — it went over the
- *          reverse program as well, — while the building with the mark at placement is on
- *          a par with a building that sets no mark at all. Pinned by the test
- *          «Regex.EngineLiteralPlacement»: the mark is compared with the definition of a
- *          literal, and its absence is checked in the reverse program.
- *
- *          <b>The reverse program receives no marks of repetitions, runs and chains,
- *          and a two-branch jump is born with an invalid address of the body.</b>
- *          The first looks like an oversight: the forward program has the marks, the
- *          reverse one does not. The reverse program is executed by the deterministic
- *          execution alone, which walks the sets of states over the graph of the
- *          instructions and does not read the marks at all; the restoration of a record
- *          accepts their absence. The marking passes cost the reverse compilation a fifth —
- *          321.8 microseconds against 256.3 over a set of 353 expressions, the Grok patterns
- *          and the expressions of the measuring stand, — and four fifths for the «SECOND»
- *          pattern. The second looks redundant: the pass sets the mark by itself. But a zero
- *          in the mark field is the address of a body rather than its absence, and a reverse
- *          program deprived of the pass would carry at every jump a false mark, «the body at
- *          address zero», which the check of a storage record lets through. Pinned by the
- *          test «Regex.EngineReverseUnmarked»: the reverse program carries no mark at all,
- *          while the forward program of the same expressions does carry them.
- *
- *          <b>The number of a placed character class is remembered by the class number of
- *          the parser, although the folding of duplicates finds the same number by itself.</b>
- *          The folding searched for it by walking the placed classes at every copy of a counted
- *          repetition: the set of Grok patterns has 77 055 placements against 1 389 distinct
- *          classes, and for the patterns repeating a class by thousands of copies the search
- *          cost two fifths of the build. The remembered number is exactly the one the folding
- *          would return: the parser creates a class record for every node, and the key also
- *          keeps the modes that the folding tells apart, — the program comes out the same
- *          to the byte, which was compared by the fingerprint of 237 381 programs, forward and
- *          reverse. Pinned by the test «Regex.EngineClassRecall»: the copies of a repetition
- *          take the number by the «RECALLING» path, while a class under other modes receives
- *          its own number.
- *
- *          <b>The compiler searches for a control verb by walking the tree only when the
- *          parsing has created the node of a verb of the needed kind.</b> The set of the kinds
- *          created by the parsing looks like a duplicate: the tree carries the nodes of the
- *          verbs by itself, and a bit tells about a created node rather than a reachable one.
- *          The walk, however, cost dearly: the verb of moving to the next branch was searched
- *          for at every branch of every alternation and at every copy of a counted repetition,
- *          while the forming of the prefilter searched for the completing verb and for the
- *          other control verbs by walking the whole tree. Over a set of 353 expressions, the
- *          Grok patterns and the expressions of the measuring stand, the search for the verb
- *          of moving took 16.4 per cent of the own time of the build, the searches of the
- *          prefilter another 5.1; with the set of kinds the build of the set is 21.4 per cent
- *          faster — 4822 microseconds against 6136, forty interleaved rounds, — 331 expressions
- *          are faster by at least two per cent, and none is slower by as much. A clear bit
- *          surely promises the absence of a node, and the answer is the same the walk would
- *          give; a set bit leads to the former walk. Pinned by the test
- *          «Regex.EngineVerbWaiving»: giving up the walk is accounted for by the «WAIVING»
- *          path, and the outcomes decided by the prefilter are compared with the expectations
- *          of the reference.
- *
- *          <b>The verb of moving to the next branch is searched for in one branch rather than
- *          along the chain from it, as the other verbs are searched for.</b> Walking the chain
- *          would look more uniform, but the branches of an alternation are linked by one chain,
- *          and walking it from a branch took in all the branches following it: a branch without
- *          the verb received the mark of its beginning merely because a neighbouring branch
- *          carried the verb, and an alternation of many branches was checked in the square of
- *          their number. The extra mark does not change the outcomes: 150 000 random expressions
- *          with verbs gave the same outcomes, boundaries, captures and mark names to the last
- *          one, while 9 260 marks were removed from 7 735 programs. Pinned by the test
- *          «Regex.EngineBranchMark»: an alternation has as many marks as there are branches
- *          carrying the verb, and the outcomes are compared with the reference.
- *
- *          <b>The greatest length of a node, needed by the distance of the mandatory literal,
- *          is derived by the analysis of the literal itself rather than by calling the walk
- *          of the subtree.</b> Two ways to one length look like a duplicate: the walk derives
- *          it anyway, and the analysis could call it. But the analysis goes along a chain at
- *          every level of nesting, and the walk called for every node of a chain visited a
- *          node of depth d d times — the build paid the size of the tree times its depth.
- *          Over a set of 353 expressions, the Grok patterns and the expressions of the
- *          measuring stand, the walk took 6.9 per cent of the own time of the build; with
- *          the length derived by the analysis it takes 2.4, and the build of the set is
- *          4.7 per cent faster, twenty interleaved rounds, 252 expressions faster by at
- *          least two per cent. The walk remains for the nodes the analysis does not
- *          descend into — an alternation, a repetition without a lower bound, leaves, —
- *          and every subtree is walked once. The formula of the length of a repetition is
- *          one for both ways. The distance comes out the same to the byte: the
- *          fingerprints of 314 347 programs, forward and reverse, the distance among them,
- *          matched the former ones. Pinned by the test «Regex.EngineSpanningOnce»: the
- *          «SPANNING» path marks every node visited by a walk, and there are no more marks
- *          than nodes, while the distance is compared with the values of the former walk
- *          in the byte mode and in UTF-8.
- *
- *          <b>An instruction is filled in place through the pointer handed out by the
- *          placement, and the fast path of placing a record in a sequence is inlined into
- *          the caller.</b> Filling in the fields through the last record of the sequence
- *          looks simpler, assembling the instruction aside and moving it looks cleaner, and
- *          forbidding the slow path from inlining looks superfluous: the compiler decides on
- *          inlining by itself. But every access to a record of a mutable sequence checks the
- *          ownership of the sequence, while the placement as a whole did not yield to
- *          inlining: the slow path — moving the records to a new place — made it large, and a
- *          call per instruction cost 8 per cent of the own time of building the set of 353
- *          expressions. The fast path alone, without writing in place, slowed the build down
- *          by 0.8 per cent: the construction that filled in the fields through the last
- *          record swelled from inlining, and the compiler stopped inlining the construction
- *          itself. An instruction assembled aside was put together by GCC on the stack field
- *          by field and moved by reads wider than the writes that filled it — on x86-64 such
- *          a read waits for the writes to complete, — and the build of the set with GCC 16
- *          came out 6.8 per cent slower than before, while with Clang, which laid the
- *          instruction out in registers, it came out 7 per cent faster. With the writing in
- *          place the build of the set is 6.6 per cent faster on ARM64, 7.6 on FreeBSD
- *          (clang 19), 11.3 on Fedora (GCC 16) and 10.2 on Elbrus (LCC 1.27), twenty
- *          interleaved rounds — ten on Elbrus, — and no expression is slower. Inlining of the
- *          slow path is forbidden explicitly: Clang takes it out by itself, while GCC and LCC
- *          without the prohibition inline it into the placement, and the build of the set
- *          with GCC 16 is 2.1 per cent slower because of that. The programs come out the
- *          same to the byte: the fingerprints of 314 347 programs, forward and reverse,
- *          matched the former ones. A failure of the placement previously passed silently —
- *          the fields were written into the previous instruction, — and now the placement
- *          answers with an invalid address and an internal compilation error. Pinned by the
- *          test «Regex.StaticSequenceAppendPaths»: a viewing sequence and a full sequence
- *          take the slow path, the viewed span stays untouched, a reset sequence is filled
- *          in its former place, and the pointer handed out by the placement leads to the
- *          record placed last.
- *
- *          <b>The inlining of the placing of an instruction is set explicitly per compiler:
- *          Clang inlines the placing into every call site, GCC and LCC inline it
- *          nowhere.</b> It is natural to leave the decision on inlining to the compiler, but
- *          the compiler judges it by the whole translation unit, and the placing has fifty
- *          one call sites. The change of the analysis for the selection of positions, which
- *          touched none of them, altered the decisions of GCC 16 in the build of a repetition
- *          and of a node, and the three largest Grok patterns - «HTTPDUSER», «EMAILLOCALPART»,
- *          «EMAILADDRESS» - came to be built 3.4-3.8 per cent slower, in builds aligned to 64
- *          bytes as well. The benefit of inlining, on the other hand, differs between
- *          compilers. Without inlining Clang builds the set of 353 expressions 4.9 per cent
- *          slower on ARM64 and 5.0 on FreeBSD (clang 19), in every round, while with inlining
- *          everywhere it builds it faster than at its own discretion by 0.7 and 1.4 per cent,
- *          in aligned builds by 2.1. Without inlining GCC 15 builds the set 1.1 per cent
- *          faster, in aligned builds 1.4; GCC 16 builds it on a par within the layout, from
- *          1.1 per cent faster to 1.3 slower, but the three largest patterns 3.3-4.1 per cent
- *          faster, in aligned builds 2.9-3.4, and their slowdown by the change of the
- *          analysis is removed. LCC does not inline the placing by itself either - the sizes
- *          of the build functions with the prohibition and without it match to the byte, -
- *          while forced inlining slows its build of the set by 1.2 per cent. Compilers not
- *          measured on the stands judge by themselves. Pinned by the test
- *          «Regex.EnginePlacingChoice»: the expansion of the inlining mark is compared with
- *          the choice for the compiler. The refusal of the placing at the limit of the size of
- *          the program is guarded by the test «Regex.EngineProgramLimit»: a program exactly
- *          at the limit is built by all three builds, while one exceeding it by one instruction
- *          is refused with the code «PATTERN_TOO_LARGE».
- *
- *          <b>The analysis describes the mandatory literal by nodes and forms the string once and
- *          by writing it at one go.</b> A string at every level of nesting looks simpler than
- *          a description: the literal of the chain is ready at once. But the analysis compares
- *          literals by their length alone, while the string is needed by only one of them - the
- *          winning one; the strings, on the contrary, were formed at every level by appending
- *          a byte at a time, which called the library for every byte, and were copied at every
- *          change of the longest one. The literal is described by the first node of the chain,
- *          the number of adjacent literal nodes and the length: adjacent nodes lie in one chain,
- *          and a walk along it forms the string from the description, reserving the room at once
- *          and writing the characters directly. Writing at one go is not a whim: for an
- *          expression made of a single literal the description by nodes is an extra pass, and
- *          with appending a byte at a time such expressions were built 2-3.7 per cent slower than
- *          before with Clang on x86-64. On the expression of the build scenario of the stand the
- *          analysis of the literal took 12.8 per cent of the build and now takes 9.0. Pinned by
- *          the test «Regex.EngineLiteralSpelling»: the «SPELLING» path marks every node turned
- *          into the string of the literal, and an expression has exactly as many marks as the
- *          winning literal has nodes, while the literal and the distance are compared with the
- *          former ones in the byte mode and in UTF-8.
- *
- *          <b>The set of admissible starting bytes is walked without a branch on every byte, and
- *          the admissible bytes are counted in words of eight bytes.</b> A character class is
- *          carried into the set by adding the membership rather than by a conditional store; the
- *          admissible bytes are counted by adding the set in words, and the first of them is
- *          found by a search for the value of truth. A walk with a branch looks clearer, and
- *          a bytewise sum simpler than a sum in words, but for an expression opened by a class
- *          the two hundred and fifty six branches ran twice - carrying the class and counting, -
- *          while Clang on x86-64 with SSE2 alone carries out a bytewise sum bytewise as well, by
- *          two hundred and fifty six reads. The admissibility is one or zero - such is the
- *          representation of a boolean value in every binary convention the module is built
- *          for, - and every byte of the sum of words counts its own lane, not above thirty two,
- *          without a carry into the next one. On the expression of the build scenario of the
- *          stand the counting took 5.7 per cent of the build, now 0.3, and the set of bytes 5.6,
- *          now 1.9. Together with the description of the literal by nodes the build of the stand
- *          scenario expression is 11.0 per cent faster on ARM64, 11.6 on FreeBSD (clang 19), 11.5
- *          on openSUSE (GCC 15), 8.5 on Fedora (GCC 16) and 1.9 on Elbrus (LCC 1.27), while for
- *          the set of 353 expressions, Grok patterns and the expressions of the stand, the median
- *          over the expressions is 10.0 per cent faster on ARM64, 6.5-9.0 on x86-64 and 1.4 on
- *          Elbrus. The programs come out the same to the byte: the fingerprints of 328 092
- *          programs, forward and reverse, - of the set and of 300 000 random expressions, with
- *          «\Q...\E» and «\R» sequences among them, - matched the former ones. Pinned by the test
- *          «Regex.EnginePrefilterBytes»: the set, the uniqueness and the first byte are compared
- *          with the former ones, an alternation with a class in its first branch guards the
- *          addition - the second branch is walked first, - and an expression both admissible
- *          bytes of which fall into one lane of a word guards the sum in words.
- *
- *          <b>The mandatory literal is not derived for an expression anchored to the search
- *          start position, and the anchoring is therefore recognised before the analysis of
- *          the selection of positions.</b> The literal is a property of the expression, and
- *          it is natural to derive it for every one, but the search reads it only for an
- *          expression without anchoring: an anchored one is deliberately given no check by
- *          the literal - it has a single attempt that settles the question entirely,
- *          whereas the check would walk the text to its end, - while the backtracking
- *          execution and the generated machine code skip the literal under anchoring as
- *          well. The reference PCRE2 derives the mandatory code unit for an anchored
- *          expression too and checks it against the text if the remainder of the text is
- *          shorter than 5000 bytes; we have no such check. The analysis of the literal, on
- *          the other hand, is a descent through the whole tree, and for the expression of
- *          the build scenario of the stand, anchored to the start, it cost 9.5 per cent of
- *          the build. Without it the build of that expression is 10.9 per cent faster on
- *          ARM64, 13.1 on FreeBSD (clang 19), 11.9 on openSUSE (GCC 15), 12.8 on Fedora
- *          (GCC 16) and 9.8 on Elbrus (LCC 1.27); of the set of 353 expressions, Grok
- *          patterns and the expressions of the stand, five are anchored to the start, and
- *          the sum over the set is on a par. The recognition of anchoring reads only the
- *          modes and the syntax tree, and of the passes following the analysis only the
- *          recognition of the anchoring to the start of a line reads its indication. The
- *          set of admissible starting bytes and the leading literal are derived for an
- *          anchored expression as before: the refusal by the byte at the search position
- *          and the choice of the execution path read them. The programs come out the same
- *          to the byte, save for the literal and the distance of anchored ones: the
- *          fingerprints of 716 361 programs - of the set and of 200 000 random expressions,
- *          each without a prefix and with five prefixes of the start, «^», «\A», «\G»,
- *          «(?m)^» and «^(?:...)», - matched the former ones. Pinned by the test
- *          «Regex.EngineAnchoredLiteral»: for expressions anchored by the «^» sign, by the
- *          «\A» and «\G» sequences and by the «ANCHORED» mode the literal is empty, the
- *          distance is zero and no node is turned into the string of the literal, while for
- *          expressions without anchoring - the start of a line in the multiline mode and an
- *          alternation with an unanchored branch - the literal and the distance are the
- *          former ones. Should the search get a check by the literal for an anchored
- *          expression too, the literal will have to be derived for it again, and the test
- *          will point that out.
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -581,7 +303,6 @@
 #include "program.hpp"
 
 /**
- * \~russian
  * @brief Подстановка размещения инструкции программы
  *
  * @details Размещение инструкции сборка зовёт из пятидесяти одного места, и выгода
@@ -593,19 +314,6 @@
  *          сами. Потребитель вправе задать выбор свой, определив «AWH_REGEX_PLACING»
  *          ключом сборки.
  *
- * \~english
- * @brief Inlining of the placing of a program instruction
- *
- * @details The build calls the placing of an instruction from fifty one sites, and the
- *          benefit of inlining it differs between compilers: with inlining Clang builds the
- *          set faster than with a call, while GCC and LCC build it slower. A compiler judges
- *          inlining by the whole translation unit, and a change that did not touch the call
- *          sites altered its decision. The choice is therefore set explicitly per compiler -
- *          see the section «Deliberate decisions» of the compiler; compilers not measured on
- *          the stands judge by themselves. A consumer may set a choice of its own by defining
- *          «AWH_REGEX_PLACING» with a build flag.
- *
- * \~
  */
 #if !defined(AWH_REGEX_PLACING)
 	/**
@@ -613,13 +321,8 @@
 	 */
 	#if defined(__clang__)
 		/**
-		 * \~russian
 		 * @brief Размещение подставляется во всякое место вызова
 		 *
-		 * \~english
-		 * @brief An inlining is substituted at every place of a call
-		 *
-		 * \~
 		 */
 		#define AWH_REGEX_PLACING __AWH_INLINE__
 	/**
@@ -627,13 +330,8 @@
 	 */
 	#elif defined(__GNUC__)
 		/**
-		 * \~russian
 		 * @brief Размещение не подставляется нигде
 		 *
-		 * \~english
-		 * @brief An inlining is substituted nowhere
-		 *
-		 * \~
 		 */
 		#define AWH_REGEX_PLACING AWH_REGEX_NOINLINE
 	/**
@@ -641,26 +339,16 @@
 	 */
 	#else
 		/**
-		 * \~russian
 		 * @brief О подстановке размещения судит собиратель
 		 *
-		 * \~english
-		 * @brief A judgment on a substitution of an inlining is held by a builder
-		 *
-		 * \~
 		 */
 		#define AWH_REGEX_PLACING
 	#endif
 #endif
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -669,17 +357,11 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
-	 * \~english
-	 * @brief Namespace of the regular expression module
-	 *
-	 * \~
 	 */
 	namespace regex {
 		/**
-		 * \~russian
 		 * @brief Класс компиляции регулярного выражения
 		 *
 		 * @details Класс преобразует синтаксическое дерево в программу
@@ -690,23 +372,10 @@ namespace awh {
 		 *          и захватывающие кванторы, регулярному подмножеству не принадлежат
 		 *          и требуют исполнения с возвратом.
 		 *
-		 * \~english
-		 * @brief Class of the compilation of a regular expression
-		 *
-		 * @details The class converts a syntax tree into a program of a
-		 *          nondeterministic finite automaton. Subject to compilation are
-		 *          the expressions belonging to the regular subset of the PCRE syntax.
-		 *          Expressions holding references to captured groups, recursive
-		 *          calls, conditional expressions, lookarounds, atomic groups
-		 *          and possessive quantifiers do not belong to the regular subset
-		 *          and require execution with backtracking.
-		 *
-		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Compiler {
 			private:
 				/**
-				 * \~russian
 				 * @brief Литерал, описанный узлами синтаксического дерева
 				 *
 				 * @details Разбор обязательного литерала сличает литералы одною лишь
@@ -718,18 +387,6 @@ namespace awh {
 				 *          и первого узла с их числом довольно, чтобы литерал
 				 *          восстановить.
 				 *
-				 * \~english
-				 * @brief A literal described by the nodes of the syntax tree
-				 *
-				 * @details The analysis of the mandatory literal compares literals by their length
-				 *          alone, while the bytes are needed by only one of them - the winning one.
-				 *          The literal is therefore described by nodes: the first node of the chain,
-				 *          the number of adjacent literal nodes counting from it, and the length in
-				 *          bytes, - and the string is formed once, when the analysis is over.
-				 *          Adjacent literal nodes lie in one chain, and the first node together
-				 *          with their number suffices to restore the literal.
-				 *
-				 * \~
 				 */
 				typedef struct Piece {
 					// Длина литерала в байтах
@@ -739,33 +396,19 @@ namespace awh {
 					// Индекс первого узла литерала в арене узлов
 					node_id_t first;
 					/**
-					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
 					 */
 					explicit Piece() noexcept;
 				} piece_t;
 			private:
 				/**
-				 * \~russian
 				 * @brief Флаг компиляции выражения целиком
 				 *
 				 * @details Компиляция выражения целиком размещает инструкции конструкций,
 				 *          не принадлежащих регулярному подмножеству синтаксиса, исполнение
 				 *          которых доступно только способу исполнения с возвратом.
 				 *
-				 * \~english
-				 * @brief Flag of compiling the expression as a whole
-				 *
-				 * @details Compiling the expression as a whole places the instructions of the constructs
-				 *          that do not belong to the regular subset of the syntax, whose execution
-				 *          is available only to the way of execution with backtracking.
-				 *
-				 * \~
 				 */
 				bool _full;
 				// Флаг компиляции развёрнутого регулярного выражения
@@ -774,7 +417,6 @@ namespace awh {
 				// Количество ячеек состояния, размещённых компиляцией
 				uint32_t _cells;
 				/**
-				 * \~russian
 				 * @brief Номер ячейки отметки ветви, компилируемой ныне
 				 *
 				 * @details Ячейка отводится ветви выбора, глагол перехода несущей,
@@ -782,15 +424,6 @@ namespace awh {
 				 *          точки до отметки начала ветви. Значение недостижимое
 				 *          означает отсутствие ветви охватывающей вовсе.
 				 *
-				 * \~english
-				 * @brief Number of the mark cell of the branch being compiled now
-				 *
-				 * @details The cell is allotted to a branch of an alternation that carries the verb
-				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
-				 *          the points down to the mark of the beginning of the branch. An unreachable value
-				 *          means the absence of an enclosing branch at all.
-				 *
-				 * \~
 				 */
 				uint32_t _branch;
 				// Количество ячеек отметки состояния возврата
@@ -800,7 +433,6 @@ namespace awh {
 				error_t _error;
 			private:
 				/**
-				 * \~russian
 				 * @brief Сберегательная программа построения
 				 *
 				 * @details Построение ведётся над этой программой, а вызывающей
@@ -809,40 +441,20 @@ namespace awh {
 				 *          не запрашивает, а присвоение отводит вызывающей
 				 *          стороне ровно по длине конечной.
 				 *
-				 * \~english
-				 * @brief Scratch program of the compilation
-				 *
-				 * @details The build is carried out over this program, and the calling
-				 *          side receives the outcome by assignment. Its sequences outlive
-				 *          their space, so the build requests almost no allocations, while
-				 *          the assignment allocates for the calling side exactly by the
-				 *          final length.
-				 *
-				 * \~
 				 */
 				program_t _scratch;
 			private:
 				/**
-				 * \~russian
 				 * @brief Сберегательный ряд отметок посещения инструкций
 				 *
 				 * @details Ряд принадлежит построителю затем, что обход
 				 *          инструкций ведётся при всяком построении, а место,
 				 *          однажды отведённое, построение переживает.
 				 *
-				 * \~english
-				 * @brief Scratch sequence of the visit marks of the instructions
-				 *
-				 * @details The sequence belongs to the compiler because the traversal
-				 *          of the instructions is carried out at every build, while
-				 *          the space allocated once outlives the build.
-				 *
-				 * \~
 				 */
 				vector <bool> _marks;
 			private:
 				/**
-				 * \~russian
 				 * @brief Набор режимов, с какими размещался всякий класс символов
 				 *
 				 * @details Набор ведётся ради отсева повторов классов и живёт
@@ -859,27 +471,10 @@ namespace awh {
 				 *          промах об одной ячейке, какой стережёт проверка
 				 *          «Regex.EngineRepeatTables».
 				 *
-				 * \~english
-				 * @brief Set of the modes with which each character class was stored
-				 *
-				 * @details The set is kept for the sake of folding duplicate classes and lives
-				 *          only during the build: it does not enter the storage record, so the
-				 *          layout of that record is not affected by the folding at all.
-				 *
-				 *          The modes in the folding key are mandatory. The byte membership table
-				 *          of the execution with backtracking is held by the class index and is
-				 *          built with regard to the modes of the instruction, being rebuilt when
-				 *          they change. Folding without the modes would bring "(?i)[a-z]" and
-				 *          "[a-z]" to one index, and the table would be rebuilt on every
-				 *          alternation between them — the very one-cell miss that the test
-				 *          "Regex.EngineRepeatTables" guards.
-				 *
-				 * \~
 				 */
 				vector <uint32_t> _modes;
 			private:
 				/**
-				 * \~russian
 				 * @brief Сберегательный ряд узлов цепочки при построении развёрнутом
 				 *
 				 * @details Развёрнутое выражение сопоставляет последовательность
@@ -892,42 +487,18 @@ namespace awh {
 				 *          основания - тем же порядком, каким живут прочие
 				 *          сберегательные ряды разбора и построения.
 				 *
-				 * \~english
-				 * @brief Scratch sequence of the nodes of a chain for the reversed building
-				 *
-				 * @details A reversed expression matches the sequence of the elements
-				 *          in the reverse order, which is why the nodes of a chain
-				 *          are built from the end, while the linking of the nodes leads
-				 *          only forward — the chain has to be accumulated. The sequence
-				 *          was kept for every nesting level.
-				 *
-				 *          The sequence is now common, and the nesting is kept by
-				 *          the mark of the base — in the same way as the other scratch
-				 *          sequences of the parsing and the building live.
-				 *
-				 * \~
 				 */
 				vector <node_id_t> _chain;
 				/**
-				 * \~russian
 				 * @brief Соответствие номеров групп индексам их узлов синтаксического дерева
 				 *
 				 * @details Держится плотным рядом по тем же доводам, что и
 				 *          соответствие адресов тел. Отсутствие записи означено
 				 *          приметою `INVALID_NODE`.
 				 *
-				 * \~english
-				 * @brief Correspondence of the group numbers to the indices of their nodes of the syntax tree
-				 *
-				 * @details It maintains a contiguous layout based on the same logic
-				 *          as the body address mapping. The absence of an entry
-				 *          is indicated by the `INVALID_NODE` marker.
-				 *
-				 * \~
 				 */
 				vector <node_id_t> _groups;
 				/**
-				 * \~russian
 				 * @brief Сберегательный след узлов при проверке продвижения по тексту
 				 *
 				 * @details Проверка обязательного продвижения обходит дерево
@@ -936,32 +507,15 @@ namespace awh {
 				 *          на всякое повторение неограниченное, а вложенности
 				 *          не знает - оттого достаточно очистки, а не отметки.
 				 *
-				 * \~english
-				 * @brief Scratch trace of the nodes for the check of advancing over the text
-				 *
-				 * @details The mandatory-propagation check traverses the tree
-				 *          while maintaining a trace; recursive calls are
-				 *          distinguished, and a fresh trace is initialized for
-				 *          each check. The check is invoked for every unbounded
-				 *          iteration and is unaware of nesting levels—hence,
-				 *          clearing the trace suffices, rather than marking nodes.
-				 *
-				 * \~
 				 */
 				mutable vector <node_id_t> _visited;
 			private:
 				/**
-				 * \~russian
 				 * @brief Сберегательный ряд стека обхода инструкций
 				 *
-				 * \~english
-				 * @brief Scratch sequence of the traversal stack of the instructions
-				 *
-				 * \~
 				 */
 				vector <address_t> _stack;
 				/**
-				 * \~russian
 				 * @brief Сберегательный ряд адресов переходов, построением накапливаемых
 				 *
 				 * @details Выбор одной из ветвей и повторение с границами копят
@@ -976,26 +530,9 @@ namespace awh {
 				 *          переходы. Место, однажды отведённое, переживает
 				 *          и узлы, и построения.
 				 *
-				 * \~english
-				 * @brief Scratch sequence of the jump addresses accumulated by the building
-				 *
-				 * @details Alternation and bounded repetition accumulate the addresses
-				 *          of the jumps before resolving them: the number of branches
-				 *          and passes is not known in advance. The sequence was kept
-				 *          for every node, and such nodes in an expression are as many
-				 *          as there are alternations and bounded repetitions.
-				 *
-				 *          The sequence is now common, and the nesting is kept by
-				 *          the mark of the base: the build remembers the length of the
-				 *          sequence at the entry, accumulates on top of it, and truncates
-				 *          the sequence back when the jumps are resolved. The room
-				 *          allocated once outlives both the nodes and the builds.
-				 *
-				 * \~
 				 */
 				vector <address_t> _exits;
 				/**
-				 * \~russian
 				 * @brief Соответствие номеров групп адресам их рекурсивно вызываемых тел
 				 *
 				 * @details Соответствие держится плотным рядом, а не отображением
@@ -1007,24 +544,10 @@ namespace awh {
 				 *
 				 *          Отсутствие записи означено приметою `INVALID_ADDRESS`.
 				 *
-				 * \~english
-				 * @brief Correspondence of the group numbers to the addresses of their recursively called bodies
-				 *
-				 * @details The correspondence is held by a dense sequence rather than an ordered map:
-				 *          the numbers of the capturing groups run consecutively from one,
-				 *          and their count is known from the parsing. A map would allocate
-				 *          a node for every entry and balance the tree, while a sequence
-				 *          is taken by the number directly, and the room for it is allocated
-				 *          once and outlives the build.
-				 *
-				 *          The absence of an entry is marked by the flag `INVALID_ADDRESS`.
-				 *
-				 * \~
 				 */
 				vector <address_t> _sections;
 			private:
 				/**
-				 * \~russian
 				 * @brief Арена узлов синтаксического дерева объекта разбора
 				 *
 				 * @details Арена сберегается указателем потому, что извлечение
@@ -1034,17 +557,6 @@ namespace awh {
 				 *          через сбережённый указатель встраивается целиком, и
 				 *          вызов подпрограммы на месте каждого обращения исчезает.
 				 *
-				 * \~english
-				 * @brief Arena of the syntax tree nodes of the parser object
-				 *
-				 * @details The arena is kept as a pointer because getting a node by
-				 *          index happens at every step of the compilation, while the
-				 *          getter of the parser object lies in a foreign translation
-				 *          unit and cannot be inlined. Access through the kept pointer
-				 *          is inlined entirely, and the subroutine call at the place
-				 *          of every access disappears.
-				 *
-				 * \~
 				 */
 				const vector <node_data_t> * _arena;
 			private:
@@ -1055,7 +567,6 @@ namespace awh {
 				const parser_t * _parser;
 			private:
 				/**
-				 * \~russian
 				 * @brief Соответствие имён отметок номерам ячеек их положения
 				 *
 				 * @details Ячейка отводится единожды на имя, а не на глагол отметки:
@@ -1063,21 +574,12 @@ namespace awh {
 				 *          розыск глаголом переноса находит отметку живую последнюю
 				 *          того имени.
 				 *
-				 * \~english
-				 * @brief Correspondence of mark names to the numbers of their position cells
-				 *
-				 * @details The cell is allotted once per name, not per mark verb: the marks
-				 *          of one name write their position into it, whereby the lookup
-				 *          by the moving verb finds the last live mark of that name.
-				 *
-				 * \~
 				 */
 				std::map <string, uint32_t> _named;
 			private:
 				// Набор адресов инструкций рекурсивного вызова и номеров вызываемых групп
 				vector <pair <address_t, uint32_t>> _calls;
 				/**
-				 * \~russian
 				 * @brief Соответствие номеров классов разбора номерам классов программы
 				 *
 				 * @details Счётное повторение компилируется копиями, и всякая копия
@@ -1095,30 +597,10 @@ namespace awh {
 				 *          лишь размещению с режимами теми же. Отсутствие записи
 				 *          означено приметою `INVALID_CLASS`.
 				 *
-				 * \~english
-				 * @brief Correspondence of the class numbers of the parser to the class numbers of the program
-				 *
-				 * @details A counted repetition is compiled by copies, and every copy of a
-				 *          character class called the placement, while the placement compared
-				 *          the class with all the ones placed before: the folding of duplicates
-				 *          returned the same number, but searched for it anew at every copy.
-				 *          The set of Grok patterns has 77 055 placements and 1 389 distinct
-				 *          classes, and for the patterns repeating a class by thousands of
-				 *          copies that search cost two fifths of the build.
-				 *
-				 *          The sequence is kept dense by the class number of the parser: every
-				 *          class node creates its own record, and the number of the record answers
-				 *          the node. The sequence keeps the class number of the program and the
-				 *          modes with which the class was placed: the folding tells the modes apart,
-				 *          and a remembered number fits only a placement with the same modes. The
-				 *          absence of a record is marked by the sign `INVALID_CLASS`.
-				 *
-				 * \~
 				 */
 				vector <pair <uint32_t, uint32_t>> _stored;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод компиляции регулярного выражения
 				 *
 				 * @details Компиляция выполняется по синтаксическому дереву, полученному
@@ -1130,23 +612,9 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a regular expression
-				 *
-				 * @details The compilation is performed over the syntax tree obtained by
-				 *          the parsing object. A compilation failure with the «UNSUPPORTED» error code
-				 *          means that the expression belongs to the non-regular subset
-				 *          and requires execution of the expression with backtracking.
-				 *
-				 * @param parser  parsing object of the regular expression
-				 * @param program program of the regular expression being compiled
-				 * @return        result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compile(const Parser & parser, program_t & program) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции развёрнутого регулярного выражения
 				 *
 				 * @details Развёрнутая программа сопоставляет выражение при проходе по тексту
@@ -1158,23 +626,9 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a reversed regular expression
-				 *
-				 * @details A reversed program matches the expression while walking the text
-				 *          backwards: the sequences of elements and of characters
-				 *          are placed in reverse order. The program is intended for searching for
-				 *          the position where a match begins and performs no capture of groups.
-				 *
-				 * @param parser  parsing object of the regular expression
-				 * @param program program of the regular expression being compiled
-				 * @return        result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileReverse(const Parser & parser, program_t & program) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции регулярного выражения целиком
 				 *
 				 * @details Компиляция размещает инструкции всех конструкций синтаксиса,
@@ -1185,120 +639,59 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a regular expression as a whole
-				 *
-				 * @details The compilation places the instructions of all the syntax constructs,
-				 *          including those not belonging to the regular subset. The resulting
-				 *          program is executed exclusively by the way with backtracking.
-				 *
-				 * @param parser  parsing object of the regular expression
-				 * @param program program of the regular expression being compiled
-				 * @return        result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileFull(const Parser & parser, program_t & program) noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод извлечения кода ошибки компиляции
 				 *
 				 * @return код ошибки последней операции компиляции
 				 *
-				 * \~english
-				 * @brief Method of getting the compilation error code
-				 *
-				 * @return error code of the last compilation operation
-				 *
-				 * \~
 				 */
 				error_t error() const noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод извлечения узла синтаксического дерева
 				 *
 				 * @param id индекс узла в арене узлов
 				 * @return   узел синтаксического дерева
 				 *
-				 * \~english
-				 * @brief Method of getting a node of the syntax tree
-				 *
-				 * @param id index of the node in the node arena
-				 * @return   node of the syntax tree
-				 *
-				 * \~
 				 */
 				const node_data_t & node(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод построения программы регулярного выражения
 				 *
 				 * @param parser  объект разбора регулярного выражения
 				 * @param program строимая программа регулярного выражения
 				 * @return        результат выполнения построения
 				 *
-				 * \~english
-				 * @brief Method of building the program of a regular expression
-				 *
-				 * @param parser  parsing object of the regular expression
-				 * @param program program of the regular expression being built
-				 * @return        result of performing the build
-				 *
-				 * \~
 				 */
 				bool build(const Parser & parser, program_t & program) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции цепочки узлов синтаксического дерева
 				 *
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a chain of nodes of the syntax tree
-				 *
-				 * @param id index of the first node of the chain in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileChain(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции узла синтаксического дерева
 				 *
 				 * @param id индекс узла в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a node of the syntax tree
-				 *
-				 * @param id index of the node in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileNode(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции узла повторения
 				 *
 				 * @param id индекс узла повторения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a repetition node
-				 *
-				 * @param id index of the repetition node in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileRepeat(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции повторения элемента выражения
 				 *
 				 * @details Метод размещает инструкции повторения без учёта запрета
@@ -1308,21 +701,9 @@ namespace awh {
 				 * @param id индекс узла повторения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a repetition of an expression element
-				 *
-				 * @details The method places the instructions of the repetition without taking into account the prohibition
-				 *          of backtracking into the repeated element, which is placed by
-				 *          the method of compiling a repetition node.
-				 *
-				 * @param id index of the repetition node in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileIteration(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод свёртки ветвей выбора в один класс символов
 				 *
 				 * @details Выбор из одиночных символов и классов есть тот же класс,
@@ -1334,21 +715,9 @@ namespace awh {
 				 * @param id индекс узла выбора одной из ветвей в арене узлов
 				 * @return   результат выполнения свёртки ветвей
 				 *
-				 * \~english
-				 * @brief Method of folding the branches of a choice into a single character class
-				 *
-				 * @details A choice among single characters and classes is the very same class
-				 *          made up by the union of the branches, whereas the generation tells
-				 *          them apart: a choice is compiled into a two-branch jump
-				 *
-				 * @param id index of the node of the choice of one of the branches in the arena of nodes
-				 * @return   result of performing the folding of the branches
-				 *
-				 * \~
 				 */
 				bool merging(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод свёртки повторения над необязательными частями в ряд символов
 				 *
 				 * @details Повторение вида «(?:A* B?)*», всякая часть тела какого необязательна,
@@ -1360,73 +729,34 @@ namespace awh {
 				 * @param id индекс узла повторения в арене узлов
 				 * @return   результат выполнения свёртки повторения
 				 *
-				 * \~english
-				 * @brief Method of folding a repetition over optional parts into a run of characters
-				 *
-				 * @details A repetition of the form «(?:A* B?)*», every part of whose body is optional,
-				 *          accepts exactly the same strings as the run «[A∪B]*»: the body takes any
-				 *          part one at a time, and the outer repetition repeats this without count. The run
-				 *          is passed by a table of bytes in one go, whereas a repetition over a region
-				 *          goes by a frame record on every pass.
-				 *
-				 * @param id index of the repetition node in the arena of nodes
-				 * @return   result of performing the folding of the repetition
-				 *
-				 * \~
 				 */
 				bool flattening(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции узла выбора одной из ветвей
 				 *
 				 * @param id индекс узла выбора одной из ветвей в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling the node of the choice of one of the branches
-				 *
-				 * @param id index of the node of the choice of one of the branches in the arena of nodes
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileAlternate(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции узла проверки окружения
 				 *
 				 * @param id      индекс узла проверки окружения в арене узлов
 				 * @param address адрес размещённой инструкции проверки окружения
 				 * @return        результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a lookaround node
-				 *
-				 * @param id      index of the lookaround node in the node arena
-				 * @param address address of the placed lookaround instruction
-				 * @return        result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileLook(const node_id_t id, address_t & address) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции узла условного выражения
 				 *
 				 * @param id индекс узла условного выражения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling a conditional expression node
-				 *
-				 * @param id index of the conditional expression node in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileCondition(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения набора номеров одноимённых групп
 				 *
 				 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
@@ -1439,24 +769,9 @@ namespace awh {
 				 * @param name индекс имени группы в хранилище имён
 				 * @return     набор номеров одноимённых групп либо ничего
 				 *
-				 * \~english
-				 * @brief Method of getting the set of the numbers of the same-named groups
-				 *
-				 * @details In the «DUPNAMES» mode one name is declared by several groups,
-				 *          and a reference by name addresses the one of them that performed the capture,
-				 *          whereas a condition by name holds on the capture of any of them. The parsing
-				 *          yields by a name the number of the first declared one, which is not enough for those
-				 *          rules, and the compiler places a chain of checks by
-				 *          the set of the numbers.
-				 *
-				 * @param name index of the name of the group in the name storage
-				 * @return     set of the numbers of the same-named groups or nothing
-				 *
-				 * \~
 				 */
 				const vector <uint32_t> * duplicates(const uint32_t name) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод компиляции тел рекурсивно вызываемых подвыражений
 				 *
 				 * @details Тела размещаются за основной программой отдельными разделами,
@@ -1465,115 +780,57 @@ namespace awh {
 				 *
 				 * @return результат выполнения компиляции
 				 *
-				 * \~english
-				 * @brief Method of compiling the bodies of the recursively called subexpressions
-				 *
-				 * @details The bodies are placed after the main program as separate sections
-				 *          terminated by a return instruction, after which the addresses of the sections
-				 *          are set in the recursive call instructions.
-				 *
-				 * @return result of performing the compilation
-				 *
-				 * \~
 				 */
 				bool compileSections() noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод сбора узлов захватывающих групп выражения
 				 *
 				 * @param id индекс узла, с которого начинается сбор
 				 *
-				 * \~english
-				 * @brief Method of collecting the nodes of the capturing groups of the expression
-				 *
-				 * @param id index of the node the collection starts from
-				 *
-				 * \~
 				 */
 				void collect(const node_id_t id) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод размещения ячейки состояния исполнения
 				 *
 				 * @return номер ячейки состояния в наборе позиций захвата групп
 				 *
-				 * \~english
-				 * @brief Method of allocating an execution state cell
-				 *
-				 * @return number of the state cell in the set of the group capture positions
-				 *
-				 * \~
 				 */
 				uint32_t reserve() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отвода ячейки положения отметки имени
 				 *
 				 * @param offset смещение имени отметки в хранилище имён разбора
 				 * @param length длина имени отметки в октетах
 				 * @return       номер ячейки положения отметки имени
 				 *
-				 * \~english
-				 * @brief Method of allotting the position cell of a named mark
-				 *
-				 * @param offset offset of the mark name in the parsing name storage
-				 * @param length length of the mark name in octets
-				 * @return       number of the position cell of the named mark
-				 *
-				 * \~
 				 */
 				uint32_t naming(const uint32_t offset, const uint32_t length) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия глагола управления возвратом
 				 *
 				 * @param id индекс узла, с которого начинается обход
 				 * @return   результат проверки наличия глагола управления
 				 *
-				 * \~english
-				 * @brief Method of checking the presence of a backtracking control verb
-				 *
-				 * @param id index of the node the traversal starts from
-				 * @return   result of checking the presence of a control verb
-				 *
-				 * \~
 				 */
 				bool verbal(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки зависимости пустого сопоставления от состояния
 				 *
 				 * @param id индекс узла, с которого начинается обход
 				 * @return   результат проверки зависимости от состояния
 				 *
-				 * \~english
-				 * @brief Method of checking whether an empty match depends on the state
-				 *
-				 * @param id index of the node the traversal starts from
-				 * @return   result of checking the dependence on the state
-				 *
-				 * \~
 				 */
 				bool stateful(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия глагола завершения сопоставления
 				 *
 				 * @param id индекс узла, с которого начинается обход
 				 * @return   результат проверки наличия глагола завершения
 				 *
-				 * \~english
-				 * @brief Method of checking the presence of a match-completing verb
-				 *
-				 * @param id index of the node the traversal starts from
-				 * @return   result of checking the presence of a completing verb
-				 *
-				 * \~
 				 */
 				bool accepting(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод размещения инструкции глагола отметки имени
 				 *
 				 * @param offset смещение имени отметки в хранилище имён разбора
@@ -1582,20 +839,9 @@ namespace awh {
 				 * @param named  признак открытия имени розыску глаголом переноса
 				 * @return       адрес размещённой инструкции глагола отметки
 				 *
-				 * \~english
-				 * @brief Method of emitting the instruction of a named mark verb
-				 *
-				 * @param offset offset of the mark name in the parsing name storage
-				 * @param length length of the mark name in octets
-				 * @param flags  flags of the instruction being emitted
-				 * @param named  flag of opening the name to be sought by a transfer verb
-				 * @return       address of the emitted instruction of the mark verb
-				 *
-				 * \~
 				 */
 				address_t marking(const uint32_t offset, const uint32_t length, const uint32_t flags, const bool named) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия у выражения глаголов управления видов заданных
 				 *
 				 * @details Разбор отмечает виды глаголов, узлы каких заводит, и дерево
@@ -1605,21 +851,9 @@ namespace awh {
 				 * @param kinds набор разрядов видов глаголов управления
 				 * @return      результат проверки наличия глаголов видов заданных
 				 *
-				 * \~english
-				 * @brief Method of checking whether the expression carries control verbs of the given kinds
-				 *
-				 * @details The parsing marks the kinds of the verbs whose nodes it creates, and the tree
-				 *          is walked in search of a verb only when the bit of the needed kind is set.
-				 *          Giving up the walk is accounted for by the «WAIVING» path.
-				 *
-				 * @param kinds set of the bits of the kinds of control verbs
-				 * @return      result of checking whether verbs of the given kinds are present
-				 *
-				 * \~
 				 */
 				bool carries(const uint32_t kinds) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки наличия глагола перехода к ветви следующей
 				 *
 				 * @details Ветвь, глагола этого не несущая, отметки начала своего
@@ -1632,25 +866,10 @@ namespace awh {
 				 * @param id индекс проверяемого узла в арене узлов
 				 * @return   результат проверки наличия глагола перехода
 				 *
-				 * \~english
-				 * @brief Method of checking the presence of the verb of moving to the next branch
-				 *
-				 * @details A branch that does not carry that verb requires no mark of its beginning:
-				 *          the mark is placed only where backtracking into the verb will use it.
-				 *          The node itself and the nodes nested in it are checked, while its
-				 *          neighbours are not: the branches of an alternation are linked by one
-				 *          chain, and walking it would take in all the branches following
-				 *          the checked one.
-				 *
-				 * @param id index of the checked node in the node arena
-				 * @return   result of checking the presence of the verb of moving
-				 *
-				 * \~
 				 */
 				bool moving(const node_id_t id) const noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод формирования предварительного отбора позиций
 				 *
 				 * @details Метод определяет набор байтов, допустимых в начале совпадения,
@@ -1661,23 +880,9 @@ namespace awh {
 				 *          у привязанного поиск литерала не читает, и признак привязки
 				 *          распознаётся прежде анализа. Смотрите раздел «Намеренные решения».
 				 *
-				 * \~english
-				 * @brief Method of building the preliminary selection of positions
-				 *
-				 * @details The method determines the set of bytes admissible at the beginning of a match
-				 *          and the mandatory literal of a match. The set of bytes is not applied
-				 *          if the expression admits a match of zero length, since
-				 *          such a match is possible at any position of the text. The literal
-				 *          is derived only for an expression not anchored to the search start position:
-				 *          for an anchored one the search does not read the literal, and the indication
-				 *          of anchoring is recognised before the analysis. See the section «Deliberate
-				 *          decisions».
-				 *
-				 * \~
 				 */
 				void analyze() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод пометки повторений одиночного символа
 				 *
 				 * @details Метод помечает переходы по двум ветвям, ветвь повторения которых
@@ -1685,19 +890,9 @@ namespace awh {
 				 *          повторения, адресом тела повторения, благодаря чему исполнение
 				 *          проходит ряд подходящих символов одним ходом.
 				 *
-				 * \~english
-				 * @brief Method of marking the repetitions of a single character
-				 *
-				 * @details The method marks the two-branch jumps whose repetition branch
-				 *          consists of matching a single character and a jump to the beginning of
-				 *          the repetition, with the address of the body of the repetition, thanks to which execution
-				 *          walks a run of matching characters in one move.
-				 *
-				 * \~
 				 */
 				void mark() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод пометки рядов одинаковых инструкций подряд
 				 *
 				 * @details Копии счётного повторения одиночного символа идут подряд
@@ -1705,20 +900,9 @@ namespace awh {
 				 *          циклом равен проходу по одной, а заходов в разбор кода
 				 *          операции стоит один взамен нескольких
 				 *
-				 * \~english
-				 * @brief Method of marking the rows of identical instructions in a row
-				 *
-				 * @details The copies of a counted repetition of a single character follow
-				 *          one another and do not take control between themselves: traversing
-				 *          them in a tight loop equals traversing them one by one, while
-				 *          costing one trip through the dispatch of the operation code
-				 *          instead of several
-				 *
-				 * \~
 				 */
 				void series() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод продления литералов, байтами дословно сличаемых, размещённым символом
 				 *
 				 * @details Подряд идущие одиночные символы, сопоставляемые байтом
@@ -1730,23 +914,9 @@ namespace awh {
 				 *
 				 * @param address адрес размещённой инструкции одиночного символа
 				 *
-				 * \~english
-				 * @brief Method of prolonging the literals compared by bytes verbatim with a placed character
-				 *
-				 * @details Consecutive single characters matched by a byte verbatim do not
-				 *          take control between themselves and set no backtracking points:
-				 *          comparing them in one trip equals comparing them one by one, while
-				 *          costing one trip through the dispatch of the operation code
-				 *          instead of several. The mark is set when a character is placed
-				 *          rather than by a pass over the program
-				 *
-				 * @param address address of the placed instruction of a single character
-				 *
-				 * \~
 				 */
 				void prolong(const address_t address) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод пометки цепочек ограниченного повторения одиночного символа
 				 *
 				 * @details Повторение ограниченное компилируется цепочкой переходов
@@ -1755,20 +925,9 @@ namespace awh {
 				 *          цепочки одним ходом и одной точкой возврата взамен двух
 				 *          инструкций и точки на каждую копию
 				 *
-				 * \~english
-				 * @brief Method of marking the chains of a bounded repetition of a single character
-				 *
-				 * @details A bounded repetition is compiled as a chain of jumps with a common
-				 *          exit, carrying no backward jump at all, which is why the mark of
-				 *          an unbounded row does not cover it. The mark yields a traversal of
-				 *          the chain in one move and with one backtracking point instead of
-				 *          two instructions and a point per every copy
-				 *
-				 * \~
 				 */
 				void bounded() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод разбора бесплодности возврата в ряд повторения
 				 *
 				 * @details Возврат в жадный ряд перебирает длины его убывающие, продолжение
@@ -1783,27 +942,9 @@ namespace awh {
 				 * @param exit адрес ветви завершения повторения
 				 * @return     результат разбора бесплодности возврата в ряд
 				 *
-				 * \~english
-				 * @brief Method of the analysis of the futility of backtracking into a run of the repetition
-				 *
-				 * @details Backtracking into a greedy run enumerates its decreasing lengths, repeating
-				 *          the continuation at every one. That enumeration is futile when a character
-				 *          consumed by the body of the repetition certainly does not suit the
-				 *          continuation: having shortened the run by a character, the continuation
-				 *          runs into exactly it. The analysis is conducted by the first character of
-				 *          the continuation, stepping over the saving of a position into a capture
-				 *          cell: it consumes no text and gives no refusal. The reference calls this
-				 *          «auto-possessification».
-				 *
-				 * @param body body of the repetition of a single character
-				 * @param exit address of the branch completing the repetition
-				 * @return     result of the analysis of the futility of backtracking into the run
-				 *
-				 * \~
 				 */
 				bool futile(const address_t body, const address_t exit) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод подсчёта повторений любого символа и проверки их вложенности
 				 *
 				 * @param id     индекс проверяемого узла в арене узлов
@@ -1811,37 +952,18 @@ namespace awh {
 				 * @param nested флаг обнаружения повторения в пределах повторения
 				 * @return       количество неограниченных повторений любого символа
 				 *
-				 * \~english
-				 * @brief Method of counting the repetitions of any character and checking their nesting
-				 *
-				 * @param id     index of the checked node in the node arena
-				 * @param inside flag of the node being within a repetition
-				 * @param nested flag of a repetition being found within a repetition
-				 * @return       number of unbounded repetitions of any character
-				 *
-				 * \~
 				 */
 				size_t sweeps(const node_id_t id, const bool inside, bool & nested) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод распознавания выражения, проходящего текст единственной попыткой
 				 *
 				 * @details Признак устанавливается выражению, начинающемуся неограниченным
 				 *          жадным повторением любого символа, при отсутствии вложенных
 				 *          повторений и единственности повторения любого символа.
 				 *
-				 * \~english
-				 * @brief Method of recognising an expression walking the text in a single attempt
-				 *
-				 * @details The indication is set for an expression beginning with an unbounded
-				 *          greedy repetition of any character, in the absence of nested
-				 *          repetitions and when the repetition of any character is a single one.
-				 *
-				 * \~
 				 */
 				void sweeping() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки начала сопоставления привязкой к позиции начала поиска
 				 *
 				 * @details Метод подтверждает привязку лишь тогда, когда сопоставление
@@ -1860,29 +982,9 @@ namespace awh {
 				 * @param lines флаг разбора привязки к началу строки
 				 * @return      результат проверки начала сопоставления привязкой
 				 *
-				 * \~english
-				 * @brief Method of checking that matching begins with an anchor to the position where the search starts
-				 *
-				 * @details The method confirms the anchor only when matching
-				 *          begins with it on all paths of the expression. Zero-length anchors
-				 *          that do not limit the positions of a match are walked through,
-				 *          and a reset of the beginning of a match stops the walk.
-				 *          The «lines» flag switches the analysis from the anchor to the position where the search
-				 *          starts to the anchor to the beginning of a line: the «^» anchor is then
-				 *          confirmed in the «MULTILINE» mode as well, while the anchor to the beginning
-				 *          of an attempt «\\G» is, on the contrary, rejected, since the position where the search
-				 *          starts is not bound to be the beginning of a line.
-				 *
-				 * @param id    index of the checked node in the node arena
-				 * @param chain flag of walking a chain of nodes of the same nesting level
-				 * @param lines flag of the analysis of the anchor to the beginning of a line
-				 * @return      result of checking that matching begins with an anchor
-				 *
-				 * \~
 				 */
 				bool anchoring(const node_id_t id, const bool chain, const bool lines) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод распознавания выражения, привязанного к позиции начала поиска
 				 *
 				 * @details Признак устанавливается выражению, начинающемуся привязкой
@@ -1891,20 +993,9 @@ namespace awh {
 				 *          позиций: по признаку этому анализ решает, выводить ли обязательный
 				 *          литерал.
 				 *
-				 * \~english
-				 * @brief Method of recognising an expression anchored to the position where the search starts
-				 *
-				 * @details The indication is set for an expression beginning with an anchor
-				 *          to the beginning of the text on all paths, as well as for an expression matched
-				 *          in the «ANCHORED» mode. The recognition runs before the analysis of the
-				 *          selection of positions: by this indication the analysis decides whether to
-				 *          derive the mandatory literal.
-				 *
-				 * \~
 				 */
 				void anchored() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод распознавания выражения, привязанного к началу строки
 				 *
 				 * @details Признак служит обходу позиций начала попытки: позиции, началом
@@ -1913,20 +1004,9 @@ namespace awh {
 				 *          удостаивается - попытка у него единственная, и обход до
 				 *          пропуска не доходит.
 				 *
-				 * \~english
-				 * @brief Method of recognizing an expression anchored to the beginning of a line
-				 *
-				 * @details The indication serves the walk over the positions of the beginning of an attempt: the positions
-				 *          that are not the beginning of a line are skipped by it at once. An expression
-				 *          anchored to the position where the search starts is also granted this indication —
-				 *          its attempt is a single one, and the walk does not reach
-				 *          the skipping.
-				 *
-				 * \~
 				 */
 				void startline() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки обязательного продвижения узла по тексту
 				 *
 				 * @details Метод подтверждает продвижение по строению узла: цепочка
@@ -1944,28 +1024,9 @@ namespace awh {
 				 * @param id индекс проверяемого узла в арене узлов
 				 * @return   результат проверки обязательного продвижения узла по тексту
 				 *
-				 * \~english
-				 * @brief Method of checking the mandatory advance of a node through the text
-				 *
-				 * @details The method confirms the advance by the structure of the node:
-				 *          a concatenation advances if at least one of its nodes advances,
-				 *          an alternation - if every one of its branches advances, a group -
-				 *          by its own content, and a repetition - if it is mandatory at least
-				 *          once. The method says nothing about the nodes whose empty match
-				 *          is determined by constructs outside the regular subset: the
-				 *          inference there is unreliable.
-				 *
-				 *          Saying nothing is safe, whereas confirming wrongly is not: it
-				 *          would remove the guard of the advance, and the repetition would
-				 *          not terminate on an empty body at all.
-				 * @param id index of the checked node in the node arena
-				 * @return   result of checking the mandatory advance of the node through the text
-				 *
-				 * \~
 				 */
 				bool advancing(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод проверки обязательного продвижения узла по тексту со следом обхода
 				 *
 				 * @details След несёт узлы, проверка каких ещё не завершена, и служит
@@ -1979,24 +1040,9 @@ namespace awh {
 				 * @param visited след узлов, проверка каких не завершена
 				 * @return        результат проверки обязательного продвижения узла по тексту
 				 *
-				 * \~english
-				 * @brief Method of checking the mandatory advance of a node through the text with a trail of the walk
-				 *
-				 * @details The trail holds the nodes whose check is not yet finished and serves
-				 *          as a guard of a circular walk: a recursive call refers to the expression
-				 *          containing that very call, which is why checking it would come to itself.
-				 *          A node already standing in the trail confirms no advance - saying nothing
-				 *          is safe, whereas confirming wrongly would remove the guard of the advance.
-				 *
-				 * @param id      index of the checked node in the node arena
-				 * @param visited trail of the nodes whose check is not finished
-				 * @return        result of checking the mandatory advance of the node through the text
-				 *
-				 * \~
 				 */
 				bool advancing(const node_id_t id, vector <node_id_t> & visited) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод распознавания выражения, сопоставляемого литералом
 				 *
 				 * @details Выражение, состоящее из одной последовательности символов,
@@ -2005,20 +1051,9 @@ namespace awh {
 				 *          по набору инструкций и сохраняет искомую последовательность
 				 *          в программе.
 				 *
-				 * \~english
-				 * @brief Method of recognising an expression matched by a literal
-				 *
-				 * @details An expression consisting of a single character sequence
-				 *          is matched by searching for that sequence in the text,
-				 *          bypassing the execution of the program. The method recognises such an expression
-				 *          by the set of instructions and keeps the sought sequence
-				 *          in the program.
-				 *
-				 * \~
 				 */
 				void condense() noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения ведущего литерала совпадения
 				 *
 				 * @details Ведущий литерал - последовательность символов, с которой
@@ -2030,23 +1065,9 @@ namespace awh {
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   ведущий литерал совпадения выражения
 				 *
-				 * \~english
-				 * @brief Method of getting the leading literal of a match
-				 *
-				 * @details The leading literal is the character sequence every match
-				 *          of the expression begins with. Its presence allows
-				 *          locating the positions of a possible beginning of a match by searching for a
-				 *          sequence rather than by walking the text byte by byte.
-				 *          Anchors to a position have no length and are skipped.
-				 *
-				 * @param id index of the first node of the chain in the node arena
-				 * @return   leading literal of a match of the expression
-				 *
-				 * \~
 				 */
 				string leading(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод распознавания выражения, начинающегося с alternation литералов
 				 *
 				 * @details Заполняет «alts» и «anchor» префильтра, если первый узел
@@ -2058,23 +1079,9 @@ namespace awh {
 				 * @param alts   заполняемый список альтернативных литералов
 				 * @param anchor общий первый байт литералов
 				 *
-				 * \~english
-				 * @brief Method of recognizing an expression that starts with an alternation of literals
-				 *
-				 * @details Fills «alts» and «anchor» of the prefilter, if the first node
-				 *          of the expression is an alternation of literals of equal length.
-				 *          Otherwise both parameters are left empty, and codegen stays
-				 *          on the single-leading path.
-				 *
-				 * @param id     index of the syntax tree node
-				 * @param alts   vector of alternative literals to fill
-				 * @param anchor common first byte of the literals
-				 *
-				 * \~
 				 */
 				void alternates(const node_id_t id, vector <string> & alts, char & anchor) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод дополнения набора допустимых начальных байтов
 				 *
 				 * @details Метод обходит инструкции программы, достижимые без сопоставления
@@ -2085,38 +1092,17 @@ namespace awh {
 				 * @param address адрес инструкции, с которой начинается обход
 				 * @return        результат применимости набора допустимых байтов
 				 *
-				 * \~english
-				 * @brief Method of extending the set of admissible starting bytes
-				 *
-				 * @details The method walks the instructions of the program reachable without matching
-				 *          characters and extends the set with the bytes admissible at the beginning of
-				 *          a match. The checks of the anchors to a position in the text are considered
-				 *          satisfiable, thanks to which the set remains a superset.
-				 *
-				 * @param address address of the instruction the walk starts from
-				 * @return        result of the applicability of the set of admissible bytes
-				 *
-				 * \~
 				 */
 				bool reachable(const address_t address) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала цепочки узлов
 				 *
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   обязательный литерал совпадения цепочки узлов
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a chain of nodes
-				 *
-				 * @param id index of the first node of the chain in the node arena
-				 * @return   mandatory literal of a match of the chain of nodes
-				 *
-				 * \~
 				 */
 				string required(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала цепочки узлов с удалением его
 				 *
 				 * @details Удаление есть наибольшее число байтов, какое способно
@@ -2132,26 +1118,9 @@ namespace awh {
 				 * @param distance наибольшее удаление литерала от начала совпадения
 				 * @return         обязательный литерал совпадения цепочки узлов
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance
-				 *
-				 * @details The distance is the greatest number of bytes that can
-				 *          precede the literal inside a match. It allows the literal
-				 *          to be used positionally: a match must contain it, so
-				 *          the beginning of a match cannot lie beyond the distance
-				 *          from the nearest occurrence of the literal. The value
-				 *          «string_view::npos» means an unbounded distance, with which
-				 *          the positional use of the literal is not applicable.
-				 *
-				 * @param id       index of the first node of the chain in the node arena
-				 * @param distance the greatest distance of the literal from the beginning of a match
-				 * @return         mandatory literal of a match of the chain of nodes
-				 *
-				 * \~
 				 */
 				string required(const node_id_t id, size_t & distance) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала цепочки узлов с удалением его и длиной цепочки
 				 *
 				 * @details Наибольшая длина цепочки выводится попутно разбору литерала
@@ -2167,27 +1136,9 @@ namespace awh {
 				 * @param span     наибольшая длина сопоставления цепочки узлов в байтах
 				 * @return         описание обязательного литерала совпадения цепочки узлами дерева
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance and the chain length
-				 *
-				 * @details The greatest length of the chain is derived along with the analysis of the
-				 *          literal and equals the one a walk of the chain would derive: an ancestor takes
-				 *          it from the result, and the subtree of a node is walked at most once per
-				 *          analysis rather than as many times as the node has ancestors.
-				 *
-				 *          The literal is returned as a description by nodes rather than as a string:
-				 *          the string is formed by the caller, once and only for the winning literal.
-				 *
-				 * @param id       index of the first node of the chain in the node arena
-				 * @param distance the greatest distance of the literal from the beginning of a match
-				 * @param span     the greatest matching length of the chain of nodes in bytes
-				 * @return         description of the mandatory literal of a match of the chain by the tree nodes
-				 *
-				 * \~
 				 */
 				piece_t required(const node_id_t id, size_t & distance, size_t & span) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения наибольшей длины сопоставления узла
 				 *
 				 * @details Длина выводится в байтах текста. Значение
@@ -2198,72 +1149,34 @@ namespace awh {
 				 * @param id индекс узла в арене узлов
 				 * @return   наибольшая длина сопоставления узла в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the greatest matching length of a node
-				 *
-				 * @details The length is yielded in octets of the text. The value
-				 *          «string_view::npos» means an unbounded length: it is
-				 *          given by a repetition without an upper bound, a backreference,
-				 *          a recursive call, and a conditional expression.
-				 *
-				 * @param id index of the node in the node arena
-				 * @return   the greatest matching length of the node in bytes
-				 *
-				 * \~
 				 */
 				size_t spanningNode(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения наибольшей длины сопоставления цепочки узлов
 				 *
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   наибольшая длина сопоставления цепочки узлов в байтах
 				 *
-				 * \~english
-				 * @brief Method of getting the greatest matching length of a chain of nodes
-				 *
-				 * @param id index of the first node of the chain in the node arena
-				 * @return   the greatest matching length of the chain of nodes in bytes
-				 *
-				 * \~
 				 */
 				size_t spanning(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала узла
 				 *
 				 * @param id индекс узла в арене узлов
 				 * @return   обязательный литерал совпадения узла
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a node
-				 *
-				 * @param id index of the node in the node arena
-				 * @return   mandatory literal of a match of the node
-				 *
-				 * \~
 				 */
 				string requiredNode(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала узла с удалением его
 				 *
 				 * @param id       индекс узла в арене узлов
 				 * @param distance наибольшее удаление литерала от начала сопоставления узла
 				 * @return         обязательный литерал совпадения узла
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a node with its distance
-				 *
-				 * @param id       index of the node in the node arena
-				 * @param distance the greatest distance of the literal from the beginning of the node match
-				 * @return         mandatory literal of a match of the node
-				 *
-				 * \~
 				 */
 				string requiredNode(const node_id_t id, size_t & distance) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения обязательного литерала узла с удалением его и длиной узла
 				 *
 				 * @details Длина узла выводится тем же спуском, каким ищется литерал.
@@ -2277,25 +1190,9 @@ namespace awh {
 				 * @param need     требование наибольшей длины сопоставления узла
 				 * @return         описание обязательного литерала совпадения узла узлами дерева
 				 *
-				 * \~english
-				 * @brief Method of getting the mandatory literal of a node with its distance and the node length
-				 *
-				 * @details The length of the node is derived by the same descent by which the literal is
-				 *          sought. For a node the descent does not enter - an alternation, a repetition
-				 *          without a lower bound, leaves - it is taken by a walk of the subtree, and only
-				 *          when required: without the requirement the walk would be wasted.
-				 *
-				 * @param id       index of the node in the node arena
-				 * @param distance the greatest distance of the literal from the beginning of the node match
-				 * @param span     the greatest matching length of the node in bytes
-				 * @param need     requirement of the greatest matching length of the node
-				 * @return         description of the mandatory literal of a match of the node by the tree nodes
-				 *
-				 * \~
 				 */
 				piece_t requiredNode(const node_id_t id, size_t & distance, size_t & span, const bool need) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод извлечения литерала, сопоставляемого узлом целиком
 				 *
 				 * @details Литерал извлекается для узлов одиночного символа и
@@ -2305,39 +1202,18 @@ namespace awh {
 				 * @param id индекс узла в арене узлов
 				 * @return   литерал, сопоставляемый узлом целиком
 				 *
-				 * \~english
-				 * @brief Method of getting the literal matched by a node as a whole
-				 *
-				 * @details The literal is obtained for the nodes of a single character and of a
-				 *          character sequence that are not matched case-insensitively
-				 *          and are representable by the characters of the ASCII set.
-				 *
-				 * @param id index of the node in the node arena
-				 * @return   literal matched by the node as a whole
-				 *
-				 * \~
 				 */
 				string literal(const node_id_t id) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод дополнения литерала, сопоставляемого узлом целиком
 				 *
 				 * @param id     индекс узла в арене узлов
 				 * @param result дополняемый литерал совпадения
 				 * @return       результат сопоставления узла литералом
 				 *
-				 * \~english
-				 * @brief Method of appending the literal matched by the node as a whole
-				 *
-				 * @param id     index of the node in the node arena
-				 * @param result literal of the match being appended
-				 * @return       result of the node being matched by a literal
-				 *
-				 * \~
 				 */
 				bool literal(const node_id_t id, string & result) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод измерения литерала, сопоставляемого узлом целиком
 				 *
 				 * @details Условия те же, что у дополнения литерала: узел одиночного
@@ -2350,24 +1226,9 @@ namespace awh {
 				 * @param length длина литерала узла в байтах
 				 * @return       результат сопоставления узла литералом
 				 *
-				 * \~english
-				 * @brief Method of measuring the literal matched by a node as a whole
-				 *
-				 * @details The conditions are those of appending the literal: a node of a single
-				 *          character or of a character sequence, matched case-sensitively and
-				 *          representable by the characters of the ASCII set. The literal is not
-				 *          formed: the analysis of the mandatory literal compares literals by length
-				 *          and forms the string only for the winning one.
-				 *
-				 * @param id     index of the node in the node arena
-				 * @param length length of the literal of the node in bytes
-				 * @return       result of the node being matched by a literal
-				 *
-				 * \~
 				 */
 				bool literal(const node_id_t id, size_t & length) const noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод формирования литерала по описанию его узлами
 				 *
 				 * @details Узлы литерала обходятся цепочкой от первого, и литерал всякого
@@ -2378,23 +1239,10 @@ namespace awh {
 				 * @param piece  описание литерала узлами синтаксического дерева
 				 * @param result дополняемый литерал совпадения
 				 *
-				 * \~english
-				 * @brief Method of forming a literal from its description by nodes
-				 *
-				 * @details The nodes of the literal are walked along the chain from the first one, and
-				 *          the literal of each is appended to the one being formed. A walked node is
-				 *          accounted by the «SPELLING» path: the analysis of the literal forms the
-				 *          string once, for the winning literal, and as many nodes are walked as it has.
-				 *
-				 * @param piece  description of the literal by the nodes of the syntax tree
-				 * @param result literal of the match being appended
-				 *
-				 * \~
 				 */
 				void spell(const piece_t & piece, string & result) const noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод размещения инструкции программы
 				 *
 				 * @details Подстановка размещения задаётся явно по собирателю - см.
@@ -2404,69 +1252,33 @@ namespace awh {
 				 * @param flags набор режимов компиляции инструкции
 				 * @return      адрес размещённой инструкции программы
 				 *
-				 * \~english
-				 * @brief Method of placing a program instruction
-				 *
-				 * @details The inlining of the placing is set explicitly per compiler - see
-				 *          «AWH_REGEX_PLACING» and the section «Deliberate decisions».
-				 *
-				 * @param type  operation code of the placed instruction
-				 * @param flags set of compilation modes of the instruction
-				 * @return      address of the placed program instruction
-				 *
-				 * \~
 				 */
 				AWH_REGEX_PLACING address_t emit(const opcode_t type, const uint32_t flags) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод размещения класса символов в программе
 				 *
 				 * @param value класс символов для размещения в программе
 				 * @return      индекс класса символов в хранилище классов
 				 *
-				 * \~english
-				 * @brief Method of placing a character class in the program
-				 *
-				 * @param value character class to place in the program
-				 * @return      index of the character class in the class storage
-				 *
-				 * \~
 				 */
 				uint32_t store(const class_t & value, const uint32_t flags) noexcept;
 			private:
 				/**
-				 * \~russian
 				 * @brief Метод извлечения адреса следующей размещаемой инструкции
 				 *
 				 * @return адрес следующей размещаемой инструкции программы
 				 *
-				 * \~english
-				 * @brief Method of getting the address of the next instruction to place
-				 *
-				 * @return address of the next program instruction to place
-				 *
-				 * \~
 				 */
 				address_t position() const noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
 				 */
 				explicit Compiler() noexcept;
 				/**
-				 * \~russian
 				 * @brief Деструктор
 				 *
-				 * \~english
-				 * @brief Destructor
-				 *
-				 * \~
 				 */
 				~Compiler() noexcept;
 		} compiler_t;

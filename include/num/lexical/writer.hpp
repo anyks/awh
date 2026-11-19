@@ -12,17 +12,10 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Заголовочный файл записи чисел в строковое представление —
  *        запись целых чисел в системах счисления от двоичной до тридцатишестеричной
  *        и запись чисел с плавающей точкой кратчайшим обратимым представлением
  *
- * \~english
- * @brief Header file of writing numbers into their string representation —
- *        the writing of integers in the numeral systems from binary to base thirty six
- *        and the writing of floating-point numbers by the shortest reversible representation
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -47,13 +40,8 @@
 #include "shortest.hpp"
 
 /**
- * \~russian
  * @brief Основное пространство имён
  *
- * \~english
- * @brief Main namespace
- *
- * \~
  */
 namespace awh {
 	/**
@@ -62,43 +50,23 @@ namespace awh {
 	using namespace std;
 
 	/**
-	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
-	 * \~english
-	 * @brief Namespace of the number parsing module
-	 *
-	 * \~
 	 */
 	namespace lexical {
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Структура результата записи числа в строку
 		 *
 		 * @details В отличие от результата разбора, указатель на конец записи является
 		 *          изменяемым: он указывает в тот же буфер, что был передан функции.
 		 *
-		 * \~english
-		 * @brief Structure of the result of writing a number into a string
-		 *
-		 * @details Unlike the result of the parsing, the pointer to the end of the record is
-		 *          mutable: it points into the very buffer which was passed to the function.
-		 *
-		 * \~
 		 */
 		struct Output {
 			// Код ошибки стандартной библиотеки
@@ -108,92 +76,51 @@ namespace awh {
 			// Указатель на первый символ за записанным числом
 			UC * ptr;
 			/**
-			 * \~russian
 			 * @brief Оператор проверки успешности записи
 			 *
 			 * @return результат проверки
 			 *
-			 * \~english
-			 * @brief Operator of checking the success of the writing
-			 *
-			 * @return result of the check
-			 *
-			 * \~
 			 */
 			constexpr explicit operator bool() const noexcept {
 				// Запись успешна, если код ошибки не установлен
 				return (this->ec == errc());
 			}
 			/**
-			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param ptr   указатель на первый символ за записанным числом
 			 * @param ec    код ошибки стандартной библиотеки
 			 * @param error код причины отказа при записи числовой строки
 			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * @param ptr   pointer to the first character past the written number
-			 * @param ec    error code of the standard library
-			 * @param error failure reason code of the writing of the number string
-			 *
-			 * \~
 			 */
 			constexpr Output(UC * ptr = nullptr, const errc ec = errc(), const error_t error = error_t::NONE) noexcept :
 			 ec(ec), error(error), ptr(ptr) {}
 		};
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Создаём тип данных результата записи числа в строку
 		 *
-		 * \~english
-		 * @brief Defining a data type for the result of converting a number to a string
-		 *
-		 * \~
 		 */
 		using output_t = Output <UC>;
 
 		/**
-		 * \~russian
 		 * @brief Таблица цифр систем счисления до тридцатишестеричной
 		 *
-		 * \~english
-		 * @brief Table of the digits of the numeral systems up to base thirty six
-		 *
-		 * \~
 		 */
 		static constexpr char DIGITS_TABLE[37] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 		/**
-		 * \~russian
 		 * @brief Таблица пар десятичных цифр
 		 *
 		 * @details Таблица позволяет записывать десятичное число сразу парами цифр,
 		 *          вдвое сокращая количество делений.
 		 *
-		 * \~english
-		 * @brief Table of the pairs of the decimal digits
-		 *
-		 * @details The table allows writing a decimal number at once by pairs of digits,
-		 *          halving the number of the divisions.
-		 *
-		 * \~
 		 */
 		static constexpr char DIGITS_PAIRS[201] =
 			"00010203040506070809"
@@ -208,21 +135,13 @@ namespace awh {
 			"90919293949596979899";
 
 		/**
-		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
-		 * \~english
-		 * @brief Template of the floating-point type
-		 *
-		 * @tparam T floating-point type
-		 *
-		 * \~
 		 */
 		template <typename T>
 		/**
-		 * \~russian
 		 * @brief Функция извлечения достаточного размера места под запись числа
 		 *
 		 * @details Наибольшую длину даёт запись без показателя степени у наименьшего
@@ -235,20 +154,6 @@ namespace awh {
 		 *
 		 * @return достаточный размер места под запись числа в символах
 		 *
-		 * \~english
-		 * @brief Function of extracting the sufficient size of the place for the record of a number
-		 *
-		 * @details The greatest length is given by the record without an exponent of the smallest
-		 *          representable value: it consists of the sign, of the leading zero of the integer
-		 *          part, of the decimal point, of the insignificant zeros of the fractional part and
-		 *          of the significant digits. The number of the insignificant zeros equals the decimal
-		 *          exponent of the smallest representable value, while the number of the significant
-		 *          digits equals the bit width of the mantissa expressed in decimal digits. The estimate
-		 *          is taken with a margin and is checked by an enumeration.
-		 *
-		 * @return sufficient size of the place for the record of a number in characters
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr size_t maxRecordLength() noexcept {
 			// Выводим достаточный размер места под запись числа
@@ -262,19 +167,11 @@ namespace awh {
 			);
 		}
 		/**
-		 * \~russian
 		 * @brief Функция извлечения количества десятичных цифр значения
 		 *
 		 * @param value значение для подсчёта
 		 * @return      количество десятичных цифр
 		 *
-		 * \~english
-		 * @brief Function of extracting the number of the decimal digits of a value
-		 *
-		 * @param value value to count
-		 * @return      number of the decimal digits
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ constexpr size_t decimalLength(const uint64_t value) noexcept {
 			// Выводим количество десятичных цифр значения
@@ -292,21 +189,13 @@ namespace awh {
 			);
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Функция записи десятичного значения в буфер справа налево
 		 *
 		 * @details Запись ведётся от конца отведённого места к началу, что избавляет
@@ -315,16 +204,6 @@ namespace awh {
 		 * @param last  конец отведённого под запись места
 		 * @param value записываемое значение
 		 *
-		 * \~english
-		 * @brief Function of writing a decimal value into a buffer from right to left
-		 *
-		 * @details The writing is conducted from the end of the allotted place to the beginning,
-		 *          which frees from the reversal of the record after its forming.
-		 *
-		 * @param last  end of the place allotted for the record
-		 * @param value written value
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ void writeDecimal(UC * last, uint64_t value) noexcept {
 			// Указатель на текущую позицию записи
@@ -356,21 +235,13 @@ namespace awh {
 			} else *(--position) = static_cast <UC> ('0' + value);
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Функция записи беззнакового значения в произвольной системе счисления
 		 *
 		 * @param first начало отведённого под запись места
@@ -379,16 +250,6 @@ namespace awh {
 		 * @param base  основание системы счисления в диапазоне от 2 до 36
 		 * @return      результат записи числовой строки
 		 *
-		 * \~english
-		 * @brief Function of writing an unsigned value in an arbitrary numeral system
-		 *
-		 * @param first beginning of the place allotted for the record
-		 * @param last  end of the place allotted for the record
-		 * @param value written value
-		 * @param base  base of the numeral system in the range from 2 to 36
-		 * @return      result of writing the number string
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ output_t <UC> writeUnsigned(UC * first, UC * const last, const uint64_t value, const int32_t base) noexcept {
 			/**
@@ -437,21 +298,13 @@ namespace awh {
 			return output_t <UC> (position);
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Функция записи десятичного представления числа с порядком
 		 *
 		 * @details Запись имеет вид одной цифры целой части, дробной части и показателя
@@ -464,20 +317,6 @@ namespace awh {
 		 * @param decimalPoint символ десятичной точки
 		 * @return             результат записи числовой строки
 		 *
-		 * \~english
-		 * @brief Function of writing the decimal representation of a number with an exponent
-		 *
-		 * @details The record has the form of one digit of the integer part, of the fractional part
-		 *          and of the exponent of the power of ten with a sign: 1.5e+300. The exponent is written
-		 *          by no less than two digits, as the printf function does.
-		 *
-		 * @param first        beginning of the place allotted for the record
-		 * @param last         end of the place allotted for the record
-		 * @param decimal      decimal representation of the number
-		 * @param decimalPoint decimal point character
-		 * @return             result of writing the number string
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ output_t <UC> writeScientific(UC * first, UC * const last, const decimal_t & decimal, const UC decimalPoint) noexcept {
 			// Определяем количество значащих цифр мантиссы
@@ -535,21 +374,13 @@ namespace awh {
 			return output_t <UC> (position + width);
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа символа записываемой строки
 		 *
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the character type of the written string
-		 *
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename UC>
 		/**
-		 * \~russian
 		 * @brief Функция записи десятичного представления числа без порядка
 		 *
 		 * @details Запись имеет вид целой и дробной частей без показателя степени.
@@ -561,19 +392,6 @@ namespace awh {
 		 * @param decimalPoint символ десятичной точки
 		 * @return             результат записи числовой строки
 		 *
-		 * \~english
-		 * @brief Function of writing the decimal representation of a number without an exponent
-		 *
-		 * @details The record has the form of the integer and of the fractional parts without an exponent.
-		 *          A number smaller than one is given a leading zero of the integer part.
-		 *
-		 * @param first        beginning of the place allotted for the record
-		 * @param last         end of the place allotted for the record
-		 * @param decimal      decimal representation of the number
-		 * @param decimalPoint decimal point character
-		 * @return             result of writing the number string
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ output_t <UC> writeFixed(UC * first, UC * const last, const decimal_t & decimal, const UC decimalPoint) noexcept {
 			// Определяем количество значащих цифр мантиссы
@@ -638,23 +456,14 @@ namespace awh {
 			return output_t <UC> (first + total);
 		}
 		/**
-		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой и типа символа записываемой строки
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа записываемой строки
 		 *
-		 * \~english
-		 * @brief Template of the floating-point type and of the character type of the written string
-		 *
-		 * @tparam T  floating-point type
-		 * @tparam UC character type of the written string
-		 *
-		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
-		 * \~russian
 		 * @brief Функция записи числа с плавающей точкой кратчайшим обратимым представлением
 		 *
 		 * @details Запись содержит наименьшее количество значащих цифр, при котором она
@@ -669,22 +478,6 @@ namespace awh {
 		 * @param options опции записи числовой строки
 		 * @return        результат записи числовой строки
 		 *
-		 * \~english
-		 * @brief Function of writing a floating-point number by the shortest reversible representation
-		 *
-		 * @details The record contains the least number of significant digits at which it
-		 *          is read back as the very same number. The form of the record is set by the format:
-		 *          at the indication of a single form it is applied, at the indication of both
-		 *          the shorter record is chosen, and at an equal length — the record without
-		 *          an exponent.
-		 *
-		 * @param first   beginning of the place allotted for the record
-		 * @param last    end of the place allotted for the record
-		 * @param value   written number
-		 * @param options writing options of the number string
-		 * @return        result of writing the number string
-		 *
-		 * \~
 		 */
 		__AWH_INLINE__ output_t <UC> toCharsFloat(UC * first, UC * const last, const T value, const options_t <UC> options) noexcept {
 			// Создаём тип беззнакового целого равной разрядности
@@ -702,19 +495,11 @@ namespace awh {
 			// Указатель на текущую позицию записи
 			UC * position = first;
 			/**
-			 * \~russian
 			 * @brief Если записываемое число является отрицательным
 			 *
 			 * @note Знак выводится и у отрицательного нуля: он отличает его от нуля
 			 *       положительного, и запись обязана читаться обратно тем же значением
 			 *
-			 * \~english
-			 * @brief If a number being written is negative
-			 *
-			 * @note A sign is output also for a negative zero: it distinguishes it from a zero
-			 *       positive, and a record is obliged to be read back by the same value
-			 *
-			 * \~
 			 */
 			if(sign){
 				// Если отведённого под запись места недостаточно
