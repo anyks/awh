@@ -2325,6 +2325,26 @@ bool awh::Engine::Context::pending() const noexcept {
 	return (data.size > 0);
 }
 /**
+ * @brief Метод проверки наличия неотправленных связи байтов
+ *
+ * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+ *
+ */
+bool awh::Engine::Context::pendingOutput() const noexcept {
+	// Выводим признак наличия неотправленных байтов
+	return this->pending();
+}
+/**
+ * @brief Метод отправки накопленных связи байтов в сокет
+ *
+ * @return результат отправки (false - сокет не принял всё, повторить позже)
+ *
+ */
+bool awh::Engine::Context::flushPending() noexcept {
+	// Отправляем накопленные связи байты в сокет
+	return this->flush();
+}
+/**
  * @brief Метод проверки пройденности рукопожатия обеими сторонами
  *
  * @return результат проверки
@@ -2451,7 +2471,13 @@ int32_t awh::Engine::Context::pump(const bool want) noexcept {
 		}
 	}
 	// Байты, которые связь должна отправить, уходят первыми
-	if(!this->flush())
+	const bool flushed = this->flush();
+	/**
+	 * Шаг чтения принимает канал независимо от готовности сокета к записи:
+	 * иначе WINDOW_UPDATE собеседника остался бы в сокете до освобождения
+	 * очереди отправки, и отдача встала бы без нового события
+	 */
+	if(!flushed && !want)
 		// Сообщаем, что нужно дождаться готовности сокета к записи
 		return -2;
 	/**
@@ -2815,6 +2841,21 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		if(this->_encrypted && (this->_tls != nullptr)){
 			// Результат шага перекачки байтов связи
 			const int32_t step = this->pump(true);
+			/**
+			 * Принятые и расшифрованные байты отдаём независимо от шага перекачки:
+			 * отправка может ждать готовности сокета к записи, а данные уже есть,
+			 * и оставленные здесь они не дождутся нового события
+			 */
+			if(!this->_tls->plain.empty()){
+				// Количество байтов, отдаваемых вызывающему
+				result = static_cast <int64_t> ((this->_tls->plain.size() < size) ? this->_tls->plain.size() : size);
+				// Выполняем копирование прочитанных байтов в буфер вызывающего
+				::memcpy(buffer, this->_tls->plain.data(), static_cast <size_t> (result));
+				// Снимаем отданные байты с остатка открытого текста
+				this->_tls->plain.erase(this->_tls->plain.begin(), this->_tls->plain.begin() + static_cast <size_t> (result));
+				// Выводим полученный результат
+				return result;
+			}
 			// Если связь не допустила байтов
 			if(step <= 0){
 				/**
@@ -2844,18 +2885,8 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					this->info();
 				}
 			#endif
-			// Если неотданных байтов открытого текста нет, отдавать нечего
-			if(this->_tls->plain.empty())
-				// Выполняем пропуск попытки
-				return -1;
-			// Количество байтов, отдаваемых вызывающему
-			result = static_cast <int64_t> ((this->_tls->plain.size() < size) ? this->_tls->plain.size() : size);
-			// Выполняем копирование прочитанных байтов в буфер вызывающего
-			::memcpy(buffer, this->_tls->plain.data(), static_cast <size_t> (result));
-			// Снимаем отданные байты с остатка открытого текста
-			this->_tls->plain.erase(this->_tls->plain.begin(), this->_tls->plain.begin() + static_cast <size_t> (result));
-			// Выводим полученный результат
-			return result;
+			// Открытого текста к этой точке не остаётся: отдавать нечего
+			return -1;
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
 			// Если сокет установлен как TCP/IP

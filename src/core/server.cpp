@@ -3069,6 +3069,15 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 		if(broker != nullptr){
 			// Останавливаем детектирования возможности записи в сокет
 			broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+			// Если связь держит неотправленный шифртекст прошлой записи потокового сокета
+			if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS) && broker->ectx.pendingOutput()){
+				// Досылаем накопленные байты по готовности сокета
+				static_cast <void> (broker->ectx.flushPending());
+				// Если хвост записи ещё не ушёл, продолжаем ждать готовности сокета
+				if(broker->ectx.pendingOutput() && (broker->addr.sock != INVALID_SOCKET))
+					// Запускаем ожидание записи данных
+					broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			}
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
@@ -3252,6 +3261,17 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					}
 					// Выполняем отправку сообщения клиенту
 					const int64_t bytes = broker->ectx.write(buffer, (((size >= static_cast <size_t> (max)) && (this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS)) ? static_cast <size_t> (max) : size));
+					/**
+					 * Связь приняла данные, но шифртекст в сокет не ушёл целиком: без
+					 * взведённого ожидания записи его хвост остался бы без будильника
+					 * (клиент ждёт остаток TLS-записи и не шлёт WINDOW_UPDATE), и отдача
+					 * встала бы молча, не закрывая соединение
+					 */
+					if((bytes > 0) && broker->ectx.pendingOutput() &&
+					   (this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS) &&
+					   (broker->addr.sock != INVALID_SOCKET))
+						// Запускаем ожидание записи данных
+						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
 					// Если данные удачно отправленны
 					if(bytes > 0){
 						// Запоминаем количество записанных байт

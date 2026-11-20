@@ -513,6 +513,35 @@ namespace awh {
 					int64_t write(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
+					 * \~russian
+					 * @brief Метод проверки наличия неотправленных связи байтов
+					 *
+					 * @return результат проверки (true - в накопителе связи лежат неотправленные байты)
+					 *
+					 * \~english
+					 * @brief Method for checking for bytes not sent by the connection
+					 *
+					 * @return check result (true - the connection buffer holds unsent bytes)
+					 *
+					 * \~
+					 */
+					bool pendingOutput() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод отправки накопленных связи байтов в сокет
+					 *
+					 * @return результат отправки (false - сокет не принял всё, повторить позже)
+					 *
+					 * \~english
+					 * @brief Method for sending bytes accumulated by the connection to the socket
+					 *
+					 * @return sending result (false - the socket did not accept everything, retry later)
+					 *
+					 * \~
+					 */
+					bool flushPending() noexcept;
+				public:
+					/**
 					 * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
 					 *
 					 * @return результат работы функции (false - рукопожатие не удалось)
