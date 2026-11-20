@@ -425,10 +425,19 @@ bool awh::Http2::ping() noexcept {
 	bool result = false;
 	// Если парсер инициализирован
 	if(this->_engine != nullptr){
-		// Отправляем PING-фрейм
-		this->_engine->sendPing(true);
-		// Отправляем исходящие байты в сеть
-		result = this->flush();
+		/**
+		 * Пинг проверки живости отправляем запросом, а не подтверждением:
+		 * несанкционированный PING с флагом ACK пир обязан считать ошибкой
+		 * соединения (RFC 9113 §6.7), и nghttp2 рвёт сессию с PROTOCOL_ERROR
+		 */
+		this->_engine->sendPing(false);
+		/**
+		 * Отправляем исходящие байты в сеть. Заполненная очередь отправки -
+		 * не отказ: кадр уже в исходящем буфере движка и уйдёт по resume()
+		 */
+		this->flush();
+		// Пинг поставлен в очередь отправки
+		result = true;
 	}
 	// Вызываем метод выполненного события
 	this->completed(event_t::SEND_PING);
@@ -450,8 +459,13 @@ bool awh::Http2::shutdown() noexcept {
 	if(this->_engine != nullptr){
 		// Отправляем предупреждение о завершении работы
 		this->_engine->sendShutdown();
-		// Отправляем исходящие байты в сеть
-		result = this->flush();
+		/**
+		 * Отправляем исходящие байты в сеть. Заполненная очередь отправки -
+		 * не отказ: GOAWAY уже в исходящем буфере движка и уйдёт по resume()
+		 */
+		this->flush();
+		// Предупреждение поставлено в очередь отправки
+		result = true;
 	}
 	// Вызываем метод выполненного события
 	this->completed(event_t::SEND_SHUTDOWN);
@@ -574,8 +588,13 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
 			if(this->_engine != nullptr){
 				// Сбрасываем поток клиента
 				this->_engine->sendRstStream(static_cast <uint32_t> (sid), __awhH2Error(error));
-				// Отправляем исходящие байты в сеть
-				result = this->flush();
+				/**
+				 * Отправляем исходящие байты в сеть. Заполненная очередь отправки -
+				 * не отказ: RST_STREAM уже в исходящем буфере движка и уйдёт по resume()
+				 */
+				this->flush();
+				// Сброс потока поставлен в очередь отправки
+				result = true;
 			}
 		} break;
 	}
@@ -705,8 +724,13 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <std::pair <string,
 				http2_t::fields(headers, fields);
 				// Отправляем трейлеры с завершением потока
 				this->_engine->sendHeaders(static_cast <uint32_t> (id), fields, true);
-				// Отправляем исходящие байты в сеть
-				result = this->flush();
+				/**
+				 * Отправляем исходящие байты в сеть. Заполненная очередь отправки -
+				 * не отказ: трейлеры уже в исходящем буфере движка и уйдут по resume()
+				 */
+				this->flush();
+				// Трейлеры поставлены в очередь отправки
+				result = true;
 				// Флаги отправленного фрейма
 				std::set <flag_t> flags;
 				// Ставим флаг завершения заголовков
@@ -786,8 +810,13 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 			}
 			// Отдаём данные полезной нагрузки потока парсеру
 			this->pump(id);
-			// Отправляем исходящие байты в сеть
-			result = this->flush();
+			/**
+			 * Досылаем исходящие байты в сеть. Заполненная очередь отправки - не отказ:
+			 * данные уже приняты в буфер потока, остаток уйдёт по resume() после записи
+			 */
+			this->flush();
+			// Данные приняты и поставлены в очередь отправки
+			result = true;
 			// Флаги отправленного фрейма
 			std::set <flag_t> flags;
 			// Если требуется завершить поток после передачи фрейма
@@ -985,8 +1014,13 @@ bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t *
 				if(this->_engine != nullptr){
 					// Отправляем сообщение закрытия всех потоков
 					this->_engine->sendGoaway(__awhH2Error(error), ((buffer != nullptr) && (size > 0) ? string_view(reinterpret_cast <const char *> (buffer), size) : string_view()));
-					// Отправляем исходящие байты в сеть
-					result = this->flush();
+					/**
+					 * Отправляем исходящие байты в сеть. Заполненная очередь отправки -
+					 * не отказ: GOAWAY уже в исходящем буфере движка и уйдёт по resume()
+					 */
+					this->flush();
+					// GOAWAY поставлен в очередь отправки
+					result = true;
 					// Флаги отправленного фрейма
 					std::set <flag_t> flags;
 					// Вызываем функцию обратного вызова фрейма
