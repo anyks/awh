@@ -33,7 +33,7 @@
 #include <cstdint>
 #include <iostream>
 #include <sys/types.h>
-#include <regex/engine.hpp>
+#include "../regex/engine.hpp"
 
 /**
  * Разрешаем сборку под Windows

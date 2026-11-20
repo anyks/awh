@@ -47,7 +47,7 @@
 /**
  * Подключаем парсер HTTP/2 из AWH v5
  */
-#include <proto/http/parser/http2/http.hpp>
+#include "../proto/http/parser/http2/http.hpp"
 
 /**
  * @brief пространство имён

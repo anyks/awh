@@ -36,7 +36,7 @@
  * Наши модули
  */
 #include "log.hpp"
-#include <cryptography/hash.hpp>
+#include "../cryptography/hash.hpp"
 
 /**
  * @brief пространство имён
