@@ -57,6 +57,16 @@
 #define AWH_ENGINE_FEED_LIMIT 0x40
 
 /**
+ * @brief Устанавливаем предел памятки нераспознанных имён SNI в 256
+ *
+ * @note Имя запоминается, чтобы о молчаливом откате к сертификату по умолчанию
+ *       сообщалось один раз: сканеры и боты шлют случайные имена, и без предела
+ *       журнал разросся бы вместе с памяткой
+ *
+ */
+#define AWH_SNI_MISS_LIMIT 0x100
+
+/**
  * Отключаем Deprecated для Apple
  */
 #if __APPLE__ && __clang__
@@ -124,6 +134,8 @@ struct SniPick {
 	const awh::fmk_t * fmk = nullptr;
 	// Журнал движка
 	const awh::log_t * log = nullptr;
+	// Памятка нераспознанных имён: строка журнала о молчаливом откате не повторяется
+	std::unordered_set <string> * missed = nullptr;
 };
 
 /**
@@ -648,6 +660,26 @@ static const nts::context::credential_t * heldCredential(const awh::fs_t & fs, c
 	return &i->second;
 }
 /**
+ * @brief Функция проверки того, что предъявленное имя является адресом, а не доменом
+ *
+ * @details SNI по разделу 3 RFC 6066 несёт доменное имя, но клиенты и сканеры
+ *          зовут сервер по адресу; такой промах говорит о способе обращения,
+ *          а не о настройке сайтов
+ *
+ * @param host имя узла в нижнем регистре
+ * @return     результат проверки
+ *
+ */
+static bool ipName(const string & host) noexcept {
+	// Адрес интернет-протокола четвёртой версии
+	in_addr ipv4;
+	// Адрес интернет-протокола шестой версии
+	in6_addr ipv6;
+	// Имя является адресом, если разбирается любой из версий
+	return ((::inet_pton(AF_INET, host.c_str(), &ipv4) == 1) || (::inet_pton(AF_INET6, host.c_str(), &ipv6) == 1));
+}
+
+/**
  * @brief Отклик выбора подлинности сервера по имени, предъявленному клиентом
  *
  * @details Раздел 3 RFC 6066: имя приходит из расширения server_name приветствия. A-NTS зовёт отклик
@@ -695,9 +727,18 @@ static nts::context::select_t::outcome_t sniAnswer(const string & name, nts::con
 		 * Для неизвестного домена остаётся подлинность слушателя: рукопожатие продолжается
 		 * ею, как это делал OpenSSL, не предъявляя фатального извещения
 		 */
-		if(i == pick->names->end())
+		if(i == pick->names->end()){
+			/**
+			 * Незнакомое имя: остаётся подлинность слушателя. Пишем об этом один раз
+			 * на имя, чтобы молчаливый откат был виден в журнале и не плодил строк
+			 * на каждом обращении; адрес вместо домена промахом настройки не считаем
+			 */
+			if(!ipName(host) && (pick->missed != nullptr) && (pick->missed->size() < AWH_SNI_MISS_LIMIT) && pick->missed->emplace(host).second)
+				// Выводим в журнал сообщение о нераспознанном имени
+				pick->log->print("SNI name %s is not registered, default certificate used", awh::log_t::flag_t::WARNING, host.c_str());
 			// Выводим исход «оставить настроенную подлинность»
 			return nts::context::select_t::outcome_t::LEAVE;
+		}
 		// Заготовленная подлинность найденной пары файлов
 		auto found = pick->held->find(i->second);
 		// Если заготовки нет, вести имя нечем: файлы сменились либо не прочитались при регистрации
@@ -3929,7 +3970,7 @@ bool awh::Engine::wrapTLS(ctx_t & target, const type_t type, const string & host
 			target._tls->names[item.first] = this->_fmk->format("%s\n%s", item.second.pem.c_str(), item.second.key.c_str());
 		}
 		// Передаём отклику указатели на запасы: связь он получает от наружного модуля, а не от нас
-		target._tls->pick = SniPick{&target._tls->names, &this->_keys->held, this->_fmk, this->_log};
+		target._tls->pick = SniPick{&target._tls->names, &this->_keys->held, this->_fmk, this->_log, &this->_missed};
 		// Устанавливаем адрес удалённого сервера для SNI и сверки имени сертификата
 		target._tls->host = host;
 		// Устанавливаем признак проверки доверия цепочке собеседника
@@ -4677,6 +4718,8 @@ void awh::Engine::certificate(const string & host, const string & pem, const str
 			this->_sni[name] = std::move(cert);
 		// Если сертификат не передан, удаляем сертификат доменного имени
 		} else this->_sni.erase(name);
+		// Памятка нераспознанных имён устарела вместе с перечнем сертификатов
+		this->_missed.clear();
 		// Если запас подлинностей уже собран, сбрасываем его: файлы сменились
 		if(this->_keys != nullptr)
 			// Выполняем очистку запаса подготовленных подлинностей

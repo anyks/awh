@@ -52,6 +52,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <sys/types.h>
 
 /**
@@ -642,6 +643,8 @@ namespace awh {
 			mutable cert_t _cert;
 			// Сертификаты сервера по доменным именам (SNI)
 			std::unordered_map <string, cert_t> _sni;
+			// Имена, по которым журнал уже сообщил об отсутствии настройки: строка не повторяется
+			std::unordered_set <string> _missed;
 		private:
 			/**
 			 * @brief Класс запаса подготовленных подлинностей
