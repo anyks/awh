@@ -258,6 +258,22 @@ void awh::Http2::release(const int32_t sid) noexcept {
  *
  */
 void awh::Http2::pump(const int32_t sid) noexcept {
+	/**
+	 * Прокачка не реентерабельна: обратный вызов writable приходит из движка,
+	 * пока внешняя прокачка ещё держит очередь и буфер потока
+	 */
+	if(this->_pumping)
+		// Выходим из функции
+		return;
+	// Помечаем, что прокачка уже выполняется
+	this->_pumping = true;
+	// Снимаем признак при любом выходе из функции
+	struct PumpGuard {
+		// Ссылка на признак выполняемой прокачки
+		bool & flag;
+		// Снимаем признак при разрушении стража
+		~PumpGuard() noexcept { this->flag = false; }
+	} guard{this->_pumping};
 	// Если парсер не инициализирован
 	if(this->_engine == nullptr){
 		// Выходим из функции
@@ -282,8 +298,8 @@ void awh::Http2::pump(const int32_t sid) noexcept {
 		 * Перебираем весь список записей, которые ещё не отправлены
 		 */
 		while(!records->second.empty() && !this->_wouldblock){
-			// Получаем текущую запись потока
-			std::pair <size_t, flag_t> & record = records->second.front();
+			// Текущая запись потока: копия, потому что после вызова движка очередь может быть освобождена
+			const std::pair <size_t, flag_t> record = records->second.front();
 			// Если буфера полезной нагрузки не хватает - пометить и выйти
 			if(payload->second->size() < record.first){
 				// Помечаем буферы потока на удаление
@@ -297,12 +313,24 @@ void awh::Http2::pump(const int32_t sid) noexcept {
 			if(result == 0)
 				// Выходим из цикла
 				break;
+			/**
+			 * Отправка END_STREAM закрывает поток синхронно: обратный вызов закрытия
+			 * очищает очередь и буфер, и прежние итераторы становятся недействительными.
+			 * Ищем их заново и не обращаемся к опустевшим записям
+			 */
+			records = this->_records.find(sid);
+			// Заново ищем буфер полезной нагрузки потока
+			payload = this->_payloads.find(sid);
+			// Если поток закрыт и буферы освобождены - отправлять больше нечего
+			if((records == this->_records.end()) || (payload == this->_payloads.end()) || records->second.empty() || payload->second->empty())
+				// Выходим из функции
+				return;
 			// Уменьшаем размер отправленных данных записи
-			record.first -= result;
+			records->second.front().first -= result;
 			// Удаляем из буфера отправленные данные
 			payload->second->erase(result);
 			// Если все данные записи отправленны
-			if(record.first == 0)
+			if(records->second.front().first == 0)
 				// Снимаем запись с очереди
 				records->second.pop();
 			// Если данные буфера закончились, а записи остались - рассинхронизация
@@ -1419,7 +1447,7 @@ awh::Http2 & awh::Http2::operator = ([[maybe_unused]] const http2_t & ctx) noexc
  *
  */
 awh::Http2::Http2(const fmk_t * fmk, const log_t * log) noexcept :
- _close(false), _wouldblock(false), _failed(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
+ _close(false), _wouldblock(false), _pumping(false), _failed(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
  _maxHeaderListSize(0), _socket(fmk, log), _callback(log), _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
