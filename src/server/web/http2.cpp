@@ -93,6 +93,8 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 		this->_http1.release(bid);
 		// Удаляем источники тела ответов брокера
 		this->_sources.erase(this->_sources.lower_bound(std::make_pair(bid, std::numeric_limits <int32_t>::min())), this->_sources.upper_bound(std::make_pair(bid, std::numeric_limits <int32_t>::max())));
+		// Снимаем приостановку таймаута ожидания
+		this->holding(bid);
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -395,6 +397,8 @@ int32_t awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, 
 	this->_scheme.closeStream(sid, bid);
 	// Удаляем источник тела ответа потока
 	this->_sources.erase(std::make_pair(bid, sid));
+	// Снимаем приостановку таймаута ожидания, если источников не осталось
+	this->holding(bid);
 	/**
 	 * Ошибка потока (RST_STREAM с кодом CANCEL, REFUSED_STREAM и т.д.) закрывает только этот поток:
 	 * браузеры отменяют потоки при обычной работе, и закрытие всего подключения обрывало бы остальные потоки.
@@ -1409,9 +1413,30 @@ void awh::server::Http2::feeding(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * @brief Метод снятия приостановки таймаута ожидания данных
+ *
+ * @param bid идентификатор брокера
+ *
+ */
+void awh::server::Http2::holding(const uint64_t bid) noexcept {
+	// Если сетевого ядра нет, снимать нечего
+	if(this->_core == nullptr)
+		// Выходим из функции
+		return;
+	// Первый возможный ключ источников брокера
+	const auto first = std::make_pair(bid, std::numeric_limits <int32_t>::min());
+	// Ищем первый источник тела брокера
+	const auto next = this->_sources.lower_bound(first);
+	// Если источников тела у брокера не осталось, снимаем приостановку
+	if((next == this->_sources.end()) || (next->first.first != bid))
+		// Снимаем приостановку таймаута
+		const_cast <server::core_t *> (this->_core)->holding(bid, false);
+}
+/**
  * @brief Метод чтения источников тела ответов брокера
  *
  * @param bid идентификатор брокера
+ *
  */
 void awh::server::Http2::feed(const uint64_t bid) noexcept {
 	// Снимаем отметку запланированного чтения
@@ -1425,6 +1450,8 @@ void awh::server::Http2::feed(const uint64_t bid) noexcept {
 	if((j == this->_sessions.end()) || (this->_core == nullptr) || !this->_core->working()){
 		// Удаляем источники тела ответов брокера
 		this->_sources.erase(this->_sources.lower_bound(first), this->_sources.upper_bound(last));
+		// Снимаем приостановку таймаута ожидания
+		this->holding(bid);
 		// Выходим из функции
 		return;
 	}
@@ -1494,6 +1521,8 @@ void awh::server::Http2::feed(const uint64_t bid) noexcept {
 			if((bytes == 0) || (bytes > size)){
 				// Удаляем источник тела ответа
 				this->_sources.erase(i);
+				// Снимаем приостановку таймаута ожидания, если источников не осталось
+				this->holding(bid);
 				// Выводим сообщение об ошибке
 				this->_log->print("Response body source returned %zu bytes of %zu", log_t::flag_t::WARNING, bytes, size);
 				// Клиенту обещан размер тела, дописать его нечем: сбрасываем поток
@@ -1507,18 +1536,23 @@ void awh::server::Http2::feed(const uint64_t bid) noexcept {
 			const bool end = (i->second.first == 0);
 			// Если тело прочитано полностью
 			if(end)
-				// Удаляем источник тела ответа
+				// Удаляем источник тела ответа: приостановку снимает закрытие потока
 				this->_sources.erase(i);
 			// Если часть тела не отправлена (поток закрыт)
-			if(!this->send(sid, bid, buffer.data(), bytes, end))
+			if(!this->send(sid, bid, buffer.data(), bytes, end)){
 				// Удаляем источник тела ответа
 				this->_sources.erase(std::make_pair(bid, sid));
+				// Снимаем приостановку таймаута ожидания, если источников не осталось
+				this->holding(bid);
+			}
 			// Отмечаем продвижение
 			else progress = true;
 			// Если сессия брокера закрыта во время отправки
 			if((j = this->_sessions.find(bid)) == this->_sessions.end()){
 				// Удаляем источники тела ответов брокера
 				this->_sources.erase(this->_sources.lower_bound(first), this->_sources.upper_bound(last));
+				// Снимаем приостановку таймаута ожидания
+				this->holding(bid);
 				// Выходим из функции
 				return;
 			}
@@ -2748,6 +2782,8 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 							return;
 						// Устанавливаем источник тела ответа
 						this->_sources[std::make_pair(bid, sid)] = std::make_pair(length, ::move(source));
+						// Приостанавливаем таймаут ожидания на время отдачи тела
+						const_cast <server::core_t *> (this->_core)->holding(bid, true);
 						// Выполняем чтение первых частей тела
 						this->feed(bid);
 					}

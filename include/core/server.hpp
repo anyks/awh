@@ -136,6 +136,8 @@ namespace awh {
 				std::map <uint64_t, uint16_t> _flushes;
 				// Список таймаутов на получение данных
 				std::map <uint64_t, uint16_t> _receive;
+				// Список брокеров, у которых таймаут ожидания данных приостановлен на время отдачи тела
+				std::set <uint64_t> _holds;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
 				// Список таймеров перепосылки рукопожатия DTLS
@@ -339,6 +341,19 @@ namespace awh {
 				 */
 				void remove() noexcept;
 			public:
+				/**
+				 * \~russian
+				 * @brief Метод приостановки таймаута ожидания данных на время отдачи тела
+				 *
+				 * \~english
+				 * @brief Method for suspending the data wait timeout while the body is being sent
+				 *
+				 * \~
+				 *
+				 * @param bid  идентификатор брокера
+				 * @param mode флаг приостановки (true - таймаут не закрывает связь)
+				 */
+				void holding(const uint64_t bid, const bool mode) noexcept;
 				/**
 				 * @brief Метод закрытия подключения брокера
 				 *

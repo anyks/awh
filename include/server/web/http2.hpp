@@ -222,6 +222,20 @@ namespace awh {
 				 */
 				void feeding(const uint64_t bid) noexcept;
 				/**
+				 * \~russian
+				 * @brief Метод снятия приостановки таймаута ожидания данных
+				 *
+				 * @param bid идентификатор брокера
+				 *
+				 * \~english
+				 * @brief Method for lifting the suspension of the data wait timeout
+				 *
+				 * @param bid broker identifier
+				 *
+				 * \~
+				 */
+				void holding(const uint64_t bid) noexcept;
+				/**
 				 * @brief Метод чтения источников тела ответов брокера
 				 *
 				 * @param bid идентификатор брокера

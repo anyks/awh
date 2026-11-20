@@ -1309,10 +1309,33 @@ void awh::server::Core::expired(const uint16_t sid, const uint64_t bid, const ui
 			this->accept(sid, bid);
 		break;
 		// Если необходимо закрыть подключение
-		case static_cast <uint8_t> (mode_t::RECEIVE):
-			// Выполняем закрытие подключения
-			this->close(bid);
-		break;
+		case static_cast <uint8_t> (mode_t::RECEIVE): {
+			// Флаг приостановки таймаута ожидания
+			bool held = false;
+			{
+				// Блокируем список удержаний
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+				// Проверяем, приостановлен ли таймаут для брокера
+				held = (this->_holds.count(bid) > 0);
+			}
+			/**
+			 * Пока отдаётся тело ответа, встречных данных может не быть законно: клиент
+			 * с большим окном забирает тело порциями. Закрывать такую связь по простою
+			 * нельзя, поэтому ожидание продлевается
+			 */
+			if(held){
+				// Если брокер ещё существует
+				if(this->has(bid)){
+					// Получаем брокера подключения
+					const awh::scheme_t::broker_t * broker = this->broker(bid);
+					// Если время ожидания входящих данных задано, продлеваем его
+					if((broker != nullptr) && (broker->timeouts.wait > 0))
+						// Взводим таймер ожидания заново
+						this->createTimeout(sid, bid, static_cast <uint32_t> (broker->timeouts.wait) * 1000, mode_t::RECEIVE);
+				}
+			// Иначе выполняем закрытие подключения
+			} else this->close(bid);
+		} break;
 	}
 }
 /**
@@ -2079,6 +2102,25 @@ void awh::server::Core::remove() noexcept {
 	}
 }
 /**
+ * @brief Метод приостановки таймаута ожидания данных на время отдачи тела
+ *
+ * @details Пока отдаётся тело ответа из источника, отсутствие встречных данных
+ *          не является простоем связи: клиент с большим окном забирает тело
+ *          порциями, и закрывать соединение по net.wait нельзя
+ *
+ * @param bid  идентификатор брокера
+ * @param mode флаг приостановки (true - таймаут не закрывает связь)
+ *
+ */
+void awh::server::Core::holding(const uint64_t bid, const bool mode) noexcept {
+	// Блокируем список удержаний
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+	// Устанавливаем или снимаем приостановку таймаута
+	if(mode) this->_holds.emplace(bid);
+	// Снимаем приостановку таймаута
+	else this->_holds.erase(bid);
+}
+/**
  * @brief Метод закрытия подключения брокера
  *
  * @param bid идентификатор брокера
@@ -2088,6 +2130,13 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
+	// Снимаем приостановку таймаута ожидания
+	{
+		// Блокируем список удержаний
+		const lock_guard <std::recursive_mutex> lock1(this->_mtx.receive);
+		// Удаляем брокера из списка удержаний
+		this->_holds.erase(bid);
+	}
 	// Снимаем отложенное закрытие подключения
 	this->_finishing.erase(bid);
 	/**
