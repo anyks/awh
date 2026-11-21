@@ -25,6 +25,7 @@
  */
 #include <map>
 #include <ctime>
+#include <deque>
 #include <atomic>
 #include <memory>
 #include <csignal>
@@ -621,6 +622,8 @@ namespace {
 		nts::extension::type_t alpsType;
 		// Кэш билетов возобновления сессии по ключу сервера
 		unordered_map <string, string> sessions;
+		// Выданные сервером билеты возобновления с контекстом ранних данных их связей
+		deque <pair <string, string>> issued;
 		/**
 		 * @brief Конструктор
 		 *
@@ -2837,6 +2840,110 @@ void awh::tls::coder::session(const id_t id, string_view key, string_view sessio
 			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
+}
+/**
+ * @brief Функция сохранения билета возобновления, выданного сервером (RFC 9001 §4.6)
+ *
+ * @param id     идентификатор шаблонного контекста безопасности
+ * @param ticket сериализованный билет возобновления для сохранения
+ * @param early  контекст ранних данных связи, выдавшей билет
+ *
+ */
+void awh::tls::coder::ticket(const id_t id, string_view ticket, string_view early) noexcept {
+	/**
+	 * Перехватываем ошибки
+	 */
+	try {
+		// Закрепляем участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден и является шаблонным контекстом безопасности
+		if((pin != nullptr) && (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS)){
+			// Извлекаем объект шаблона контекста безопасности
+			auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+			/**
+			 * Запас выданных билетов ограничен: билет пригоден одному возобновлению,
+			 * а запас пополняется всякой выдачей, и его неограниченный рост дал бы
+			 * утечку памяти серверу под долгой нагрузкой
+			 */
+			while(member->issued.size() >= 8)
+				// Снимаем самый старый билет из запаса
+				member->issued.pop_front();
+			// Помещаем выданный билет в запас с контекстом ранних данных его связи
+			member->issued.emplace_back(string{ticket}, string{early});
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id, ticket, early}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Функция извлечения билетов возобновления, выданных сервером (RFC 9001 §4.6)
+ *
+ * @param id      идентификатор шаблонного контекста безопасности
+ * @param early   контекст ранних данных связи, признающей билеты
+ * @param tickets объект для извлечения сериализованных билетов возобновления
+ * @return        результат извлечения (найден хотя бы один билет)
+ *
+ */
+bool awh::tls::coder::tickets(const id_t id, string_view early, vector <string> & tickets) noexcept {
+	// Сбрасываем результат извлечения билетов возобновления
+	tickets.clear();
+	/**
+	 * Перехватываем ошибки
+	 */
+	try {
+		// Закрепляем участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден и является шаблонным контекстом безопасности
+		if((pin != nullptr) && (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS)){
+			// Извлекаем объект шаблона контекста безопасности
+			auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+			/**
+			 * Перебираем запас выданных билетов
+			 */
+			for(const auto & item : member->issued){
+				// Если контекст ранних данных разошёлся либо билет уже взят результатом
+				if((item.second != early) || (find(tickets.begin(), tickets.end(), item.first) != tickets.end()))
+					// Переходим к следующему билету
+					continue;
+				// Добавляем запись билета к результату
+				tickets.push_back(item.first);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id, early}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат извлечения билетов возобновления
+	return !tickets.empty();
 }
 /**
  * @brief Функция установки адреса и порта отдалённого узла

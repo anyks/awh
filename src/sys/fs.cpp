@@ -156,7 +156,10 @@
 		 * Включаем поддержку Objective-C автоматического управления памятью
 		 */
 		#define __AWH_USE_MACOS_ALIAS_RESOLUTION__ 1
-		// ← #import допустим в .cpp при -x objective-c++
+
+		/**
+		 * ← #import допустим в .cpp при -x objective-c++
+		 */
 		#import <Foundation/Foundation.h>
 	#endif
 #endif
@@ -3472,7 +3475,7 @@ bool awh::fs::owner([[maybe_unused]] string_view addr, [[maybe_unused]] const ow
 			// Идентификатор пользователя: по имени, а при отсутствии имени на машине - номер
 			uid_t uid = (!owner.user.empty() ? os::uid(owner.user) : static_cast <uid_t> (-1));
 			// Идентификатор группы: по названию, а при отсутствии названия на машине - номер
-			gid_t gid = (!owner.group.empty() ? os::gid(owner.group) : static_cast <gid_t> (-1));
+			gid_t gid = (!owner.group.empty() ? os::group(owner.group) : static_cast <gid_t> (-1));
 			// Если пользователь по имени не найден
 			if(uid == static_cast <uid_t> (-1))
 				// Берём номер пользователя

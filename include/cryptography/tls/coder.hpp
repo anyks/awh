@@ -816,6 +816,62 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ void session(const id_t id, string_view key, string_view session) noexcept;
 			/**
 			 * \~russian
+			 * @brief Функция сохранения билета возобновления, выданного сервером (RFC 9001 §4.6)
+			 *
+			 * @note Криптографическая библиотека признаёт предъявленный билет только сам,
+			 *       и выдача запоминается на шаблонном контексте безопасности вместе
+			 *       с контекстом ранних данных: под тем же контекстом билеты прежних
+			 *       связей признаются новыми связями сервера
+			 *
+			 * @param id     идентификатор шаблонного контекста безопасности
+			 * @param ticket сериализованный билет возобновления для сохранения
+			 * @param early  контекст ранних данных связи, выдавшей билет
+			 *
+			 * \~english
+			 * @brief Function saving the resumption ticket issued by the server (RFC 9001 §4.6)
+			 *
+			 * @note The cryptographic library recognizes a presented ticket by itself alone,
+			 *       and the issue is remembered on the template security context together
+			 *       with the early data context: under the same context the tickets of the
+			 *       former connections are recognized by the new connections of the server
+			 *
+			 * @param id     identifier of the template security context
+			 * @param ticket serialized resumption ticket for the saving
+			 * @param early  early data context of the connection which issued the ticket
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void ticket(const id_t id, string_view ticket, string_view early) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция извлечения билетов возобновления, выданных сервером (RFC 9001 §4.6)
+			 *
+			 * @note Из запаса берутся лишь билеты, выданные под тем же контекстом ранних
+			 *       данных: расхождение контекста делает билет неприменимым, и ранняя
+			 *       данные под изменившимися лимитами не принимаются (RFC 9001 §4.6.2)
+			 *
+			 * @param id      идентификатор шаблонного контекста безопасности
+			 * @param early   контекст ранних данных связи, признающей билеты
+			 * @param tickets объект для извлечения сериализованных билетов возобновления
+			 * @return        результат извлечения (найден хотя бы один билет)
+			 *
+			 * \~english
+			 * @brief Function extracting the resumption tickets issued by the server (RFC 9001 §4.6)
+			 *
+			 * @note Only the tickets issued under the same early data context are taken from
+			 *       the stock: a divergence of the context makes the ticket inapplicable, and
+			 *       the early data under the changed limits is not accepted (RFC 9001 §4.6.2)
+			 *
+			 * @param id      identifier of the template security context
+			 * @param early   early data context of the connection recognizing the tickets
+			 * @param tickets object for extracting the serialized resumption tickets
+			 * @return        result of the extraction (at least one ticket has been found)
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool tickets(const id_t id, string_view early, vector <string> & tickets) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция установки адреса и порта отдалённого узла
 			 *
 			 * @param id   идентификатор события

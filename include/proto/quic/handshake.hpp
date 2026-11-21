@@ -259,6 +259,8 @@ namespace awh {
 				string _ticket;
 				// Флаг отказа удалённого узла в ранних данных (RFC 9001 §4.6.2)
 				bool _rejected;
+				// Флаг выполненной выдачи билета возобновления клиенту (RFC 9001 §4.6)
+				bool _issued;
 				// Список поддерживаемых ALPN-протоколов из контекста TLS
 				vector <tls::coder::alpn_t> _protocols;
 			private:
