@@ -620,6 +620,12 @@ namespace awh {
 			 *
 			 */
 			void altsvc(const std::unordered_multimap <string, string> & origins) noexcept;
+			/**
+			 * @brief Метод установки предельного размера тела потока
+			 * @param size предельный размер тела в байтах
+			 *
+			 */
+			void maxBodySize(const uint64_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод инициализации

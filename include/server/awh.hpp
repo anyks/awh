@@ -547,6 +547,12 @@ namespace awh {
 				 * @param settings список настроек протокола HTTP/2
 				 */
 				void settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				/**
+				 * @brief Метод установки предельного размера тела запроса
+				 * @param size предельный размер тела в байтах
+				 *
+				 */
+				void maxBodySize(const uint64_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера

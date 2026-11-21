@@ -156,6 +156,16 @@ namespace awh {
 				 */
 				int32_t closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept;
 				/**
+				 * @brief Метод превышения лимита тела потока HTTP/2
+				 * @param sid      идентификатор потока
+				 * @param bid      идентификатор брокера
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 * @return         статус полученных данных
+				 *
+				 */
+				int32_t limitSignal(const int32_t sid, const uint64_t bid, const uint64_t received, const uint64_t limit) noexcept;
+				/**
 				 * @brief Метод обратного вызова при получении заголовка HTTP/2
 				 *
 				 * @param sid идентификатор потока
@@ -609,6 +619,12 @@ namespace awh {
 				 * @param compressors список поддерживаемых компрессоров
 				 */
 				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
+				/**
+				 * @brief Метод установки предельного размера тела
+				 * @param size предельный размер тела в байтах
+				 *
+				 */
+				void maxBodySize(const uint64_t size) noexcept;
 				/**
 				 * @brief Метод установки жизни подключения
 				 *

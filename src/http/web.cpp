@@ -583,8 +583,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								/**
 								 * Размер проверяется до сложения с телом: сложение с размером
 								 * близким к максимуму 64 бит переполнялось и снимало ограничение
+								 *
 								 */
-								if((length > AWH_MAX_BODY_SIZE) || (this->_body.size() > AWH_MAX_BODY_SIZE) || (length > (AWH_MAX_BODY_SIZE - this->_body.size()))){
+								if((length > this->_maxBodySize) || (this->_body.size() > this->_maxBodySize) || (length > (this->_maxBodySize - this->_body.size()))){
 									// Если мы работаем с сервером
 									if(this->_hid == hid_t::SERVER)
 										// Тело запроса слишком большое
@@ -598,7 +599,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 											__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
 											this->_fmk->bytes(static_cast <double> (length) + static_cast <double> (this->_body.size())).c_str(),
-											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+											this->_fmk->bytes(static_cast <double> (this->_maxBodySize)).c_str()
 										);
 									/**
 									* Если режим отладки не включён
@@ -609,7 +610,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 											log_t::flag_t::CRITICAL,
 											this->_fmk->bytes(static_cast <double> (length) + static_cast <double> (this->_body.size())).c_str(),
-											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+											this->_fmk->bytes(static_cast <double> (this->_maxBodySize)).c_str()
 										);
 									#endif
 									// Выполняем переход к ошибке
@@ -1050,7 +1051,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									return;
 								}
 							// Если размер тела слишком большой
-							} else if(length > AWH_MAX_BODY_SIZE) {
+							} else if(length > this->_maxBodySize) {
 								/**
 								 * Если включён режим отладки
 								 */
@@ -1060,7 +1061,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 										__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
 										this->_fmk->bytes(static_cast <double> (length)).c_str(),
-										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+										this->_fmk->bytes(static_cast <double> (this->_maxBodySize)).c_str()
 									);
 								/**
 								* Если режим отладки не включён
@@ -1071,7 +1072,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 										log_t::flag_t::CRITICAL,
 										this->_fmk->bytes(static_cast <double> (length)).c_str(),
-										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
+										this->_fmk->bytes(static_cast <double> (this->_maxBodySize)).c_str()
 									);
 								#endif
 								// Если мы работаем с сервером
@@ -2117,6 +2118,26 @@ void awh::Web::body(const char * buffer, const size_t size) noexcept {
 		this->_body.push(buffer, size);
 }
 /**
+ * @brief Метод установки предельного размера тела
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::Web::maxBodySize(const uint64_t size) noexcept {
+	// Если размер передан, устанавливаем предел
+	if(size > 0)
+		// Запоминаем предельный размер тела
+		this->_maxBodySize = size;
+}
+/**
+ * @brief Метод получения предельного размера тела
+ * @return предельный размер тела в байтах
+ *
+ */
+uint64_t awh::Web::maxBodySize() const noexcept {
+	// Выводим предельный размер тела
+	return this->_maxBodySize;
+}
+/**
  * @brief Метод получение названия протокола для переключения
  *
  * @return название протокола для переключения
@@ -2318,7 +2339,8 @@ void awh::Web::callback(const callback_t & callback) noexcept {
  */
 awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _separator('\0'), _pos{-1, -1},
- _bodySize(-1), _uri(fmk, log), _callback(log),
+ _bodySize(-1), _maxBodySize(AWH_MAX_BODY_SIZE),
+ _uri(fmk, log), _callback(log),
  _hid(hid_t::NONE), _state(state_t::QUERY),
  _fault(0), _headerCount(0), _headerBytes(0),
  _body(fmk, log), _upgrade{""}, _fmk(fmk), _log(log) {

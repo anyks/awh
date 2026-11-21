@@ -23,6 +23,10 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/parser.hpp>
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/lib.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -38,7 +42,7 @@ awh::http::Parser::Limits::Limits() noexcept :
  maxHeaderValue(MAX_HEADER_VALUE),
  maxHeaderCount(MAX_HEADER_COUNT),
  maxHeadersTotal(MAX_HEADERS_TOTAL),
- maxBodySize(MAX_BODY_SIZE) {}
+ maxBodySize(AWH_MAX_BODY_SIZE) {}
 
 /**
  * @brief Метод получения итогового статуса разбора

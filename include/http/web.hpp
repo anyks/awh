@@ -405,6 +405,8 @@ namespace awh {
 			int64_t _pos[2];
 			// Размер тела сообщения
 			int64_t _bodySize;
+			// Предельный размер тела сообщения
+			uint64_t _maxBodySize;
 		private:
 			// Объект работы с URI
 			uri_t _uri;
@@ -601,6 +603,19 @@ namespace awh {
 			 * @param size   размер буфера теля для добавления
 			 */
 			void body(const char * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод установки предельного размера тела
+			 * @param size предельный размер тела в байтах
+			 *
+			 */
+			void maxBodySize(const uint64_t size) noexcept;
+			/**
+			 * @brief Метод получения предельного размера тела
+			 * @return предельный размер тела в байтах
+			 *
+			 */
+			uint64_t maxBodySize() const noexcept;
 		public:
 			/**
 			 * @brief Метод получение названия протокола для переключения

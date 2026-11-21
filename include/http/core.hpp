@@ -413,6 +413,19 @@ namespace awh {
 			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * @brief Метод установки предельного размера тела
+			 * @param size предельный размер тела в байтах
+			 *
+			 */
+			void maxBodySize(const uint64_t size) noexcept;
+			/**
+			 * @brief Метод получения предельного размера тела
+			 * @return предельный размер тела в байтах
+			 *
+			 */
+			uint64_t maxBodySize() const noexcept;
+		public:
+			/**
 			 * @brief Метод получение названия протокола для переключения
 			 *
 			 * @return название протокола для переключения

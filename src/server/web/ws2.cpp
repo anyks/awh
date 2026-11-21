@@ -463,6 +463,22 @@ int32_t awh::server::Websocket2::closedSignal(const int32_t sid, const uint64_t 
 	return 0;
 }
 /**
+ * @brief Метод превышения лимита тела потока HTTP/2
+ *
+ * @note В Websocket-сессии тело HTTP-запроса не обрабатывается
+ *
+ * @param sid      идентификатор потока
+ * @param bid      идентификатор брокера
+ * @param received фактически принятый объём тела
+ * @param limit    разрешённый лимит тела потока
+ * @return         статус полученных данных
+ *
+ */
+int32_t awh::server::Websocket2::limitSignal([[maybe_unused]] const int32_t sid, [[maybe_unused]] const uint64_t bid, [[maybe_unused]] const uint64_t received, [[maybe_unused]] const uint64_t limit) noexcept {
+	// Выводим результат
+	return 0;
+}
+/**
  * @brief Метод обратного вызова при получении заголовка HTTP/2
  *
  * @param sid идентификатор потока

@@ -121,6 +121,8 @@ namespace awh {
 				private:
 					// Список параметров активных клиентов
 					clients_t _clients;
+					// Предельный размер тела сообщения
+					uint64_t _maxBodySize;
 				public:
 					// Список доступных компрессоров
 					vector <awh::http_t::compressor_t> compressors;
@@ -194,7 +196,21 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					explicit WEB2(const fmk_t * fmk, const log_t * log) noexcept :
+					 _maxBodySize(AWH_MAX_BODY_SIZE),
 					 scheme_t(fmk, log), _fmk(fmk), _log(log) {}
+				public:
+					/**
+					 * @brief Метод установки предельного размера тела
+					 * @param size предельный размер тела в байтах
+					 *
+					 */
+					void maxBodySize(const uint64_t size) noexcept;
+					/**
+					 * @brief Метод получения предельного размера тела
+					 * @return предельный размер тела в байтах
+					 *
+					 */
+					uint64_t maxBodySize() const noexcept;
 					/**
 					 * @brief Деструктор
 					 *

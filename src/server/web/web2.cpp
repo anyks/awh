@@ -65,6 +65,8 @@ bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept
 				callback.on <bool (const size_t)> ("writable", &web2_t::writableSignal, this, bid, _1);
 				// Выполняем установку функции обратного вызова при закрытии потока
 				callback.on <int32_t (const int32_t, const http2_t::error_t)> ("close", &web2_t::closedSignal, this, _1, bid, _2);
+				// Назначаем функцию обратного вызова превышения лимита тела потока
+				callback.on <int32_t (const int32_t, const uint64_t, const uint64_t, const uint64_t)> ("limit", &web2_t::limitSignal, this, _1, bid, _2, _3);
 				// Выполняем установку функции обратного вызова при получении чанка с сервера
 				callback.on <int32_t (const int32_t, const uint8_t *, const size_t)> ("chunk", &web2_t::chunkSignal, this, _1, bid, _2, _3);
 				// Выполняем установку функции обратного вызова при получении данных заголовка
@@ -83,6 +85,8 @@ bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept
 				if(!ret.first->second->init(http2_t::mode_t::SERVER, this->_settings))
 					// Выполняем удаление созданного ранее объекта
 					this->_sessions.erase(ret.first);
+				// Если инициализация выполнена, устанавливаем предельный размер тела
+				else ret.first->second->maxBodySize(this->_maxBodySize);
 				// Если список разрешённых источников установлен
 				if(!this->_origins.empty())
 					// Устанавливаем список разрешённых источников
@@ -474,7 +478,34 @@ void awh::server::Web2::setAltSvc(const std::unordered_multimap <string, string>
 	this->_altsvc = origins;
 }
 /**
- * @brief Модуль установки настроек протокола HTTP/2
+ * @brief Метод установки предельного размера тела
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::Web2::maxBodySize(const uint64_t size) noexcept {
+	// Если размер передан, устанавливаем предел
+	if(size > 0){
+		// Запоминаем предельный размер тела
+		this->_maxBodySize = size;
+		/**
+		 * Применяем предел к активным сессиям HTTP/2
+		 */
+		for(auto & session : this->_sessions)
+			// Устанавливаем предельный размер тела
+			session.second->maxBodySize(size);
+	}
+}
+/**
+ * @brief Метод получения предельного размера тела
+ * @return предельный размер тела в байтах
+ *
+ */
+uint64_t awh::server::Web2::maxBodySize() const noexcept {
+	// Выводим предельный размер тела
+	return this->_maxBodySize;
+}
+/**
+ * @brief Метод установки списка настроек протокола HTTP/2
  *
  * @param settings список настроек протокола HTTP/2
  */
@@ -526,8 +557,9 @@ void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> 
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
+ *
  */
-awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _sender(fmk, log) {
+awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _sender(fmk, log), _maxBodySize(AWH_MAX_BODY_SIZE) {
 	// Отключаем вывод информационных сообщений таймера
 	this->_sender.verbose(false);
 	// Выполняем установку список настроек протокола HTTP/2
@@ -539,8 +571,9 @@ awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(f
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
+ *
  */
-awh::server::Web2::Web2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _sender(fmk, log) {
+awh::server::Web2::Web2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _sender(fmk, log), _maxBodySize(AWH_MAX_BODY_SIZE) {
 	// Отключаем вывод информационных сообщений таймера
 	this->_sender.verbose(false);
 	// Выполняем установку список настроек протокола HTTP/2

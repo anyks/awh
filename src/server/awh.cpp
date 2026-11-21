@@ -541,9 +541,20 @@ void awh::server::AWH::setAltSvc(const std::unordered_multimap <string, string> 
 	this->_http.setAltSvc(origins);
 }
 /**
- * @brief Модуль установки настроек протокола HTTP/2
+ * @brief Метод установки предельного размера тела запроса
+ *
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::AWH::maxBodySize(const uint64_t size) noexcept {
+	// Устанавливаем предельный размер тела запроса
+	this->_http.maxBodySize(size);
+}
+/**
+ * @brief Метод установки настроек протокола HTTP/2
  *
  * @param settings список настроек протокола HTTP/2
+ *
  */
 void awh::server::AWH::settings(const std::map <awh::http2_t::settings_t, uint32_t> & settings) noexcept {
 	// Выполняем установку списка настроек протокола HTTP/2

@@ -1130,6 +1130,8 @@ void awh::Http2::callback(const callback_t & callback) noexcept {
 		this->_callback.set("begin", callback);
 		// Устанавливаем функцию обратного вызова при получении чанка
 		this->_callback.set("chunk", callback);
+		// Устанавливаем функцию обратного вызова превышения лимита тела потока
+		this->_callback.set("limit", callback);
 		// Устанавливаем функцию обратного вызова на событие получения ошибки
 		this->_callback.set("error", callback);
 		// Устанавливаем функцию обратного вызова при обмене фреймами
@@ -1163,6 +1165,23 @@ void awh::Http2::origin(const vector <string> & origins) noexcept {
 void awh::Http2::altsvc(const std::unordered_multimap <string, string> & origins) noexcept {
 	// Сохраняем список альтернативных сервисов
 	this->_altsvc = origins;
+}
+/**
+ * @brief Метод установки предельного размера тела потока
+ *
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::Http2::maxBodySize(const uint64_t size) noexcept {
+	// Если размер передан и парсер инициализирован
+	if((size > 0) && (this->_engine != nullptr)){
+		// Получаем текущие лимиты парсера
+		http::parser_http2_t::limits_t limits = this->_engine->limits();
+		// Устанавливаем предельный размер тела потока
+		limits.maxBodySize = size;
+		// Применяем лимиты парсера
+		this->_engine->limits(limits);
+	}
 }
 /**
  * @brief Метод инициализации
@@ -1339,6 +1358,13 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 					flags.emplace(flag_t::END_STREAM);
 				// Вызываем функцию обратного вызова фрейма данных
 				return (this->fire(static_cast <int32_t> (sid), direct_t::RECV, frame_t::DATA, flags) == 0);
+			}));
+			// Функция обратного вызова превышения лимита тела потока
+			this->_engine->on(http::parser_http2_t::limit_callback_t([this](const uint32_t sid, const uint64_t received, const uint64_t limit) noexcept {
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("limit"))
+					// Вызываем функцию обратного вызова
+					this->_callback.call <void (const int32_t, const uint64_t, const uint64_t)> ("limit", static_cast <int32_t> (sid), received, limit);
 			}));
 			// Функция обратного вызова закрытия потока
 			this->_engine->on(http::parser_http2_t::close_callback_t([this](const uint32_t sid, const http::h2::error_t code) noexcept {

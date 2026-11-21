@@ -412,6 +412,40 @@ int32_t awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, 
 	return 0;
 }
 /**
+ * @brief Метод превышения лимита тела потока HTTP/2
+ *
+ * @details Ответ 413 уходит раньше RST_STREAM: парсер вызывает этот метод
+ *          до сброса потока, и заголовки ответа встают в очередь первыми
+ *
+ * @param sid      идентификатор потока
+ * @param bid      идентификатор брокера
+ * @param received фактически принятый объём тела
+ * @param limit    разрешённый лимит тела потока
+ * @return         статус полученных данных
+ *
+ */
+int32_t awh::server::Http2::limitSignal(const int32_t sid, const uint64_t bid, const uint64_t received, const uint64_t limit) noexcept {
+	// Результат работы функции
+	int32_t result = 0;
+	// Извлекаем данные потока
+	scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+	// Если поток получен удачно
+	if(stream != nullptr){
+		// Формируем ответ «слишком большое тело»
+		awh::web_t::res_t response(2.f, static_cast <uint32_t> (413), stream->http.message(413));
+		// Получаем заголовки ответа удалённому клиенту
+		const auto & headers = stream->http.reject2(response);
+		// Если заголовки ответа получены
+		if(!headers.empty())
+			// Отправляем ответ с завершением потока
+			result = web2_t::send(sid, bid, headers, awh::http2_t::flag_t::END_STREAM);
+	}
+	// Выводим предупреждение с фактическим объёмом и лимитом
+	this->_log->print("HTTP/2 request body exceeds the limit: received=%llu limit=%llu sid=%d broker=%llu", log_t::flag_t::WARNING, static_cast <unsigned long long> (received), static_cast <unsigned long long> (limit), sid, static_cast <unsigned long long> (bid));
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод обратного вызова при получении заголовка HTTP/2
  *
  * @param sid идентификатор потока
@@ -3518,6 +3552,20 @@ void awh::server::Http2::segmentSize(const size_t size) noexcept {
 void awh::server::Http2::compressors(const vector <http_t::compressor_t> & compressors) noexcept {
 	// Устанавливаем список компрессоров
 	this->_scheme.compressors = compressors;
+}
+/**
+ * @brief Метод установки предельного размера тела
+ *
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::Http2::maxBodySize(const uint64_t size) noexcept {
+	// Устанавливаем предел для сессий и потоков HTTP/2
+	Web2::maxBodySize(size);
+	// Устанавливаем предел для разбора заголовков и тела HTTP/2
+	this->_scheme.maxBodySize(size);
+	// Устанавливаем предел для соединений HTTP/1
+	this->_http1.maxBodySize(size);
 }
 /**
  * @brief Метод установки жизни подключения

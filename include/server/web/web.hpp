@@ -657,6 +657,8 @@ namespace awh {
 			protected:
 				// Список активных сессий HTTP/2
 				std::map <uint64_t, std::shared_ptr <http2_t>> _sessions;
+				// Предельный размер тела сообщения
+				uint64_t _maxBodySize;
 			protected:
 				/**
 				 * Фреймы сессии не отдаются в заполненную очередь отправки брокера: сессия
@@ -735,6 +737,16 @@ namespace awh {
 				 * @return      статус полученных данных
 				 */
 				virtual int32_t closedSignal(const int32_t sid, const uint64_t bid, const http2_t::error_t error) noexcept = 0;
+				/**
+				 * @brief Метод превышения лимита тела потока HTTP/2
+				 * @param sid      идентификатор потока
+				 * @param bid      идентификатор брокера
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 * @return         статус полученных данных
+				 *
+				 */
+				virtual int32_t limitSignal(const int32_t sid, const uint64_t bid, const uint64_t received, const uint64_t limit) noexcept = 0;
 				/**
 				 * @brief Метод обратного вызова при получении заголовка HTTP/2
 				 *
@@ -888,6 +900,18 @@ namespace awh {
 				 * @param settings список настроек протокола HTTP/2
 				 */
 				void settings(const std::map <http2_t::settings_t, uint32_t> & settings = {}) noexcept;
+				/**
+				 * @brief Метод установки предельного размера тела
+				 * @param size предельный размер тела в байтах
+				 *
+				 */
+				virtual void maxBodySize(const uint64_t size) noexcept;
+				/**
+				 * @brief Метод получения предельного размера тела
+				 * @return предельный размер тела в байтах
+				 *
+				 */
+				uint64_t maxBodySize() const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

@@ -119,8 +119,41 @@ void awh::server::scheme::WEB2::openStream(const int32_t sid, const uint64_t bid
 			ret.first->second->sid = sid;
 			// Устанавливаем список доступных компрессоров
 			ret.first->second->http.compressors(this->compressors);
+			// Устанавливаем предельный размер тела
+			ret.first->second->http.maxBodySize(this->_maxBodySize);
 		}
 	}
+}
+/**
+ * @brief Метод установки предельного размера тела
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::scheme::WEB2::maxBodySize(const uint64_t size) noexcept {
+	// Если размер передан, устанавливаем предел
+	if(size > 0){
+		// Запоминаем предельный размер тела
+		this->_maxBodySize = size;
+		/**
+		 * Применяем предел к активным потокам
+		 */
+		for(auto & client : this->_clients)
+			/**
+			 * Перебираем потоки клиента
+			 */
+			for(auto & stream : client.second->streams)
+				// Устанавливаем предельный размер тела
+				stream.second->http.maxBodySize(size);
+	}
+}
+/**
+ * @brief Метод получения предельного размера тела
+ * @return предельный размер тела в байтах
+ *
+ */
+uint64_t awh::server::scheme::WEB2::maxBodySize() const noexcept {
+	// Выводим предельный размер тела
+	return this->_maxBodySize;
 }
 /**
  * @brief Метод закрытия потока

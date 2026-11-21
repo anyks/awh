@@ -1178,12 +1178,13 @@ awh::http::Parser_HTTP2::Transfer::Pending::Pending() noexcept :
  *
  */
 awh::http::Parser_HTTP2::Callbacks::Callbacks() noexcept :
- data(nullptr), push(nullptr),
- write(nullptr), begin(nullptr),
- close(nullptr), error(nullptr),
- phase(nullptr), header(nullptr),
- goaway(nullptr), writable(nullptr),
- settings(nullptr), provider(nullptr) {}
+ data(nullptr), limit(nullptr),
+ push(nullptr), write(nullptr),
+ begin(nullptr), close(nullptr),
+ error(nullptr), phase(nullptr),
+ header(nullptr), goaway(nullptr),
+ writable(nullptr), settings(nullptr),
+ provider(nullptr) {}
 
 /**
  * @brief Метод передачи исходящих байтов сетевому слою через функцию обратного вызова записи
@@ -2686,6 +2687,8 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			}
 			// Если суммарный размер тела потока превысил лимит безопасности
 			if(stream->recvBody > this->_limits.maxBodySize){
+				// Уведомляем вызывающую сторону о превышении лимита до сброса потока
+				this->fireLimit(header.streamId, stream->recvBody, this->_limits.maxBodySize);
 				// Пополняем окно приёма соединения (поток закрывается)
 				this->replenishReceiveWindow(nullptr, header.length);
 				// Сбрасываем поток с кодом ENHANCE_YOUR_CALM
@@ -3778,6 +3781,44 @@ bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, c
 	}
 	// Ошибка пользовательской функции - поток сбрасывается
 	return false;
+}
+/**
+ * @brief Метод вызова функции обратного вызова превышения лимита тела потока
+ *
+ * @param id       идентификатор потока
+ * @param received фактически принятый объём тела
+ * @param limit    разрешённый лимит тела потока
+ *
+ */
+void awh::http::Parser_HTTP2::fireLimit(const uint32_t id, const uint64_t received, const uint64_t limit) noexcept {
+	// Если функция обратного вызова не установлена - выходим
+	if(this->_callbacks.limit == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Уведомляем о превышении лимита тела потока
+		this->_callbacks.limit(id, received, limit);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id, received, limit}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод вызова функции обратного вызова обработки заголовка или трейлера потока
@@ -6677,6 +6718,16 @@ void awh::http::Parser_HTTP2::on(push_callback_t callback) noexcept {
 void awh::http::Parser_HTTP2::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callbacks.data = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова превышения лимита тела потока
+ *
+ * @param callback функция обратного вызова превышения лимита тела потока
+ *
+ */
+void awh::http::Parser_HTTP2::on(limit_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callbacks.limit = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова для обработки закрытия потока

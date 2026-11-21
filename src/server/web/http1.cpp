@@ -2143,6 +2143,16 @@ void awh::server::Http1::compressors(const vector <http_t::compressor_t> & compr
 	this->_scheme.compressors = compressors;
 }
 /**
+ * @brief Метод установки предельного размера тела
+ *
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::Http1::maxBodySize(const uint64_t size) noexcept {
+	// Устанавливаем предельный размер тела
+	this->_scheme.maxBodySize(size);
+}
+/**
  * @brief Метод установки жизни подключения
  *
  * @param cnt   максимальное количество попыток

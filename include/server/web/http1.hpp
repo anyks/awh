@@ -477,6 +477,12 @@ namespace awh {
 				 */
 				void compressors(const vector <http_t::compressor_t> & compressors) noexcept;
 				/**
+				 * @brief Метод установки предельного размера тела
+				 * @param size предельный размер тела в байтах
+				 *
+				 */
+				void maxBodySize(const uint64_t size) noexcept;
+				/**
 				 * @brief Метод установки жизни подключения
 				 *
 				 * @param cnt   максимальное количество попыток

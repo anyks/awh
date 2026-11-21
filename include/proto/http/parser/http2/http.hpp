@@ -438,6 +438,16 @@ namespace awh {
 				 */
 				using data_callback_t = function <bool (const uint32_t, const void *, const size_t, const bool)>;
 				/**
+				 * @brief Функция обратного вызова превышения лимита тела потока
+				 * @details Вызывается до сброса потока: вызывающая сторона успевает
+				 *          отправить ответ 413, и только затем парсер шлёт RST_STREAM
+				 * @param id       идентификатор потока
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 *
+				 */
+				using limit_callback_t = function <void (const uint32_t, const uint64_t, const uint64_t)>;
+				/**
 				 * @brief Тип pull-источника данных тела потока (для больших тел без лишней копии)
 				 *
 				 * @details Альтернатива sendData: парсер сам запрашивает у источника данные
@@ -948,6 +958,11 @@ namespace awh {
 					 */
 					data_callback_t data;
 					/**
+					 * @brief Функция обратного вызова превышения лимита тела потока
+					 *
+					 */
+					limit_callback_t limit;
+					/**
 					 * @brief Функция обратного вызова для обработки анонса server push
 					 *
 					 */
@@ -1364,6 +1379,14 @@ namespace awh {
 				 *
 				 */
 				bool fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова превышения лимита тела потока
+				 * @param id       идентификатор потока
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 *
+				 */
+				void fireLimit(const uint32_t id, const uint64_t received, const uint64_t limit) noexcept;
 				/**
 				 * @brief Метод вызова функции обратного вызова обработки заголовка или трейлера потока
 				 *
@@ -2069,6 +2092,12 @@ namespace awh {
 				 *
 				 */
 				void on(data_callback_t callback) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова превышения лимита тела потока
+				 * @param callback функция обратного вызова превышения лимита тела потока
+				 *
+				 */
+				void on(limit_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки закрытия потока
 				 *

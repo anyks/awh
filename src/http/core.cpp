@@ -1603,6 +1603,26 @@ void awh::Http::body(const char * buffer, const size_t size) noexcept {
 	}
 }
 /**
+ * @brief Метод установки предельного размера тела
+ *
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::Http::maxBodySize(const uint64_t size) noexcept {
+	// Устанавливаем предельный размер тела
+	this->_web.maxBodySize(size);
+}
+/**
+ * @brief Метод получения предельного размера тела
+ *
+ * @return предельный размер тела в байтах
+ *
+ */
+uint64_t awh::Http::maxBodySize() const noexcept {
+	// Выводим предельный размер тела
+	return this->_web.maxBodySize();
+}
+/**
  * @brief Метод получение названия протокола для переключения
  *
  * @return название протокола для переключения

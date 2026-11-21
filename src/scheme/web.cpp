@@ -54,9 +54,38 @@ void awh::server::scheme::WEB::set(const uint64_t bid) noexcept {
 		auto ret = this->_clients.emplace(bid, std::make_unique <options_t> (this->_fmk, this->_log));
 		// Устанавливаем список доступных компрессоров
 		ret.first->second->http.compressors(this->compressors);
+		// Устанавливаем предельный размер тела
+		ret.first->second->http.maxBodySize(this->_maxBodySize);
 		// Устанавливаем контрольную точку
 		ret.first->second->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 	}
+}
+/**
+ * @brief Метод установки предельного размера тела
+ * @param size предельный размер тела в байтах
+ *
+ */
+void awh::server::scheme::WEB::maxBodySize(const uint64_t size) noexcept {
+	// Если размер передан, устанавливаем предел
+	if(size > 0){
+		// Запоминаем предельный размер тела
+		this->_maxBodySize = size;
+		/**
+		 * Применяем предел к активным клиентам
+		 */
+		for(auto & item : this->_clients)
+			// Устанавливаем предельный размер тела
+			item.second->http.maxBodySize(size);
+	}
+}
+/**
+ * @brief Метод получения предельного размера тела
+ * @return предельный размер тела в байтах
+ *
+ */
+uint64_t awh::server::scheme::WEB::maxBodySize() const noexcept {
+	// Выводим предельный размер тела
+	return this->_maxBodySize;
 }
 /**
  * @brief Метод удаления параметров активного клиента

@@ -99,13 +99,6 @@ namespace awh {
 				 *
 				 */
 				static constexpr size_t MAX_HEADERS_TOTAL = (64 * 1024);
-				/**
-				 * @brief Максимальный размер тела
-				 *
-				 * @note Значения по умолчанию подобраны консервативно
-				 *
-				 */
-				static constexpr uint64_t MAX_BODY_SIZE = (64ull * 1024 * 1024);
 			public:
 				/**
 				 * @brief Фаза разбора части HTTP-сообщения
