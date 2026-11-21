@@ -22,6 +22,10 @@
  * Подключаем заголовочный файл
  */
 #include <core/server.hpp>
+/**
+ * Подключаем заголовочный файл
+ */
+#include <chrono>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -32,6 +36,17 @@ using namespace std;
  * Подписываемся на пространство имён заполнителя
  */
 using namespace placeholders;
+
+/**
+ * @brief Предельное время одного прохода чтения в миллисекундах
+ *
+ */
+static constexpr uint32_t READ_PASS_MS = 50;
+/**
+ * @brief Предельный объём одного прохода чтения в байтах
+ *
+ */
+static constexpr size_t READ_PASS_SIZE = 64 * 1024 * 1024;
 
 /**
  * @brief Метод вызова при подключении к серверу
@@ -1080,6 +1095,74 @@ void awh::server::Core::clearTimeout(const uint64_t bid) noexcept {
 		// Удаляем таймаут из базы таймаутов
 		this->_receive.erase(i);
 	}
+	// Ищем отложенное продолжение чтения
+	auto continuation = this->_continues.find(bid);
+	// Если продолжение найдено
+	if(continuation != this->_continues.end()){
+		// Если таймер инициализирован
+		if(this->_timer != nullptr)
+			// Удаляем таймер продолжения
+			this->_timer->clear(continuation->second);
+		// Удаляем продолжение из списка
+		this->_continues.erase(continuation);
+	}
+}
+/**
+ * @brief Метод отложения продолжения чтения данных
+ *
+ * @details Один проход чтения ограничен по времени и объёму: непрерывный
+ *          входящий поток иначе держит поток событий и лишает остальных
+ *          брокеров и таймеры оборота. Продолжение выполняется коротким
+ *          таймером, чтобы при фронтовом kqueue не потерять готовность
+ *
+ * @param bid идентификатор брокера
+ *
+ */
+void awh::server::Core::postponeRead(const uint64_t bid) noexcept {
+	// Если таймер не инициализирован, создаём его
+	if(this->_timer == nullptr){
+		// Создаём объект таймера
+		this->_timer = std::make_unique <timer_t> (this->_fmk, this->_log);
+		// Запрещаем вывод информационных сообщений
+		this->_timer->verbose(false);
+		// Присоединяем таймер к базе событий ядра
+		this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+	}
+	// Блокируем список продолжений чтения
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+	// Если продолжение уже запланировано, выходим
+	if(this->_continues.find(bid) != this->_continues.end())
+		// Выходим из метода
+		return;
+	// Создаём таймер продолжения чтения
+	const uint16_t tid = this->_timer->timeout(1);
+	// Если таймер создан
+	if(tid > 0){
+		// Запоминаем таймер в списке продолжений
+		this->_continues.emplace(bid, tid);
+		// Назначаем функцию продолжения чтения
+		this->_timer->on(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::resumeRead), this, bid);
+	}
+}
+/**
+ * @brief Метод продолжения чтения данных по таймеру
+ *
+ * @param bid идентификатор брокера
+ *
+ */
+void awh::server::Core::resumeRead(const uint64_t bid) noexcept {
+	// Флаг продолжения чтения
+	bool resume = false;
+	{
+		// Блокируем список продолжений чтения
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Удаляем продолжение из списка
+		resume = (this->_continues.erase(bid) > 0);
+	}
+	// Продолжаем чтение при активной связи
+	if(resume && this->working() && this->has(bid))
+		// Возобновляем чтение данных
+		this->read(bid);
 }
 /**
  * @brief Метод удаления таймера подключения или переподключения
@@ -2022,6 +2105,8 @@ void awh::server::Core::remove() noexcept {
 				this->_retransmits.clear();
 				// Очищаем список таймеров отправки очереди датаграмм
 				this->_flushes.clear();
+				// Очищаем список таймеров продолжения чтения данных
+				this->_continues.clear();
 			}{
 				// Выполняем блокировку потока
 				const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
@@ -3015,6 +3100,13 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				// Выполняем отключение приёма данных на этот сокет
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				/**
+				 * Засекаем бюджет прохода чтения: непрерывный входящий поток
+				 * не должен держать поток событий дольше установленного предела
+				 */
+				const auto began = chrono::steady_clock::now();
+				// Объём данных, прочитанных за проход
+				size_t total = 0;
+				/**
 				 * Выполняем чтение данных с сокета
 				 */
 				do {
@@ -3034,6 +3126,8 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 						const int64_t bytes = broker->ectx.read(broker->payload.buffer.get(), broker->payload.size);
 						// Если данные получены
 						if(bytes > 0){
+							// Учитываем объём прочитанного за проход
+							total += static_cast <size_t> (bytes);
 							// Если таймер ожидания получения данных установлен
 							if((broker->timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 								// Выполняем удаление таймаута
@@ -3051,6 +3145,16 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 										// Выполняем создание таймаута ожидания получения данных
 										this->createTimeout(i->first, bid, static_cast <uint32_t> (broker->timeouts.read) * 1000, mode_t::RECEIVE);
 								}
+								// Выходим из цикла
+								break;
+							}
+							/**
+							 * Если бюджет прохода исчерпан, откладываем дочитывание,
+							 * чтобы остальные брокеры и таймеры получили оборот
+							 */
+							if((total >= READ_PASS_SIZE) || (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now() - began).count() >= READ_PASS_MS)){
+								// Планируем продолжение чтения
+								this->postponeRead(bid);
 								// Выходим из цикла
 								break;
 							}

@@ -136,6 +136,8 @@ namespace awh {
 				std::map <uint64_t, uint16_t> _flushes;
 				// Список таймаутов на получение данных
 				std::map <uint64_t, uint16_t> _receive;
+				// Список таймеров продолжения чтения данных
+				std::map <uint64_t, uint16_t> _continues;
 				// Список брокеров, у которых таймаут ожидания данных приостановлен на время отдачи тела
 				std::set <uint64_t> _holds;
 				// Список активных таймаутов
@@ -318,6 +320,32 @@ namespace awh {
 				 * @param timer флаг вызова по таймеру
 				 */
 				void resume(const uint16_t sid, const bool timer) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отложения продолжения чтения данных
+				 *
+				 * \~english
+				 * @brief Method for postponing the read continuation
+				 *
+				 * \~
+				 *
+				 * @param bid идентификатор брокера
+				 *
+				 */
+				void postponeRead(const uint64_t bid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод продолжения чтения данных по таймеру
+				 *
+				 * \~english
+				 * @brief Method for continuing the read by timer
+				 *
+				 * \~
+				 *
+				 * @param bid идентификатор брокера
+				 *
+				 */
+				void resumeRead(const uint64_t bid) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки клиента
