@@ -122,6 +122,8 @@ namespace awh {
 				// Таймер для работы DTLS
 				std::unique_ptr <timer_t> _timer;
 			private:
+				// Список брокеров, у которых таймаут ожидания данных приостановлен на время отдачи тела
+				std::set <uint64_t> _holds;
 				// Список схем сети, у которых приём подключений приостановлен
 				std::set <uint16_t> _paused;
 				// Список схем сети, для которых ожидается таймер возобновления приёма
@@ -136,12 +138,10 @@ namespace awh {
 				std::map <uint64_t, uint16_t> _flushes;
 				// Список таймаутов на получение данных
 				std::map <uint64_t, uint16_t> _receive;
-				// Список таймеров продолжения чтения данных
-				std::map <uint64_t, uint16_t> _continues;
-				// Список брокеров, у которых таймаут ожидания данных приостановлен на время отдачи тела
-				std::set <uint64_t> _holds;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
+				// Список таймеров продолжения чтения данных
+				std::map <uint64_t, uint16_t> _continues;
 				// Список таймеров перепосылки рукопожатия DTLS
 				std::map <uint64_t, uint16_t> _retransmits;
 			private:
@@ -321,26 +321,14 @@ namespace awh {
 				 */
 				void resume(const uint16_t sid, const bool timer) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод отложения продолжения чтения данных
-				 *
-				 * \~english
-				 * @brief Method for postponing the read continuation
-				 *
-				 * \~
 				 *
 				 * @param bid идентификатор брокера
 				 *
 				 */
 				void postponeRead(const uint64_t bid) noexcept;
 				/**
-				 * \~russian
 				 * @brief Метод продолжения чтения данных по таймеру
-				 *
-				 * \~english
-				 * @brief Method for continuing the read by timer
-				 *
-				 * \~
 				 *
 				 * @param bid идентификатор брокера
 				 *
@@ -370,13 +358,7 @@ namespace awh {
 				void remove() noexcept;
 			public:
 				/**
-				 * \~russian
 				 * @brief Метод приостановки таймаута ожидания данных на время отдачи тела
-				 *
-				 * \~english
-				 * @brief Method for suspending the data wait timeout while the body is being sent
-				 *
-				 * \~
 				 *
 				 * @param bid  идентификатор брокера
 				 * @param mode флаг приостановки (true - таймаут не закрывает связь)

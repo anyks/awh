@@ -1385,54 +1385,6 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 	}
 }
 /**
- * @brief Метод планирования чтения источников тела ответов брокера
- *
- * @note Вызывается из обратного вызова записи в сокет. Чтение выполняется по таймеру,
- *       а не из вызова: обратный вызов записи приходит до того, как недописанный
- *       остаток встаёт в очередь
- *
- * @param bid идентификатор брокера
- */
-void awh::server::Http2::feeding(const uint64_t bid) noexcept {
-	// Если чтение источников ещё не запланировано
-	if(this->_feeds.count(bid) == 0){
-		// Выполняем поиск первого источника тела брокера
-		auto i = this->_sources.lower_bound(std::make_pair(bid, std::numeric_limits <int32_t>::min()));
-		// Если источник тела у брокера есть
-		if((i != this->_sources.end()) && (i->first.first == bid)){
-			// Создаём таймер чтения источников с минимальной задержкой
-			const uint16_t tid = this->_sender.timeout(1);
-			// Если таймер создан
-			if(tid > 0){
-				// Помечаем, что чтение запланировано
-				this->_feeds.emplace(bid);
-				// Выполняем добавление функции обратного вызова
-				this->_sender.on(tid, &http2_t::feed, this, bid);
-			}
-		}
-	}
-}
-/**
- * @brief Метод снятия приостановки таймаута ожидания данных
- *
- * @param bid идентификатор брокера
- *
- */
-void awh::server::Http2::holding(const uint64_t bid) noexcept {
-	// Если сетевого ядра нет, снимать нечего
-	if(this->_core == nullptr)
-		// Выходим из функции
-		return;
-	// Первый возможный ключ источников брокера
-	const auto first = std::make_pair(bid, std::numeric_limits <int32_t>::min());
-	// Ищем первый источник тела брокера
-	const auto next = this->_sources.lower_bound(first);
-	// Если источников тела у брокера не осталось, снимаем приостановку
-	if((next == this->_sources.end()) || (next->first.first != bid))
-		// Снимаем приостановку таймаута
-		const_cast <server::core_t *> (this->_core)->holding(bid, false);
-}
-/**
  * @brief Метод чтения источников тела ответов брокера
  *
  * @param bid идентификатор брокера
@@ -1558,6 +1510,54 @@ void awh::server::Http2::feed(const uint64_t bid) noexcept {
 			}
 		}
 	}
+}
+/**
+ * @brief Метод планирования чтения источников тела ответов брокера
+ *
+ * @note Вызывается из обратного вызова записи в сокет. Чтение выполняется по таймеру,
+ *       а не из вызова: обратный вызов записи приходит до того, как недописанный
+ *       остаток встаёт в очередь
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Http2::feeding(const uint64_t bid) noexcept {
+	// Если чтение источников ещё не запланировано
+	if(this->_feeds.count(bid) == 0){
+		// Выполняем поиск первого источника тела брокера
+		auto i = this->_sources.lower_bound(std::make_pair(bid, std::numeric_limits <int32_t>::min()));
+		// Если источник тела у брокера есть
+		if((i != this->_sources.end()) && (i->first.first == bid)){
+			// Создаём таймер чтения источников с минимальной задержкой
+			const uint16_t tid = this->_sender.timeout(1);
+			// Если таймер создан
+			if(tid > 0){
+				// Помечаем, что чтение запланировано
+				this->_feeds.emplace(bid);
+				// Выполняем добавление функции обратного вызова
+				this->_sender.on(tid, &http2_t::feed, this, bid);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод снятия приостановки таймаута ожидания данных
+ *
+ * @param bid идентификатор брокера
+ *
+ */
+void awh::server::Http2::holding(const uint64_t bid) noexcept {
+	// Если сетевого ядра нет, снимать нечего
+	if(this->_core == nullptr)
+		// Выходим из функции
+		return;
+	// Первый возможный ключ источников брокера
+	const auto first = std::make_pair(bid, std::numeric_limits <int32_t>::min());
+	// Ищем первый источник тела брокера
+	const auto next = this->_sources.lower_bound(first);
+	// Если источников тела у брокера не осталось, снимаем приостановку
+	if((next == this->_sources.end()) || (next->first.first != bid))
+		// Снимаем приостановку таймаута
+		const_cast <server::core_t *> (this->_core)->holding(bid, false);
 }
 /**
  * @brief Метод удаления отключившихся брокеров
