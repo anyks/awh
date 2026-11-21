@@ -33,7 +33,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/lib.hpp>
+#include <sys/lib.hpp>
 #include <proto/http/headers.hpp>
 #include "../../../include/sys/log.hpp"
 
