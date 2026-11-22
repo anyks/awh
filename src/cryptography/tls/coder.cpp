@@ -691,6 +691,17 @@ namespace state {
 	 */
 	static constexpr uint8_t HANDSHAKE_MODE = 0x02;
 	/**
+	 * @brief Флаг отложенного заведения связи сервера
+	 *
+	 * @details Сервер дейтаграммного транспорта заводится лишь после установки адреса
+	 *          собеседника: метка возврата состояния привязывается к нему, и без адреса
+	 *          старт отвечает отказом настроек (раздел 5.1 RFC 9147). Адрес принятого
+	 *          соединения известен позже заведения записи, и связь ждёт его в работе
+	 *          установки собеседника
+	 *
+	 */
+	static constexpr uint8_t START_PENDING = 0x04;
+	/**
 	 * @brief Флаг работы в мультисертификатном режиме
 	 *
 	 */
@@ -1291,20 +1302,45 @@ namespace ssl {
 			member->client = ::make_unique <nts::client::context_t> ();
 			// Применяем настройки шаблона к связи
 			::ssl::applySettings<true>(* member->client, cts);
-			// Заводим связь
-			if(member->client->start() != nts::context::error_t::NONE)
-				// Выводим отказ заведения связи
-				return ::ssl::establishFailed(cts, id, "Could not establish TLS session");
+			/**
+			 * Транспорт QUIC слой записей TLS не ведёт: рукопожатие выполняет само
+			 * соединение собственной связью по уровням, и связь этого уровня заведению
+			 * не подлежит - старт требует транспортных параметров, которых у записи
+			 * нет (RFC 9001 §4)
+			 */
+			if(cts->proto != event::protocol_t::QUIC)
+				// Заводим связь
+				if(member->client->start() != nts::context::error_t::NONE)
+					// Выводим отказ заведения связи
+					return ::ssl::establishFailed(cts, id, "Could not establish TLS session");
 		// Если узел является сервером
 		} else if(cts->node == event::node_t::SERVER){
 			// Создаём связь сервера TLS
 			member->server = ::make_unique <nts::server::context_t> ();
 			// Применяем настройки шаблона к связи
 			::ssl::applySettings<false>(* member->server, cts);
-			// Заводим связь
-			if(member->server->start() != nts::context::error_t::NONE)
-				// Выводим отказ заведения связи
-				return ::ssl::establishFailed(cts, id, "Could not establish TLS session");
+			/**
+			 * Транспорт QUIC слой записей TLS не ведёт: рукопожатие выполняет само
+			 * соединение собственной связью по уровням, и связь этого уровня заведению
+			 * не подлежит - старт требует транспортных параметров, которых у записи
+			 * нет (RFC 9001 §4)
+			 */
+			if(cts->proto != event::protocol_t::QUIC){
+				/**
+				 * Серверу дейтаграммного транспорта адрес собеседника нужен до заведения
+				 * связи: метка возврата состояния привязывается к адресу, и без него
+				 * старт отвечает отказом настроек (раздел 5.1 RFC 9147). Адрес принятого
+				 * соединения известен лишь после заведения записи, поэтому старт
+				 * откладывается до установки адреса собеседника
+				 */
+				if(cts->proto == event::protocol_t::UDP)
+					// Отмечаем отложенное заведение связи сервера
+					member->state |= state::START_PENDING;
+				// Иначе заводим связь
+				else if(member->server->start() != nts::context::error_t::NONE)
+					// Выводим отказ заведения связи
+					return ::ssl::establishFailed(cts, id, "Could not establish TLS session");
+			}
 		// Во всех остальных случаях
 		} else return false;
 		// Возвращаем положительный результат
@@ -3087,6 +3123,64 @@ bool awh::tls::coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							// Возвращаем отрицательный результат
 							return false;
 						}
+						/**
+						 * Отложенное заведение связи сервера выполняется здесь: адрес
+						 * собеседника получен, и связь дейтаграммного транспорта заводится
+						 * привязкой метки возврата состояния к адресу (раздел 5.1 RFC 9147).
+						 * Запись адреса собирается из копии: буфер вызова живёт лишь до
+						 * возврата, а связь хранит адрес до конца
+						 */
+						if((member->state & state::START_PENDING) != 0){
+							// Снимаем признак отложенного заведения связи сервера
+							member->state &= ~state::START_PENDING;
+							// Адрес собеседника из записи транспортного уровня
+							const net::attr_net_t * stored = awh_cast <const net::attr_net_t *> (member->host.peer.get());
+							// Октеты адреса собеседника: адрес и порт собеседника подряд
+							uint8_t wire[18];
+							// Размер записи адреса собеседника
+							const size_t size = ((stored->type == net::type_t::IPV6) ? sizeof(wire) : 6);
+							// Копируем октеты IP-адреса собеседника
+							if(stored->type == net::type_t::IPV6)
+								// Копируем октеты IPv6-адреса собеседника
+								::memcpy(wire, awh_cast <const net::addr_net_ipv6_t *> (stored->ip.get())->address.data(), size - 2);
+							// Иначе адрес собеседника является адресом IPv4
+							else
+								// Копируем октеты IPv4-адреса собеседника
+								::memcpy(wire, &awh_cast <const net::addr_net_ipv4_t *> (stored->ip.get())->address, size - 2);
+							// Дописываем порт собеседника старшим октетом вперёд
+							wire[size - 2] = static_cast <uint8_t> ((port >> 8) & 0xFF);
+							// Дописываем младший октет порта собеседника
+							wire[size - 1] = static_cast <uint8_t> (port & 0xFF);
+							// Если адрес в связь сервера установить не удалось либо связь не заведена
+							if(!member->server->address(nts::view_t(wire, size)) || (member->server->start() != nts::context::error_t::NONE)){
+								// Помечаем участника мусорным: связь негодна
+								member->state |= state::GARBAGE_MODE;
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "Could not establish DTLS session");
+								// Если функция обратного вызова ошибки установлена
+								if(member->callback.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки
+									member->callback.error(id, error_t::TLS_SESSION_FAILED, error);
+								// Если функция обратного вызова ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("%s", __PRETTY_FUNCTION__, {id, ip, port}, log::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+									// Записываем ошибку в лог
+									log::print("%s", log::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+								// Возвращаем отрицательный результат
+								return false;
+							}
+						}
 						// Возвращаем положительный результат
 						return true;
 					}
@@ -3569,13 +3663,32 @@ void * awh::tls::coder::quicContext(const id_t id) noexcept {
 	 */
 	try {
 		// Закрепляем участника в глобальном реестре TLS
-		const auto pin = ::ssl::registry::pin(id);
+		auto pin = ::ssl::registry::pin(id);
 		// Если идентификатор контекста TLS найден
 		if(pin != nullptr){
+			// Объект уровня транспортной безопасности
+			::member_t * member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			/**
+			 * Уровнем может быть и транспортная передача: соединение QUIC создают
+			 * и по шаблону, и по передаче - передача несёт шаблон сама, и связь
+			 * строится по этому шаблону
+			 */
+			if(member->layer == layer_t::CTL){
+				// Извлекаем объект транспортного уровня передачи
+				auto ctl = reinterpret_cast <::ctl_t *> (member);
+				// Если шаблон контекста безопасности отсутствует - выходим из функции
+				if(ctl->cts == nullptr)
+					// Возвращаем пустой результат
+					return nullptr;
+				// Переходим к шаблону контекста безопасности передачи
+				member = reinterpret_cast <::member_t *> (ctl->cts);
+				// Закрепляем шаблон контекста безопасности в глобальном реестре TLS
+				pin = ::ssl::registry::pin(static_cast <id_t> (reinterpret_cast <uintptr_t> (member)));
+			}
 			// Если уровень является шаблонным контекстом безопасности
-			if(reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTS){
+			if((pin != nullptr) && (member->layer == layer_t::CTS)){
 				// Извлекаем объект шаблона контекста безопасности
-				auto cts = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+				auto cts = reinterpret_cast <::cts_t *> (member);
 				// Если узел является клиентом
 				if(cts->node == event::node_t::CLIENT){
 					// Создаём связь клиента TLS

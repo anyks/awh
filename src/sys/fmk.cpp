@@ -3126,7 +3126,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3880,7 +3880,7 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -5451,7 +5451,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("%s", __PRETTY_FUNCTION__, {::convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+							log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5473,7 +5473,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6274,7 +6274,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6412,7 +6412,7 @@ wstring awh::fmk::arabic2rome(wstring_view word) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6533,7 +6533,7 @@ size_t awh::fmk::countLetter(wstring_view word, const wchar_t letter) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word), letter}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7065,7 +7065,7 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(format)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7352,7 +7352,7 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(word), convert(text)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7454,7 +7454,7 @@ wstring & awh::fmk::replace(wstring & text, const wstring & word, const wstring 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), convert(word), convert(alt)}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7596,7 +7596,7 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {::convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */

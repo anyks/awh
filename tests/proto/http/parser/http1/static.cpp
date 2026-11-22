@@ -998,6 +998,14 @@ TEST_F(ParserFixture, BodyOverflowOrderTest){
 	events_t events;
 	// Подписываем сборщик событий на все функции обратного вызова парсера
 	this->attach(* parser, events);
+	// Переменные для проверки уведомления о превышении лимита тела
+	uint64_t limId = 0, limReceived = 0, limLimit = 0;
+	// Подписываем проверку на событие превышения лимита тела
+	parser->on(parser_http_t::limit_callback_t([&limId, &limReceived, &limLimit](const uint64_t id, const uint64_t received, const uint64_t limit) noexcept {
+		limId = id;
+		limReceived = received;
+		limLimit = limit;
+	}));
 	// Получаем текущие лимиты безопасности
 	parser_http_t::limits_t limits = parser->limits();
 	// Устанавливаем максимальный размер тела
@@ -1010,6 +1018,10 @@ TEST_F(ParserFixture, BodyOverflowOrderTest){
 	parser->parse(message.data(), message.size());
 	// Проверяем что ошибка соответствует превышению размера тела
 	ASSERT_EQ(parser->error(), parser_http_t::error_t::BODY_OVERFLOW);
+	// Проверяем что уведомление о превышении пришло до ошибки с объявленной длиной
+	ASSERT_EQ(limId, static_cast <uint64_t> (parser_http_t::STREAM_ID));
+	ASSERT_EQ(limReceived, 100u);
+	ASSERT_EQ(limLimit, 10u);
 	// Проверяем что потребитель не был уведомлён о готовности провайдера заголовков
 	ASSERT_FALSE(events.providerFired);
 }

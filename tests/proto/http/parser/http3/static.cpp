@@ -1365,6 +1365,21 @@ TEST_F(ParserHttp3Fixture, BodySizeLimit){
 	limits.maxBodySize = 8;
 	// Устанавливаем лимиты безопасности парсера сервера
 	server.parser->limits(limits);
+	// Признак и параметры уведомления о превышении лимита
+	uint32_t limitFired = 0;
+	// Идентификатор потока, принятый объём и разрешённый лимит
+	uint64_t limSid = 0, limReceived = 0, limLimit = 0;
+	// Подписываем проверку на событие превышения лимита тела
+	server.parser->on(awh::http::parser_http3_t::limit_callback_t([&limitFired, &limSid, &limReceived, &limLimit](const uint64_t sid, const uint64_t received, const uint64_t limit) noexcept {
+		// Отмечаем факт уведомления
+		++limitFired;
+		// Запоминаем идентификатор потока
+		limSid = sid;
+		// Запоминаем принятый объём тела
+		limReceived = received;
+		// Запоминаем разрешённый лимит
+		limLimit = limit;
+	}));
 	// Выполняем рукопожатие соединения
 	this->handshake(client, server);
 	// Отправляем секцию полей запроса
@@ -1379,6 +1394,14 @@ TEST_F(ParserHttp3Fixture, BodySizeLimit){
 	ASSERT_FALSE(server.events.aborts.empty());
 	// Код обрыва потока обязан указывать на чрезмерную нагрузку
 	ASSERT_EQ(std::get <1> (server.events.aborts.front()), awh::http::h3::error_t::H3_EXCESSIVE_LOAD);
+	// Уведомление обязано прийти до сброса потока
+	ASSERT_EQ(limitFired, 1u);
+	// Идентификатор обязан совпадать с потоком запроса
+	ASSERT_EQ(limSid, 0u);
+	// Лимит обязан совпадать с установленным
+	ASSERT_EQ(limLimit, 8u);
+	// Принятый объём обязан совпадать с размером отправленного тела
+	ASSERT_EQ(limReceived, 64u);
 }
 /**
  * @brief Проверка информационного ответа сервера

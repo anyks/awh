@@ -23,6 +23,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <type_traits>
 
 /**
  * Заголовочные файлы библиотеки A-NTS
@@ -128,9 +129,26 @@ awh::quic::status_t awh::quic::Handshake::processImpl(T & ctx) noexcept {
 	// Получаем криптографический набор связи
 	const crypto::suite_t suite = ::__awh_suite_from_code__(ctx.suite());
 	/**
+	 * Если локальный эндпоинт является клиентом и удалённый узел отказал в ранних
+	 * данных: отказ отказом хендшейка не является, но отправка ранних пакетов
+	 * запрещена, а их содержимое уходит повторно защитой уровня приложения,
+	 * поэтому ключи уровня ранних данных сбрасываются и повторно не выводятся
+	 * (RFC 9001 §4.6.2)
+	 */
+	if((this->_endpoint == endpoint_t::CLIENT) && !this->_rejected && (this->_client != nullptr) && this->_client->rejected()){
+		// Запоминаем отказ удалённого узла в ранних данных
+		this->_rejected = true;
+		// Сбрасываем ключи уровня ранних данных
+		this->discard(level_t::EARLY_DATA);
+	}
+	/**
 	 * Перебираем уровни шифрования и выводим появившиеся секреты
 	 */
 	for(size_t i = 0; i < LEVELS; i++){
+		// Если в ранних данных отказано: ключи уровня ранних данных не выводятся
+		if(this->_rejected && (i == static_cast <size_t> (level_t::EARLY_DATA)))
+			// Переходим к следующему уровню шифрования
+			continue;
 		// Получаем состояние уровня шифрования
 		auto & item = this->_levels[i];
 		// Уровень защиты A-NTS
@@ -193,6 +211,31 @@ awh::quic::status_t awh::quic::Handshake::processImpl(T & ctx) noexcept {
 				if(nts::context::encode(tickets.front(), record) == nts::context::error_t::NONE)
 					// Принимаем запись билета
 					this->_ticket.assign(reinterpret_cast <const char *> (record.data()), record.size());
+			}
+		}
+		// Если локальный эндпоинт является сервером и билет ещё не выдан
+		if constexpr(std::is_same <T, nts::server::context_t>::value){
+			// Если билет возобновления ещё не выдан
+			if(!this->_issued){
+				// Отмечаем выдачу билета выполненной
+				this->_issued = true;
+				// Выдаём билет возобновления клиенту (RFC 9001 §4.6)
+				if(ctx.issue() == nts::context::error_t::NONE){
+					/**
+					 * Перебираем выданные билеты: криптографическая библиотека признаёт
+					 * предъявленный билет только сама, и выдача запоминается на шаблоне
+					 * контекста безопасности вместе с контекстом ранних данных
+					 */
+					for(const auto & item : ctx.tickets()){
+						// Накопитель записи билета
+						vector <uint8_t> record;
+						// Если билет записан в октеты
+						if(nts::context::encode(item, record) == nts::context::error_t::NONE)
+							// Сохраняем выданный билет в запас шаблона контекста безопасности
+							tls::coder::ticket(this->_ctx, string_view(reinterpret_cast <const char *> (record.data()), record.size()), this->_early);
+					}
+				// Иначе записываем предупреждение в лог
+				} else awh::log::print("QUIC TLS ticket is not issued", awh::log::flag_t::WARNING);
 			}
 		}
 		// Выводим положительный результат
@@ -443,11 +486,17 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 			// Билет возобновления связи
 			nts::context::ticket_t ticket;
 			// Если запись сессии разобрана в билет
-			if(nts::context::decode(nts::view_t(reinterpret_cast <const uint8_t *> (this->_session.data()), this->_session.size()), ticket) == nts::context::error_t::NONE)
+			if(nts::context::decode(nts::view_t(reinterpret_cast <const uint8_t *> (this->_session.data()), this->_session.size()), ticket) == nts::context::error_t::NONE){
+				// Предел ранних данных, дозволенный билетом
+				const uint32_t advance = ticket.advance;
 				// Подаём билет возобновления связи
 				this->_client->resume(::move(ticket));
+				// Если билет дозволяет ранние данные (RFC 9001 §4.6)
+				if(advance > 0)
+					// Предлагаем ранние данные серверу под пределом билета
+					this->_client->advance(true, advance);
 			// Иначе записываем предупреждение в лог
-			else awh::log::print("QUIC session is not restored", awh::log::flag_t::WARNING);
+			} else awh::log::print("QUIC session is not restored", awh::log::flag_t::WARNING);
 		}
 		// Заводим связь
 		if(this->_client->start() != nts::context::error_t::NONE){
@@ -462,6 +511,39 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	} else {
 		// Устанавливаем локальные транспортные параметры
 		this->_server->parameters(parameters);
+		/**
+		 * Признаём билеты, выданные прежним связям шаблона контекста под тем же
+		 * контекстом ранних данных: без признания возобновление не состоится,
+		 * а расхождение контекста делает билет неприменимым к ранним данным (RFC 9001 §4.6)
+		 */
+		{
+			// Записи признаваемых билетов возобновления
+			vector <string> records;
+			// Если записи билетов найдены по контексту ранних данных
+			if(tls::coder::tickets(this->_ctx, this->_early, records)){
+				// Признаваемые билеты возобновления
+				vector <nts::context::ticket_t> recognized;
+				// Резервируем место под билеты
+				recognized.reserve(records.size());
+				/**
+				 * Перебираем записи билетов
+				 */
+				for(const auto & record : records){
+					// Билет возобновления связи
+					nts::context::ticket_t ticket;
+					// Если запись разобрана в билет
+					if(nts::context::decode(nts::view_t(reinterpret_cast <const uint8_t *> (record.data()), record.size()), ticket) == nts::context::error_t::NONE)
+						// Принимаем билет к признанию
+						recognized.push_back(::move(ticket));
+				}
+				// Признаём билеты возобновления связью
+				if(!recognized.empty())
+					// Отдаём список признаваемых билетов связи сервера
+					this->_server->resume(recognized);
+			}
+		}
+		// Разрешаем приём ранних данных клиента (RFC 9001 §4.6.2)
+		this->_server->advance(true);
 		// Заводим связь
 		if(this->_server->start() != nts::context::error_t::NONE){
 			// Устанавливаем состояние ошибки хендшейка
@@ -698,7 +780,7 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  */
 awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder::id_t ctx) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _ctx(ctx),
- _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(tls::coder::protocols(ctx)) {
+ _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _issued(false), _protocols(tls::coder::protocols(ctx)) {
 	// Создаём связь TLS по уровням из шаблона контекста безопасности
 	void * context = tls::coder::quicContext(ctx);
 	// Если связь создана

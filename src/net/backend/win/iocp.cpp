@@ -4023,6 +4023,22 @@ namespace io {
 		 */
 		bool adopted;
 		/**
+		 * Признак описателя, отданного передачей чужому процессу
+		 *
+		 * @details Снимок события уносит описатель получателю, и с этого мига узел
+		 *          обязан молчать: всякая его исходящая запись шла бы в тот же сокет
+		 *          ядра параллельно записям нового владельца, и порядок данных на
+		 *          проводе рушился бы. Отправка у такого узла запрещена - и приём
+		 *          новых данных в очередь, и слив уже очереденных при опросе
+		 *
+		 * @note Очередь отправки при этом никуда не девается: договор снимка очередей
+		 *       не переносит, и её судьба - за вызывающей стороной (юниты после
+		 *       передачи узел уничтожают, и очередь уходит вместе с ним). Снимается
+		 *       признак заведением узлу свежего описателя - повторным заведением события
+		 *
+		 */
+		bool handed;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
@@ -4037,7 +4053,7 @@ namespace io {
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
 		 delivery(event::delivery_mode_t::UNICAST), traffic(0),
-		 adopted(false) {}
+		 adopted(false), handed(false) {}
 	} state_t;
 
 	/**
@@ -24882,6 +24898,10 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::ipc_t * ipc) noexcept {
+		// Если описатель узла отдан передачею чужому процессу: узел обязан молчать
+		if(ipc->state.handed)
+			// Выводим отсутствие отправки
+			return false;
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -25465,6 +25485,10 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::peer_t * peer) noexcept {
+		// Если описатель узла отдан передачею чужому процессу: узел обязан молчать
+		if(peer->state.handed)
+			// Выводим отсутствие отправки
+			return false;
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -26361,6 +26385,10 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::origin_t * origin) noexcept {
+		// Если описатель узла отдан передачею чужому процессу: узел обязан молчать
+		if(origin->state.handed)
+			// Выводим отсутствие отправки
+			return false;
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -27078,6 +27106,10 @@ namespace io {
 	 *
 	 */
 	static bool write(::io::client_t * client) noexcept {
+		// Если описатель узла отдан передачею чужому процессу: узел обязан молчать
+		if(client->state.handed)
+			// Выводим отсутствие отправки
+			return false;
 		/**
 		 * Если общее ведро токенов ушло в долг, узел ждёт его пополнения
 		 *
@@ -28419,8 +28451,8 @@ namespace io {
 				::io::origin_t * origin = awh_cast <::io::origin_t *> (session.second);
 				// Если событие записи разрешено
 				if(origin->transfer.actions & ::action::WRITE){
-					// Если событие находится не в состоянии паузы
-					if(origin->state.status != event::status_t::PAUSED){
+					// Если событие находится не в состоянии паузы и описатель узла не отдан передачею
+					if((origin->state.status != event::status_t::PAUSED) && (!origin->state.handed)){
 						// Если есть данные для отправки в сокет
 						if(!origin->transfer.queue.empty()){
 							// Размер данных для извлечения из очереди
@@ -39157,6 +39189,8 @@ namespace io {
 	 *
 	 */
 	static bool socket(::io::node_t * node) noexcept {
+		// Снимаем признак отданного передачи описателя: узлу заводится свежий
+		node->state.handed = false;
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -68693,6 +68727,12 @@ bool awh::engine::io::snapshot(const event::id_t id, const event::id_t dest, vec
 			i->second->state.stash = event::status_t::NONE;
 			// Возвращаем состояние узла к исходному
 			i->second->state.status = event::status_t::NONE;
+			/**
+			 * Отмечаем описатель узла отданным передачи: узел обязан замолчать, всякая
+			 * его исходящая запись шла бы в тот же сокет ядра параллельно записям
+			 * нового владельца - отправка узлу запрещается до повторного заведения
+			 */
+			i->second->state.handed = true;
 		}
 		// Складываем снятое описание в буфер снимка
 		snapshot.assign(reinterpret_cast <const uint8_t *> (&layout), reinterpret_cast <const uint8_t *> (&layout) + sizeof(layout));
@@ -71900,6 +71940,19 @@ size_t awh::engine::io::send(const event::id_t id, const void * buffer, const si
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			/**
+			 * Описатель, отданный передачею чужому процессу, отправки не принимает
+			 *
+			 * @details Отказ договора не нарушает: отправка и так вправе принять меньше
+			 *          заказанного, вплоть до нуля, - потребитель обязан разбирать её
+			 *          ответ. Новому владельцу описателя запись параллельна, и молчание
+			 *          узла - условие целости порядка данных на проводе
+			 *
+			 */
+			// Если описатель события отдан передачей чужому процессу
+			if(i->second->state.handed)
+				// Выводим отсутствие принятых данных
+				return result;
 			// Создаём охранника узла события
 			::local::guard_t guard(i->second.get());
 			/**

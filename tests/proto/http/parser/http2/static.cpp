@@ -1385,6 +1385,89 @@ TEST_F(ParserHttp2Fixture, LargeBodyFlowControlTest){
 }
 
 /**
+ * @brief Метод проверки уведомления о превышении лимита тела до сброса потока
+ *
+ */
+TEST_F(ParserHttp2Fixture, BodyLimitCallbackTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Ограничиваем суммарный размер тела потока
+	parser_http2_t::limits_t limits = server->limits();
+	// Устанавливаем заведомо малый лимит тела
+	limits.maxBodySize = 1000;
+	// Применяем лимиты безопасности сервера
+	server->limits(limits);
+	// Признак и параметры уведомления о превышении лимита
+	uint32_t limitFired = 0;
+	// Идентификатор потока, принятый объём и разрешённый лимит
+	uint64_t limId = 0, limReceived = 0, limLimit = 0;
+	// Подписываем проверку на событие превышения лимита тела
+	server->on(parser_http2_t::limit_callback_t([&limitFired, &limId, &limReceived, &limLimit](const uint64_t id, const uint64_t received, const uint64_t limit) noexcept {
+		// Отмечаем факт уведомления
+		++limitFired;
+		// Запоминаем идентификатор потока
+		limId = id;
+		// Запоминаем принятый объём тела
+		limReceived = received;
+		// Запоминаем разрешённый лимит
+		limLimit = limit;
+	}));
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Проводим рукопожатие соединения
+	this->handshake(* client, * server);
+	// Выделяем идентификатор нового потока клиента
+	const uint32_t sid = client->nextStreamId();
+	// Формируем заголовки запроса
+	std::vector <h2::hpack::field_t> fields;
+	// Дописываем псевдо-заголовок метода запроса
+	fields.emplace_back(":method", "POST");
+	// Дописываем псевдо-заголовок схемы запроса
+	fields.emplace_back(":scheme", "https");
+	// Дописываем псевдо-заголовок адресата запроса
+	fields.emplace_back(":authority", "example.com");
+	// Дописываем псевдо-заголовок пути запроса
+	fields.emplace_back(":path", "/over");
+	// Отправляем заголовки запроса
+	client->sendHeaders(sid, fields, false);
+	// Формируем тело больше лимита
+	const std::string body(5000, 'x');
+	// Смещение отправки тела
+	size_t offset = 0;
+	// Ограничитель количества попыток отправки
+	size_t attempts = 0;
+	/**
+	 * Отправляем тело, пока клиент принимает данные
+	 */
+	while((offset < body.size()) && (attempts++ < 100)){
+		// Отправляем очередную порцию тела
+		const size_t sent = client->sendData(sid, body.data() + offset, body.size() - offset, true);
+		// Если данные не приняты, прекращаем отправку
+		if(sent == 0) break;
+		// Смещаем позицию отправки
+		offset += sent;
+	}
+	// Уведомление обязано прийти до сброса потока
+	ASSERT_EQ(limitFired, 1u);
+	// Идентификатор обязан совпадать с потоком запроса
+	ASSERT_EQ(limId, sid);
+	// Лимит обязан совпадать с установленным
+	ASSERT_EQ(limLimit, 1000u);
+	// Принятый объём обязан превышать лимит
+	ASSERT_GT(limReceived, limLimit);
+	// Соединение обязано остаться живым
+	ASSERT_NE(server->status(), parser_t::status_t::ERROR);
+}
+
+/**
  * @brief Метод проверки pull-источника данных тела потока
  *
  */

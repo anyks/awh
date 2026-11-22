@@ -897,6 +897,58 @@ namespace driver {
 		result.clear();
 	}
 	/**
+	 * @brief Функция обмена половин подписи ГОСТ местами
+	 *
+	 * @details Библиотека криптографии пишет числа половин подписи от старшего байта
+	 *          к младшему и кладёт первой половиной r, а провод схемы - числа тем же
+	 *          порядком, но первой половиной s (раздел 5.3 RFC 7091): выработанная
+	 *          подпись обменивается половинами на выдачу, принятая - на вход
+	 *
+	 * @param signature подпись с обмениваемыми половинами
+	 *
+	 */
+	static void swapHalves(vector <uint8_t> & signature) noexcept {
+		// Размер половины подписи
+		const size_t half = (signature.size() / 2);
+		/**
+		 * Перебираем октеты половин подписи
+		 */
+		for(size_t i = 0; i < half; i++){
+			// Октет первой половины подписи
+			uint8_t octet = signature[i];
+			// Дописываем октет второй половины на место первой
+			signature[i] = signature[half + i];
+			// Дописываем удержанный октет на место второй половины
+			signature[half + i] = octet;
+		}
+	}
+	/**
+	 * @brief Функция приведения хэш-суммы к числу уравнения схемы ГОСТ
+	 *
+	 * @details Раздел 6.1 ГОСТ Р 34.10-2012 читает хэш-сумму числом от младшего байта
+	 *          к старшему, - тогда как хэш-сумма выдаётся от старшего байта к младшему
+	 *          (раздел 7 ГОСТ Р 34.11-2012). Чужие работы (gost-engine) подают числом
+	 *          уравнения всю хэш-сумму без усечения и у схемы на 512 разрядов, и этому
+	 *          порядку записи сторон сверяются взаимно
+	 *
+	 * @param digest хэш-сумма, вычисленная от старшего байта к младшему
+	 * @param result место, в которое помещается развёрнутая хэш-сумма
+	 * @return       размер развёрнутой хэш-суммы
+	 *
+	 */
+	static size_t alphaOf(const vector <uint8_t> & digest, uint8_t * result) noexcept {
+		// Размер развёрнутой хэш-суммы
+		const size_t size = digest.size();
+		/**
+		 * Перебираем октеты хэш-суммы
+		 */
+		for(size_t i = 0; i < size; i++)
+			// Дописываем зеркальный октет хэш-суммы
+			result[i] = digest[size - 1 - i];
+		// Выводим размер развёрнутой хэш-суммы
+		return size;
+	}
+	/**
 	 * @brief Шаблон функции снятия с буфера дописанного работой
 	 *
 	 * @tparam T тип буфера результата
@@ -2392,6 +2444,30 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 	if(!this->ready())
 		// Выходим из метода
 		return;
+	/**
+	 * Предел выдачи пароля отвергается установкой: пароль длиннее защитил бы ключ
+	 * целиком, а обратно подавался бы обрезанным - и ключ, только что выписанный,
+	 * тем же объектом не открывался. Установка отвергается, а прежний пароль
+	 * сохраняется: объектом и дальше открываются ключи, им защищённые
+	 */
+	// Если длина пароля защиты приватного ключа предел выдачи превышает
+	if(password.size() > static_cast <size_t> (1024)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+		// Записываем ошибку в лог
+		log::debug("Private key password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {password.size()}, log::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+		// Записываем ошибку в лог
+		log::print("Private key password size exceeds the limit of the cryptography library", log::flag_t::CRITICAL);
+		#endif
+		// Выходим из метода
+		return;
+	}
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -7115,7 +7191,7 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 				// Заводим кривую ГОСТ
 				curve = std::make_unique <nts::curve::curve_t> ();
 				// Если кривую по опознавателю установить не удалось
-				if(!nts::curve::parameters(string(wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.7.1.2.1.1.1"), *curve)){
+				if(!nts::curve::parameters(string(wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.2.2.35.1"), *curve)){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -7177,9 +7253,11 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 				// Устанавливаем вид ключа ГОСТ
 				key.kind = nts::keys::kind_t::GOST;
 				// Устанавливаем опознаватель кривой ГОСТ
-				key.oid = (wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.7.1.2.1.1.1");
+				key.oid = (wide ? "1.2.643.7.1.2.1.2.1" : "1.2.643.2.2.35.1");
 				// Устанавливаем опознаватель схемы подписи ГОСТ
 				key.algorithm = (wide ? "1.2.643.7.1.1.1.2" : "1.2.643.7.1.1.1.1");
+				// Устанавливаем опознаватель хэш-функции схемы ГОСТ
+				key.digest = (wide ? "1.2.643.7.1.1.2.3" : "1.2.643.7.1.1.2.2");
 				// Переносим секретный скаляр
 				key.d.assign(secret, secret + size);
 				// Отводим буфер первой координаты точки
@@ -8002,8 +8080,12 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			}
 			// Отводим место под подпись
 			result.resize(i->second.gost->size(), 0);
+			// Развёрнутая хэш-сумма числом уравнения схемы ГОСТ
+			uint8_t alpha[64];
+			// Приводим хэш-сумму к числу уравнения схемы ГОСТ (раздел 6.1 ГОСТ Р 34.10-2012)
+			const size_t width = driver::alphaOf(digest, alpha);
 			// Вырабатываем подпись по хэш-сумме
-			if(!i->second.gost->make(nts::view_t(digest.data(), dlen), result.data())){
+			if(!i->second.gost->make(nts::view_t(alpha, width), result.data())){
 				// Затираем и очищаем буфер результата
 				driver::wipe(result);
 				/**
@@ -8022,6 +8104,8 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				// Выходим из метода
 				return outcome;
 			}
+			// Обмениваем половины подписи порядком провода схемы (раздел 5.3 RFC 7091)
+			driver::swapHalves(result);
 			// Запоминаем признак успешно выполненной работы
 			outcome = true;
 			// Выходим из метода
@@ -8073,6 +8157,29 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			}
 			// Запоминаем признак успешно выполненной работы
 			outcome = true;
+			// Выходим из метода
+			return outcome;
+		}
+		/**
+		 * Хэш-функция ГОСТ подписям не своей схемы не положена: сочетание не описано
+		 * сводами, а подмена запрошенной хэш-функции иной выдавала бы подпись
+		 * за запрошенную
+		 */
+		// Если хэш-функция ГОСТ запрошена схеме подписи не ГОСТ
+		if((hash == hash_t::STREEBOG256) || (hash == hash_t::STREEBOG512)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Hash type is inapplicable to the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+			// Записываем ошибку в лог
+			log::print("Hash type is inapplicable to the signature kind", log::flag_t::WARNING);
+			#endif
 			// Выходим из метода
 			return outcome;
 		}
@@ -8371,8 +8478,16 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			if(!nts::digest::hash(algorithm, nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), digest.data(), dlen))
 				// Выходим из метода
 				return outcome;
+			// Подпись с половинами, развёрнутыми порядком байт библиотеки криптографии
+			vector <uint8_t> foreign(signature);
+			// Обмениваем половины подписи из порядка провода схемы (раздел 5.3 RFC 7091)
+			driver::swapHalves(foreign);
+			// Развёрнутая хэш-сумма числом уравнения схемы ГОСТ
+			uint8_t alpha[64];
+			// Приводим хэш-сумму к числу уравнения схемы ГОСТ (раздел 6.1 ГОСТ Р 34.10-2012)
+			const size_t width = driver::alphaOf(digest, alpha);
 			// Выполняем проверку подписи по хэш-сумме
-			return i->second.gost->check(nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
+			return i->second.gost->check(nts::view_t(alpha, width), nts::view_t(foreign.data(), foreign.size()));
 		}
 		// Признак схемы, подписывающей сообщение само
 		const bool pure = (type == signature_t::ED25519);
@@ -8398,6 +8513,29 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		if(pure)
 			// Выполняем проверку подписи одним вызовом
 			return i->second.ed25519->check(nts::view_t(reinterpret_cast <const uint8_t *> (buffer), size), nts::view_t(signature.data(), signature.size()));
+		/**
+		 * Хэш-функция ГОСТ подписям не своей схемы не положена: сочетание не описано
+		 * сводами, а подмена запрошенной хэш-функции иной выдавала бы подпись
+		 * за запрошенную
+		 */
+		// Если хэш-функция ГОСТ запрошена схеме подписи не ГОСТ
+		if((hash == hash_t::STREEBOG256) || (hash == hash_t::STREEBOG512)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Hash type is inapplicable to the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+			// Записываем ошибку в лог
+			log::print("Hash type is inapplicable to the signature kind", log::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
 		// Длина хэш-суммы по её виду
 		const size_t dlen = nts::digest::length(static_cast <nts::digest::hash_t> (hash));
 		// Если вид хэш-суммы библиотеке не знаком
@@ -8813,6 +8951,29 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			// Выводим признак успешно выполненной работы
 			return true;
 		}
+		/**
+		 * Хэш-функция ГОСТ подписям не своей схемы не положена: сочетание не описано
+		 * сводами, а подмена запрошенной хэш-функции иной выдавала бы подпись
+		 * за запрошенную
+		 */
+		// Если хэш-функция ГОСТ запрошена схеме подписи не ГОСТ
+		if((hash == hash_t::STREEBOG256) || (hash == hash_t::STREEBOG512)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Hash type is inapplicable to the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+			// Записываем ошибку в лог
+			log::print("Hash type is inapplicable to the signature kind", log::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
 		// Если тип хэш-суммы не задан либо библиотеке не знаком
 		if((hash == hash_t::NONE) || (nts::digest::length(static_cast <nts::digest::hash_t> (hash)) == 0)){
 			/**
@@ -8974,12 +9135,21 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
 			// Отводим место под подпись
 			result.resize(i->second.gost->size(), 0);
+			// Развёрнутая хэш-сумма числом уравнения схемы ГОСТ
+			uint8_t alpha[64];
+			// Приводим хэш-сумму к числу уравнения схемы ГОСТ (раздел 6.1 ГОСТ Р 34.10-2012)
+			const size_t width = driver::alphaOf(digest, alpha);
 			// Вырабатываем подпись по хэш-сумме
-			if(!i->second.gost->make(nts::view_t(digest.data(), dlen), result.data()))
+			if(!i->second.gost->make(nts::view_t(alpha, width), result.data()))
 				// Затираем и очищаем буфер результата
 				driver::wipe(result);
-			// Запоминаем признак успешно выполненной работы
-			else outcome = true;
+			// Иначе подпись выработана: половины её обмениваются порядком провода схемы (раздел 5.3 RFC 7091)
+			else {
+				// Обмениваем половины подписи порядком провода схемы
+				driver::swapHalves(result);
+				// Запоминаем признак успешно выполненной работы
+				outcome = true;
+			}
 		// Если подпись вырабатывается ключом RSA
 		} else if(type == signature_t::RSA){
 			// Схема дополнения подписи RSA
@@ -9173,6 +9343,29 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			// Выводим признак успешно выполненной работы
 			return true;
 		}
+		/**
+		 * Хэш-функция ГОСТ подписям не своей схемы не положена: сочетание не описано
+		 * сводами, а подмена запрошенной хэш-функции иной выдавала бы подпись
+		 * за запрошенную
+		 */
+		// Если хэш-функция ГОСТ запрошена схеме подписи не ГОСТ
+		if((hash == hash_t::STREEBOG256) || (hash == hash_t::STREEBOG512)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Hash type is inapplicable to the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+			// Записываем ошибку в лог
+			log::print("Hash type is inapplicable to the signature kind", log::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
 		// Если тип хэш-суммы не задан либо библиотеке не знаком
 		if((hash == hash_t::NONE) || (nts::digest::length(static_cast <nts::digest::hash_t> (hash)) == 0)){
 			/**
@@ -9312,9 +9505,18 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 		// Если подпись проверяется ключом ГОСТ Р 34.10-2012
 		if((type == signature_t::GOST) || (type == signature_t::GOST512)){
 			// Если размер подписи разрядности схемы не отвечает
-			if(signature.size() == i->second.gost->size())
+			if(signature.size() == i->second.gost->size()){
+				// Подпись с половинами, развёрнутыми порядком байт библиотеки криптографии
+				vector <uint8_t> foreign(signature);
+				// Обмениваем половины подписи из порядка провода схемы (раздел 5.3 RFC 7091)
+				driver::swapHalves(foreign);
+				// Развёрнутая хэш-сумма числом уравнения схемы ГОСТ
+				uint8_t alpha[64];
+				// Приводим хэш-сумму к числу уравнения схемы ГОСТ (раздел 6.1 ГОСТ Р 34.10-2012)
+				const size_t width = driver::alphaOf(digest, alpha);
 				// Выполняем проверку подписи по хэш-сумме
-				outcome = i->second.gost->check(nts::view_t(digest.data(), dlen), nts::view_t(signature.data(), signature.size()));
+				outcome = i->second.gost->check(nts::view_t(alpha, width), nts::view_t(foreign.data(), foreign.size()));
+			}
 		// Если подпись проверяется ключом RSA
 		} else if(type == signature_t::RSA){
 			// Схема дополнения подписи RSA

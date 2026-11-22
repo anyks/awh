@@ -103,8 +103,9 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 			// Если работа клиента запущена
 			if(status == event::status_t::LAUNCHED){
 				// Выполняем запуск работы клиента, если клиент не запущен
-				if(!(this->_params.protocol == event::protocol_t::QUIC) ?
-				     this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid)){
+				if(!((this->_params.protocol == event::protocol_t::QUIC) ?
+				      this->_unit->quic.launch(this->_id.eid) :
+				      this->_unit->client.launch(this->_id.eid))){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**

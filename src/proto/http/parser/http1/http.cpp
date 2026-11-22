@@ -1668,7 +1668,7 @@ awh::http::Parser_HTTP::Sender::Sender() noexcept :
  *
  */
 awh::http::Parser_HTTP::Callbacks::Callbacks() noexcept :
- data(nullptr), phase(nullptr),
+ data(nullptr), limit(nullptr), phase(nullptr),
  chunk(nullptr), write(nullptr),
  header(nullptr), provider(nullptr),
  writable(nullptr) {}
@@ -1853,6 +1853,8 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		 * в сообщении нет, и отвергать такой ответ по лимиту недопустимо
 		 */
 		if(!noBody && (this->_statsBody.contentLength > this->_limits.maxBodySize)){
+			// Уведомляем вызывающую сторону о превышении лимита тела
+			this->fireLimit(STREAM_ID, static_cast <uint64_t> (this->_statsBody.contentLength), this->_limits.maxBodySize);
 			// Фиксируем ошибку превышения размера тела
 			this->_error = error_t::BODY_OVERFLOW;
 			// Выходим из метода
@@ -3026,6 +3028,44 @@ void awh::http::Parser_HTTP::frameBody(const void * buffer, const size_t size) n
 	}
 }
 /**
+ * @brief Метод вызова функции обратного вызова превышения лимита тела сообщения
+ *
+ * @param id       идентификатор потока
+ * @param received фактически принятый объём тела
+ * @param limit    разрешённый лимит тела сообщения
+ *
+ */
+void awh::http::Parser_HTTP::fireLimit(const uint64_t id, const uint64_t received, const uint64_t limit) noexcept {
+	// Если функция обратного вызова не установлена - выходим
+	if(this->_callbacks.limit == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Уведомляем о превышении лимита тела сообщения
+		this->_callbacks.limit(id, received, limit);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, received, limit}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод вызова функции обратного вызова обработки фазы разбора
  *
  * @param phase фаза разбора HTTP-сообщения
@@ -4011,6 +4051,8 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					 * превышает, иначе разбор остановился бы раньше
 					 */
 					if(avail > (this->_limits.maxBodySize - this->_statsBody.bytes)){
+						// Уведомляем вызывающую сторону о превышении лимита тела
+						this->fireLimit(STREAM_ID, this->_statsBody.bytes + avail, this->_limits.maxBodySize);
 						// Фиксируем ошибку превышения размера тела с записью в лог
 						this->fail(error_t::BODY_OVERFLOW);
 						// Выводим количество обработанных байт данных
@@ -4061,6 +4103,8 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					 * при лимите, заданном близко к пределу разрядности
 					 */
 					if(take > (this->_limits.maxBodySize - this->_statsBody.bytes)){
+						// Уведомляем вызывающую сторону о превышении лимита тела
+						this->fireLimit(STREAM_ID, this->_statsBody.bytes + take, this->_limits.maxBodySize);
 						// Фиксируем ошибку превышения размера тела с записью в лог
 						this->fail(error_t::BODY_OVERFLOW);
 						// Выводим количество обработанных байт данных
@@ -7151,6 +7195,16 @@ void awh::http::Parser_HTTP::consumePending(const size_t size) noexcept {
 void awh::http::Parser_HTTP::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
 	this->_callbacks.data = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова превышения лимита тела сообщения
+ *
+ * @param callback функция обратного вызова превышения лимита тела сообщения
+ *
+ */
+void awh::http::Parser_HTTP::on(limit_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова превышения лимита тела сообщения
+	this->_callbacks.limit = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова для обработки фазы разбора HTTP-сообщения

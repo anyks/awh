@@ -34,6 +34,7 @@
 #include <memory>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 
 /**
@@ -169,6 +170,32 @@ namespace awh {
 				 * \~
 				 */
 				static constexpr uint64_t MAX_BODY_SIZE = (64ull * 1024 * 1024);
+				/**
+				 * \~russian
+				 * @brief Функция обратного вызова превышения лимита тела
+				 *
+				 * @details Вызывается до сброса потока или фиксации ошибки: вызывающая
+				 *          сторона успевает ответить 413, и только затем парсер
+				 *          прекращает приём тела
+				 *
+				 * @param id       идентификатор потока
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 *
+				 * \~english
+				 * @brief Callback function of the exceeding of the body limit
+				 *
+				 * @details Called before the stream reset or the error fixation: the caller
+				 *          has time to reply 413, and only then the parser stops accepting
+				 *          the body
+				 *
+				 * @param id       stream identifier
+				 * @param received actually received body size
+				 * @param limit    allowed body limit of the stream
+				 *
+				 * \~
+				 */
+				using limit_callback_t = function <void (const uint64_t, const uint64_t, const uint64_t)>;
 			public:
 				/**
 				 * \~russian

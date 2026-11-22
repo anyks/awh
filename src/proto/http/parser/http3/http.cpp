@@ -1516,6 +1516,8 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			current->length += chunk;
 			// Если суммарный размер тела превысил лимит
 			if((this->_limits.maxBodySize > 0) && (current->length > this->_limits.maxBodySize)){
+				// Уведомляем вызывающую сторону о превышении лимита до сброса потока
+				this->fireLimit(sid, current->length, this->_limits.maxBodySize);
 				// Обрываем поток с кодом чрезмерной нагрузки
 				this->sendReset(sid, error_t::H3_EXCESSIVE_LOAD);
 				// Выводим результат разбора
@@ -4212,6 +4214,44 @@ bool awh::http::Parser_HTTP3::fireHeader(const uint64_t sid, const string_view n
 	}
 }
 /**
+ * @brief Метод вызова функции обратного вызова превышения лимита тела потока
+ *
+ * @param sid      идентификатор потока
+ * @param received фактически принятый объём тела
+ * @param limit    разрешённый лимит тела потока
+ *
+ */
+void awh::http::Parser_HTTP3::fireLimit(const uint64_t sid, const uint64_t received, const uint64_t limit) noexcept {
+	// Если функция обратного вызова не установлена - выходим
+	if(this->_callbacks.limit == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Уведомляем о превышении лимита тела потока
+		this->_callbacks.limit(sid, received, limit);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, received, limit}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод вызова функции обратного вызова фрагмента тела потока
  *
  * @param sid       идентификатор потока
@@ -6147,6 +6187,16 @@ void awh::http::Parser_HTTP3::on(header_callback_t callback) noexcept {
 void awh::http::Parser_HTTP3::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова фрагмента тела потока
 	this->_callbacks.data = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова превышения лимита тела потока
+ *
+ * @param callback функция обратного вызова превышения лимита тела потока
+ *
+ */
+void awh::http::Parser_HTTP3::on(limit_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова превышения лимита тела потока
+	this->_callbacks.limit = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова готовности потока принимать данные

@@ -1661,6 +1661,16 @@ namespace awh {
 					data_callback_t data;
 					/**
 					 * \~russian
+					 * @brief Функция обратного вызова превышения лимита тела потока
+					 *
+					 * \~english
+					 * @brief Callback function of the exceeding of the body limit of a stream
+					 *
+					 * \~
+					 */
+					limit_callback_t limit;
+					/**
+					 * \~russian
 					 * @brief Функция обратного вызова для обработки анонса server push
 					 *
 					 * \~english
@@ -2443,6 +2453,24 @@ namespace awh {
 				 * \~
 				 */
 				bool fireData(const uint32_t id, const void * buffer, const size_t size, const bool endStream) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод вызова функции обратного вызова превышения лимита тела потока
+				 *
+				 * @param id       идентификатор потока
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 *
+				 * \~english
+				 * @brief Method of calling the callback function of the exceeding of the body limit of a stream
+				 *
+				 * @param id       stream identifier
+				 * @param received actually received body size
+				 * @param limit    allowed body limit of the stream
+				 *
+				 * \~
+				 */
+				void fireLimit(const uint64_t id, const uint64_t received, const uint64_t limit) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод вызова функции обратного вызова обработки заголовка или трейлера потока
@@ -3786,6 +3814,20 @@ namespace awh {
 				 * \~
 				 */
 				void on(data_callback_t callback) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки функции обратного вызова превышения лимита тела потока
+				 *
+				 * @param callback функция обратного вызова превышения лимита тела потока
+				 *
+				 * \~english
+				 * @brief Method of setting the callback function of the exceeding of the body limit of a stream
+				 *
+				 * @param callback callback function of the exceeding of the body limit of a stream
+				 *
+				 * \~
+				 */
+				void on(limit_callback_t callback) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки функции обратного вызова для обработки закрытия потока

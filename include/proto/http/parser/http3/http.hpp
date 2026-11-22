@@ -1625,6 +1625,16 @@ namespace awh {
 						header_callback_t header;
 						// Функция обратного вызова обработки фрагмента тела потока
 						data_callback_t data;
+						/**
+						 * \~russian
+						 * @brief Функция обратного вызова превышения лимита тела потока
+						 *
+						 * \~english
+						 * @brief Callback function of the exceeding of the body limit of a stream
+						 *
+						 * \~
+						 */
+						limit_callback_t limit;
 						// Функция обратного вызова готовности потока принимать данные тела
 						writable_callback_t writable;
 					public:
@@ -2834,6 +2844,24 @@ namespace awh {
 				 * \~
 				 */
 				bool fireData(const uint64_t sid, const void * buffer, const size_t size, const bool endStream) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод вызова функции обратного вызова превышения лимита тела потока
+				 *
+				 * @param sid      идентификатор потока
+				 * @param received фактически принятый объём тела
+				 * @param limit    разрешённый лимит тела потока
+				 *
+				 * \~english
+				 * @brief Method of calling the callback function of the exceeding of the body limit of a stream
+				 *
+				 * @param sid      stream identifier
+				 * @param received actually received body size
+				 * @param limit    allowed body limit of the stream
+				 *
+				 * \~
+				 */
+				void fireLimit(const uint64_t sid, const uint64_t received, const uint64_t limit) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -3824,6 +3852,20 @@ namespace awh {
 				 * \~
 				 */
 				void on(data_callback_t callback) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки функции обратного вызова превышения лимита тела потока
+				 *
+				 * @param callback функция обратного вызова превышения лимита тела потока
+				 *
+				 * \~english
+				 * @brief Method of setting the callback function of the exceeding of the body limit of a stream
+				 *
+				 * @param callback callback function of the exceeding of the body limit of a stream
+				 *
+				 * \~
+				 */
+				void on(limit_callback_t callback) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки функции обратного вызова готовности потока принимать данные
