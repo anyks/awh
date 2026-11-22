@@ -23,6 +23,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <limits>
 #include <cstring>
 #include <algorithm>
 

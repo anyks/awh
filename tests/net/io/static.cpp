@@ -30847,6 +30847,17 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 }
 
 /**
+ * Проверка молчания заведена лишь для систем POSIX
+ *
+ * @note Работник здесь заводится через `fork`, которого у MS Windows нет вовсе, а
+ *       переносчиком там годится не пара UDS, а именованный канал: описатель едет
+ *       описанием устройства обмена через WSADuplicateSocket. Проверка для той
+ *       системы обязана быть своей - как и соседняя передача выше по файлу
+ *
+ */
+#if !(defined(_WIN32) || defined(_WIN64))
+
+/**
  * @brief Проверка молчания отправки узла после снятия снимка
  *
  * @details Снимок уносит описатель получателю, и с этого мига узел обязан молчать:
@@ -30897,7 +30908,7 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 	// Проверяем, что идентификатор события создан
 	ASSERT_GT(node, 0);
 	// Устанавливаем опции события клиента
-	ASSERT_TRUE(awh::engine::options::set(node, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(awh::engine::options::set(node, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем адрес события клиента
 	ASSERT_TRUE(awh::engine::address::set(node, awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем адрес сервера назначения
@@ -30981,6 +30992,8 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 			bool restored = false;
 			// Признак отправки метки новым владельцем
 			bool marked = false;
+			// Свободное место очереди поднятого узла до метки
+			size_t room = 0;
 			/**
 			 * Ставим работнику предел по времени
 			 */
@@ -31005,7 +31018,7 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 			// Указываем адрес встречной стороны для подъёма события узла клиента
 			awh::engine::target::set(target, "127.0.0.1");
 			// Устанавливаем функцию обратного вызова на получение снимка от переносчика
-			awh::engine::io::on(pair[0], [&restored, &marked, target]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			awh::engine::io::on(pair[0], [&restored, &marked, &room, target]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				/**
 				 * Поднимаем событие из снимка
 				 *
@@ -31020,6 +31033,8 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 					if(awh::engine::io::launch(target)){
 						// Метка нового владельца: порция образцовых байтов
 						const std::string marker(4096, 'C');
+						// Запоминаем свободное место очереди узла до метки
+						room = awh::engine::buffer::available(target);
 						// Отправляем метку поднятым событием
 						marked = (awh::engine::io::send(target, marker.data(), marker.size()) == marker.size());
 					}
@@ -31037,6 +31052,37 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 			 * Опрашиваем события, покуда метка не отправлена или не вышел срок
 			 */
 			while(!marked && (std::chrono::steady_clock::now() < deadline) && awh::engine::io::poll(50));
+			/**
+			 * Докачиваем метку до опустошения её очереди
+			 *
+			 * @note Приём метки отправкой - ещё не провод: на системах, где сокет не
+			 *       принимает запись сразу, метка остаётся в очереди движка работника
+			 *       и гибнет вместе с его процессом. Свободное место очереди узла
+			 *       падает при приёме метки и возвращается, когда движок записал её
+			 *       в сокет - докачка окончена, и работник вправе выходить. Срок
+			 *       страхует от узла, чья запись не идёт вовсе: на медленных образах
+			 *       перед меткой лежит вся предснимочная нагрузка, и темп осушения
+			 *       родителя ограничен петлёй
+			 *
+			 */
+			// Срок докачки: страхует от узла, чья запись не идёт вовсе
+			const auto flush = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+			/**
+			 * Докачиваем метку до опустошения её очереди
+			 *
+			 * @details Свободное место очереди узла падает при приёме метки и возвращается,
+			 *          когда движок записал её в сокет: докачка окончена, и работник вправе
+			 *          выходить
+			 *
+			 */
+			while(marked && (std::chrono::steady_clock::now() < flush)){
+				// Опрашиваем события одним оборотом цикла
+				awh::engine::io::poll(50);
+				// Если очередь метки опустела - докачка окончена
+				if(awh::engine::buffer::available(target) >= room)
+					// Прекращаем докачку метки
+					break;
+			}
 			// Выходим из процесса с итогом проверки: подъём и метка вместе есть итог
 			::_exit((restored && marked) ? EXIT_SUCCESS : EXIT_FAILURE);
 		} break;
@@ -31062,23 +31108,6 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 			const size_t room = awh::engine::buffer::available(node);
 			// Отправляем снимок работнику его же переносчиком
 			ASSERT_TRUE(awh::engine::io::send(pair[1], reinterpret_cast <const char *> (snapshot.data()), snapshot.size()));
-			/**
-			 * Продолжаем опрос прежнего движка: слив очереди молчавшего узла - именно
-			 * то, что проверяется, и опрос обязан идти в полную силу
-			 */
-			for(uint16_t round = 0; round < 100; ++round)
-				// Опрашиваем события одним оборотом цикла
-				awh::engine::io::poll(10);
-			// Проверяем, что свободное место очереди узла не изменилось: очередь не слилась
-			EXPECT_EQ(room, awh::engine::buffer::available(node)) << "очередь узла слилась после снимка";
-			// Состояние ожидания работника
-			int32_t state = 0;
-			// Ожидаем завершения работника
-			ASSERT_EQ(pid, ::waitpid(pid, &state, 0));
-			// Проверяем, что работник завершился сам, а не по сигналу
-			ASSERT_TRUE(WIFEXITED(state));
-			// Проверяем, что работник поднял событие и отправил метку
-			ASSERT_EQ(EXIT_SUCCESS, WEXITSTATUS(state));
 			// Признак замеченного начала метки нового владельца
 			bool headed = false;
 			// Признак нарушения порядка: байт прежнего узла после начала метки
@@ -31124,6 +31153,44 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 				// Выводим суммарный объём вычерпанных байтов
 				return total;
 			};
+			// Состояние ожидания работника
+			int32_t state = 0;
+			// Признак завершения работника
+			bool finished = false;
+			/**
+			 * Опрашиваем движок и вычерпываем встречную сторону ДО выхода работника
+			 *
+			 * @note Буферы сокета к мигу передачи полны: нагрузка кладётся сверх них
+			 *       намеренно, и метка нового владельца выходит на провод лишь по мере
+			 *       осушения приёмной стороны. Осушение после выхода работника мерило бы
+			 *       не молчание узла, а ёмкость буферов операционной системы - на системах
+			 *       с малыми буферами петли (DragonFly, Solaris) метка гибла в очереди
+			 *       работника, тогда как на FreeBSD и macOS её выручал лишь больший
+			 *       приёмный буфер. Слив очереди прежнего узла при этом по-прежнему
+			 *       невозможен: узел молчит по снимку, и всякий байт «Q» после метки
+			 *       остаётся уликой нарушения
+			 *
+			 */
+			for(uint16_t round = 0; (round < 900) && !finished; ++round){
+				// Опрашиваем события одним оборотом цикла
+				awh::engine::io::poll(10);
+				// Вычерпываем встречную сторону осушением
+				sip();
+				// Получаем состояние работника без ожидания
+				if(::waitpid(pid, &state, WNOHANG) == pid)
+					// Отмечаем завершение работника
+					finished = true;
+			}
+			// Если работник ещё не завершён, дожидаемся его
+			if(!finished)
+				// Ожидаем завершения работника
+				ASSERT_EQ(pid, ::waitpid(pid, &state, 0));
+			// Проверяем, что свободное место очереди узла не изменилось: очередь не слилась
+			EXPECT_EQ(room, awh::engine::buffer::available(node)) << "очередь узла слилась после снимка";
+			// Проверяем, что работник завершился сам, а не по сигналу
+			ASSERT_TRUE(WIFEXITED(state));
+			// Проверяем, что работник поднял событие и отправил метку
+			ASSERT_EQ(EXIT_SUCCESS, WEXITSTATUS(state));
 			// Счётчик пустых вычиток подряд
 			uint16_t silent = 0;
 			/**
@@ -31152,6 +31219,8 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
 	// Уничтожаем заведённые события
 	awh::engine::io::destroy(pair[1]);
 }
+
+#endif
 
 /**
  * Проверка передачи заведена и для MS Windows, но своя

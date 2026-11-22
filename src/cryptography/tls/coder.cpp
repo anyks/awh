@@ -30,6 +30,7 @@
 #include <memory>
 #include <csignal>
 #include <cstring>
+#include <algorithm>
 #include <shared_mutex>
 #include <net/event.hpp>
 #include <sys/macro/global.hpp>
@@ -2953,7 +2954,7 @@ bool awh::tls::coder::tickets(const id_t id, string_view early, vector <string> 
 			 */
 			for(const auto & item : member->issued){
 				// Если контекст ранних данных разошёлся либо билет уже взят результатом
-				if((item.second != early) || (find(tickets.begin(), tickets.end(), item.first) != tickets.end()))
+				if((item.second != early) || (std::find(tickets.begin(), tickets.end(), item.first) != tickets.end()))
 					// Переходим к следующему билету
 					continue;
 				// Добавляем запись билета к результату

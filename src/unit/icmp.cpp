@@ -25,6 +25,7 @@
 #include <cerrno>
 #include <vector>
 #include <random>
+#include <limits>
 #include <cstdint>
 #include <algorithm>
 

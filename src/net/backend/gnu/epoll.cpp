@@ -74242,6 +74242,45 @@ bool awh::engine::io::reinitialize() noexcept {
 		 * Выполняем перебор всех активных узлов
 		 */
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
+			// Если движок унаследован разветвлением
+			if(::__awh_pid__ != ::getpid()){
+				/**
+				 * Вычищаем очереди унаследованных копий сетевых узлов
+				 *
+				 * @details Ветвление копирует движок целиком: таблицу узлов, их очереди
+				 *          и описатели. Очередь копии - повтор данных, принадлежащих
+				 *          родителю, и её слив писал бы в тот же сокет ядра параллельно
+				 *          родителю, руша порядок данных на проводе. Сами узлы копии
+				 *          живут: работник вправе отправлять по ним свои данные - чужая
+				 *          очередь ему не принадлежит
+				 *
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC):
+						// Вычищаем очередь унаследованной копии узла
+						awh_cast <::io::ipc_t *> (i->second.get())->transfer.queue.clear();
+					break;
+					// Если узел является принятым подключением
+					case static_cast <uint8_t> (event::node_t::PEER):
+						// Вычищаем очередь унаследованной копии узла
+						awh_cast <::io::peer_t *> (i->second.get())->transfer.queue.clear();
+					break;
+					// Если узел является исходящим узлом
+					case static_cast <uint8_t> (event::node_t::ORIGIN):
+						// Вычищаем очередь унаследованной копии узла
+						awh_cast <::io::origin_t *> (i->second.get())->transfer.queue.clear();
+					break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT):
+						// Вычищаем очередь унаследованной копии узла
+						awh_cast <::io::client_t *> (i->second.get())->transfer.queue.clear();
+					break;
+					// Прочие узлы очередей отправки не несут
+					default:
+					break;
+				}
+			}
 			// Если узел ещё не находится в рабочем состоянии
 			if(i->second->state.status == event::status_t::NONE){
 				// Увеличиваем значение итератора

@@ -26,6 +26,7 @@
 #include <cmath>
 #include <ctime>
 #include <chrono>
+#include <limits>
 #include <cstdarg>
 
 /**
@@ -97,6 +98,11 @@ namespace {
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+	
+	/**
 	 * @brief Структура одной группы совпадения (полуинтервал [begin, end) в тексте)
 	 *
 	 * @details Структура содержит два поля: begin - индекс первого символа группы (относительно начала анализируемого текста),
@@ -104,7 +110,7 @@ namespace {
 	 *          Если группа не найдена, оба поля устанавливаются в -1.
 	 *
 	 */
-	struct match_t {
+	typedef struct Match {
 		// Индекс символа сразу за концом группы (относительно начала анализируемого текста)
 		ssize_t end;
 		// Индекс первого символа группы (относительно начала анализируемого текста)
@@ -113,29 +119,31 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit match_t() noexcept : end(-1), begin(-1) {}
-	};
+		explicit Match() noexcept : end(-1), begin(-1) {}
+	} match_t;
+
 	/**
 	 * @brief Наибольшее количество групп совпадения, которое выводит нативный разбор
 	 *
 	 * @details Больше всего групп выводит разбор записи функции asctime: всё совпадение
-	 *          целиком и семь составляющих даты
+	 *          целиком и семь составляющих даты.
 	 *
 	 */
 	static constexpr size_t MAX_MATCHES = 8;
+
 	/**
 	 * @brief Структура списка групп совпадения
 	 *
 	 * @details Список размещается целиком в самом объекте и памяти не выделяет. Разбор
 	 *          записи выполняет по одному вызову нативного разбора на каждую переменную
 	 *          формата, и выделение памяти на каждом из них обходилось дороже самого
-	 *          разбора: запись стандарта ISO 8601 требовала десяти выделений
+	 *          разбора: запись стандарта ISO 8601 требовала десяти выделений.
 	 *
 	 * @note Обращение за пределы ёмкости списка выводит последнюю его группу, а не
 	 *       уводит в чужую память: разбор дат идёт над недоверенными записями
 	 *
 	 */
-	struct matches_t {
+	typedef struct Matches {
 		private:
 			// Количество групп совпадения в списке
 			size_t _count;
@@ -200,52 +208,49 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			matches_t() noexcept : _count(0) {}
+			explicit Matches() noexcept : _count(0) {}
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param count количество групп совпадения в списке
 			 *
 			 */
-			explicit matches_t(const size_t count) noexcept : _count(0) {
+			explicit Matches(const size_t count) noexcept : _count(0) {
 				// Устанавливаем требуемое количество групп совпадения
 				this->resize(count);
 			}
-	};
+	} matches_t;
+
 	/**
 	 * @brief Наибольший год, представимый календарём модуля
 	 *
 	 * @details Год записывается четырьмя разрядами во всех стандартах, которым служит
-	 *          модуль, и хранится полем разрядностью в два октета
+	 *          модуль, и хранится полем разрядностью в два октета.
 	 *
 	 */
 	static constexpr uint16_t MAX_YEAR = 9999;
 	/**
 	 * @brief Наименьший год, представимый календарём модуля
 	 *
-	 * @details Начало эпохи Unix, от которого модуль отсчитывает штамп времени
+	 * @details Начало эпохи Unix, от которого модуль отсчитывает штамп времени.
 	 *
 	 */
 	static constexpr uint16_t MIN_YEAR = 1970;
 	/**
-	 * @brief Наибольший штамп времени, представимый календарём модуля
+	 * @brief Окно двузначного года по умолчанию
 	 *
-	 * @details Последняя миллисекунда 9999 года. Штамп времени за этим пределом
-	 *          раскладывать нечем: поле года его обрезало, а остаток суток за вычетом
-	 *          начала обрезанного года выходил за разрядность полей месяца и числа,
-	 *          и разложение давало несуществующие даты вида 1934-12-200. Приведение
-	 *          вещественного значения вне диапазона целевого типа к тому же является
-	 *          неопределённым поведением, а не заворачиванием
+	 * @details Пятьдесят лет требует RFC 9110 (§5.6.7) для устаревшего формата даты
+	 *          RFC 850, где год записывается двумя разрядами.
 	 *
 	 */
-	static constexpr uint64_t MAX_TIMESTAMP = 253402300799999ULL;
+	static constexpr uint8_t DEFAULT_YEAR_WINDOW = 50;
 	/**
 	 * @brief Наибольшее смещение временной зоны относительно UTC (в секундах)
 	 *
 	 * @details Пояса Земли укладываются в промежуток от UTC-12 до UTC+14, и крайние
 	 *          его точки заняты: UTC-12 - необитаемые острова Бейкер и Хауленд,
 	 *          UTC+14 - острова Лайн в составе Кирибати. Обозначение зоны за этими
-	 *          пределами не означает ничего
+	 *          пределами не означает ничего.
 	 *
 	 */
 	static constexpr int32_t MAX_ZONE_OFFSET = (14 * 3600);
@@ -255,13 +260,17 @@ namespace {
 	 */
 	static constexpr int32_t MIN_ZONE_OFFSET = (-12 * 3600);
 	/**
-	 * @brief Окно двузначного года по умолчанию
+	 * @brief Наибольший штамп времени, представимый календарём модуля
 	 *
-	 * @details Пятьдесят лет требует RFC 9110 (§5.6.7) для устаревшего формата даты
-	 *          RFC 850, где год записывается двумя разрядами
+	 * @details Последняя миллисекунда 9999 года. Штамп времени за этим пределом
+	 *          раскладывать нечем: поле года его обрезало, а остаток суток за вычетом
+	 *          начала обрезанного года выходил за разрядность полей месяца и числа,
+	 *          и разложение давало несуществующие даты вида 1934-12-200. Приведение
+	 *          вещественного значения вне диапазона целевого типа к тому же является
+	 *          неопределённым поведением, а не заворачиванием.
 	 *
 	 */
-	static constexpr uint8_t DEFAULT_YEAR_WINDOW = 50;
+	static constexpr uint64_t MAX_TIMESTAMP = 253402300799999ULL;
 	/**
 	 * @brief Допуск отката года по умолчанию
 	 *
@@ -270,56 +279,118 @@ namespace {
 	 *          указывает: штамп содержит местное время отправителя, а читается он в зоне
 	 *          получателя, поэтому запись законно опережает получателя на величину вплоть
 	 *          до этого разброса. Меньший допуск отправлял бы на год назад каждую запись
-	 *          хоста, стоящего восточнее получателя
+	 *          хоста, стоящего восточнее получателя.
 	 *
 	 */
 	static constexpr uint32_t DEFAULT_YEAR_ROLLBACK = (26 * 3600);
 	/**
+	 * @brief Наибольший штамп времени, представимый в разрядности uint64_t
+	 *
+	 */
+	static constexpr uint64_t MAX_UINT64 = static_cast <uint64_t> (-1);
+	/**
+	 * @brief Накопительные суммы суток, прошедших до начала каждого месяца
+	 *
+	 * @details Суммы даны для невисокосного года: високосность правится одной
+	 *          поправкой на месяцы, следующие за февралём. Тринадцатый член
+	 *          отвечает концу декабря и равен длительности года.
+	 *
+	 */
+	static constexpr uint16_t daysBeforeMonths[13] = {
+		0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
+	};
+
+	/**
+	 * @brief Структура диапазона количества цифр в одной группе
+	 *
+	 */
+	typedef struct Digits {
+		// Наименьшее количество цифр в группе
+		size_t min = 0;
+		// Наибольшее количество цифр в группе
+		size_t max = 0;
+	} digits_t;
+	/**
+	 * @brief Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}) формата %R
+	 *
+	 */
+	static constexpr digits_t DIGITS_HM[] = {{1, 2}, {1, 2}};
+	/**
+	 * @brief Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}):(\d{1,2}) формата %T
+	 *
+	 */
+	static constexpr digits_t DIGITS_HMS[] = {{1, 2}, {1, 2}, {1, 2}};
+	/**
+	 * @brief Диапазоны цифровых групп записи (\d{1,2})/(\d{1,2})/(\d{2}) формата %D
+	 *
+	 */
+	static constexpr digits_t DIGITS_MDY[] = {{1, 2}, {1, 2}, {2, 2}};
+	/**
+	 * @brief Диапазоны цифровых групп записи (\d{4})-(\d{1,2})-(\d{1,2}) формата %F
+	 *
+	 */
+	static constexpr digits_t DIGITS_YMD[] = {{4, 4}, {1, 2}, {1, 2}};
+
+	/**
 	 * @brief Функция проверки зоны на принадлежность к сводным
 	 *
 	 * @details Сводные зоны Северной Америки обозначают то стандартное время, то
-	 *          летнее, и смещение их зависит от самого момента времени
+	 *          летнее, и смещение их зависит от самого момента времени.
 	 *
 	 * @param zone временная зона
 	 * @return     результат проверки
 	 *
 	 */
-	inline bool composite(const awh::Chrono::zone_t zone) noexcept {
+	static constexpr bool __awh_composite__(const chrono_t::zone_t zone) noexcept {
 		// Выводим признак принадлежности зоны к сводным
-		return ((zone == awh::Chrono::zone_t::AT) || (zone == awh::Chrono::zone_t::CT) ||
-		        (zone == awh::Chrono::zone_t::ET) || (zone == awh::Chrono::zone_t::MT) ||
-		        (zone == awh::Chrono::zone_t::NT) || (zone == awh::Chrono::zone_t::PT));
+		return (
+			(zone == chrono_t::zone_t::AT) || (zone == chrono_t::zone_t::CT) ||
+			(zone == chrono_t::zone_t::ET) || (zone == chrono_t::zone_t::MT) ||
+			(zone == chrono_t::zone_t::NT) || (zone == chrono_t::zone_t::PT)
+		);
 	}
 	/**
 	 * @brief Функция получения стандартного времени сводной временной зоны
 	 *
 	 * @details Стандартное время зоны от момента не зависит и потому служит опорой,
-	 *          от которой разрешается само смещение
+	 *          от которой разрешается само смещение.
 	 *
 	 * @param zone сводная временная зона
 	 * @return     временная зона стандартного времени
 	 *
 	 */
-	inline awh::Chrono::zone_t standard(const awh::Chrono::zone_t zone) noexcept {
+	static constexpr chrono_t::zone_t __awh_standard__(const chrono_t::zone_t zone) noexcept {
 		/**
 		 * Определяем сводную временную зону
 		 */
 		switch(static_cast <uint8_t> (zone)){
 			// Если временная зона установлена как (Атлантическое Время)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::AT): return awh::Chrono::zone_t::ASTAL;
+			case static_cast <uint8_t> (chrono_t::zone_t::AT):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::ASTAL;
 			// Если временная зона установлена как (Северноамериканское Центральное Время)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::CT): return awh::Chrono::zone_t::CSTNA;
+			case static_cast <uint8_t> (chrono_t::zone_t::CT):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::CSTNA;
 			// Если временная зона установлена как (Северноамериканское Восточное Время)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::ET): return awh::Chrono::zone_t::EST;
+			case static_cast <uint8_t> (chrono_t::zone_t::ET):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::EST;
 			// Если временная зона установлена как (Северноамериканское Горное Время)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::MT): return awh::Chrono::zone_t::MSTNA;
+			case static_cast <uint8_t> (chrono_t::zone_t::MT):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::MSTNA;
 			// Если временная зона установлена как (Время В Ньюфаундленде)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::NT): return awh::Chrono::zone_t::NST;
+			case static_cast <uint8_t> (chrono_t::zone_t::NT):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::NST;
 			// Если временная зона установлена как (Северноамериканское Тихоокеанское Время)
-			case static_cast <uint8_t> (awh::Chrono::zone_t::PT): return awh::Chrono::zone_t::PST;
+			case static_cast <uint8_t> (chrono_t::zone_t::PT):
+				// Выводим зону стандартного времени
+				return chrono_t::zone_t::PST;
 		}
 		// Прочие зоны сводными не являются
-		return awh::Chrono::zone_t::NONE;
+		return chrono_t::zone_t::NONE;
 	}
 	/**
 	 * @brief Функция приведения смещения временной зоны к земным пределам
@@ -328,26 +399,31 @@ namespace {
 	 * @return     смещение временной зоны, приведённое к земным пределам
 	 *
 	 */
-	inline int32_t clampZone(const int32_t zone) noexcept {
+	static constexpr int32_t __awh_clamp_zone__(const int32_t zone) noexcept {
 		// Смещение за пределами приводится к ближайшему из них
-		return ((zone < MIN_ZONE_OFFSET) ? MIN_ZONE_OFFSET : ((zone > MAX_ZONE_OFFSET) ? MAX_ZONE_OFFSET : zone));
+		return (
+			(zone < MIN_ZONE_OFFSET) ? MIN_ZONE_OFFSET :
+			((zone > MAX_ZONE_OFFSET) ? MAX_ZONE_OFFSET : zone)
+		);
 	}
 	/**
 	 * @brief Функция сдвига штампа времени на смещение временной зоны
 	 *
 	 * @details Сдвиг насыщается обоими пределами представимости календаря: за его
-	 *          границами разрядность uint64_t от самого календаря неотличима
+	 *          границами разрядность uint64_t от самого календаря неотличима.
 	 *
 	 * @param date   штамп времени в миллисекундах
 	 * @param offset смещение в миллисекундах, на которое сдвигается штамп времени
 	 * @return       сдвинутый штамп времени в миллисекундах
 	 *
 	 */
-	inline uint64_t shiftStamp(const uint64_t date, const int64_t offset) noexcept {
+	static constexpr uint64_t __awh_shift_stamp__(const uint64_t date, const int64_t offset) noexcept {
 		// Сдвиг за начало эпохи приводится к её началу, за конец - к последнему мгновению
-		return ((offset < 0)
+		return (
+			(offset < 0)
 			? ((static_cast <uint64_t> (-offset) > date) ? 0 : (date - static_cast <uint64_t> (-offset)))
-			: ((date + static_cast <uint64_t> (offset)) > MAX_TIMESTAMP ? MAX_TIMESTAMP : (date + static_cast <uint64_t> (offset))));
+			: ((date + static_cast <uint64_t> (offset)) > MAX_TIMESTAMP ? MAX_TIMESTAMP : (date + static_cast <uint64_t> (offset)))
+		);
 	}
 	/**
 	 * @brief Функция получения названия дня недели по его номеру
@@ -355,15 +431,15 @@ namespace {
 	 * @details Номер дня недели выводится из даты и в промежутке от первого до седьмого
 	 *          лежит всегда, но индексация таблицы этим не защищена, а номер попадает в
 	 *          объект и напрямую - переменными формата \%u и \%w. Номер вне промежутка
-	 *          выдаёт пустое название, а не читает память за таблицей
+	 *          выдаёт пустое название, а не читает память за таблицей.
 	 *
 	 * @param day номер дня недели от 1 до 7
 	 * @return    пара из краткого и полного названия дня недели
 	 *
 	 */
-	inline const std::pair <string, string> & nameOfDay(const uint8_t day) noexcept {
+	static __AWH_INLINE__ const pair <string, string> & __awh_name_of_day__(const uint8_t day) noexcept {
 		// Пустое название, выдаваемое для номера вне промежутка
-		static const std::pair <string, string> empty;
+		static const pair <string, string> empty = {"", ""};
 		// Выводим название дня недели по его номеру
 		return (((day >= 1) && (day <= 7)) ? params.nameDays[day - 1] : empty);
 	}
@@ -373,15 +449,15 @@ namespace {
 	 * @details Номер месяца задаёт дату наравне с годом и числом, и разбор записи
 	 *          принимает его любым: приведение к календарю идёт сборкой штампа времени,
 	 *          а до неё в объекте лежит номер записи. Номер вне промежутка выдаёт пустое
-	 *          название, а не читает память за таблицей
+	 *          название, а не читает память за таблицей.
 	 *
 	 * @param month номер месяца от 1 до 12
 	 * @return      пара из краткого и полного названия месяца
 	 *
 	 */
-	inline const std::pair <string, string> & nameOfMonth(const uint8_t month) noexcept {
+	static __AWH_INLINE__ const pair <string, string> & __awh_name_of_month__(const uint8_t month) noexcept {
 		// Пустое название, выдаваемое для номера вне промежутка
-		static const std::pair <string, string> empty;
+		static const pair <string, string> empty = {"", ""};
 		// Выводим название месяца по его номеру
 		return (((month >= 1) && (month <= 12)) ? params.nameMonths[month - 1] : empty);
 	}
@@ -390,14 +466,14 @@ namespace {
 	 *
 	 * @details Перевод насыщается пределом представимости календаря: произведение
 	 *          количества единиц на их длину разрядность uint64_t переполняло и давало
-	 *          дату случайную вместо края календаря
+	 *          дату случайную вместо края календаря.
 	 *
 	 * @param value  количество единиц времени
 	 * @param length длина одной единицы в миллисекундах
 	 * @return       штамп времени в миллисекундах
 	 *
 	 */
-	inline uint64_t scaleStamp(const uint64_t value, const uint64_t length) noexcept {
+	static constexpr uint64_t __awh_scale_stamp__(const uint64_t value, const uint64_t length) noexcept {
 		// Количество единиц, за предел представимости выводящее, приводится к нему самому
 		return ((value > (MAX_TIMESTAMP / length)) ? MAX_TIMESTAMP : (value * length));
 	}
@@ -408,29 +484,10 @@ namespace {
 	 * @return     штамп времени, приведённый к пределу представимости
 	 *
 	 */
-	inline uint64_t clampDate(const uint64_t date) noexcept {
+	static constexpr uint64_t __awh_clamp_date__(const uint64_t date) noexcept {
 		// Штамп времени за пределом представимости приводится к последнему представимому
 		return ((date > MAX_TIMESTAMP) ? MAX_TIMESTAMP : date);
 	}
-	/**
-	 * @brief Функция определения дня недели по штампу времени
-	 *
-	 * @details День недели определяется количеством суток, прошедших с начала эпохи:
-	 *          первое января 1970 года - четверг. Прежде день недели считался по
-	 *          таблице двадцативосьмилетнего цикла, а цикл этот держится лишь пока
-	 *          високосным оказывается каждый четвёртый год: правило григорианского
-	 *          календаря, по которому век високосен только при делимости на 400,
-	 *          цикл разрывает, и с 2100 года день недели уходил на сутки и дальше
-	 *
-	 * @param date штамп времени в миллисекундах
-	 * @return     номер дня недели от 1 (понедельник) до 7 (воскресенье)
-	 *
-	 */
-	/**
-	 * @brief Наибольший штамп времени, представимый в разрядности uint64_t
-	 *
-	 */
-	static constexpr uint64_t MAX_UINT64 = static_cast <uint64_t> (-1);
 	/**
 	 * @brief Функция перевода штампа времени в доли миллисекунды
 	 *
@@ -438,14 +495,14 @@ namespace {
 	 *          2554 года, тогда как календарь модуля охватывает годы по 9999-й:
 	 *          произведение штампа за этой границей оборачивалось и давало дату, не
 	 *          имеющую отношения к исходной. Штамп за границей приводится к
-	 *          наибольшему представимому
+	 *          наибольшему представимому.
 	 *
 	 * @param date штамп времени в миллисекундах
 	 * @param rate количество долей миллисекунды в одной миллисекунде
 	 * @return     штамп времени в долях миллисекунды
 	 *
 	 */
-	inline uint64_t scaleDate(const uint64_t date, const uint64_t rate) noexcept {
+	static constexpr uint64_t __awh_scale_date__(const uint64_t date, const uint64_t rate) noexcept {
 		// Штамп времени за пределом представимости приводится к последнему представимому
 		return ((date > (MAX_UINT64 / rate)) ? MAX_UINT64 : (date * rate));
 	}
@@ -457,11 +514,25 @@ namespace {
 	 * @return      штамп времени в долях миллисекунды
 	 *
 	 */
-	inline uint64_t appendDate(const uint64_t date, const uint64_t value) noexcept {
+	static constexpr uint64_t __awh_append_date__(const uint64_t date, const uint64_t value) noexcept {
 		// Сумма за пределом представимости приводится к последнему представимому
 		return ((date > (MAX_UINT64 - value)) ? MAX_UINT64 : (date + value));
 	}
-	inline uint8_t dayOfWeek(const uint64_t date) noexcept {
+	/**
+	 * @brief Функция определения дня недели по штампу времени
+	 *
+	 * @details День недели определяется количеством суток, прошедших с начала эпохи:
+	 *          первое января 1970 года - четверг. Прежде день недели считался по
+	 *          таблице двадцативосьмилетнего цикла, а цикл этот держится лишь пока
+	 *          високосным оказывается каждый четвёртый год: правило григорианского
+	 *          календаря, по которому век високосен только при делимости на 400,
+	 *          цикл разрывает, и с 2100 года день недели уходил на сутки и дальше.
+	 *
+	 * @param date штамп времени в миллисекундах
+	 * @return     номер дня недели от 1 (понедельник) до 7 (воскресенье)
+	 *
+	 */
+	static constexpr uint8_t __awh_day_of_week__(const uint64_t date) noexcept {
 		// Получаем номер дня недели, отсчитываемый от воскресенья
 		const uint8_t result = static_cast <uint8_t> ((((date / 86400000ULL) + 4ULL) % 7ULL));
 		// Воскресенье замыкает неделю, а не открывает её
@@ -474,19 +545,19 @@ namespace {
 	 *          POSIX не выражается: %z записывает его слитно. Расширения завели и
 	 *          GNU, и этот модуль, но написания у них разные - %:z и %o. Чужое
 	 *          написание принимается наравне со своим, чтобы формат, под GNU
-	 *          написанный, читался без переделки
+	 *          написанный, читался без переделки.
 	 *
 	 * @param format образец записи для приведения
 	 * @return       приведённый образец либо пустая строка, если приводить нечего
 	 *
 	 */
-	inline string colonZone(string_view format) noexcept {
+	static __AWH_INLINE__ string __awh_colon_zone__(string_view format) noexcept {
 		// Переменная результата
 		string result;
-		// Признак того, что приведение выполнялось
-		bool found = false;
 		// Признак того, что предыдущим символом был знак процента
 		bool mode = false;
+		// Признак того, что приведение выполнялось
+		bool found = false;
 		/**
 		 * Выполняем перебор всего образца записи
 		 */
@@ -496,10 +567,12 @@ namespace {
 			// Если найдено обозначение смещения зоны с двоеточием
 			if(mode && (letter == ':') && ((i + 1) < format.length()) && (format[i + 1] == 'z')){
 				/**
-				 * Знак процента уже записан предыдущим шагом: снимаем его и записываем
-				 * переменную формата модуля целиком
-				 */
-				// Снимаем записанный знак процента
+				 * @brief Снимаем записанный знак процента
+				 *
+				 * @details Знак процента уже записан предыдущим шагом: снимаем его и записываем
+				 *          переменную формата модуля целиком.
+				 *
+				 */ 
 				result.pop_back();
 				// Записываем переменную формата модуля
 				result.append("%o");
@@ -527,7 +600,7 @@ namespace {
 	 * @return       true если символ является строчной буквой
 	 *
 	 */
-	inline char toLowerChar(const char letter) noexcept {
+	static constexpr char __awh_to_lower_char__(const char letter) noexcept {
 		// Заглавная латинская буква приводится к строчной сдвигом на разницу их кодов
 		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter + ('a' - 'A')) : letter);
 	}
@@ -539,10 +612,10 @@ namespace {
 	 *          мелочах от образца отступающие. Выбору же образца из нескольких,
 	 *          стандартом допускаемых, широты этой мало - без сверки разделителей
 	 *          запись «2025-04-06T12:37:01+03:00» разбиралась образцом с долей
-	 *          секунды, и смещение зоны уходило в миллисекунды
+	 *          секунды, и смещение зоны уходило в миллисекунды.
 	 *
 	 * @details Пробелы не сверяются: их количество в записи произвольно, и записи
-	 *          вроде «Apr  6» с двойным пробелом сверку проходить обязаны
+	 *          вроде «Apr  6» с двойным пробелом сверку проходить обязаны.
 	 *
 	 * @param text    запись даты
 	 * @param format  образец записи
@@ -550,7 +623,7 @@ namespace {
 	 * @return        признак того, что разделители образца в записи присутствуют
 	 *
 	 */
-	inline bool matchLiterals(string_view text, const char * format, const bool caseless = false) noexcept {
+	static __AWH_INLINE__ bool __awh_match_literals__(string_view text, const char * format, const bool caseless = false) noexcept {
 		// Позиция в записи даты
 		size_t pos = 0;
 		// Признак того, что предыдущим символом был знак процента
@@ -589,11 +662,11 @@ namespace {
 			 * тогда как строчная «z» того же стандарта принималась - переменная зоны регистра
 			 * не различает, - и одна половина договора отвергала то, что принимала другая
 			 */
-			const char sample = (caseless ? ::toLowerChar(letter) : letter);
+			const char sample = (caseless ? ::__awh_to_lower_char__(letter) : letter);
 			/**
 			 * Отыскиваем разделитель образца в записи, начиная с последнего найденного
 			 */
-			while((pos < text.length()) && ((caseless ? ::toLowerChar(text[pos]) : text[pos]) != sample))
+			while((pos < text.length()) && ((caseless ? ::__awh_to_lower_char__(text[pos]) : text[pos]) != sample))
 				// Переходим к следующему символу записи
 				pos++;
 			// Если разделитель образца в записи не найден
@@ -613,16 +686,18 @@ namespace {
 	 *          по нему запись и формируется. Следующие за ним - разновидности,
 	 *          стандартом допускаемые, и служат они только разбору: RFC 5322
 	 *          позволяет опустить день недели, RFC 3339 - долю секунды, ISO 8601
-	 *          знает основную и расширенную формы. Разбор перебирает их по порядку
+	 *          знает основную и расширенную формы. Разбор перебирает их по порядку.
 	 *
 	 * @param standard стандарт записи даты
 	 * @param index    порядковый номер образца, отсчитываемый от нуля
 	 * @return         образец записи либо nullptr, если образцы кончились
 	 *
 	 */
-	inline const char * standardFormat(const awh::Chrono::standard_t standard, const uint8_t index) noexcept {
-		// Образцы записей, заданных стандартами
-		static const char * formats[8][4] = {
+	static __AWH_INLINE__ const char * __awh_standard_format__(const chrono_t::standard_t standard, const uint8_t index) noexcept {
+		/**
+		 * Образцы записей, заданных стандартами
+		 */
+		static constexpr const char * formats[8][4] = {
 			// Журнал веб-сервера в общем формате
 			{"%d/%b/%Y:%H:%M:%S %z", nullptr, nullptr, nullptr},
 			// Устаревшая запись HTTP по RFC 850
@@ -654,13 +729,13 @@ namespace {
 	 *          времени разделителей не несёт, и смещение зоны при ней записывается
 	 *          четырьмя разрядами без двоеточия. Расширенное «+03:00» рядом с
 	 *          «20250406T153701» стандарту не отвечает, а нулевое смещение
-	 *          обозначается буквой Z в обеих формах
+	 *          обозначается буквой Z в обеих формах.
 	 *
 	 * @param offset смещение временной зоны в секундах
 	 * @return       образец записи основной формы ISO 8601
 	 *
 	 */
-	inline const char * isoFormat(const int32_t offset) noexcept {
+	static constexpr const char * __awh_iso_format__(const int32_t offset) noexcept {
 		/**
 		 * Нулевое смещение стандарт обозначает буквой Z в обеих формах записи, а
 		 * ненулевое - в основной форме четырьмя разрядами без двоеточия
@@ -676,24 +751,24 @@ namespace {
 	 *          UTC. Разбор же литералы не читает вовсе, и запись «Sun, 06 Apr 2025
 	 *          12:37:01 GMT» оставалась без зоны - время по Гринвичу принималось за
 	 *          местное и уезжало на смещение зоны окружения. Разбору поэтому даётся
-	 *          образец с переменной зоны, которая слово GMT читает
+	 *          образец с переменной зоны, которая слово GMT читает.
 	 *
 	 * @param standard стандарт записи даты
 	 * @param index    порядковый номер образца, отсчитываемый от нуля
 	 * @return         образец разбора записи либо nullptr, если образцы кончились
 	 *
 	 */
-	inline const char * standardPattern(const awh::Chrono::standard_t standard, const uint8_t index) noexcept {
+	static __AWH_INLINE__ const char * __awh_standard_pattern__(const chrono_t::standard_t standard, const uint8_t index) noexcept {
 		// Если разбирается первый образец записи заголовков HTTP
-		if((index == 0) && (standard == awh::Chrono::standard_t::RFC1123))
+		if((index == 0) && (standard == chrono_t::standard_t::RFC1123))
 			// Выводим образец с переменной зоны вместо литерала GMT
 			return "%a, %d %b %Y %H:%M:%S %Z";
 		// Если разбирается первый образец устаревшей записи HTTP
-		if((index == 0) && (standard == awh::Chrono::standard_t::RFC850))
+		if((index == 0) && (standard == chrono_t::standard_t::RFC850))
 			// Выводим образец с переменной зоны вместо литерала GMT
 			return "%A, %d-%b-%y %H:%M:%S %Z";
 		// Прочие образцы разбора совпадают с образцами формирования
-		return ::standardFormat(standard, index);
+		return ::__awh_standard_format__(standard, index);
 	}
 	/**
 	 * @brief Функция получения количества недель в году по счёту ISO 8601
@@ -701,20 +776,22 @@ namespace {
 	 * @details Год недельного счёта содержит 52 недели, а 53 - лишь тогда, когда
 	 *          начинается с четверга либо, будучи високосным, со среды: правило это
 	 *          задаёт ISO 8601, и от него зависит, к какому году отнести неделю,
-	 *          лежащую на границе двух лет
+	 *          лежащую на границе двух лет.
 	 *
 	 * @param year год для которого считаются недели
 	 * @param leap признак високосного года
 	 * @return     количество недель в году
 	 *
 	 */
-	inline uint8_t weeksOfYear(const uint16_t year, const bool leap) noexcept {
+	static constexpr uint8_t __awh_weeks_of_year__(const uint16_t year, const bool leap) noexcept {
 		/**
-		 * Високосные сутки считаются по годам прошедшим, а не по самому году: сутки
-		 * эти приходятся на конец февраля и на день недели первого января не влияют,
-		 * а счёт от самого года сдвигал его в каждом високосном году на сутки вперёд
+		 * @brief Номер года, предшествующего искомому
+		 *
+		 * @details Високосные сутки считаются по годам прошедшим, а не по самому году: сутки
+		 *          эти приходятся на конец февраля и на день недели первого января не влияют,
+		 *          а счёт от самого года сдвигал его в каждом високосном году на сутки вперёд.
+		 *
 		 */
-		// Номер года, предшествующего искомому
 		const uint32_t last = (static_cast <uint32_t> (year) - 1);
 		// Получаем номер дня недели, на который приходится первое января
 		const uint16_t first = static_cast <uint16_t> ((static_cast <uint32_t> (year) + (last / 4) - (last / 100) + (last / 400)) % 7);
@@ -730,24 +807,27 @@ namespace {
 		return 52;
 	}
 	/**
-	 * @brief Структура диапазона количества цифр в одной группе
+	 * @brief Функция проверки, является ли символ заглавной латинской буквой ('A'–'Z')
+	 *
+	 * @param letter проверяемый символ
+	 * @return       true если символ является заглавной буквой
 	 *
 	 */
-	struct digits_t {
-		// Наименьшее количество цифр в группе
-		size_t min;
-		// Наибольшее количество цифр в группе
-		size_t max;
-	};
-	// Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}) формата %R
-	static constexpr digits_t DIGITS_HM[] = {{1, 2}, {1, 2}};
-	// Диапазоны цифровых групп записи (\d{1,2}):(\d{1,2}):(\d{1,2}) формата %T
-	static constexpr digits_t DIGITS_HMS[] = {{1, 2}, {1, 2}, {1, 2}};
-	// Диапазоны цифровых групп записи (\d{1,2})/(\d{1,2})/(\d{2}) формата %D
-	static constexpr digits_t DIGITS_MDY[] = {{1, 2}, {1, 2}, {2, 2}};
-	// Диапазоны цифровых групп записи (\d{4})-(\d{1,2})-(\d{1,2}) формата %F
-	static constexpr digits_t DIGITS_YMD[] = {{4, 4}, {1, 2}, {1, 2}};
-
+	static constexpr bool __awh_is_upper_char__(const char letter) noexcept {
+		// Заглавная латинская буква попадает в диапазон от 'A' до 'Z'
+		return ((letter >= 'A') && (letter <= 'Z'));
+	}
+	/**
+	 * @brief Функция проверки, является ли символ строчной латинской буквой ('a'-'z')
+	 *
+	 * @param letter проверяемый символ
+	 * @return       результат проверки
+	 *
+	 */
+	static constexpr bool __awh_is_lower_char__(const char letter) noexcept {
+		// Строчная латинская буква попадает в диапазон от 'a' до 'z'
+		return ((letter >= 'a') && (letter <= 'z'));
+	}
 	/**
 	 * @brief Функция проверки, является ли символ десятичной цифрой ('0'–'9')
 	 *
@@ -755,20 +835,46 @@ namespace {
 	 * @return       true если символ является цифрой
 	 *
 	 */
-	inline bool isDigitChar(const char letter) noexcept {
+	static constexpr bool __awh_is_digit_char__(const char letter) noexcept {
 		// Цифра попадает в диапазон от '0' до '9' таблицы ASCII
 		return ((letter >= '0') && (letter <= '9'));
 	}
 	/**
-	 * @brief Функция проверки, является ли символ заглавной латинской буквой ('A'–'Z')
+	 * @brief Функция проверки, является ли символ латинской буквой (заглавной или строчной)
 	 *
 	 * @param letter проверяемый символ
-	 * @return       true если символ является заглавной буквой
+	 * @return       true если символ является буквой
 	 *
 	 */
-	inline bool isUpperChar(const char letter) noexcept {
-		// Заглавная латинская буква попадает в диапазон от 'A' до 'Z'
-		return ((letter >= 'A') && (letter <= 'Z'));
+	static constexpr bool __awh_is_alpha_char__(const char letter) noexcept {
+		// Буквой считается как заглавная, так и строчная латинская буква
+		return (__awh_is_upper_char__(letter) || __awh_is_lower_char__(letter));
+	}
+	/**
+	 * @brief Функция проверки, является ли символ словесным (буква, цифра или '_')
+	 *
+	 * @param letter проверяемый символ
+	 * @return       true если символ является словесным
+	 *
+	 */
+	static constexpr bool __awh_is_word_char__(const char letter) noexcept {
+		// Словесный символ — это буква, цифра или знак подчёркивания
+		return (__awh_is_alpha_char__(letter) || __awh_is_digit_char__(letter) || (letter == '_'));
+	}
+	/**
+	 * @brief Функция проверки, является ли символ пробельным
+	 *
+	 * @param letter проверяемый символ
+	 * @return       true если символ является пробельным
+	 *
+	 */
+	static constexpr bool __awh_is_space_char__(const char letter) noexcept {
+		// Пробельными считаются пробел, табуляция, перевод строки, возврат каретки и перевод страницы
+		return (
+			(letter == ' ') || (letter == '\t') ||
+			(letter == '\n') || (letter == '\r') ||
+			(letter == '\f') || (letter == '\v')
+		);
 	}
 	/**
 	 * @brief Функция приведения обозначения временной зоны к строчным буквам
@@ -776,14 +882,14 @@ namespace {
 	 * @details Обозначения зон - данные протокольные и состоят из букв латиницы,
 	 *          поэтому приводятся они правилами ASCII, а не правилами локали:
 	 *          приведение средствами фреймворка обходится в 45 наносекунд против
-	 *          8, а сопоставление обозначения зоны с таблицей стоит двух сотен
+	 *          8, а сопоставление обозначения зоны с таблицей стоит двух сотен.
 	 *
 	 * @param text   обозначение временной зоны
 	 * @param length длина обозначения временной зоны
 	 * @return       обозначение временной зоны строчными буквами
 	 *
 	 */
-	inline string lowerZone(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ string __awh_lower_zone__(const char * text, const size_t length) noexcept {
 		// Обозначение временной зоны строчными буквами
 		string result;
 		// Выделяем память под обозначение временной зоны разом
@@ -793,7 +899,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++)
 			// Приводим очередной символ обозначения к строчной букве
-			result[i] = ::toLowerChar(text[i]);
+			result[i] = ::__awh_to_lower_char__(text[i]);
 		// Выводим обозначение временной зоны строчными буквами
 		return result;
 	}
@@ -803,64 +909,16 @@ namespace {
 	 * @details Длина совпадения знаковая, поскольку разбор отсутствие группы
 	 *          обозначает отрицательными её границами, а string_view принимает
 	 *          длину беззнаковую, и сужение в списке инициализации язык запрещает.
-	 *          Приведение собрано здесь, чтобы не повторять его у каждого поля
+	 *          Приведение собрано здесь, чтобы не повторять его у каждого поля.
 	 *
 	 * @param text  начало текста, от которого отсчитывается совпадение
 	 * @param match группа совпадения
 	 * @return      кусок текста, группой занятый
 	 *
 	 */
-	inline string_view fragment(const char * text, const match_t & match) noexcept {
+	static __AWH_INLINE__ string_view __awh_fragment__(const char * text, const match_t & match) noexcept {
 		// Выводим кусок текста, группой совпадения занятый
 		return string_view{text + match.begin, static_cast <size_t> (match.end - match.begin)};
-	}
-	/**
-	 * @brief Функция проверки, является ли символ строчной латинской буквой ('a'-'z')
-	 *
-	 * @param letter проверяемый символ
-	 * @return       результат проверки
-	 *
-	 */
-	inline bool isLowerChar(const char letter) noexcept {
-		// Строчная латинская буква попадает в диапазон от 'a' до 'z'
-		return ((letter >= 'a') && (letter <= 'z'));
-	}
-	/**
-	 * @brief Функция проверки, является ли символ латинской буквой (заглавной или строчной)
-	 *
-	 * @param letter проверяемый символ
-	 * @return       true если символ является буквой
-	 *
-	 */
-	inline bool isAlphaChar(const char letter) noexcept {
-		// Буквой считается как заглавная, так и строчная латинская буква
-		return (isUpperChar(letter) || isLowerChar(letter));
-	}
-	/**
-	 * @brief Функция проверки, является ли символ словесным (буква, цифра или '_')
-	 *
-	 * @param letter проверяемый символ
-	 * @return       true если символ является словесным
-	 *
-	 */
-	inline bool isWordChar(const char letter) noexcept {
-		// Словесный символ — это буква, цифра или знак подчёркивания
-		return (isAlphaChar(letter) || isDigitChar(letter) || (letter == '_'));
-	}
-	/**
-	 * @brief Функция проверки, является ли символ пробельным
-	 *
-	 * @param letter проверяемый символ
-	 * @return       true если символ является пробельным
-	 *
-	 */
-	inline bool isSpaceChar(const char letter) noexcept {
-		// Пробельными считаются пробел, табуляция, перевод строки, возврат каретки и перевод страницы
-		return (
-			(letter == ' ') || (letter == '\t') ||
-			(letter == '\n') || (letter == '\r') ||
-			(letter == '\f') || (letter == '\v')
-		);
 	}
 	/**
 	 * @brief Функция жадного захвата серии цифр в позиции pos
@@ -873,13 +931,13 @@ namespace {
 	 * @return       количество захваченных цифр или 0 если их меньше min
 	 *
 	 */
-	inline size_t takeDigits(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
+	static constexpr size_t __awh_take_digits__(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
 		// Счётчик подряд идущих цифр, захваченных начиная с позиции pos
 		size_t count = 0;
 		/**
 		 * Двигаемся вперёд, пока не выйдем за конец текста, не упрёмся в предел max или не встретим нецифровой символ
 		 */
-		while(((pos + count) < length) && (count < max) && isDigitChar(text[pos + count]))
+		while(((pos + count) < length) && (count < max) && __awh_is_digit_char__(text[pos + count]))
 			// Очередной символ — цифра, расширяем захваченную серию
 			count++;
 		// Серия короче требуемого минимума считается несовпадением и даёт 0
@@ -897,9 +955,9 @@ namespace {
 	 * @return       результат проверки совпадения
 	 *
 	 */
-	inline bool matchDigits(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+	static constexpr bool __awh_match_digits__(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		// Пробуем захватить от min до max цифр начиная с текущей позиции
-		const size_t digits = takeDigits(text, length, pos, min, max);
+		const size_t digits = __awh_take_digits__(text, length, pos, min, max);
 		// Нужного количества цифр в этой позиции нет — совпадения не будет
 		if(digits == 0)
 			// Выводим отрицательный результат проверки совпадения
@@ -924,7 +982,7 @@ namespace {
 	 * @return       результат проверки совпадения
 	 *
 	 */
-	inline bool matchLiteral(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
+	static __AWH_INLINE__ bool __awh_match_literal__(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
 		// За концом текста или при несовпадении символа разделитель не найден
 		if((pos >= length) || (text[pos] != letter))
 			// Выводим отрицательный результат проверки совпадения
@@ -943,15 +1001,15 @@ namespace {
 	 * @return       результат проверки совпадения
 	 *
 	 */
-	inline bool matchSpaces(const char * text, const size_t length, size_t & pos) noexcept {
+	static __AWH_INLINE__ bool __awh_match_spaces__(const char * text, const size_t length, size_t & pos) noexcept {
 		// Требуется хотя бы один пробельный символ — иначе совпадения нет
-		if((pos >= length) || !isSpaceChar(text[pos]))
+		if((pos >= length) || !__awh_is_space_char__(text[pos]))
 			// Выводим отрицательный результат проверки совпадения
 			return false;
 		/**
 		 * Поглощаем подряд идущую серию пробельных символов
 		 */
-		while((pos < length) && isSpaceChar(text[pos]))
+		while((pos < length) && __awh_is_space_char__(text[pos]))
 			// Перешагиваем через очередной пробельный символ
 			pos++;
 		// Серия пробелов успешно пропущена
@@ -969,15 +1027,17 @@ namespace {
 	 * @return       результат проверки совпадения
 	 *
 	 */
-	inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+	static __AWH_INLINE__ bool __awh_match_name__(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		/**
-		 * Регистр букв названия не ограничивается: сравнение с самим названием ведётся
-		 * без оглядки на регистр, и требование заглавной с последующими строчными
-		 * отвергало записи вида APR и apr ещё до сравнения. Посторонние слова
-		 * отсеиваются не регистром, а сверкой со словарём названий
+		 * @brief Название обязано начинаться с латинской буквы
+		 *
+		 * @details Регистр букв названия не ограничивается: сравнение с самим названием ведётся
+		 *          без оглядки на регистр, и требование заглавной с последующими строчными
+		 *          отвергало записи вида APR и apr ещё до сравнения. Посторонние слова
+		 *          отсеиваются не регистром, а сверкой со словарём названий.
+		 *
 		 */
-		// Название обязано начинаться с латинской буквы
-		if((pos >= length) || !isAlphaChar(text[pos]))
+		if((pos >= length) || !__awh_is_alpha_char__(text[pos]))
 			// Выводим отрицательный результат проверки совпадения
 			return false;
 		// Счётчик букв, идущих после первой
@@ -985,7 +1045,7 @@ namespace {
 		/**
 		 * Жадно набираем буквы вслед за первой, не превышая предел max
 		 */
-		while(((pos + 1 + count) < length) && (count < max) && isAlphaChar(text[pos + 1 + count]))
+		while(((pos + 1 + count) < length) && (count < max) && __awh_is_alpha_char__(text[pos + 1 + count]))
 			// Очередная буква входит в название
 			count++;
 		// Строчных букв меньше требуемого минимума — это не название нужной длины
@@ -1011,9 +1071,9 @@ namespace {
 	 * @return       результат проверки совпадения
 	 *
 	 */
-	inline bool matchAlpha2(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
+	static __AWH_INLINE__ bool __awh_match_alpha2__(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
 		// Нужны ровно две буквы подряд (например, метка AM/PM) и место под них в тексте
-		if(((pos + 2) > length) || !isAlphaChar(text[pos]) || !isAlphaChar(text[pos + 1]))
+		if(((pos + 2) > length) || !__awh_is_alpha_char__(text[pos]) || !__awh_is_alpha_char__(text[pos + 1]))
 			// Выводим отрицательный результат проверки совпадения
 			return false;
 		// Начало группы — позиция первой буквы
@@ -1035,7 +1095,7 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	matches_t parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_digits__(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если совпадение не найдено
 		matches_t result;
 		/**
@@ -1043,18 +1103,18 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Серия может начинаться только с цифры — остальные позиции пропускаем
-			if(!isDigitChar(text[i]))
+			if(!__awh_is_digit_char__(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
-			// Группа, которую заполнит matchDigits в случае успеха
+			// Группа, которую заполнит __awh_match_digits__ в случае успеха
 			match_t match{};
 			// Пробуем захватить серию цифр требуемой длины
-			if(matchDigits(text, length, pos, min, max, match)){
+			if(__awh_match_digits__(text, length, pos, min, max, match)){
 				// Найдено первое совпадение — отдаём его единственной группой
 				result.resize(1);
-				// Группа совпадения уже заполнена функцией matchDigits, просто копируем её в результат
+				// Группа совпадения уже заполнена функцией __awh_match_digits__, просто копируем её в результат
 				result[0] = match;
 				// Выводим группу с позицией найденной серии цифр в тексте
 				return result;
@@ -1071,7 +1131,7 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	matches_t parseWord(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_word__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если слово не найдено
 		matches_t result;
 		/**
@@ -1079,7 +1139,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Слово может начинаться только со словесного символа — остальные пропускаем
-			if(!isWordChar(text[i]))
+			if(!__awh_is_word_char__(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор, которым поглотим всё слово, начиная с его первого символа
@@ -1087,7 +1147,7 @@ namespace {
 			/**
 			 * Расширяем слово, пока подряд идут словесные символы
 			 */
-			while((pos < length) && isWordChar(text[pos]))
+			while((pos < length) && __awh_is_word_char__(text[pos]))
 				// Включаем очередной словесный символ в слово
 				pos++;
 			// Возвращаем единственную группу с границами найденного слова
@@ -1109,7 +1169,7 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	matches_t parseAlpha2(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_alpha2__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если пара букв не найдена
 		matches_t result;
 		/**
@@ -1118,13 +1178,13 @@ namespace {
 		for(size_t i = 0; i < length; i++){
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
-			// Группа, которую заполнит matchAlpha2 в случае успеха
+			// Группа, которую заполнит __awh_match_alpha2__ в случае успеха
 			match_t match{};
 			// Пробуем захватить две буквы подряд
-			if(matchAlpha2(text, length, pos, match)){
+			if(__awh_match_alpha2__(text, length, pos, match)){
 				// Найдено первое совпадение — отдаём его единственной группой
 				result.resize(1);
-				// Группа совпадения уже заполнена функцией matchAlpha2, просто копируем её в результат
+				// Группа совпадения уже заполнена функцией __awh_match_alpha2__, просто копируем её в результат
 				result[0] = match;
 				// Выводим группу с позицией найденной пары букв в тексте
 				return result;
@@ -1143,7 +1203,7 @@ namespace {
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 *
 	 */
-	inline bool equalNoCase(const char * text, const size_t length, const string & value) noexcept {
+	static __AWH_INLINE__ bool __awh_equal_no_case__(const char * text, const size_t length, const string & value) noexcept {
 		// Названия разной длины не совпадают
 		if(value.length() != length)
 			// Выводим отрицательный результат сличения
@@ -1153,7 +1213,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Если буквы расходятся без оглядки на регистр
-			if(toLowerChar(text[i]) != toLowerChar(value[i]))
+			if(__awh_to_lower_char__(text[i]) != __awh_to_lower_char__(value[i]))
 				// Выводим отрицательный результат сличения
 				return false;
 		}
@@ -1170,7 +1230,7 @@ namespace {
 	 * @return      результат проверки
 	 *
 	 */
-	inline bool knownName(const char * text, const size_t begin, const size_t end, const vector <std::pair <string, string>> * names) noexcept {
+	static __AWH_INLINE__ bool __awh_known_name__(const char * text, const size_t begin, const size_t end, const vector <std::pair <string, string>> * names) noexcept {
 		// Словаря нет - сверять не с чем
 		if(names == nullptr)
 			// Выводим положительный результат проверки
@@ -1187,7 +1247,7 @@ namespace {
 			 */
 			for(const string * value : {&name.first, &name.second}){
 				// Если название совпало
-				if(equalNoCase(text + begin, length, * value))
+				if(__awh_equal_no_case__(text + begin, length, * value))
 					// Выводим положительный результат проверки
 					return true;
 			}
@@ -1206,7 +1266,7 @@ namespace {
 	 * @return       список групп совпадения
 	 *
 	 */
-	matches_t parseName(const char * text, const size_t length, const size_t min, const size_t max, const vector <std::pair <string, string>> * names = nullptr) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_name__(const char * text, const size_t length, const size_t min, const size_t max, const vector <std::pair <string, string>> * names = nullptr) noexcept {
 		// Итоговый список групп: остаётся пустым, если название не найдено
 		matches_t result;
 		/**
@@ -1238,7 +1298,7 @@ namespace {
 							// Переходим к следующей форме названия
 							continue;
 						// Если название совпало и оказалось длиннее прежде найденного
-						if((value->length() > best) && equalNoCase(text + i, value->length(), * value))
+						if((value->length() > best) && __awh_equal_no_case__(text + i, value->length(), * value))
 							// Запоминаем длину совпавшего названия
 							best = value->length();
 					}
@@ -1259,13 +1319,13 @@ namespace {
 			}
 			// Курсор для пробного разбора, начинающийся с текущей позиции
 			size_t pos = i;
-			// Группа, которую заполнит matchName в случае успеха
+			// Группа, которую заполнит __awh_match_name__ в случае успеха
 			match_t match{};
 			// Пробуем разобрать название вида [A-Za-z]{min,max}
-			if(matchName(text, length, pos, min, max, match)){
+			if(__awh_match_name__(text, length, pos, min, max, match)){
 				// Найдено первое совпадение — отдаём его единственной группой
 				result.resize(1);
-				// Группа совпадения уже заполнена функцией matchName, просто копируем её в результат
+				// Группа совпадения уже заполнена функцией __awh_match_name__, просто копируем её в результат
 				result[0] = match;
 				// Выводим группу с позицией найденного названия в тексте
 				return result;
@@ -1285,7 +1345,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	matches_t parseDigitGroups(const char * text, const size_t length, const char sep, const digits_t * specs, const size_t count) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_digit_groups__(const char * text, const size_t length, const char sep, const digits_t * specs, const size_t count) noexcept {
 		// Итоговый список групп: остаётся пустым, если последовательность не найдена
 		matches_t result;
 		/**
@@ -1293,7 +1353,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Последовательность начинается с цифры — остальные позиции пропускаем
-			if(!isDigitChar(text[i]))
+			if(!__awh_is_digit_char__(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор для пробного разбора, начинающийся с текущей позиции
@@ -1307,7 +1367,7 @@ namespace {
 			 */
 			for(size_t j = 0; j < count; j++){
 				// Группа не набрала нужное число цифр — разбор последовательности сорван
-				if(!matchDigits(text, length, pos, specs[j].min, specs[j].max, groups[j + 1])){
+				if(!__awh_match_digits__(text, length, pos, specs[j].min, specs[j].max, groups[j + 1])){
 					// Разбор очередной группы не удался — выставляем признак ошибки
 					ok = false;
 					// Выходим из цикла, так как дальнейший разбор уже не имеет смысла
@@ -1316,7 +1376,7 @@ namespace {
 				// Между группами (но не после последней) обязателен разделитель
 				if((j + 1) < count){
 					// Ожидаемого разделителя нет — разбор последовательности сорван
-					if(!matchLiteral(text, length, pos, sep)){
+					if(!__awh_match_literal__(text, length, pos, sep)){
 						// Разделитель не найден — выставляем признак ошибки
 						ok = false;
 						// Выходим из цикла, так как дальнейший разбор уже не имеет смысла
@@ -1326,9 +1386,6 @@ namespace {
 			}
 			// Все группы и разделители разобраны успешно
 			if(ok){
-				/**
-				 * Группа 0 охватывает всю разобранную последовательность
-				 */
 				// Начало группы 0 — позиция первой цифры в последовательности
 				groups[0].begin = static_cast <ssize_t> (i);
 				// Конец группы 0 — позиция сразу за последним разобранным символом
@@ -1348,7 +1405,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	matches_t parseTimeMeridiem(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_time_meridiem__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если время с меткой не найдено
 		matches_t result;
 		/**
@@ -1356,7 +1413,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Кандидат на начало времени — только цифра, остальные позиции пропускаем
-			if(!isDigitChar(text[i]))
+			if(!__awh_is_digit_char__(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор для пробного разбора, начинающийся с текущей позиции
@@ -1364,13 +1421,13 @@ namespace {
 			// Группы: [0] — всё совпадение, [1..3] — часы/минуты/секунды, [4] — метка AM/PM
 			matches_t groups(5);
 			// Разбираем «ЧЧ:ММ:СС <метка>» одной цепочкой: любое звено может оборвать совпадение
-			if(matchDigits(text, length, pos, 1, 2, groups[1]) &&
-			   matchLiteral(text, length, pos, ':') &&
-			   matchDigits(text, length, pos, 1, 2, groups[2]) &&
-			   matchLiteral(text, length, pos, ':') &&
-			   matchDigits(text, length, pos, 1, 2, groups[3]) &&
-			   matchSpaces(text, length, pos) &&
-			   matchAlpha2(text, length, pos, groups[4])){
+			if(__awh_match_digits__(text, length, pos, 1, 2, groups[1]) &&
+			   __awh_match_literal__(text, length, pos, ':') &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[2]) &&
+			   __awh_match_literal__(text, length, pos, ':') &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[3]) &&
+			   __awh_match_spaces__(text, length, pos) &&
+			   __awh_match_alpha2__(text, length, pos, groups[4])){
 				/**
 				 * Группа 0 охватывает всё разобранное время вместе с меткой
 				 */
@@ -1393,7 +1450,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 *
 	 */
-	matches_t parseAsctime(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_asctime__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если дата asctime не найдена
 		matches_t result;
 		/**
@@ -1401,7 +1458,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < length; i++){
 			// Кандидат на начало даты — только буква, остальные позиции пропускаем
-			if(!isAlphaChar(text[i]))
+			if(!__awh_is_alpha_char__(text[i]))
 				// Переходим к следующей позиции текста
 				continue;
 			// Курсор для пробного разбора, начинающийся с текущей позиции
@@ -1409,28 +1466,30 @@ namespace {
 			// Группы: [0] — всё совпадение, далее день недели, месяц, число, ЧЧ, ММ, СС и год
 			matches_t groups(8);
 			/**
-			 * Названия дня недели и месяца сверяются со словарём наравне с разбором их
-			 * по отдельности: правило захвата регистра букв не ограничивает, и без
-			 * сверки за название сходил любой трёхбуквенный набор - запись вида
-			 * "XXX YYY  6 12:37:01 2025" разбор проходила, оставляя месяц
-			 * неустановленным
+			 * @brief Разбираем «Ddd Mmm DD HH:MM:SS YYYY» одной цепочкой: сбой любого звена прерывает разбор
+			 *
+			 * @details Названия дня недели и месяца сверяются со словарём наравне с разбором их
+			 *          по отдельности: правило захвата регистра букв не ограничивает, и без
+			 *          сверки за название сходил любой трёхбуквенный набор - запись вида
+			 *          "XXX YYY  6 12:37:01 2025" разбор проходила, оставляя месяц
+			 *          неустановленным.
+			 *
 			 */
-			// Разбираем «Ddd Mmm DD HH:MM:SS YYYY» одной цепочкой: сбой любого звена прерывает разбор
-			if(matchName(text, length, pos, 2, 2, groups[1]) &&
-			   knownName(text, static_cast <size_t> (groups[1].begin), static_cast <size_t> (groups[1].end), &params.nameDays) &&
-			   matchSpaces(text, length, pos) &&
-			   matchName(text, length, pos, 2, 2, groups[2]) &&
-			   knownName(text, static_cast <size_t> (groups[2].begin), static_cast <size_t> (groups[2].end), &params.nameMonths) &&
-			   matchSpaces(text, length, pos) &&
-			   matchDigits(text, length, pos, 1, 2, groups[3]) &&
-			   matchSpaces(text, length, pos) &&
-			   matchDigits(text, length, pos, 1, 2, groups[4]) &&
-			   matchLiteral(text, length, pos, ':') &&
-			   matchDigits(text, length, pos, 1, 2, groups[5]) &&
-			   matchLiteral(text, length, pos, ':') &&
-			   matchDigits(text, length, pos, 1, 2, groups[6]) &&
-			   matchSpaces(text, length, pos) &&
-			   matchDigits(text, length, pos, 4, 4, groups[7])){
+			if(__awh_match_name__(text, length, pos, 2, 2, groups[1]) &&
+			   __awh_known_name__(text, static_cast <size_t> (groups[1].begin), static_cast <size_t> (groups[1].end), &params.nameDays) &&
+			   __awh_match_spaces__(text, length, pos) &&
+			   __awh_match_name__(text, length, pos, 2, 2, groups[2]) &&
+			   __awh_known_name__(text, static_cast <size_t> (groups[2].begin), static_cast <size_t> (groups[2].end), &params.nameMonths) &&
+			   __awh_match_spaces__(text, length, pos) &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[3]) &&
+			   __awh_match_spaces__(text, length, pos) &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[4]) &&
+			   __awh_match_literal__(text, length, pos, ':') &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[5]) &&
+			   __awh_match_literal__(text, length, pos, ':') &&
+			   __awh_match_digits__(text, length, pos, 1, 2, groups[6]) &&
+			   __awh_match_spaces__(text, length, pos) &&
+			   __awh_match_digits__(text, length, pos, 4, 4, groups[7])){
 				/**
 				 * Группа 0 охватывает всю разобранную дату asctime
 				 */
@@ -1453,7 +1512,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - знак, группа 2 - блок смещения, группы 3 и 4 - часы и минуты при формате с двоеточием, группа 5 - цифровое смещение при формате без двоеточия)
 	 *
 	 */
-	matches_t parseZoneOffset(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_zone_offset__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если смещение зоны не найдено
 		matches_t result;
 		/**
@@ -1467,9 +1526,11 @@ namespace {
 			// Группы: [0] — всё совпадение, [1] — знак, [2] — блок смещения, [3]/[4] — часы/минуты, [5] — слитное смещение
 			matches_t groups(6);
 			/**
-			 * Группа знака занимает один символ — сам '+' или '-'
+			 * @brief Начало группы знака — позиция этого символа
+			 *
+			 * @note Группа знака занимает один символ — сам '+' или '-'
+			 *
 			 */
-			// Начало группы знака — позиция этого символа
 			groups[1].begin = static_cast <ssize_t> (i);
 			// Конец группы знака — позиция сразу за ним
 			groups[1].end = static_cast <ssize_t> (i + 1);
@@ -1482,16 +1543,18 @@ namespace {
 			// Часы и минуты для формата HH:MM
 			match_t hh{}, mm{};
 			// Сначала пробуем формат с двоеточием HH:MM
-			if(matchDigits(text, length, begin, 1, 2, hh) &&
-			   matchLiteral(text, length, begin, ':') &&
-			   matchDigits(text, length, begin, 1, 2, mm)){
+			if(__awh_match_digits__(text, length, begin, 1, 2, hh) &&
+			   __awh_match_literal__(text, length, begin, ':') &&
+			   __awh_match_digits__(text, length, begin, 1, 2, mm)){
 				// Сохраняем разобранные часы и минуты в их группы
 				groups[3] = hh;
 				groups[4] = mm;
 				/**
-				 * Блок смещения охватывает разобранное значение HH:MM
+				 * @brief Начало блока смещения — позиция сразу за знаком
+				 *
+				 * @note Блок смещения охватывает разобранное значение HH:MM
+				 *
 				 */
-				// Начало блока смещения — позиция сразу за знаком
 				groups[2].begin = static_cast <ssize_t> (branchStart);
 				// Конец блока смещения — позиция сразу за разобранными часами и минутами
 				groups[2].end = static_cast <ssize_t> (begin);
@@ -1504,13 +1567,15 @@ namespace {
 				// Отдельный курсор для пробы слитного формата
 				size_t begin = branchStart;
 				// Пробуем захватить от 1 до 4 цифр смещения
-				if(matchDigits(text, length, begin, 1, 4, dd)){
+				if(__awh_match_digits__(text, length, begin, 1, 4, dd)){
 					// Сохраняем слитное смещение в его группу
 					groups[5] = dd;
 					/**
-					 * Блок смещения охватывает разобранные цифры
+					 * @brief Начало блока смещения — позиция сразу за знаком
+					 *
+					 * @note Блок смещения охватывает разобранные цифры
+					 *
 					 */
-					// Начало блока смещения — позиция сразу за знаком
 					groups[2].begin = static_cast <ssize_t> (branchStart);
 					// Конец блока смещения — позиция сразу за разобранными цифрами
 					groups[2].end = static_cast <ssize_t> (begin);
@@ -1520,9 +1585,11 @@ namespace {
 				} else continue;
 			}
 			/**
-			 * Группа 0 охватывает знак вместе со значением смещения
+			 * @brief Начало группы 0 — позиция знака
+			 *
+			 * @note Группа 0 охватывает знак вместе со значением смещения
+			 *
 			 */
-			// Начало группы 0 — позиция знака
 			groups[0].begin = static_cast <ssize_t> (i);
 			// Конец группы 0 — позиция сразу за последним разобранным символом
 			groups[0].end = static_cast <ssize_t> (pos);
@@ -1540,7 +1607,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группа 4 - значение смещения, группы 5 и 6 - часы и минуты при формате с двоеточием)
 	 *
 	 */
-	matches_t parseZoneFull(const char * text, const size_t length, const bool alpha = false) noexcept {
+	static matches_t __awh_parse_zone_full__(const char * text, const size_t length, const bool alpha = false) noexcept {
 		// Итоговый список групп: остаётся пустым, если ни слова, ни смещения не нашлось
 		matches_t result;
 		/**
@@ -1552,26 +1619,30 @@ namespace {
 			// Группы: [0] всё, [1] слово, [2] блок смещения, [3] знак, [4] значение, [5]/[6] часы/минуты
 			matches_t groups(7);
 			/**
-			 * Название зоны внутри записи даты набирается одними буквами: словесным
-			 * разбор считает и цифры, и доля секунды записи «23:30:15.734Z» уходила в
-			 * название зоны целиком - «734Z» не опознавалось, а зона терялась. Отдельно
-			 * же взятое обозначение зоны бывает и числом («3» означает UTC+3), и там
-			 * цифры названию принадлежат
+			 * @brief  Необязательная часть (\w+)?: название зоны словом
+			 *
+			 * @details Название зоны внутри записи даты набирается одними буквами: словесным
+			 *          разбор считает и цифры, и доля секунды записи «23:30:15.734Z» уходила в
+			 *          название зоны целиком - «734Z» не опознавалось, а зона терялась. Отдельно
+			 *          же взятое обозначение зоны бывает и числом («3» означает UTC+3), и там
+			 *          цифры названию принадлежат.
+			 *
 			 */
-			// Необязательная часть (\w+)?: название зоны словом
-			if(alpha ? isAlphaChar(text[pos]) : isWordChar(text[pos])){
+			if(alpha ? __awh_is_alpha_char__(text[pos]) : __awh_is_word_char__(text[pos])){
 				// Курсор для поглощения всего слова
 				size_t offset = pos;
 				/**
 				 * Расширяем слово, пока подряд идут словесные символы
 				 */
-				while((offset < length) && (alpha ? isAlphaChar(text[offset]) : isWordChar(text[offset])))
+				while((offset < length) && (alpha ? __awh_is_alpha_char__(text[offset]) : __awh_is_word_char__(text[offset])))
 					// Включаем очередной словесный символ в слово
 					offset++;
 				/**
-				 * Группа слова охватывает захваченные словесные символы
+				 * @brief Начало группы слова — позиция первого словесного символа
+				 *
+				 * @note Группа слова охватывает захваченные словесные символы
+				 *
 				 */
-				// Начало группы слова — позиция первого словесного символа
 				groups[1].begin = static_cast <ssize_t> (pos);
 				// Конец группы слова — позиция сразу за последним словесным символом
 				groups[1].end = static_cast <ssize_t> (offset);
@@ -1589,23 +1660,27 @@ namespace {
 				// Конец блока смещения (уточнится после разбора значения)
 				size_t offset = (pos + 1);
 				/**
-				 * Сначала пробуем формат с двоеточием (\d{1,2}):(\d{1,2})
+				 * @brief Часы и минуты для формата HH:MM
+				 *
+				 * @note Сначала пробуем формат с двоеточием (\d{1,2}):(\d{1,2})
+				 *
 				 */
-				// Часы и минуты для формата HH:MM
 				match_t h2{}, m2{};
 				// Отдельный курсор после знака, чтобы не портить offset при неудаче
 				size_t begin = (pos + 1);
 				// Проверяем формат HH:MM
-				if(matchDigits(text, length, begin, 1, 2, h2) &&
-				   matchLiteral(text, length, begin, ':') &&
-				   matchDigits(text, length, begin, 1, 2, m2)){
+				if(__awh_match_digits__(text, length, begin, 1, 2, h2) &&
+				   __awh_match_literal__(text, length, begin, ':') &&
+				   __awh_match_digits__(text, length, begin, 1, 2, m2)){
 					// Переносим разобранные часы и минуты в выходные группы
 					hh = h2;
 					mm = m2;
 					/**
-					 * Диапазон значения смещения — от позиции за знаком до конца HH:MM
+					 * @brief Начало диапазона — позиция сразу за знаком
+					 *
+					 * @note Диапазон значения смещения — от позиции за знаком до конца HH:MM
+					 *
 					 */
-					// Начало диапазона — позиция сразу за знаком
 					off.begin = static_cast <ssize_t> (pos + 1);
 					// Конец диапазона — позиция сразу за разобранными часами и минутами
 					off.end = static_cast <ssize_t> (begin);
@@ -1620,11 +1695,13 @@ namespace {
 					// Отдельный курсор после знака для пробы слитного формата
 					size_t begin = (pos + 1);
 					// Пробуем захватить от 1 до 4 цифр смещения
-					if(matchDigits(text, length, begin, 1, 4, d2)){
+					if(__awh_match_digits__(text, length, begin, 1, 4, d2)){
 						/**
-						 * Диапазон значения смещения — захваченные цифры за знаком
+						 * @brief Начало диапазона — позиция сразу за знаком
+						 *
+						 * @note Диапазон значения смещения — захваченные цифры за знаком
+						 *
 						 */
-						// Начало диапазона — позиция сразу за знаком
 						off.begin = static_cast <ssize_t> (pos + 1);
 						// Конец диапазона — позиция сразу за разобранными цифрами
 						off.end = static_cast <ssize_t> (begin);
@@ -1637,9 +1714,11 @@ namespace {
 				// Значение за знаком разобрано — фиксируем блок смещения целиком
 				if(inner){
 					/**
-					 * Группа знака занимает один символ — сам '+' или '-'
+					 * @brief Начало группы знака — позиция этого символа
+					 *
+					 * @note Группа знака занимает один символ — сам '+' или '-'
+					 *
 					 */
-					// Начало группы знака — позиция этого символа
 					groups[3].begin = static_cast <ssize_t> (blockStart);
 					// Конец группы знака — позиция сразу за ним
 					groups[3].end = static_cast <ssize_t> (blockStart + 1);
@@ -1648,9 +1727,11 @@ namespace {
 					groups[5] = hh;
 					groups[6] = mm;
 					/**
-					 * Блок смещения охватывает знак вместе со значением
+					 * @brief Начало блока смещения — позиция знака
+					 *
+					 * @note Блок смещения охватывает знак вместе со значением
+					 *
 					 */
-					// Начало блока смещения — позиция знака
 					groups[2].begin = static_cast <ssize_t> (blockStart);
 					// Конец блока смещения — позиция сразу за разобранным значением
 					groups[2].end = static_cast <ssize_t> (offset);
@@ -1661,9 +1742,11 @@ namespace {
 			// Принимаем совпадение, только если хоть что-то разобрано (аналог REG_NOTEMPTY)
 			if(pos > i){
 				/**
-				 * Группа 0 охватывает всё разобранное (слово и/или блок смещения)
+				 * @brief Начало группы 0 — позиция начала разбора
+				 *
+				 * @note Группа 0 охватывает всё разобранное (слово и/или блок смещения)
+				 *
 				 */
-				// Начало группы 0 — позиция начала разбора
 				groups[0].begin = static_cast <ssize_t> (i);
 				// Конец группы 0 — позиция сразу за последним разобранным символом
 				groups[0].end = static_cast <ssize_t> (pos);
@@ -1682,7 +1765,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - число, группа 2 - единица размерности)
 	 *
 	 */
-	matches_t parseSeconds(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ matches_t __awh_parse_seconds__(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если число с единицей не найдено
 		matches_t result;
 		// Пустой записи разбирать нечего
@@ -1714,7 +1797,7 @@ namespace {
 				// Разряды числа начинаются сразу за знаком
 				begin = (i + 1);
 			// Число может начинаться только с цифры, точки или запятой — иначе записи разбору не подлежит
-			if(!(isDigitChar(text[begin]) || (text[begin] == '.') || (text[begin] == ',')))
+			if(!(__awh_is_digit_char__(text[begin]) || (text[begin] == '.') || (text[begin] == ',')))
 				// Числа с единицей размерности в тексте не нашлось
 				return result;
 			// pos1 — курсор конца числа (поглощает серию [\d.,]+)
@@ -1722,7 +1805,7 @@ namespace {
 			/**
 			 * Расширяем число, пока подряд идут цифры, точки или запятые
 			 */
-			while((pos1 < length) && (isDigitChar(text[pos1]) || (text[pos1] == '.') || (text[pos1] == ',')))
+			while((pos1 < length) && (__awh_is_digit_char__(text[pos1]) || (text[pos1] == '.') || (text[pos1] == ',')))
 				// Включаем очередной символ числа
 				pos1++;
 			// pos2 — курсор поиска единицы; пропускаем необязательные пробелы \s* после числа
@@ -1730,7 +1813,7 @@ namespace {
 			/**
 			 * Поглощаем пробелы между числом и единицей размерности
 			 */
-			while((pos2 < length) && isSpaceChar(text[pos2]))
+			while((pos2 < length) && __awh_is_space_char__(text[pos2]))
 				// Перешагиваем через очередной пробел
 				pos2++;
 			// После числа и пробелов не осталось символа единицы — совпадение неполное
@@ -1750,23 +1833,29 @@ namespace {
 			// Группы: [0] — всё совпадение, [1] — число, [2] — единица размерности
 			matches_t groups(3);
 			/**
-			 * Группа 0 охватывает число вместе с единицей (включая пробелы между ними)
+			 * @brief Начало группы 0 — позиция первой цифры или точки в числе
+			 *
+			 * @note Группа 0 охватывает число вместе с единицей (включая пробелы между ними)
+			 *
 			 */
-			// Начало группы 0 — позиция первой цифры или точки в числе
 			groups[0].begin = static_cast <ssize_t> (i);
 			// Конец группы 0 — позиция сразу за единицей размерности
 			groups[0].end = static_cast <ssize_t> (pos2 + 1);
 			/**
-			 * Группа числа — от начала до конца серии [\d.,]+
+			 * @brief Начало группы числа — позиция первой цифры или точки в числе
+			 *
+			 * @note Группа числа — от начала до конца серии [\d.,]+
+			 *
 			 */
-			// Начало группы числа — позиция первой цифры или точки в числе
 			groups[1].begin = static_cast <ssize_t> (i);
 			// Конец группы числа — позиция сразу за последним символом числа
 			groups[1].end = static_cast <ssize_t> (pos1);
 			/**
-			 * Группа единицы — единственный символ размерности
+			 * @brief Начало группы единицы — позиция этого символа
+			 *
+			 * @note Группа единицы — единственный символ размерности
+			 *
 			 */
-			// Начало группы единицы — позиция этого символа
 			groups[2].begin = static_cast <ssize_t> (pos2);
 			// Конец группы единицы — позиция сразу за символом размерности
 			groups[2].end = static_cast <ssize_t> (pos2 + 1);
@@ -1784,7 +1873,7 @@ namespace {
 	 * @return       полученное число
 	 *
 	 */
-	inline uint32_t readNumber(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ uint32_t __awh_read_number__(const char * text, const size_t length) noexcept {
 		// Накопитель разрядов числа
 		uint32_t result = 0;
 		/**
@@ -1803,13 +1892,13 @@ namespace {
 	 *          дробная часть выводилась в нём со всей разрядностью двоичного числа:
 	 *          тридцать суток давали 4.285714285714286w. Округление до сотых даёт
 	 *          4.29w, но величины мельче сотой доли единицы оно обратило бы в ноль,
-	 *          поэтому они выводятся без округления
+	 *          поэтому они выводятся без округления.
 	 *
 	 * @param value величина продолжительности в единицах её измерения
 	 * @return      округлённая величина продолжительности
 	 *
 	 */
-	inline double roundDuration(const double value) noexcept {
+	static __AWH_INLINE__ double __awh_round_duration__(const double value) noexcept {
 		// Величины мельче сотой доли единицы округление обратило бы в ноль
 		if(value < 0.01)
 			// Выводим величину без округления
@@ -1818,24 +1907,13 @@ namespace {
 		return (::round(value * 100.) / 100.);
 	}
 	/**
-	 * @brief Накопительные суммы суток, прошедших до начала каждого месяца
-	 *
-	 * @details Суммы даны для невисокосного года: високосность правится одной
-	 *          поправкой на месяцы, следующие за февралём. Тринадцатый член
-	 *          отвечает концу декабря и равен длительности года
-	 *
-	 */
-	static constexpr uint16_t daysBeforeMonths[13] = {
-		0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365
-	};
-	/**
 	 * @brief Функция получения количества суток в году
 	 *
 	 * @param leap признак високосного года
 	 * @return     количество суток в году
 	 *
 	 */
-	inline uint16_t daysOfYear(const bool leap) noexcept {
+	static constexpr uint16_t __awh_days_of_year__(const bool leap) noexcept {
 		// Выводим количество суток в году с поправкой на високосность
 		return static_cast <uint16_t> (leap ? 366 : 365);
 	}
@@ -1844,14 +1922,14 @@ namespace {
 	 *
 	 * @details Счёт ведётся накопительными суммами, а не перебором месяцев: суммы
 	 *          от года не зависят, високосность правит их одной поправкой, и месяц
-	 *          определяется без обхода таблицы
+	 *          определяется без обхода таблицы.
 	 *
 	 * @param month номер месяца, отсчитываемый от единицы
 	 * @param leap  признак високосного года
 	 * @return      количество суток, прошедших с начала года до начала месяца
 	 *
 	 */
-	inline uint16_t daysBeforeMonth(const uint8_t month, const bool leap) noexcept {
+	static constexpr uint16_t __awh_days_before_month__(const uint8_t month, const bool leap) noexcept {
 		// Месяц ранее января суток за собой не оставляет
 		if(month <= 1)
 			// Выводим пустое количество суток
@@ -1859,7 +1937,7 @@ namespace {
 		// Месяц позднее декабря отвечает концу года
 		if(month > 12)
 			// Выводим количество суток в году
-			return ::daysOfYear(leap);
+			return ::__awh_days_of_year__(leap);
 		// Выводим накопленную сумму с поправкой на високосность февраля
 		return static_cast <uint16_t> (daysBeforeMonths[month - 1] + ((leap && (month > 2)) ? 1 : 0));
 	}
@@ -1871,33 +1949,33 @@ namespace {
 	 * @return      количество суток в указанном месяце
 	 *
 	 */
-	inline uint8_t daysOfMonth(const uint8_t month, const bool leap) noexcept {
+	static constexpr uint8_t __awh_days_of_month__(const uint8_t month, const bool leap) noexcept {
 		// Месяц за пределами года суток за собой не имеет
 		if((month < 1) || (month > 12))
 			// Выводим пустое количество суток
 			return 0;
 		// Выводим разность накопленных сумм соседних месяцев
-		return static_cast <uint8_t> (::daysBeforeMonth(month + 1, leap) - ::daysBeforeMonth(month, leap));
+		return static_cast <uint8_t> (::__awh_days_before_month__(month + 1, leap) - ::__awh_days_before_month__(month, leap));
 	}
 	/**
 	 * @brief Функция определения месяца, на который приходится день года
 	 *
 	 * @details Номер дня, вышедший за пределы года, относится к декабрю: раскладка
 	 *          обязана вывести месяц календаря при любом доводе, а пригодность самой
-	 *          записи судит отдельная проверка validate
+	 *          записи судит отдельная проверка validate.
 	 *
 	 * @param days номер дня в году, отсчитываемый от нуля
 	 * @param leap признак високосного года
 	 * @return     номер месяца, отсчитываемый от единицы
 	 *
 	 */
-	inline uint8_t monthOfYear(const uint16_t days, const bool leap) noexcept {
+	static constexpr uint8_t __awh_month_of_year__(const uint16_t days, const bool leap) noexcept {
 		/**
 		 * Отыскиваем месяц, за начало которого номер дня не выходит
 		 */
 		for(uint8_t month = 1; month < 12; month++){
 			// Если номер дня не достаёт до начала следующего месяца
-			if(days < ::daysBeforeMonth(month + 1, leap))
+			if(days < ::__awh_days_before_month__(month + 1, leap))
 				// Выводим номер найденного месяца
 				return month;
 		}
@@ -1910,7 +1988,7 @@ namespace {
 	 * @details Номер дня в году задаётся переменной формата %j, но сборка штампа
 	 *          времени опирается на месяц и число месяца, а номер дня не читает.
 	 *          Раскладка выполняется в конце разбора: год к тому времени уже известен,
-	 *          а от него зависит длительность февраля
+	 *          а от него зависит длительность февраля.
 	 *
 	 * @param days  номер дня в году, отсчитываемый от нуля
 	 * @param leap  признак високосного года
@@ -1918,15 +1996,15 @@ namespace {
 	 * @param date  число месяца, в которое раскладывается номер дня
 	 *
 	 */
-	inline void dateFromDays(const uint16_t days, const bool leap, uint8_t & month, uint8_t & date) noexcept {
+	static constexpr void __awh_date_from_days__(const uint16_t days, const bool leap, uint8_t & month, uint8_t & date) noexcept {
 		// Определяем месяц, на который приходится номер дня
-		month = ::monthOfYear(days, leap);
+		month = ::__awh_month_of_year__(days, leap);
 		// Если номер дня вышел за пределы года - оставляем последний день декабря
-		if(days >= ::daysOfYear(leap))
+		if(days >= ::__awh_days_of_year__(leap))
 			// Устанавливаем последнее число декабря
 			date = 31;
 		// Устанавливаем число месяца, отсчитываемое от единицы
-		else date = static_cast <uint8_t> ((days - ::daysBeforeMonth(month, leap)) + 1);
+		else date = static_cast <uint8_t> ((days - ::__awh_days_before_month__(month, leap)) + 1);
 	}
 	/**
 	 * @brief Функция проверки допустимости составляющих даты
@@ -1934,16 +2012,16 @@ namespace {
 	 * @details Проверяются только пределы самих составляющих, но не их сочетание с
 	 *          временной зоной: смещение зоны на пределы календарных полей не влияет.
 	 *          Количество секунд допускается до шестидесяти включительно - секунду
-	 *          координации разрешают и RFC 3339, и стандарты, на него ссылающиеся
+	 *          координации разрешают и RFC 3339, и стандарты, на него ссылающиеся.
 	 *
 	 * @details Год проверяется на представимость календарём модуля: отсчёт штампа
 	 *          времени ведётся от начала 1970 года, и запись прежних лет представить
 	 *          нечем. Проверка эта отвечает за то, чтобы разбор такой записи не выдал
-	 *          начало эпохи за честный её разбор
+	 *          начало эпохи за честный её разбор.
 	 *
 	 * @details Смещение временной зоны проверяется на попадание в промежуток земных
 	 *          поясов: запись вида «+9999» разбор принимал и накладывал смещение в сто
-	 *          часов, унося момент записи на четверо суток
+	 *          часов, унося момент записи на четверо суток.
 	 *
 	 * @param year         полное обозначение года
 	 * @param month        номер месяца
@@ -1959,15 +2037,17 @@ namespace {
 	 * @return             признак допустимости составляющих
 	 *
 	 */
-	inline bool validDate(const uint16_t year, const uint8_t month, const uint8_t date, const uint8_t hour,
+	static __AWH_INLINE__ bool __awh_valid_date__(const uint16_t year, const uint8_t month, const uint8_t date, const uint8_t hour,
 	                      const uint8_t minutes, const uint8_t seconds, const uint32_t milliseconds,
 	                      const bool leap, const int32_t offset, const uint8_t day, const bool leapSecond) noexcept {
 		/**
-		 * Номер дня недели переменные формата %u и %w задают напрямую, и запись «9»
-		 * разбор проходила: сам он день недели выводит из даты заново и потому значения
-		 * не замечает, а проверка записи его не смотрела вовсе
+		 * @brief Номер дня недели лежит в пределах от первого до седьмого
+		 *
+		 * @details Номер дня недели переменные формата %u и %w задают напрямую, и запись «9»
+		 *          разбор проходила: сам он день недели выводит из даты заново и потому значения
+		 *          не замечает, а проверка записи его не смотрела вовсе.
+		 *
 		 */
-		// Номер дня недели лежит в пределах от первого до седьмого
 		if((day < 1) || (day > 7))
 			// Составляющие даты недопустимы
 			return false;
@@ -1984,17 +2064,19 @@ namespace {
 			// Составляющие даты недопустимы
 			return false;
 		// Получаем количество суток в указанном месяце
-		const uint8_t days = ::daysOfMonth(month, leap);
+		const uint8_t days = ::__awh_days_of_month__(month, leap);
 		// Число месяца лежит в пределах от первого до последнего дня месяца
 		if((date < 1) || (date > days))
 			// Составляющие даты недопустимы
 			return false;
 		/**
-		 * Секунда координации приходится на шестидесятую секунду минуты: её разрешают
-		 * и RFC 3339, и ISO 8601, а часть разборщиков отвергает наравне с ошибкой
-		 * записи. Приём её задаётся признаком, а не зашит
+		 * @brief Проверяем пределы составляющих времени суток
+		 *
+		 * @details Секунда координации приходится на шестидесятую секунду минуты: её разрешают
+		 *          и RFC 3339, и ISO 8601, а часть разборщиков отвергает наравне с ошибкой
+		 *          записи. Приём её задаётся признаком, а не зашит.
+		 *
 		 */
-		// Проверяем пределы составляющих времени суток
 		return ((hour <= 23) && (minutes <= 59) && (seconds <= (leapSecond ? 60 : 59)) && (milliseconds <= 999));
 	}
 	/**
@@ -2013,7 +2095,7 @@ namespace {
 	 * @return       количество миллисекунд
 	 *
 	 */
-	inline uint32_t readFraction(const char * text, const size_t length) noexcept {
+	static __AWH_INLINE__ uint32_t __awh_read_fraction__(const char * text, const size_t length) noexcept {
 		// Накопитель миллисекунд
 		uint32_t result = 0;
 		/**
@@ -2034,7 +2116,7 @@ namespace {
 	 * @return         смещение временной зоны в секундах
 	 *
 	 */
-	inline int32_t makeZoneOffset(const uint32_t hour, const uint32_t minutes, const bool negative) noexcept {
+	static constexpr int32_t __awh_make_zone_offset__(const uint32_t hour, const uint32_t minutes, const bool negative) noexcept {
 		// Собираем смещение из часов и минут
 		const int32_t result = static_cast <int32_t> ((hour * 3600) + (minutes * 60));
 		// Выводим смещение с учётом его знака
@@ -2056,23 +2138,23 @@ namespace {
 	 * @return         смещение временной зоны в секундах
 	 *
 	 */
-	inline int32_t makeZoneOffset(const char * text, const size_t length, const bool negative) noexcept {
+	static __AWH_INLINE__ int32_t __awh_make_zone_offset__(const char * text, const size_t length, const bool negative) noexcept {
 		/**
 		 * Определяем разрядность записи смещения
 		 */
 		switch(length){
 			// Запись ±hmm: первая цифра означает часы, оставшиеся две - минуты
-			case 3: return makeZoneOffset(readNumber(text, 1), readNumber(text + 1, 2), negative);
+			case 3: return __awh_make_zone_offset__(__awh_read_number__(text, 1), __awh_read_number__(text + 1, 2), negative);
 			// Запись ±hhmm: первые две цифры означают часы, оставшиеся две - минуты
-			case 4: return makeZoneOffset(readNumber(text, 2), readNumber(text + 2, 2), negative);
+			case 4: return __awh_make_zone_offset__(__awh_read_number__(text, 2), __awh_read_number__(text + 2, 2), negative);
 		}
 		// Записи ±h и ±hh означают целое количество часов
-		return makeZoneOffset(readNumber(text, length), 0, negative);
+		return __awh_make_zone_offset__(__awh_read_number__(text, length), 0, negative);
 	}
 	/**
 	 * @brief Функция извлечения смещения временной зоны из групп совпадения
 	 *
-	 * @details Обе функции разбора зоны (parseZoneOffset и parseZoneFull) выделяют
+	 * @details Обе функции разбора зоны (__awh_parse_zone_offset__ и __awh_parse_zone_full__) выделяют
 	 *          одни и те же составляющие смещения, но раскладывают их по разным
 	 *          номерам групп, поэтому группы передаются по отдельности.
 	 *
@@ -2084,7 +2166,7 @@ namespace {
 	 * @return        смещение временной зоны в секундах
 	 *
 	 */
-	inline int32_t readZoneOffset(const char * text, const match_t & sign, const match_t & value, const match_t & hour, const match_t & minutes) noexcept {
+	static __AWH_INLINE__ int32_t __awh_read_zone_offset__(const char * text, const match_t & sign, const match_t & value, const match_t & hour, const match_t & minutes) noexcept {
 		// Без знака смещения записи смещения нет вовсе
 		if(sign.end <= sign.begin)
 			// Смещение отсутствует
@@ -2094,15 +2176,15 @@ namespace {
 		// Если смещение записано часами и минутами через двоеточие
 		if((hour.end > hour.begin) && (minutes.end > minutes.begin))
 			// Собираем смещение из разобранных часов и минут
-			return makeZoneOffset(
-				readNumber(text + hour.begin, static_cast <size_t> (hour.end - hour.begin)),
-				readNumber(text + minutes.begin, static_cast <size_t> (minutes.end - minutes.begin)),
+			return __awh_make_zone_offset__(
+				__awh_read_number__(text + hour.begin, static_cast <size_t> (hour.end - hour.begin)),
+				__awh_read_number__(text + minutes.begin, static_cast <size_t> (minutes.end - minutes.begin)),
 				negative
 			);
 		// Если смещение записано слитно
 		if(value.end > value.begin)
 			// Разбираем смещение из слитной записи
-			return makeZoneOffset(text + value.begin, static_cast <size_t> (value.end - value.begin), negative);
+			return __awh_make_zone_offset__(text + value.begin, static_cast <size_t> (value.end - value.begin), negative);
 		// За знаком смещения не оказалось значения
 		return 0;
 	}
@@ -2121,7 +2203,7 @@ namespace {
 	 * @param compact признак сокращённой записи без ведущего нуля часов и без нулевых минут
 	 *
 	 */
-	void appendZoneOffset(string & result, const int32_t offset, const char divider, const bool compact) noexcept {
+	static __AWH_INLINE__ void __awh_append_zone_offset__(string & result, const int32_t offset, const char divider, const bool compact) noexcept {
 		// Записываем знак смещения, считая нулевое смещение положительным
 		result.append(1, ((offset < 0) ? '-' : '+'));
 		// Получаем смещение по модулю, знак которого уже записан
@@ -2135,7 +2217,7 @@ namespace {
 			// Дополняем количество часов ведущим нулём
 			result.append(1, '0');
 		// Записываем количество часов смещения
-		result.append(std::to_string(hour));
+		result.append(::to_string(hour));
 		// Сокращённая запись нулевые минуты опускает вместе с разделителем
 		if(compact && (minutes == 0))
 			// Записывать больше нечего
@@ -2149,14 +2231,15 @@ namespace {
 			// Дополняем количество минут ведущим нулём
 			result.append(1, '0');
 		// Записываем количество минут смещения
-		result.append(std::to_string(minutes));
+		result.append(::to_string(minutes));
 	}
 };
 
 /**
- * @brief Смещение временной зоны окружения запоминается в памяти потока, общей для
+ * @brief Пространство имён смещения временной зоны окружения запоминается в памяти потока, общей для
  *        всех объектов модуля: величина эта принадлежит процессу, а не объекту, и память
  *        потока снимает состязание за неё без всякой блокировки
+ *
  */
 namespace ambient {
 	/**
@@ -2185,7 +2268,7 @@ namespace ambient {
 	 * @brief Блокировка обращения к часовой зоне процесса
 	 *
 	 * @details tzset перезаписывает глобальные переменные времени в libc и освобождает прежние
-	 *          строки зоны, а вызывается он из рабочих потоков упаковки и извлечения одновременно
+	 *          строки зоны, а вызывается он из рабочих потоков упаковки и извлечения одновременно.
 	 *
 	 */
 	static lock_state_t <std::mutex> mtx;
@@ -2205,7 +2288,7 @@ namespace ambient {
 	 *          нужное формированию. Запомненное годно в пределах текущей секунды и при
 	 *          неизменной переменной окружения TZ: правка переменной ловится её
 	 *          сличением и применяется немедленно, а смена зоны системы без неё - со
-	 *          следующей секундой
+	 *          следующей секундой.
 	 *
 	 */
 	typedef class Cache {
@@ -2249,10 +2332,10 @@ namespace ambient {
 	 * @details Проверка выполняется один раз на обращение к модулю, а не на каждый
 	 *          спрос смещения: разбору записи без зоны смещение нужно по нескольким
 	 *          мигам, и сличение переменной окружения с текущей секундой на каждом
-	 *          из них стоило больше самого поиска
+	 *          из них стоило больше самого поиска.
 	 *
 	 */
-	static void fresh() noexcept {
+	static __AWH_INLINE__ void fresh() noexcept {
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2311,7 +2394,7 @@ namespace ambient {
 	 * @return      смещение временной зоны окружения в секундах
 	 *
 	 */
-	static int32_t systemZone(const time_t stamp) noexcept {
+	static __AWH_INLINE__ int32_t systemZone(const time_t stamp) noexcept {
 		// Переменная результата
 		int32_t result = 0;
 		/**
@@ -2355,7 +2438,7 @@ namespace ambient {
 		 * @details Поля tm_gmtoff у разложенного времени там нет вовсе: оно
 		 *          заведено договорами BSD и GNU, а не общим. Взамен система
 		 *          несёт пару глобальных переменных - timezone со стандартным
-		 *          смещением зоны и altzone со смещением её летнего времени
+		 *          смещением зоны и altzone со смещением её летнего времени.
 		 *
 		 * @note Выбор между ними ведётся по признаку действия летнего времени у
 		 *       разложения самого мига, а не текущего
@@ -2411,7 +2494,7 @@ namespace ambient {
 	 * @return      смещение временной зоны окружения в секундах
 	 *
 	 */
-	static int32_t zone(const time_t stamp) noexcept {
+	static __AWH_INLINE__ int32_t zone(const time_t stamp) noexcept {
 		/**
 		 * Выполняем перебор запомненных смещений
 		 */
@@ -2473,10 +2556,12 @@ void awh::Chrono::clear() noexcept {
 			::tzset();
 		#endif
 		/**
-		 * Реестр временных зон здесь не затрагивается: пополняется он вызывающей
-		 * стороной и её же методом clearTimeZones очищается
+		 * @brief Выполняем сброс временной зоны, выставленной вызывающей стороной
+		 *
+		 * @details Реестр временных зон здесь не затрагивается: пополняется он вызывающей
+		 *          стороной и её же методом clearTimeZones очищается.
+		 *
 		 */
-		// Выполняем сброс временной зоны, выставленной вызывающей стороной
 		this->_zoneOffset = 0;
 		// Выполняем сброс обозначения временной зоны, выставленной вызывающей стороной
 		this->_zoneName = zone_t::NONE;
@@ -2505,13 +2590,13 @@ void awh::Chrono::clear() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2540,12 +2625,14 @@ uint16_t awh::Chrono::makeFullYear(const uint16_t value) const noexcept {
 		// Выводим обозначение года как есть
 		return value;
 	/**
-	 * Неподвижный рубеж между 68 и 69 годами задаёт стандарт POSIX для strptime:
-	 * разряды от 69 до 99 относятся к двадцатому веку, от 00 до 68 - к двадцать
-	 * первому. Рубеж этот от текущего года не зависит и потому единственный
-	 * выражает годы с 1970 по 1999, до которых скользящее окно не достаёт
+	 * @brief Если раскрытие ведётся по неподвижному рубежу
+	 *
+	 * @details Неподвижный рубеж между 68 и 69 годами задаёт стандарт POSIX для strptime:
+	 *          разряды от 69 до 99 относятся к двадцатому веку, от 00 до 68 - к двадцать
+	 *          первому. Рубеж этот от текущего года не зависит и потому единственный
+	 *          выражает годы с 1970 по 1999, до которых скользящее окно не достаёт.
+	 *
 	 */
-	// Если раскрытие ведётся по неподвижному рубежу
 	if(this->_century == century_t::POSIX)
 		// Выводим полное обозначение года по рубежу стандарта POSIX
 		return static_cast <uint16_t> ((value >= 69) ? (1900 + value) : (2000 + value));
@@ -2652,7 +2739,7 @@ void awh::Chrono::yearRollback(const uint32_t seconds) noexcept {
  * @brief Метод получения смещения временной зоны на указанный момент времени
  *
  * @details Сводные зоны Северной Америки обозначают то стандартное время, то летнее,
- *          и выбор между ними зависит от самого момента
+ *          и выбор между ними зависит от самого момента.
  *
  * @param zone временная зона
  * @param date штамп времени в миллисекундах
@@ -2743,7 +2830,7 @@ string awh::Chrono::format(const zone_t zone, const uint64_t date) const noexcep
  * @brief Метод определения летнего времени по местному времени зоны
  *
  * @details Правило перехода задано местным временем зоны, а не всемирным: переход
- *          происходит в 02:00 по её стандартному времени
+ *          происходит в 02:00 по её стандартному времени.
  *
  * @param date   штамп времени в миллисекундах
  * @param offset смещение стандартного времени зоны в секундах
@@ -2758,7 +2845,7 @@ bool awh::Chrono::isDST(const uint64_t date, const int32_t offset) const noexcep
 	// Переводим момент времени в стандартное время зоны
 	const uint64_t local = ((shift < 0)
 		? ((static_cast <uint64_t> (-shift) > date) ? 0 : (date - static_cast <uint64_t> (-shift)))
-		: ::clampDate(date + static_cast <uint64_t> (shift)));
+		: ::__awh_clamp_date__(date + static_cast <uint64_t> (shift)));
 	// Раскладываем момент времени в стандартном времени зоны
 	this->makeDate(local, dt);
 	// Выполняем определение летнего времени по местным полям
@@ -2768,7 +2855,7 @@ bool awh::Chrono::isDST(const uint64_t date, const int32_t offset) const noexcep
  * @brief Метод согласования полей объекта даты между собой
  *
  * @details Год, месяц и число месяца задают дату целиком, а номер дня в году, номер
- *          недели, день недели и признак летнего времени из них выводятся
+ *          недели, день недели и признак летнего времени из них выводятся.
  *
  * @param dt объект даты и времени для согласования
  *
@@ -2777,12 +2864,14 @@ void awh::Chrono::syncDate(dt_t & dt) const noexcept {
 	// Приводим число месяца к его настоящей длине
 	this->clampDay(dt);
 	/**
-	 * Согласование идёт пересборкой объекта из штампа времени, а не пересчётом каждого
-	 * выводного поля по отдельности: разложение штампа - единственное место, где эти
-	 * поля вычисляются, и повторять его правила вторым способом значит заводить второй
-	 * источник истины, который рано или поздно с первым разойдётся
+	 * @brief Переносим объект даты на собранный из него же момент времени
+	 *
+	 * @details Согласование идёт пересборкой объекта из штампа времени, а не пересчётом каждого
+	 *          выводного поля по отдельности: разложение штампа - единственное место, где эти
+	 *          поля вычисляются, и повторять его правила вторым способом значит заводить второй
+	 *          источник истины, который рано или поздно с первым разойдётся.
+	 *
 	 */
-	// Переносим объект даты на собранный из него же момент времени
 	this->moveDate(dt, this->makeStamp(dt));
 	// Разрешаем смещение сводной временной зоны по новой дате
 	this->resolveZone(dt);
@@ -2793,26 +2882,30 @@ void awh::Chrono::syncDate(dt_t & dt) const noexcept {
  * @details Смещение сводных зон Северной Америки зависит от момента времени, и потому
  *          пересчитывается всякий раз, когда меняется описываемая объектом дата.
  *          Местные поля записи при этом остаются прежними: они и задают местное время,
- *          а смещение из него выводится
+ *          а смещение из него выводится.
  *
  * @param dt объект даты и времени для разрешения
  *
  */
 void awh::Chrono::resolveZone(dt_t & dt) const noexcept {
 	/**
-	 * От самого момента зависит смещение одних лишь сводных зон Северной Америки:
-	 * прочие зоны перечисления несут смещение постоянное, и пересчитывать его незачем
+	 * @brief Если временная зона объекта является сводной
+	 *
+	 * @details От самого момента зависит смещение одних лишь сводных зон Северной Америки:
+	 *          прочие зоны перечисления несут смещение постоянное, и пересчитывать его незачем.
+	 *
 	 */
-	// Если временная зона объекта является сводной
-	if(::composite(dt.zone))
+	if(::__awh_composite__(dt.zone))
 		// Устанавливаем смещение временной зоны, разрешённое по моменту самой записи
 		dt.offset = this->getTimeZone(dt.zone, this->baseStamp(dt));
 	/**
-	 * Выводные признаки согласуются здесь же, а не одним лишь разложением штампа:
-	 * разрешение смещения полей объекта не трогает, а установка часа, минут либо
-	 * секунд разложения не вызывает вовсе, и признаки оставались от прежней даты
+	 * @brief Выполняем согласование выводных признаков объекта даты
+	 *
+	 * @details Выводные признаки согласуются здесь же, а не одним лишь разложением штампа:
+	 *          разрешение смещения полей объекта не трогает, а установка часа, минут либо
+	 *          секунд разложения не вызывает вовсе, и признаки оставались от прежней даты.
+	 *
 	 */
-	// Выполняем согласование выводных признаков объекта даты
 	this->syncFlags(dt);
 }
 /**
@@ -2820,7 +2913,7 @@ void awh::Chrono::resolveZone(dt_t & dt) const noexcept {
  *
  * @details Метка времени суток и признак летнего времени задающими полями не являются,
  *          а из них выводятся, и потому пересчитываются всякий раз, когда дата объекта
- *          меняется
+ *          меняется.
  *
  * @param dt объект даты и времени для согласования
  *
@@ -2833,16 +2926,18 @@ void awh::Chrono::syncFlags(dt_t & dt) const noexcept {
 	// Устанавливаем время после полудня
 	else dt.h12 = h12_t::PM;
 	/**
-	 * Правило перехода задано стандартным временем зоны, а поля объекта лежат в её
-	 * гражданском времени, и на летнем смещении они уходят от него на час: в ноябрьской
-	 * складке час 01:30 летнего времени давал признак стандартного, тогда как смещение
-	 * объекта было летним. У сводных зон признак берётся не из полей, а из самого
-	 * смещения - оно уже разрешено по моменту записи
+	 * @brief Если временная зона объекта является сводной
+	 *
+	 * @details Правило перехода задано стандартным временем зоны, а поля объекта лежат в её
+	 *          гражданском времени, и на летнем смещении они уходят от него на час: в ноябрьской
+	 *          складке час 01:30 летнего времени давал признак стандартного, тогда как смещение
+	 *          объекта было летним. У сводных зон признак берётся не из полей, а из самого
+	 *          смещения - оно уже разрешено по моменту записи.
+	 *
 	 */
-	// Если временная зона объекта является сводной
-	if(::composite(dt.zone))
+	if(::__awh_composite__(dt.zone))
 		// Устанавливаем флаг летнего времени (DST) по разрешённому смещению зоны
-		dt.dst = (dt.offset != this->getTimeZone(::standard(dt.zone)));
+		dt.dst = (dt.offset != this->getTimeZone(::__awh_standard__(dt.zone)));
 	// Устанавливаем флаг летнего времени (DST) по правилам США/Канады
 	else dt.dst = this->isDST(dt.month, dt.date, dt.day, dt.hour);
 }
@@ -2853,7 +2948,7 @@ void awh::Chrono::syncFlags(dt_t & dt) const noexcept {
  *          часа перехода местное время либо повторяется, либо не существует вовсе, и от
  *          текущего смещения ответ там зависел, отчего одна и та же запись разрешалась
  *          по-разному в зависимости от того, что лежало в объекте до вызова. Стандартное
- *          время от момента не зависит и даёт ответ один и тот же всегда
+ *          время от момента не зависит и даёт ответ один и тот же всегда.
  *
  * @param dt объект даты и времени
  * @return   штамп времени в миллисекундах
@@ -2861,13 +2956,13 @@ void awh::Chrono::syncFlags(dt_t & dt) const noexcept {
  */
 uint64_t awh::Chrono::baseStamp(const dt_t & dt) const noexcept {
 	// Если временная зона объекта сводной не является
-	if(!::composite(dt.zone))
+	if(!::__awh_composite__(dt.zone))
 		// Собираем штамп времени как есть
 		return this->makeStamp(dt);
 	// Выполняем копирование объекта даты
 	dt_t base = dt;
 	// Устанавливаем смещение стандартного времени зоны
-	base.offset = this->getTimeZone(::standard(dt.zone));
+	base.offset = this->getTimeZone(::__awh_standard__(dt.zone));
 	// Собираем штамп времени в стандартном времени зоны
 	return this->makeStamp(base);
 }
@@ -2875,7 +2970,7 @@ uint64_t awh::Chrono::baseStamp(const dt_t & dt) const noexcept {
  * @brief Метод переноса объекта даты на указанный момент времени
  *
  * @details Поля объекта лежат в его временной зоне, а штамп времени - в нулевой,
- *          поэтому перенос идёт через неё
+ *          поэтому перенос идёт через неё.
  *
  * @param dt   объект даты и времени для переноса
  * @param date штамп времени в миллисекундах, на который переносится объект
@@ -2895,7 +2990,7 @@ void awh::Chrono::moveDate(dt_t & dt, const uint64_t date) const noexcept {
  * @brief Метод приведения числа месяца к его настоящей длине
  *
  * @details Длина месяца зависит и от самого месяца, и от високосности года, поэтому
- *          число приводится к ней всякий раз, когда меняется месяц либо год
+ *          число приводится к ней всякий раз, когда меняется месяц либо год.
  *
  * @param dt объект даты и времени для приведения
  *
@@ -2904,7 +2999,7 @@ void awh::Chrono::clampDay(dt_t & dt) const noexcept {
 	// Если месяц объекта задан
 	if((dt.month > 0) && (dt.month < 13)){
 		// Получаем количество дней в месяце с учётом високосного года
-		const uint8_t days = ::daysOfMonth(dt.month, this->leap(dt.year));
+		const uint8_t days = ::__awh_days_of_month__(dt.month, this->leap(dt.year));
 		// Если число месяца в нём отсутствует
 		if(dt.date > days)
 			// Ограничиваем число последним днём месяца
@@ -3015,12 +3110,14 @@ bool awh::Chrono::isDST(const uint8_t month, const uint8_t date, const uint8_t d
 		// Летнее время действует до дня перехода
 		return (date < firstSunday);
 	/**
-	 * Осенний переход назначен на 02:00 летнего времени, тогда как весенний - на
-	 * 02:00 стандартного, а поля метод принимает в стандартном времени зоны: 02:00
-	 * летнего времени и есть 01:00 стандартного. Прежде оба перехода считались по
-	 * одному порогу, отчего осенний приходился на час позже положенного
+	 * @brief В день перехода летнее время действует до 02:00 летнего времени
+	 *
+	 * @details Осенний переход назначен на 02:00 летнего времени, тогда как весенний - на
+	 *          02:00 стандартного, а поля метод принимает в стандартном времени зоны: 02:00
+	 *          летнего времени и есть 01:00 стандартного. Прежде оба перехода считались по
+	 *          одному порогу, отчего осенний приходился на час позже положенного.
+	 *
 	 */
-	// В день перехода летнее время действует до 02:00 летнего времени
 	return (hour < 1);
 }
 /**
@@ -3038,17 +3135,16 @@ uint64_t awh::Chrono::makeStamp(const dt_t & dt) const noexcept {
 	// Выполняем копирование объекта даты
 	dt_t result = dt;
 	/**
-	 * Сборка штампа времени смещение временной зоны вычитает, приводя запись к UTC,
-	 * и принимает его потому с обратным знаком
-	 */
-	/**
 	 * Смещение приводится к земным пределам здесь, а не при разборе поля: запись
 	 * способна нести смещение, которого на Земле нет, и разбор применял его как
 	 * есть, унося момент записи на сутки. Приведение при разборе поля отняло бы у
 	 * проверки записи возможность такое смещение отвергнуть - она судит по полям
 	 */
-	result.offset = -::clampZone(dt.offset);
-	// Собираем штамп времени из объекта даты
+	result.offset = -::__awh_clamp_zone__(dt.offset);
+	/**
+	 * Сборка штампа времени смещение временной зоны вычитает, приводя запись к UTC,
+	 * и принимает его потому с обратным знаком
+	 */
 	return this->makeDate(result);
 }
 /**
@@ -3060,10 +3156,12 @@ uint64_t awh::Chrono::makeStamp(const dt_t & dt) const noexcept {
  */
 void awh::Chrono::shiftDate(dt_t & dt, const int32_t zone) const noexcept {
 	/**
-	 * Момент времени берётся у самого объекта: перекладка меняет зону записи, а не
-	 * её момент, и сборка штампа здесь - единственный способ его узнать
+	 * @brief Заполняем объект даты полями указанной временной зоны
+	 *
+	 * @details Момент времени берётся у самого объекта: перекладка меняет зону записи, а не
+	 *          её момент, и сборка штампа здесь - единственный способ его узнать.
+	 *
 	 */
-	// Заполняем объект даты полями указанной временной зоны
 	this->makeDate(this->makeStamp(dt), zone, dt);
 }
 /**
@@ -3072,7 +3170,7 @@ void awh::Chrono::shiftDate(dt_t & dt, const int32_t zone) const noexcept {
  * @details Раскладка момента времени сразу в нужной зоне: связка из раскладки в
  *          нулевой зоне и последующей перекладки собирала штамп обратно из полей,
  *          чтобы тут же разложить его во второй раз, и на каждую запись даты
- *          приходилось два разложения и одна сборка вместо одного разложения
+ *          приходилось два разложения и одна сборка вместо одного разложения.
  *
  * @param date дата в UnixTimestamp
  * @param zone смещение временной зоны в секундах
@@ -3081,7 +3179,7 @@ void awh::Chrono::shiftDate(dt_t & dt, const int32_t zone) const noexcept {
  */
 void awh::Chrono::makeDate(const uint64_t date, const int32_t zone, dt_t & dt) const noexcept {
 	// Получаем смещение временной зоны, приведённое к земным пределам
-	const int32_t value = ::clampZone(zone);
+	const int32_t value = ::__awh_clamp_zone__(zone);
 	// Получаем смещение временной зоны в миллисекундах
 	const int64_t offset = (static_cast <int64_t> (value) * 1000);
 	// Момент времени, записанный в указанной временной зоне
@@ -3094,17 +3192,21 @@ void awh::Chrono::makeDate(const uint64_t date, const int32_t zone, dt_t & dt) c
 		 */
 		result = ((static_cast <uint64_t> (-offset) > date) ? 0 : (date - static_cast <uint64_t> (-offset)));
 	/**
-	 * Конец эпохи - такой же предел представимости, как и её начало, и перекладка
-	 * насыщается им наравне с ним: прежде сложение у самого края разрядности
-	 * переполнялось и уводило запись в начало эпохи
+	 * @brief Если временная зона опережает нулевую
+	 *
+	 * @details Конец эпохи - такой же предел представимости, как и её начало, и перекладка
+	 *          насыщается им наравне с ним: прежде сложение у самого края разрядности
+	 *          переполнялось и уводило запись в начало эпохи.
+	 *
 	 */
-	// Если временная зона опережает нулевую
-	else result = ::clampDate(date + static_cast <uint64_t> (offset));
+	else result = ::__awh_clamp_date__(date + static_cast <uint64_t> (offset));
 	/**
-	 * Смещение выставляется до разложения, а не после: признак летнего времени сводной
-	 * зоны выводится из самого смещения, и разложение видело прежнее его значение
+	 * @brief Устанавливаем смещение указанной временной зоны, приведённое к земным пределам
+	 *
+	 * @details Смещение выставляется до разложения, а не после: признак летнего времени сводной
+	 *          зоны выводится из самого смещения, и разложение видело прежнее его значение.
+	 *
 	 */
-	// Устанавливаем смещение указанной временной зоны, приведённое к земным пределам
 	dt.offset = value;
 	// Заполняем объект даты полями указанной временной зоны
 	this->makeDate(result, dt);
@@ -3137,12 +3239,14 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		// Определяем количество прошедших високосных лет
 		const uint16_t leapCount = (lastYears > 0 ? this->leapYears(lastYears) : 0);
 		/**
-		 * Високосность считается от самого года, а не берётся из поля объекта: поле
-		 * выводное, и сборка штампа времени - единственное место, где расхождение его с
-		 * годом сдвинуло бы дату на сутки. Опираться здесь на выводное поле значит
-		 * зависеть от того, обновил ли его тот, кто год менял
+		 * @brief Определяем високосность года записи
+		 *
+		 * @details Високосность считается от самого года, а не берётся из поля объекта: поле
+		 *          выводное, и сборка штампа времени - единственное место, где расхождение его с
+		 *          годом сдвинуло бы дату на сутки. Опираться здесь на выводное поле значит
+		 *          зависеть от того, обновил ли его тот, кто год менял.
+		 *
 		 */
-		// Определяем високосность года записи
 		const bool leap = this->leap(dt.year);
 		// Получаем штамп времени начала года
 		result = (
@@ -3150,13 +3254,14 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 			(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 		);
 		/**
-		 * Выполняем подсчёт количества дней
+		 * @brief Выполняем подсчёт количества дней
 		 *
-		 * Нулевой месяц суток за собой не оставляет, а месяц за пределами года
-		 * отвечает его концу: раскладка обязана вывести штамп времени при любой
-		 * записи, а пригодность самой записи отвергает отдельная проверка validate
+		 * @details Нулевой месяц суток за собой не оставляет, а месяц за пределами года
+		 *          отвечает его концу: раскладка обязана вывести штамп времени при любой
+		 *          записи, а пригодность самой записи отвергает отдельная проверка validate.
+		 *
 		 */
-		result += (static_cast <uint64_t> (::daysBeforeMonth(dt.month, leap)) * static_cast <uint64_t> (86400000));
+		result += (static_cast <uint64_t> (::__awh_days_before_month__(dt.month, leap)) * static_cast <uint64_t> (86400000));
 		// Получаем число месяца с компенсацией нулевого значения
 		const uint8_t date = (dt.date == 0 ? 1 : dt.date);
 		// Увеличиваем на количество прошедших дней
@@ -3190,7 +3295,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 * обратное разложение, - иначе разбор выдавал бы штамп, который формирование
 		 * записи прочитать обратно уже не могло
 		 */
-		result = ::clampDate(result);
+		result = ::__awh_clamp_date__(result);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3200,13 +3305,13 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
@@ -3223,7 +3328,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
  *          либо наносекундах выставляют доли до вызова метода и рассчитывают на
  *          то, что разложение календаря их сохранит. Сброс долей внутри метода
  *          обесценил бы обе установки, поэтому за их чистоту отвечает вызывающий:
- *          установка штампа в единицах крупнее микросекунды доли обнуляет сама
+ *          установка штампа в единицах крупнее микросекунды доли обнуляет сама.
  *
  * @param date дата из которой необходимо заполнить объект
  * @param dt   объект даты который необходимо заполнить
@@ -3234,7 +3339,7 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 	 * Штамп времени за пределом представимости приводится к последнему представимому:
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
-	const uint64_t date = ::clampDate(stamp);
+	const uint64_t date = ::__awh_clamp_date__(stamp);
 	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
 	{
 		/**
@@ -3244,11 +3349,13 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			// Штамп времени начала года
 			uint64_t beginYear = 0;
 			/**
-			 * Начало года берётся у извлечения года, а не считается вторым проходом:
-			 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-			 * подсчётом високосных лет на каждое разложение штампа времени
+			 * @brief Выполняем установку текущее значение года вместе с его началом
+			 *
+			 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+			 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+			 *          подсчётом високосных лет на каждое разложение штампа времени.
+			 *
 			 */
-			// Выполняем установку текущее значение года вместе с его началом
 			dt.year = this->year(date, beginYear);
 			// Устанавливаем флаг високосного года
 			dt.leap = this->leap(dt.year);
@@ -3258,9 +3365,9 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			dt.days = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
 			{
 				// Определяем месяц, на который приходится прошедший день года
-				dt.month = ::monthOfYear(dt.days, dt.leap);
+				dt.month = ::__awh_month_of_year__(dt.days, dt.leap);
 				// Подсчитываем количество суток, прошедших в предыдущих месяцах
-				const uint16_t count = ::daysBeforeMonth(dt.month, dt.leap);
+				const uint16_t count = ::__awh_days_before_month__(dt.month, dt.leap);
 				// Устанавливаем текущее значение даты
 				dt.date = static_cast <uint8_t> ((dt.days - count) + 1);
 				// Получаем начало месяца указанной даты
@@ -3268,14 +3375,16 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 				// Получаем начало суток указанной даты
 				beginDay = (beginMonth + (static_cast <uint64_t> (dt.date - 1) * static_cast <uint64_t> (86400000)));
 				// Устанавливаем день недели
-				dt.day = ::dayOfWeek(beginDay);
+				dt.day = ::__awh_day_of_week__(beginDay);
 				/**
-				 * Номер недели округляется к ближайшей, но целочисленно: прибавление
-				 * половины недели с последующим делением нацело даёт то же самое, что
-				 * округление вещественного частного, и не зависит от разрядности
-				 * вещественного типа целевой платформы
+				 * @brief Получаем количество недель прошедших с начала года
+				 *
+				 * @details Номер недели округляется к ближайшей, но целочисленно: прибавление
+				 *          половины недели с последующим делением нацело даёт то же самое, что
+				 *          округление вещественного частного, и не зависит от разрядности
+				 *          вещественного типа целевой платформы.
+				 *
 				 */
-				// Получаем количество недель прошедших с начала года
 				dt.weeks = static_cast <uint8_t> (((date - beginYear) + static_cast <uint64_t> (302400000)) / static_cast <uint64_t> (604800000));
 			}
 			// Получаем количество миллисекунд
@@ -3297,13 +3406,13 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3394,41 +3503,41 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 		 */
 		switch(static_cast <uint8_t> (rule)){
 			// Если формат соответствует %u (\d{1})
-			case static_cast <uint8_t> (format_t::u): match = ::parseDigits(src, len, 1, 1); break;
+			case static_cast <uint8_t> (format_t::u): match = ::__awh_parse_digits__(src, len, 1, 1); break;
 			// Если формат соответствует %s (\d+)
-			case static_cast <uint8_t> (format_t::s): match = ::parseDigits(src, len, 1, static_cast <size_t> (-1)); break;
+			case static_cast <uint8_t> (format_t::s): match = ::__awh_parse_digits__(src, len, 1, static_cast <size_t> (-1)); break;
 			// Если формат соответствует %j (\d{3})
-			case static_cast <uint8_t> (format_t::j): match = ::parseDigits(src, len, 3, 3); break;
+			case static_cast <uint8_t> (format_t::j): match = ::__awh_parse_digits__(src, len, 3, 3); break;
 			// Если формат соответствует %Y (\d{4})
-			case static_cast <uint8_t> (format_t::Y): match = ::parseDigits(src, len, 4, 4); break;
+			case static_cast <uint8_t> (format_t::Y): match = ::__awh_parse_digits__(src, len, 4, 4); break;
 			// Если формат соответствует %y (\d{1,2})
-			case static_cast <uint8_t> (format_t::y): match = ::parseDigits(src, len, 1, 2); break;
+			case static_cast <uint8_t> (format_t::y): match = ::__awh_parse_digits__(src, len, 1, 2); break;
 			// Если формат соответствует %G (\d{1,4})
-			case static_cast <uint8_t> (format_t::G): match = ::parseDigits(src, len, 1, 4); break;
+			case static_cast <uint8_t> (format_t::G): match = ::__awh_parse_digits__(src, len, 1, 4); break;
 			// Если формат соответствует %V (\d{1,2})
-			case static_cast <uint8_t> (format_t::V): match = ::parseDigits(src, len, 1, 2); break;
+			case static_cast <uint8_t> (format_t::V): match = ::__awh_parse_digits__(src, len, 1, 2); break;
 			// Если формат соответствует %p ([A-Za-z]{2})
-			case static_cast <uint8_t> (format_t::p): match = ::parseAlpha2(src, len); break;
+			case static_cast <uint8_t> (format_t::p): match = ::__awh_parse_alpha2__(src, len); break;
 			// Если формат соответствует %a ([A-Z][a-z]{2})
-			case static_cast <uint8_t> (format_t::a): match = ::parseName(src, len, 2, 2, ((fmt == format_t::b) ? &params.nameMonths : &params.nameDays)); break;
+			case static_cast <uint8_t> (format_t::a): match = ::__awh_parse_name__(src, len, 2, 2, ((fmt == format_t::b) ? &params.nameMonths : &params.nameDays)); break;
 			// Если формат соответствует %A ([A-Z][a-z]{2,})
-			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1), ((fmt == format_t::B) ? &params.nameMonths : &params.nameDays)); break;
+			case static_cast <uint8_t> (format_t::A): match = ::__awh_parse_name__(src, len, 2, static_cast <size_t> (-1), ((fmt == format_t::B) ? &params.nameMonths : &params.nameDays)); break;
 			// Если формат соответствует %Z ((\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))?)
-			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len, true); break;
+			case static_cast <uint8_t> (format_t::Z): match = ::__awh_parse_zone_full__(src, len, true); break;
 			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
-			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', DIGITS_HM, 2); break;
+			case static_cast <uint8_t> (format_t::R): match = ::__awh_parse_digit_groups__(src, len, ':', DIGITS_HM, 2); break;
 			// Если формат соответствует %T ((\d{1,2}):(\d{1,2}):(\d{1,2}))
-			case static_cast <uint8_t> (format_t::T): match = ::parseDigitGroups(src, len, ':', DIGITS_HMS, 3); break;
+			case static_cast <uint8_t> (format_t::T): match = ::__awh_parse_digit_groups__(src, len, ':', DIGITS_HMS, 3); break;
 			// Если формат соответствует %D ((\d{1,2})/(\d{1,2})/(\d{2}))
-			case static_cast <uint8_t> (format_t::D): match = ::parseDigitGroups(src, len, '/', DIGITS_MDY, 3); break;
+			case static_cast <uint8_t> (format_t::D): match = ::__awh_parse_digit_groups__(src, len, '/', DIGITS_MDY, 3); break;
 			// Если формат соответствует %F ((\d{4})-(\d{1,2})-(\d{1,2}))
-			case static_cast <uint8_t> (format_t::F): match = ::parseDigitGroups(src, len, '-', DIGITS_YMD, 3); break;
+			case static_cast <uint8_t> (format_t::F): match = ::__awh_parse_digit_groups__(src, len, '-', DIGITS_YMD, 3); break;
 			// Если формат соответствует %r ((\d{1,2}):(\d{1,2}):(\d{1,2})\s+([A-Za-z]{2}))
-			case static_cast <uint8_t> (format_t::r): match = ::parseTimeMeridiem(src, len); break;
+			case static_cast <uint8_t> (format_t::r): match = ::__awh_parse_time_meridiem__(src, len); break;
 			// Если формат соответствует %c (asctime)
-			case static_cast <uint8_t> (format_t::c): match = ::parseAsctime(src, len); break;
+			case static_cast <uint8_t> (format_t::c): match = ::__awh_parse_asctime__(src, len); break;
 			// Если формат соответствует %z ((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))
-			case static_cast <uint8_t> (format_t::z): match = ::parseZoneOffset(src, len); break;
+			case static_cast <uint8_t> (format_t::z): match = ::__awh_parse_zone_offset__(src, len); break;
 		}
 		// Если совпадение получено
 		if(!match.empty()){
@@ -3477,22 +3586,24 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
 										// Получаем номер дня недели, записью заданный
-										const uint8_t day = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										const uint8_t day = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 										/**
-										 * Переменная %w счёт ведёт от нуля до шести, воскресенье обозначая
-										 * нулём: седьмой день недели ей не принадлежит, и запись «7»
-										 * прежде читалась воскресеньем наравне с нулём - после перевода
-										 * нуля в семёрку сырое значение от переведённого отличить было
-										 * нельзя. Значение вне промежутка поле обнуляет, и проверка записи
-										 * такую отвергает
+										 * @brief Устанавливаем номер дня недели
+										 *
+										 * @details Переменная %w счёт ведёт от нуля до шести, воскресенье обозначая
+										 *          нулём: седьмой день недели ей не принадлежит, и запись «7»
+										 *          прежде читалась воскресеньем наравне с нулём - после перевода
+										 *          нуля в семёрку сырое значение от переведённого отличить было
+										 *          нельзя. Значение вне промежутка поле обнуляет, и проверка записи
+										 *          такую отвергает.
+										 *
 										 */
-										// Устанавливаем номер дня недели
 										dt.day = ((day < 7) ? ((day == 0) ? 7 : day) : 0);
 									} break;
 									// Если мы определяем номер недели в году %W
 									case static_cast <uint8_t> (format_t::W):
 										// Устанавливаем количество недель прошедших с начала года
-										dt.weeks = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.weeks = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если мы определяем год недельного счёта %G либо номер недели %V
 									case static_cast <uint8_t> (format_t::G):
@@ -3508,38 +3619,42 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем порядковый номер дня в году %j
 									case static_cast <uint8_t> (format_t::j): {
 										// Получаем порядковый номер дня в году
-										const uint16_t number = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										const uint16_t number = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 										/**
-										 * Номер дня в году отсчитывается от единицы, а поле - от нуля,
-										 * и вычитание единицы из нуля обращало беззнаковое поле в 65535:
-										 * запись «000» опиралась на оборот разрядности, а не на замысел.
-										 * Значение вне промежутка поле выносит за длину года, и проверка
-										 * записи такую отвергает, тогда как мягкий разбор приводит её
-										 * к последнему дню декабря наравне с прочими переполнениями
+										 * @brief Устанавливаем порядковый номер дня в году
+										 *
+										 * @details Номер дня в году отсчитывается от единицы, а поле - от нуля,
+										 *          и вычитание единицы из нуля обращало беззнаковое поле в 65535:
+										 *          запись «000» опиралась на оборот разрядности, а не на замысел.
+										 *          Значение вне промежутка поле выносит за длину года, и проверка
+										 *          записи такую отвергает, тогда как мягкий разбор приводит её
+										 *          к последнему дню декабря наравне с прочими переполнениями.
+										 *
 										 */
-										// Устанавливаем порядковый номер дня в году
 										dt.days = ((number > 0) ? (number - 1) : static_cast <uint16_t> (366));
 									} break;
 									// Если мы определяем номер дня недели %u
 									case static_cast <uint8_t> (format_t::u):
 										// Устанавливаем номер дня недели
-										dt.day = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.day = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %C
 									case static_cast <uint8_t> (format_t::C):
 										/**
-										 * Поле года принимает сам номер века, а не год: век
-										 * складывается с двузначным обозначением года уже в
-										 * разборе, поскольку порядок этих двух переменных в
-										 * записи произволен и век может встретиться первым
+										 * @brief Устанавливаем номер века
+										 *
+										 * @details Поле года принимает сам номер века, а не год: век
+										 *          складывается с двузначным обозначением года уже в
+										 *          разборе, поскольку порядок этих двух переменных в
+										 *          записи произволен и век может встретиться первым.
+										 *
 										 */
-										// Устанавливаем номер века
-										dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										dt.year = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
-										const uint16_t num = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										const uint16_t num = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 										// Устанавливаем год, раскрыв двузначное обозначение в полное
 										dt.year = this->makeFullYear(num);
 										// Устанавливаем флаг високосного года
@@ -3548,44 +3663,44 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
-										dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										dt.year = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
 										// Устанавливаем число месяца
-										dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.date = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %m
 									case static_cast <uint8_t> (format_t::m):
 										// Получаем значение номера месяца
-										dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.month = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %I
 									case static_cast <uint8_t> (format_t::I):
 										// Устанавливаем полученный час времени
-										dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %H
 									case static_cast <uint8_t> (format_t::H):
 										// Устанавливаем полученный час времени
-										dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %M
 									case static_cast <uint8_t> (format_t::M):
 										// Устанавливаем значение указанного количества минут
-										dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.minutes = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
 										// Устанавливаем количество миллисекунд
-										dt.milliseconds = ::readFraction(text.data() + pos + match[j].begin, static_cast <size_t> (match[j].end - match[j].begin));
+										dt.milliseconds = ::__awh_read_fraction__(text.data() + pos + match[j].begin, static_cast <size_t> (match[j].end - match[j].begin));
 									break;
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
-										dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.seconds = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
@@ -3596,16 +3711,18 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											/**
-											 * Сверяются обе формы названия, краткая и полная: стандарт
-											 * POSIX объявляет переменные формата %a и %A, равно как %b,
-											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
-											 * свою форму. Сверка захвата со словарём при этом принимала
-											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
-											 * разбор проходила, но месяц оставался неустановленным
-											 */
-											// Если мы нашли нужное нам название
-											if(awh::fmk::compare(day, params.nameDays[i].first) ||
-											   awh::fmk::compare(day, params.nameDays[i].second)){
+											 * @brief Если мы нашли нужное нам название
+											 *
+											 * @details Сверяются обе формы названия, краткая и полная: стандарт
+											 *          POSIX объявляет переменные формата %a и %A, равно как %b,
+											 *          %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 *          свою форму. Сверка захвата со словарём при этом принимала
+											 *          обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 *          разбор проходила, но месяц оставался неустановленным.
+											 *
+											 */ 
+											if(fmk::compare(day, params.nameDays[i].first) ||
+											   fmk::compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3622,16 +3739,18 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											/**
-											 * Сверяются обе формы названия, краткая и полная: стандарт
-											 * POSIX объявляет переменные формата %a и %A, равно как %b,
-											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
-											 * свою форму. Сверка захвата со словарём при этом принимала
-											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
-											 * разбор проходила, но месяц оставался неустановленным
-											 */
-											// Если мы нашли нужное нам название
-											if(awh::fmk::compare(day, params.nameDays[i].first) ||
-											   awh::fmk::compare(day, params.nameDays[i].second)){
+											 * @brief Если мы нашли нужное нам название
+											 *
+											 * @details Сверяются обе формы названия, краткая и полная: стандарт
+											 *          POSIX объявляет переменные формата %a и %A, равно как %b,
+											 *          %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 *          свою форму. Сверка захвата со словарём при этом принимала
+											 *          обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 *          разбор проходила, но месяц оставался неустановленным.
+											 *
+											 */ 
+											if(fmk::compare(day, params.nameDays[i].first) ||
+											   fmk::compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3648,16 +3767,18 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											/**
-											 * Сверяются обе формы названия, краткая и полная: стандарт
-											 * POSIX объявляет переменные формата %a и %A, равно как %b,
-											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
-											 * свою форму. Сверка захвата со словарём при этом принимала
-											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
-											 * разбор проходила, но месяц оставался неустановленным
-											 */
-											// Если мы нашли нужное нам название
-											if(awh::fmk::compare(month, params.nameMonths[i].first) ||
-											   awh::fmk::compare(month, params.nameMonths[i].second)){
+											 * @brief Если мы нашли нужное нам название
+											 *
+											 * @details Сверяются обе формы названия, краткая и полная: стандарт
+											 *          POSIX объявляет переменные формата %a и %A, равно как %b,
+											 *          %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 *          свою форму. Сверка захвата со словарём при этом принимала
+											 *          обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 *          разбор проходила, но месяц оставался неустановленным.
+											 *
+											 */ 
+											if(fmk::compare(month, params.nameMonths[i].first) ||
+											   fmk::compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3674,16 +3795,18 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											/**
-											 * Сверяются обе формы названия, краткая и полная: стандарт
-											 * POSIX объявляет переменные формата %a и %A, равно как %b,
-											 * %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
-											 * свою форму. Сверка захвата со словарём при этом принимала
-											 * обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
-											 * разбор проходила, но месяц оставался неустановленным
+											 * @brief Если мы нашли нужное нам название
+											 *
+											 * @details Сверяются обе формы названия, краткая и полная: стандарт
+											 *          POSIX объявляет переменные формата %a и %A, равно как %b,
+											 *          %h и %B, взаимозаменяемыми, а прежде каждая принимала лишь
+											 *          свою форму. Сверка захвата со словарём при этом принимала
+											 *          обе, отчего запись "06 Apr 2025" по формату "%d %B %Y"
+											 *          разбор проходила, но месяц оставался неустановленным.
+											 *
 											 */
-											// Если мы нашли нужное нам название
-											if(awh::fmk::compare(month, params.nameMonths[i].first) ||
-											   awh::fmk::compare(month, params.nameMonths[i].second)){
+											if(fmk::compare(month, params.nameMonths[i].first) ||
+											   fmk::compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3701,7 +3824,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Приведение к суточному счёту выполняется после разбора
 										 * всей записи целиком
 										 */
-										dt.h12 = (awh::fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
+										dt.h12 = (fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
 									} break;
 								}
 							}
@@ -3710,14 +3833,16 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					// Если формат получен как %Z
 					case static_cast <uint8_t> (format_t::Z): {
 						/**
-						 * Название зоны отыскивается в записи до тех пор, пока не опознается:
-						 * словесным разбор считает и цифры, и всякое слово на месте зоны прежде
-						 * принималось за неё саму, а неопознанное давало нулевое смещение. Запись
-						 * «23:30:15.734 YEKT» оттого читалась временем по Гринвичу - долю секунды
-						 * разбор принимал за зону, само её обозначение не видел вовсе, и метка
-						 * молча уезжала на пять часов
+						 * @brief Смещение поиска зоны в хвосте записи
+						 *
+						 * @details Название зоны отыскивается в записи до тех пор, пока не опознается:
+						 *          словесным разбор считает и цифры, и всякое слово на месте зоны прежде
+						 *          принималось за неё саму, а неопознанное давало нулевое смещение. Запись
+						 *          «23:30:15.734 YEKT» оттого читалась временем по Гринвичу - долю секунды
+						 *          разбор принимал за зону, само её обозначение не видел вовсе, и метка
+						 *          молча уезжала на пять часов.
+						 *
 						 */
-						// Смещение поиска зоны в хвосте записи
 						size_t shift = 0;
 						// Группы очередного совпадения
 						matches_t item = match;
@@ -3740,13 +3865,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если временная зона опознана таблицей модуля
 								if(zone != zone_t::NONE){
 									/**
-									 * Сводной зоне выставляется её стандартное смещение, а не разрешённое
-									 * по текущему мгновению: разрешение по самой записи идёт в конце разбора,
-									 * когда её поля собраны целиком, и обращение к часам здесь давало лишь
-									 * ответ, который тут же переписывался
+									 * @brief Получаем смещение найденной временной зоны
+									 *
+									 * @details Сводной зоне выставляется её стандартное смещение, а не разрешённое
+									 *          по текущему мгновению: разрешение по самой записи идёт в конце разбора,
+									 *          когда её поля собраны целиком, и обращение к часам здесь давало лишь
+									 *          ответ, который тут же переписывался.
+									 *
 									 */
-									// Получаем смещение найденной временной зоны
-									offset = this->getTimeZone(::composite(zone) ? ::standard(zone) : zone);
+									offset = this->getTimeZone(::__awh_composite__(zone) ? ::__awh_standard__(zone) : zone);
 									// Обозначение зоны опознано
 									found = true;
 								/**
@@ -3756,7 +3883,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								 */
 								} else {
 									// Выполняем поиск названия в реестре своих обозначений
-									auto i = this->_timeZones.find(::lowerZone(name.data(), name.length()));
+									auto i = this->_timeZones.find(::__awh_lower_zone__(name.data(), name.length()));
 									// Если название найдено в реестре своих обозначений
 									if(i != this->_timeZones.end()){
 										// Получаем смещение своей временной зоны
@@ -3767,12 +3894,14 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								}
 							}
 							/**
-							 * Накладываем смещение, записанное следом за названием зоны: сам
-							 * модуль печатает переменную %Z именно так (UTC+5:30, MSK+1), и
-							 * без этого шага собственная его запись читалась бы обратно как UTC
+							 * @brief Получаем смещение, записанное следом за названием зоны
+							 *
+							 * @details Накладываем смещение, записанное следом за названием зоны: сам
+							 *          модуль печатает переменную %Z именно так (UTC+5:30, MSK+1), и
+							 *          без этого шага собственная его запись читалась бы обратно как UTC.
+							 *
 							 */
-							// Получаем смещение, записанное следом за названием зоны
-							const int32_t tail = ::readZoneOffset(text.data() + pos + shift, item[3], item[4], item[5], item[6]);
+							const int32_t tail = ::__awh_read_zone_offset__(text.data() + pos + shift, item[3], item[4], item[5], item[6]);
 							// Записанное смещение задаёт зону и само по себе, без её названия
 							if(item[3].end > item[3].begin)
 								// Обозначение зоны опознано
@@ -3795,7 +3924,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Выходим из поиска обозначения зоны
 								break;
 							// Выполняем разбор хвоста записи, оставшегося за неопознанным словом
-							item = ::parseZoneFull(text.data() + pos + shift, text.size() - (pos + shift), true);
+							item = ::__awh_parse_zone_full__(text.data() + pos + shift, text.size() - (pos + shift), true);
 						}
 					} break;
 					// Если формат получен как %z
@@ -3809,7 +3938,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 							// Получаем смещение в тексте
 							result = static_cast <ssize_t> (pos + match[0].end);
 						// Накладываем разобранное смещение временной зоны
-						dt.offset += ::readZoneOffset(text.data() + pos, match[1], match[5], match[3], match[4]);
+						dt.offset += ::__awh_read_zone_offset__(text.data() + pos, match[1], match[5], match[3], match[4]);
 					} break;
 					// Если формат получен как %R
 					case static_cast <uint8_t> (format_t::R): {
@@ -3826,11 +3955,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3849,15 +3978,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили номер месяца
 								else if(j == 1)
 									// Устанавливаем полученный номер месяца
-									dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.month = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 2)
 									// Устанавливаем число месяца
-									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 3) {
 									// Получаем значение указанного года
-									const uint16_t num = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									const uint16_t num = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									// Устанавливаем год, раскрыв двузначное обозначение в полное
 									dt.year = this->makeFullYear(num);
 									// Устанавливаем флаг високосного года
@@ -3881,17 +4010,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили год
 								else if(j == 1) {
 									// Устанавливаем год
-									dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									dt.year = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
-									dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.month = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3910,15 +4039,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3937,21 +4066,21 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили метку времени
 								else if(j == 4) {
 									// Получаем название времени суток
 									const string name(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 									// Определяем 12-и часовой формат времени
-									dt.h12 = (awh::fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
+									dt.h12 = (fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
 									// Если мы получили вечернее время
 									if((dt.h12 == h12_t::PM) && (dt.hour < 12))
 										// Увеличиваем полученный час времени
@@ -3985,8 +4114,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 */
 									for(size_t i = 0; i < params.nameDays.size(); i++){
 										// Если мы нашли нужное нам название
-										if(awh::fmk::compare(day, params.nameDays[i].first) ||
-										   awh::fmk::compare(day, params.nameDays[i].second)){
+										if(fmk::compare(day, params.nameDays[i].first) ||
+										   fmk::compare(day, params.nameDays[i].second)){
 											// Устанавливаем день недели
 											dt.day = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -4002,8 +4131,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 */
 									for(size_t i = 0; i < params.nameMonths.size(); i++){
 										// Если мы нашли нужное нам название
-										if(awh::fmk::compare(month, params.nameMonths[i].first) ||
-										   awh::fmk::compare(month, params.nameMonths[i].second)){
+										if(fmk::compare(month, params.nameMonths[i].first) ||
+										   fmk::compare(month, params.nameMonths[i].second)){
 											// Устанавливаем месяц
 											dt.month = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -4013,23 +4142,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили число месяца
 								} else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили час
 								else if(j == 4)
 									// Устанавливаем полученный час времени
-									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 5)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 6)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = fmk::atoi <uint8_t> (::__awh_fragment__(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 7) {
 									// Устанавливаем год
-									dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									dt.year = fmk::atoi <uint16_t> (::__awh_fragment__(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -4098,13 +4227,13 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4124,7 +4253,7 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 	 * Штамп времени за пределом представимости приводится к последнему представимому:
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
-	const uint64_t date = ::clampDate(stamp);
+	const uint64_t date = ::__awh_clamp_date__(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
@@ -4140,25 +4269,29 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 				// Если нам нужно получить конец года
 				case static_cast <uint8_t> (type_t::YEAR): {
 					/**
-					 * Начало года берётся у извлечения года, а не считается вторым проходом:
-					 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-					 * подсчётом високосных лет на каждый запрос границы периода
+					 * @brief Выполняем извлечение текущего года вместе с его началом
+					 *
+					 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+					 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+					 *          подсчётом високосных лет на каждый запрос границы периода.
+					 *
 					 */
-					// Выполняем извлечение текущего года вместе с его началом
 					const uint16_t year = this->year(date, result);
 					// Увеличиваем результат на количество суток в году
-					result += (static_cast <uint64_t> (::daysOfYear(this->leap(year))) * static_cast <uint64_t> (86400000));
+					result += (static_cast <uint64_t> (::__awh_days_of_year__(this->leap(year))) * static_cast <uint64_t> (86400000));
 				} break;
 				// Если нам нужно получить конец месяца
 				case static_cast <uint8_t> (type_t::MONTH): {
 					// Штамп времени начала года
 					uint64_t beginYear = 0;
 					/**
-					 * Начало года берётся у извлечения года, а не считается вторым проходом:
-					 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-					 * подсчётом високосных лет на каждый запрос границы периода
+					 * @brief Выполняем извлечение текущего года вместе с его началом
+					 *
+					 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+					 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+					 *          подсчётом високосных лет на каждый запрос границы периода.
+					 *
 					 */
-					// Выполняем извлечение текущего года вместе с его началом
 					const uint16_t year = this->year(date, beginYear);
 					// Определяем сколько дней прошло с начала года
 					const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4166,11 +4299,11 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 						// Устанавливаем флаг високосного года
 						const bool leap = this->leap(year);
 						// Определяем месяц, на который приходится прошедший день года
-						const uint8_t month = ::monthOfYear(lastDays, leap);
+						const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 						// Подсчитываем количество суток, прошедших в предыдущих месяцах
-						const uint16_t count = ::daysBeforeMonth(month, leap);
+						const uint16_t count = ::__awh_days_before_month__(month, leap);
 						// Получаем количество суток в найденном месяце
-						const uint16_t days = ::daysOfMonth(month, leap);
+						const uint16_t days = ::__awh_days_of_month__(month, leap);
 						// Получаем начало месяца указанной даты
 						result = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 						// Увеличиваем количество дней до конца месяца
@@ -4180,20 +4313,22 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 				// Если нам нужно получить конец недели
 				case static_cast <uint8_t> (type_t::WEEK): {
 					/**
-					 * Конец недели отсчитывается от её же дня недели, а не от начала: неделя,
-					 * на которую приходится начало эпохи, начинается 29 декабря 1969 года и
-					 * календарём не представима, отчего её начало приводится к началу эпохи.
-					 * Прибавление семи суток к приведённому началу выносило конец первой
-					 * недели на восьмое января, и трое суток - с пятого по седьмое - попадали
-					 * разом в неё и в следующую неделю, чего полуинтервал [begin, end)
-					 * допускать не должен
+					 * @brief Получаем начало суток указанной даты
+					 *
+					 * @details Конец недели отсчитывается от её же дня недели, а не от начала: неделя,
+					 *          на которую приходится начало эпохи, начинается 29 декабря 1969 года и
+					 *          календарём не представима, отчего её начало приводится к началу эпохи.
+					 *          Прибавление семи суток к приведённому началу выносило конец первой
+					 *          недели на восьмое января, и трое суток - с пятого по седьмое - попадали
+					 *          разом в неё и в следующую неделю, чего полуинтервал [begin, end)
+					 *          допускать не должен.
+					 *
 					 */
-					// Получаем начало суток указанной даты
 					const uint64_t beginDay = this->begin(date, type_t::DAY);
 					// Получаем количество суток, оставшихся до конца недели
-					const uint64_t left = static_cast <uint64_t> (8 - ::dayOfWeek(beginDay));
+					const uint64_t left = static_cast <uint64_t> (8 - ::__awh_day_of_week__(beginDay));
 					// Получаем конец недели указанной даты
-					result = ::clampDate(beginDay + (left * static_cast <uint64_t> (86400000)));
+					result = ::__awh_clamp_date__(beginDay + (left * static_cast <uint64_t> (86400000)));
 				} break;
 				// Если нам нужно получить конец дня
 				case static_cast <uint8_t> (type_t::DAY):
@@ -4225,24 +4360,26 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	/**
-	 * Конец промежутка ограничивается пределом представимости календаря: конец
-	 * периода равен началу следующего, и для последнего года, месяца, недели и
-	 * суток это начало за предел выходило, отчего конец 9999 года выдавался
-	 * мгновением, следующим за последним
+	 * @brief Возвращаем результат
+	 *
+	 * @details Конец промежутка ограничивается пределом представимости календаря: конец
+	 *          периода равен началу следующего, и для последнего года, месяца, недели и
+	 *          суток это начало за предел выходило, отчего конец 9999 года выдавался
+	 *          мгновением, следующим за последним.
+	 *
 	 */
-	// Возвращаем результат
-	return ::clampDate(result);
+	return ::__awh_clamp_date__(result);
 }
 /**
  * @brief Метод получения конца позиции текущей даты
@@ -4256,17 +4393,19 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
 	// Получаем момент времени указанного хранилища
 	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
 	/**
-	 * Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
-	 * хранилище означает зону объекта всюду - и в формировании записи, и в чтении
-	 * единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
-	 * конец суток записи, лежащей в зоне UTC+3, приходился на три часа утра
+	 * @brief Если запрошено местное хранилище с ненулевым смещением зоны
+	 *
+	 * @details Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
+	 *          хранилище означает зону объекта всюду - и в формировании записи, и в чтении
+	 *          единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
+	 *          конец суток записи, лежащей в зоне UTC+3, приходился на три часа утра.
+	 *
 	 */
-	// Если запрошено местное хранилище с ненулевым смещением зоны
 	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
 		// Получаем смещение временной зоны объекта в миллисекундах
 		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
 		// Выводим границу, найденную в зоне объекта, обратно в нулевую зону
-		return ::shiftStamp(this->end(::shiftStamp(date, offset), type), -offset);
+		return ::__awh_shift_stamp__(this->end(::__awh_shift_stamp__(date, offset), type), -offset);
 	}
 	// Выполняем получение конца позиции текущей даты
 	return this->end(date, type);
@@ -4284,7 +4423,7 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 	 * Штамп времени за пределом представимости приводится к последнему представимому:
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
-	const uint64_t date = ::clampDate(stamp);
+	const uint64_t date = ::__awh_clamp_date__(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
@@ -4300,11 +4439,13 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 				// Если нам нужно получить начало года
 				case static_cast <uint8_t> (type_t::YEAR): {
 					/**
-					 * Начало года берётся у извлечения года, а не считается вторым проходом:
-					 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-					 * подсчётом високосных лет на каждый запрос границы периода
+					 * @brief Выполняем извлечение начала текущего года
+					 *
+					 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+					 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+					 *          подсчётом високосных лет на каждый запрос границы периода.
+					 *
 					 */
-					// Выполняем извлечение начала текущего года
 					this->year(date, result);
 				} break;
 				// Если нам нужно получить начало месяца
@@ -4312,11 +4453,13 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 					// Штамп времени начала года
 					uint64_t beginYear = 0;
 					/**
-					 * Начало года берётся у извлечения года, а не считается вторым проходом:
-					 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-					 * подсчётом високосных лет на каждый запрос границы периода
+					 * @brief Выполняем извлечение текущего года вместе с его началом
+					 *
+					 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+					 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+					 *          подсчётом високосных лет на каждый запрос границы периода.
+					 *
 					 */
-					// Выполняем извлечение текущего года вместе с его началом
 					const uint16_t year = this->year(date, beginYear);
 					// Определяем сколько дней прошло с начала года
 					const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4324,9 +4467,9 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 						// Устанавливаем флаг високосного года
 						const bool leap = this->leap(year);
 						// Определяем месяц, на который приходится прошедший день года
-						const uint8_t month = ::monthOfYear(lastDays, leap);
+						const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 						// Подсчитываем количество суток, прошедших в предыдущих месяцах
-						const uint16_t count = ::daysBeforeMonth(month, leap);
+						const uint16_t count = ::__awh_days_before_month__(month, leap);
 						// Получаем начало месяца указанной даты
 						result = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 					}
@@ -4334,15 +4477,17 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 				// Если нам нужно получить начало недели
 				case static_cast <uint8_t> (type_t::WEEK): {
 					/**
-					 * Начало недели отсчитывается от начала суток, а не восстановлением
-					 * месяца и числа месяца обходом года: календарные составляющие для
-					 * этого не нужны, а день недели определяется количеством суток,
-					 * прошедших с начала эпохи
+					 * @brief Получаем начало суток указанной даты
+					 *
+					 * @details Начало недели отсчитывается от начала суток, а не восстановлением
+					 *          месяца и числа месяца обходом года: календарные составляющие для
+					 *          этого не нужны, а день недели определяется количеством суток,
+					 *          прошедших с начала эпохи.
+					 *
 					 */
-					// Получаем начало суток указанной даты
 					const uint64_t beginDay = this->begin(date, type_t::DAY);
 					// Получаем количество миллисекунд, прошедших с понедельника
-					const uint64_t passed = (static_cast <uint64_t> (::dayOfWeek(beginDay) - 1) * static_cast <uint64_t> (86400000));
+					const uint64_t passed = (static_cast <uint64_t> (::__awh_day_of_week__(beginDay) - 1) * static_cast <uint64_t> (86400000));
 					/**
 					 * Неделя, на которую приходится начало эпохи, начинается 29 декабря
 					 * 1969 года и календарём не представима: начало такой недели
@@ -4381,13 +4526,13 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4406,17 +4551,19 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
 	// Получаем момент времени указанного хранилища
 	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
 	/**
-	 * Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
-	 * хранилище означает зону объекта всюду - и в формировании записи, и в чтении
-	 * единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
-	 * начало суток записи, лежащей в зоне UTC+3, приходилось на три часа утра
+	 * @brief Если запрошено местное хранилище с ненулевым смещением зоны
+	 *
+	 * @details Границы местного хранилища отсчитываются в зоне объекта, а не в нулевой: местное
+	 *          хранилище означает зону объекта всюду - и в формировании записи, и в чтении
+	 *          единиц, и в признаке летнего времени, - а границы отсчитывались от нулевой, отчего
+	 *          начало суток записи, лежащей в зоне UTC+3, приходилось на три часа утра.
+	 *
 	 */
-	// Если запрошено местное хранилище с ненулевым смещением зоны
 	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
 		// Получаем смещение временной зоны объекта в миллисекундах
 		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
 		// Выводим границу, найденную в зоне объекта, обратно в нулевую зону
-		return ::shiftStamp(this->begin(::shiftStamp(date, offset), type), -offset);
+		return ::__awh_shift_stamp__(this->begin(::__awh_shift_stamp__(date, offset), type), -offset);
 	}
 	// Выполняем получение начала позиции текущей даты
 	return this->begin(date, type);
@@ -4436,7 +4583,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 	 * Штамп времени за пределом представимости приводится к последнему представимому:
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
-	const uint64_t date = ::clampDate(stamp);
+	const uint64_t date = ::__awh_clamp_date__(stamp);
 	// Переменная результата
 	uint64_t result = 0;
 	// Штамп времени 0 - это законная дата (1 января 1970 года), а не признак её отсутствия
@@ -4466,11 +4613,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4478,17 +4627,19 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Получаем начало месяца, на который приходится дата
-										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (::daysBeforeMonth(month, leap)) * static_cast <uint64_t> (86400000)));
+										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (::__awh_days_before_month__(month, leap)) * static_cast <uint64_t> (86400000)));
 										/**
-										 * Месяц, на начало которого дата и приходится, целым остаётся и
-										 * в счёт идёт: прежде счёт вёлся одним лишь номером месяца, и
-										 * текущий не шёл в счёт даже будучи целым, отчего первого
-										 * января оставалось одиннадцать месяцев вместо двенадцати, а
-										 * сутки, недели и часы на той же границе считались целыми
+										 * @brief Формируем полученный результат
+										 *
+										 * @details Месяц, на начало которого дата и приходится, целым остаётся и
+										 *          в счёт идёт: прежде счёт вёлся одним лишь номером месяца, и
+										 *          текущий не шёл в счёт даже будучи целым, отчего первого
+										 *          января оставалось одиннадцать месяцев вместо двенадцати, а
+										 *          сутки, недели и часы на той же границе считались целыми.
+										 *
 										 */
-										// Формируем полученный результат
 										result = (static_cast <uint64_t> (12 - month) + ((date == beginMonth) ? 1 : 0));
 									}
 								} break;
@@ -4497,19 +4648,23 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									/**
-									 * Считаются целые недели, до конца года оставшиеся: счёт вёлся
-									 * округлением к ближайшей, тогда как сутки, час, минута и секунда
-									 * считаются целыми, и одна и та же дата давала по разным единицам
-									 * ответы, между собой не сходящиеся
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Считаются целые недели, до конца года оставшиеся: счёт вёлся
+									 *          округлением к ближайшей, тогда как сутки, час, минута и секунда
+									 *          считаются целыми, и одна и та же дата давала по разным единицам
+									 *          ответы, между собой не сходящиеся.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Получаем количество прошедших миллисекунд в году
 									const uint64_t passed = static_cast <uint64_t> (date - beginYear);
@@ -4521,20 +4676,24 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									/**
-									 * Считаются целые сутки, до конца года оставшиеся: неполные в счёт не
-									 * идут, как и всюду в методе, и потому остаток отсчитывается от конца
-									 * периода. Вычитание единицы из числа прошедших суток отбрасывало ещё
-									 * одни на самой их границе, и сутки расходились с часом, минутой и
-									 * секундой, которые считают от конца
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Считаются целые сутки, до конца года оставшиеся: неполные в счёт не
+									 *          идут, как и всюду в методе, и потому остаток отсчитывается от конца
+									 *          периода. Вычитание единицы из числа прошедших суток отбрасывало ещё
+									 *          одни на самой их границе, и сутки расходились с часом, минутой и
+									 *          секундой, которые считают от конца.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Получаем количество прошедших миллисекунд в году
 									const uint64_t passed = static_cast <uint64_t> (date - beginYear);
@@ -4546,22 +4705,26 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Получаем количество миллисекунд, прошедших с начала года
 									const uint64_t passed = (date - beginYear);
 									/**
-									 * Остаток считается целыми единицами от остатка миллисекунд, а не
-									 * разностью длины года с округлённым вверх количеством прошедших:
-									 * величины эти равны, поскольку год делится на единицу нацело, но
-									 * счёт остатком не зависит от разрядности вещественного типа
-									 * платформы и сходится с соседними единицами по записи
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Остаток считается целыми единицами от остатка миллисекунд, а не
+									 *          разностью длины года с округлённым вверх количеством прошедших:
+									 *          величины эти равны, поскольку год делится на единицу нацело, но
+									 *          счёт остатком не зависит от разрядности вещественного типа
+									 *          платформы и сходится с соседними единицами по записи.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Определяем количество оставшихся часов, насыщая разность нулём
 									result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (3600000)));
@@ -4571,22 +4734,26 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Получаем количество миллисекунд, прошедших с начала года
 									const uint64_t passed = (date - beginYear);
 									/**
-									 * Остаток считается целыми единицами от остатка миллисекунд, а не
-									 * разностью длины года с округлённым вверх количеством прошедших:
-									 * величины эти равны, поскольку год делится на единицу нацело, но
-									 * счёт остатком не зависит от разрядности вещественного типа
-									 * платформы и сходится с соседними единицами по записи
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Остаток считается целыми единицами от остатка миллисекунд, а не
+									 *          разностью длины года с округлённым вверх количеством прошедших:
+									 *          величины эти равны, поскольку год делится на единицу нацело, но
+									 *          счёт остатком не зависит от разрядности вещественного типа
+									 *          платформы и сходится с соседними единицами по записи.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Определяем количество оставшихся минут, насыщая разность нулём
 									result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (60000)));
@@ -4596,22 +4763,26 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Получаем количество миллисекунд, прошедших с начала года
 									const uint64_t passed = (date - beginYear);
 									/**
-									 * Остаток считается целыми единицами от остатка миллисекунд, а не
-									 * разностью длины года с округлённым вверх количеством прошедших:
-									 * величины эти равны, поскольку год делится на единицу нацело, но
-									 * счёт остатком не зависит от разрядности вещественного типа
-									 * платформы и сходится с соседними единицами по записи
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Остаток считается целыми единицами от остатка миллисекунд, а не
+									 *          разностью длины года с округлённым вверх количеством прошедших:
+									 *          величины эти равны, поскольку год делится на единицу нацело, но
+									 *          счёт остатком не зависит от разрядности вещественного типа
+									 *          платформы и сходится с соседними единицами по записи.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Определяем количество оставшихся секунд, насыщая разность нулём
 									result = ((passed >= length) ? 0 : ((length - passed) / static_cast <uint64_t> (1000)));
@@ -4621,21 +4792,25 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Получаем количество миллисекунд прошедших с начала года
 									const uint64_t milliseconds = static_cast <uint64_t> (date - beginYear);
 									/**
-									 * Остаток считается разностью длины периода и прошедшей его части, без
-									 * поправки на единицу: отрезок задан полуинтервалом [begin, end), и сумма
-									 * прошедшего с оставшимся равна его длине. Год единицу вычитал, и та же
-									 * операция над сутками, неделей и месяцем давала иной ответ, чем над ним
+									 * @brief Получаем длину года в миллисекундах
+									 *
+									 * @details Остаток считается разностью длины периода и прошедшей его части, без
+									 *          поправки на единицу: отрезок задан полуинтервалом [begin, end), и сумма
+									 *          прошедшего с оставшимся равна его длине. Год единицу вычитал, и та же
+									 *          операция над сутками, неделей и месяцем давала иной ответ, чем над ним.
+									 *
 									 */
-									// Получаем длину года в миллисекундах
 									const uint64_t length = static_cast <uint64_t> (this->leap(year) ? 31622400000 : 31536000000);
 									// Определяем количество оставшихся миллисекунд, насыщая разность нулём
 									result = ((milliseconds >= length) ? 0 : (length - milliseconds));
@@ -4643,12 +4818,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
 									// Увеличиваем размер количества миллисекунд до микросекунд
 									result *= 1000;
@@ -4656,12 +4833,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
 									// Увеличиваем размер количества миллисекунд до наносекунд
 									result *= 1000000;
@@ -4679,11 +4858,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4691,13 +4872,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся целых недель в месяце, насыщая разность нулём
@@ -4709,11 +4890,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4721,19 +4904,21 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										/**
-										 * Считаются целые сутки: неполные в счёт не идут, как и всюду
-										 * в методе. Прежде счёт вёлся округлением, отчего до полудня
-										 * первого числа оставшихся суток выходило на одни больше, чем
-										 * их есть, а после полудня - верно
+										 * @brief Получаем длину месяца указанной даты в миллисекундах
+										 *
+										 * @details Считаются целые сутки: неполные в счёт не идут, как и всюду
+										 *          в методе. Прежде счёт вёлся округлением, отчего до полудня
+										 *          первого числа оставшихся суток выходило на одни больше, чем
+										 *          их есть, а после полудня - верно.
+										 *
 										 */
-										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся целых суток в месяце
@@ -4745,11 +4930,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4757,13 +4944,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся часов в месяце, насыщая разность нулём
@@ -4775,11 +4962,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4787,13 +4976,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся минут в месяце, насыщая разность нулём
@@ -4805,11 +4994,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4817,13 +5008,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся секунд в месяце, насыщая разность нулём
@@ -4835,11 +5026,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -4847,13 +5040,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем длину месяца указанной даты в миллисекундах
-										const uint64_t length = (static_cast <uint64_t> (::daysOfMonth(month, leap)) * static_cast <uint64_t> (86400000));
+										const uint64_t length = (static_cast <uint64_t> (::__awh_days_of_month__(month, leap)) * static_cast <uint64_t> (86400000));
 										// Получаем количество прошедших миллисекунд в месяце
 										const uint64_t passed = static_cast <uint64_t> (date - beginMonth);
 										// Получаем количество оставшихся миллисекунд в месяце, насыщая разность нулём
@@ -4863,12 +5056,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
 									// Увеличиваем размер количества миллисекунд до микросекунд
 									result *= 1000;
@@ -4876,12 +5071,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::LEFT);
 									// Увеличиваем размер количества миллисекунд до наносекунд
 									result *= 1000000;
@@ -5122,11 +5319,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5134,7 +5333,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Формируем полученный результат
 										result = static_cast <uint64_t> (month - 1);
 									}
@@ -5144,17 +5343,21 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
-									// Получаем количество недель прошедших в году
 									/**
-									 * Считаются целые недели, с начала года прошедшие: счёт вёлся
-									 * округлением к ближайшей, и на четвёртые сутки года выходило, что
-									 * неделя уже прошла, тогда как прочие единицы считаются целыми
+									 * @brief Получаем количество недель прошедших в году
+									 *
+									 * @details Считаются целые недели, с начала года прошедшие: счёт вёлся
+									 *          округлением к ближайшей, и на четвёртые сутки года выходило, что
+									 *          неделя уже прошла, тогда как прочие единицы считаются целыми.
+									 *
 									 */
 									result = (static_cast <uint64_t> (date - beginYear) / static_cast <uint64_t> (604800000));
 								} break;
@@ -5163,11 +5366,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									result = ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5177,11 +5382,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
 									// Получаем количество часов прошедших с начала года
 									result = ((date - beginYear) / static_cast <uint64_t> (3600000));
@@ -5191,11 +5398,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
 									// Получаем количество минут прошедших с начала года
 									result = ((date - beginYear) / static_cast <uint64_t> (60000));
@@ -5205,11 +5414,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
 									// Получаем количество секунд прошедших с начала года
 									result = ((date - beginYear) / static_cast <uint64_t> (1000));
@@ -5219,11 +5430,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение начала текущего года
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение начала текущего года
 									this->year(date, beginYear);
 									// Получаем количество миллисекунд прошедших с начала года
 									result = (date - beginYear);
@@ -5231,12 +5444,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
 									// Увеличиваем размер количества миллисекунд до микросекунд
 									result *= 1000;
@@ -5244,12 +5459,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
 									// Увеличиваем размер количества миллисекунд до наносекунд
 									result *= 1000000;
@@ -5267,11 +5484,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5279,9 +5498,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших недель в месяце
@@ -5294,11 +5513,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5306,9 +5527,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										/**
@@ -5326,11 +5547,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5338,9 +5561,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших часов в месяце
@@ -5352,11 +5575,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5364,9 +5589,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших минут в месяце
@@ -5378,11 +5603,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5390,9 +5617,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших секунд в месяце
@@ -5404,11 +5631,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 									// Штамп времени начала года
 									uint64_t beginYear = 0;
 									/**
-									 * Начало года берётся у извлечения года, а не считается вторым проходом:
-									 * извлечение выводит его по ходу дела, и повторный расчёт был вторым
-									 * подсчётом високосных лет на каждый запрос границы периода
+									 * @brief Выполняем извлечение текущего года вместе с его началом
+									 *
+									 * @details Начало года берётся у извлечения года, а не считается вторым проходом:
+									 *          извлечение выводит его по ходу дела, и повторный расчёт был вторым
+									 *          подсчётом високосных лет на каждый запрос границы периода.
+									 *
 									 */
-									// Выполняем извлечение текущего года вместе с его началом
 									const uint16_t year = this->year(date, beginYear);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> ((date - beginYear) / static_cast <uint64_t> (86400000));
@@ -5416,9 +5645,9 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
 										// Определяем месяц, на который приходится прошедший день года
-										const uint8_t month = ::monthOfYear(lastDays, leap);
+										const uint8_t month = ::__awh_month_of_year__(lastDays, leap);
 										// Подсчитываем количество суток, прошедших в предыдущих месяцах
-										const uint16_t count = ::daysBeforeMonth(month, leap);
+										const uint16_t count = ::__awh_days_before_month__(month, leap);
 										// Получаем начало месяца указанной даты
 										const uint64_t beginMonth = (beginYear + (static_cast <uint64_t> (count) * static_cast <uint64_t> (86400000)));
 										// Получаем количество прошедших миллисекунд в месяце
@@ -5428,12 +5657,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
 									// Увеличиваем размер количества миллисекунд до микросекунд
 									result *= 1000;
@@ -5441,12 +5672,14 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									/**
-									 * Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
-									 * прежде единицы измерения довода угадывались по количеству разрядов с
-									 * оглядкой на текущий момент, отчего один и тот же довод со временем
-									 * давал разный ответ
+									 * @brief Устанавливаем текущее значение актуализации
+									 *
+									 * @details Дата принимается штампом времени в миллисекундах, как и всюду в модуле:
+									 *          прежде единицы измерения довода угадывались по количеству разрядов с
+									 *          оглядкой на текущий момент, отчего один и тот же довод со временем
+									 *          давал разный ответ.
+									 *
 									 */
-									// Устанавливаем текущее значение актуализации
 									result = this->actual(date, type_t::MILLISECONDS, type, actual_t::PASSED);
 									// Увеличиваем размер количества миллисекунд до наносекунд
 									result *= 1000000;
@@ -5680,31 +5913,32 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	/**
-	 * Остаток периода приводится к его же концу: конец последнего периода календаря
-	 * насыщается пределом представимости и оттого короче полной своей длины, а остаток
-	 * считался по длине - на последней миллисекунде 9999 года выходило, что впереди
-	 * ещё миллисекунда, тогда как граница периода уже достигнута. Приведение заодно
-	 * закрывает и обратный оборот: разность, за длину периода вышедшая, даёт здесь нуль
+	 * @brief Если запрошен остаток периода у одного из пределов календаря
+	 *
+	 * @details Остаток периода приводится к его же концу: конец последнего периода календаря
+	 *          насыщается пределом представимости и оттого короче полной своей длины, а остаток
+	 *          считался по длине - на последней миллисекунде 9999 года выходило, что впереди
+	 *          ещё миллисекунда, тогда как граница периода уже достигнута. Приведение заодно
+	 *          закрывает и обратный оборот: разность, за длину периода вышедшая, даёт здесь нуль.
+	 *
+	 * @details Приведение делается лишь у самых пределов календаря: границы приводятся к ним
+	 *          только в первой неделе эпохи, чьё начало приходится на 1969 год, и в последнем
+	 *          периоде 9999 года, чей конец за предел представимости выходит. На прочих датах
+	 *          остаток с границей и так сходится, а спрос конца периода на каждом вызове
+	 *          обходился в шестую часть скорости актуализации.
+	 *
 	 */
-	/**
-	 * Приведение делается лишь у самых пределов календаря: границы приводятся к ним
-	 * только в первой неделе эпохи, чьё начало приходится на 1969 год, и в последнем
-	 * периоде 9999 года, чей конец за предел представимости выходит. На прочих датах
-	 * остаток с границей и так сходится, а спрос конца периода на каждом вызове
-	 * обходился в шестую часть скорости актуализации
-	 */
-	// Если запрошен остаток периода у одного из пределов календаря
 	if((actual == actual_t::LEFT) &&
 	   ((date < 604800000) || (date > (MAX_TIMESTAMP - 31622400000)))){
 		// Длина одной единицы в миллисекундах
@@ -5755,17 +5989,19 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
 	// Получаем момент времени указанного хранилища
 	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
 	/**
-	 * Отрезок местного хранилища отсчитывается в зоне объекта наравне с его границами:
-	 * актуализация опирается на те же начало и конец периода, и счёт от нулевой зоны
-	 * сдвигал бы отрезок на величину зоны. Возвращается при этом количество единиц, а
-	 * не момент времени, и обратного перевода оно не требует
+	 * @brief Если запрошено местное хранилище с ненулевым смещением зоны
+	 *
+	 * @details Отрезок местного хранилища отсчитывается в зоне объекта наравне с его границами:
+	 *          актуализация опирается на те же начало и конец периода, и счёт от нулевой зоны
+	 *          сдвигал бы отрезок на величину зоны. Возвращается при этом количество единиц, а
+	 *          не момент времени, и обратного перевода оно не требует.
+	 *
 	 */
-	// Если запрошено местное хранилище с ненулевым смещением зоны
 	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0)){
 		// Получаем смещение временной зоны объекта в миллисекундах
 		const int64_t offset = (static_cast <int64_t> (this->_dt.offset) * 1000);
 		// Выполняем актуализацию в зоне объекта
-		return this->actual(::shiftStamp(date, offset), value, type, actual);
+		return this->actual(::__awh_shift_stamp__(date, offset), value, type, actual);
 	}
 	// Выполняем актуализацию текущей даты на указанное количество единиц времени
 	return this->actual(date, value, type, actual);
@@ -5806,15 +6042,17 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Заполняем объект даты из переданного штампа времени
 							this->makeDate(date, dt);
 							/**
-							 * Год - единица календарная, как и месяц, и считается тем же
-							 * способом: обозначение года меняется прямо, а число месяца
-							 * ограничивается его настоящей длиной. Прежде год отсчитывался
-							 * сутками, отчего 29-е февраля переливалось на 1-е марта, тогда
-							 * как те же двенадцать месяцев давали 28-е февраля, и одна и та
-							 * же по смыслу правка давала две разные даты. Перебор по годам
-							 * заодно снят: смещение на миллиард лет занимало миллиард шагов
+							 * @brief Определяем год, в который попадает дата после смещения
+							 *
+							 * @details Год - единица календарная, как и месяц, и считается тем же
+							 *          способом: обозначение года меняется прямо, а число месяца
+							 *          ограничивается его настоящей длиной. Прежде год отсчитывался
+							 *          сутками, отчего 29-е февраля переливалось на 1-е марта, тогда
+							 *          как те же двенадцать месяцев давали 28-е февраля, и одна и та
+							 *          же по смыслу правка давала две разные даты. Перебор по годам
+							 *          заодно снят: смещение на миллиард лет занимало миллиард шагов.
+							 *
 							 */
-							// Определяем год, в который попадает дата после смещения
 							const uint64_t total = (static_cast <uint64_t> (dt.year) + value);
 							// Если год выходит за предел представимости календаря
 							if(total > MAX_YEAR){
@@ -5828,7 +6066,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Обновляем флаг високосного года
 							dt.leap = this->leap(dt.year);
 							// Получаем количество дней в месяце с учётом високосного года
-							const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
+							const uint8_t days = ::__awh_days_of_month__(dt.month, dt.leap);
 							// Если число месяца отсутствует в нём, ограничиваем его последним днём
 							if(dt.date > days)
 								// Ограничиваем число последним днём месяца
@@ -5862,7 +6100,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Обновляем флаг високосного года
 							dt.leap = this->leap(dt.year);
 							// Получаем количество дней в новом месяце с учётом високосного года
-							const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
+							const uint8_t days = ::__awh_days_of_month__(dt.month, dt.leap);
 							// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
 							if(dt.date > days)
 								// Ограничиваем число последним днём месяца
@@ -5967,30 +6205,34 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							/**
-							 * Дата принимается штампом времени в миллисекундах, как и всюду в
-							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
-							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
-							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
-							 * исходной
+							 * @brief Переводим дату в микросекунд
+							 *
+							 * @details Дата принимается штампом времени в миллисекундах, как и всюду в
+							 *          модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 *          штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 *          произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 *          исходной.
+							 *
 							 */
-							// Переводим дату в микросекунд
-							result = ::scaleDate(date, 1000);
+							result = ::__awh_scale_date__(date, 1000);
 							// Увеличиваем значение даты на указанное количество микросекунд
-							result = ::appendDate(result, value);
+							result = ::__awh_append_date__(result, value);
 						} break;
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							/**
-							 * Дата принимается штампом времени в миллисекундах, как и всюду в
-							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
-							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
-							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
-							 * исходной
+							 * @brief Переводим дату в наносекунд
+							 *
+							 * @details Дата принимается штампом времени в миллисекундах, как и всюду в
+							 *          модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 *          штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 *          произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 *          исходной.
+							 *
 							 */
-							// Переводим дату в наносекунд
-							result = ::scaleDate(date, 1000000);
+							result = ::__awh_scale_date__(date, 1000000);
 							// Увеличиваем значение даты на указанное количество наносекунд
-							result = ::appendDate(result, value);
+							result = ::__awh_append_date__(result, value);
 						} break;
 					}
 				} break;
@@ -6007,10 +6249,12 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Заполняем объект даты из переданного штампа времени
 							this->makeDate(date, dt);
 							/**
-							 * Год считается тем же календарным способом, что и месяц, по тем же
-							 * основаниям, что и при прибавлении
+							 * @brief Если смещение выходит за начало эпохи
+							 *
+							 * @details Год считается тем же календарным способом, что и месяц, по тем же
+							 *          основаниям, что и при прибавлении.
+							 *
 							 */
-							// Если смещение выходит за начало эпохи
 							if(value > static_cast <uint64_t> (dt.year - MIN_YEAR))
 								// Приводим дату к началу эпохи
 								result = 0;
@@ -6021,7 +6265,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Обновляем флаг високосного года
 								dt.leap = this->leap(dt.year);
 								// Получаем количество дней в месяце с учётом високосного года
-								const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
+								const uint8_t days = ::__awh_days_of_month__(dt.month, dt.leap);
 								// Если число месяца отсутствует в нём, ограничиваем его последним днём
 								if(dt.date > days)
 									// Ограничиваем число последним днём месяца
@@ -6039,12 +6283,14 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Вычисляем суммарный порядковый номер месяца
 							const uint64_t base = ((static_cast <uint64_t> (dt.year) * 12) + (dt.month - 1));
 							/**
-							 * Предел эпохи проверяется по году, в который попадает дата, а не по
-							 * одному лишь порядковому номеру месяца: прежде год до эпохи проходил
-							 * проверку и обнулялся уже сборкой штампа времени, тогда как путь
-							 * смещения по годам отсекал его явно
+							 * @brief Если смещение не выходит за пределы эпохи
+							 *
+							 * @details Предел эпохи проверяется по году, в который попадает дата, а не по
+							 *          одному лишь порядковому номеру месяца: прежде год до эпохи проходил
+							 *          проверку и обнулялся уже сборкой штампа времени, тогда как путь
+							 *          смещения по годам отсекал его явно.
+							 *
 							 */
-							// Если смещение не выходит за пределы эпохи
 							if((value <= base) && (((base - value) / 12) >= MIN_YEAR)){
 								// Вычитаем смещение из порядкового номера месяца
 								const uint64_t total = (base - value);
@@ -6054,7 +6300,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 								// Обновляем флаг високосного года
 								dt.leap = this->leap(dt.year);
 								// Получаем количество дней в новом месяце с учётом високосного года
-								const uint8_t days = ::daysOfMonth(dt.month, dt.leap);
+								const uint8_t days = ::__awh_days_of_month__(dt.month, dt.leap);
 								// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
 								if(dt.date > days)
 									// Ограничиваем число последним днём месяца
@@ -6141,41 +6387,49 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							/**
-							 * Дата принимается штампом времени в миллисекундах, как и всюду в
-							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
-							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
-							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
-							 * исходной
+							 * @brief Переводим дату в микросекунд
+							 *
+							 * @details Дата принимается штампом времени в миллисекундах, как и всюду в
+							 *          модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 *          штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 *          произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 *          исходной.
+							 *
 							 */
-							// Переводим дату в микросекунд
-							result = ::scaleDate(date, 1000);
+							result = ::__awh_scale_date__(date, 1000);
 							/**
-							 * Уменьшение свыше самого штампа обнуляет его, а не оставляет
-							 * нетронутым: прежде вычитаемое, превосходящее штамп, просто
-							 * отбрасывалось, и уменьшение давало исходную дату вместо начала
-							 * промежутка представимости, как это делает путь миллисекунд
+							 * @brief Уменьшаем значение даты на указанное количество микросекунд
+							 *
+							 * @details Уменьшение свыше самого штампа обнуляет его, а не оставляет
+							 *          нетронутым: прежде вычитаемое, превосходящее штамп, просто
+							 *          отбрасывалось, и уменьшение давало исходную дату вместо начала
+							 *          промежутка представимости, как это делает путь миллисекунд.
+							 *
 							 */
-							// Уменьшаем значение даты на указанное количество микросекунд
 							result = ((result >= value) ? (result - value) : 0);
 						} break;
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							/**
-							 * Дата принимается штампом времени в миллисекундах, как и всюду в
-							 * модуле, а перевод её в доли миллисекунды насыщается: наносекундный
-							 * штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
-							 * произведение оборачивалось, выдавая дату, не имеющую отношения к
-							 * исходной
+							 * @brief Переводим дату в наносекунд
+							 *
+							 * @details Дата принимается штампом времени в миллисекундах, как и всюду в
+							 *          модуле, а перевод её в доли миллисекунды насыщается: наносекундный
+							 *          штамп умещается в разрядность лишь до 21 июля 2554 года, и прежде
+							 *          произведение оборачивалось, выдавая дату, не имеющую отношения к
+							 *          исходной.
+							 *
 							 */
-							// Переводим дату в наносекунд
-							result = ::scaleDate(date, 1000000);
+							result = ::__awh_scale_date__(date, 1000000);
 							/**
-							 * Уменьшение свыше самого штампа обнуляет его, а не оставляет
-							 * нетронутым: прежде вычитаемое, превосходящее штамп, просто
-							 * отбрасывалось, и уменьшение давало исходную дату вместо начала
-							 * промежутка представимости, как это делает путь миллисекунд
+							 * @brief Уменьшаем значение даты на указанное количество наносекунд
+							 *
+							 * @details Уменьшение свыше самого штампа обнуляет его, а не оставляет
+							 *          нетронутым: прежде вычитаемое, превосходящее штамп, просто
+							 *          отбрасывалось, и уменьшение давало исходную дату вместо начала
+							 *          промежутка представимости, как это делает путь миллисекунд.
+							 *
 							 */
-							// Уменьшаем значение даты на указанное количество наносекунд
 							result = ((result >= value) ? (result - value) : 0);
 						} break;
 					}
@@ -6190,13 +6444,13 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6217,24 +6471,25 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
 	// Получаем момент времени указанного хранилища
 	const uint64_t date = this->timestamp(type_t::MILLISECONDS, storage);
 	/**
-	 * Смещение местного хранилища считается в зоне объекта наравне с границами периода:
-	 * длина года и месяца от самой даты зависит, и счёт от нулевой зоны брал не тот
-	 * месяц - запись 2025-01-31T01:00+0300 лежит тридцатым января в нулевой зоне, и
-	 * прибавление месяца к ней давало первое марта вместо двадцать восьмого февраля
+	 * @brief Если запрошено местное хранилище со сводным смещением зоны для календарной единицы
+	 *
+	 * @details Смещение местного хранилища считается в зоне объекта наравне с границами периода:
+	 *          длина года и месяца от самой даты зависит, и счёт от нулевой зоны брал не тот
+	 *          месяц - запись 2025-01-31T01:00+0300 лежит тридцатым января в нулевой зоне, и
+	 *          прибавление месяца к ней давало первое марта вместо двадцать восьмого февраля.
+	 *
+	 * @details В зону объекта переводится год и месяц, и только они: длина прочих единиц от даты
+	 *          не зависит, перевод для них сокращается сам, а доли миллисекунды меняют самую
+	 *          размерность счёта - смещение на микросекунду выдаёт число микросекунд, и вычитать
+	 *          из него миллисекундную зону нельзя.
+	 *
 	 */
-	/**
-	 * В зону объекта переводится год и месяц, и только они: длина прочих единиц от даты
-	 * не зависит, перевод для них сокращается сам, а доли миллисекунды меняют самую
-	 * размерность счёта - смещение на микросекунду выдаёт число микросекунд, и вычитать
-	 * из него миллисекундную зону нельзя
-	 */
-	// Если запрошено местное хранилище со сводным смещением зоны для календарной единицы
 	if((storage == storage_t::LOCAL) && (this->_dt.offset != 0) &&
 	   ((type == type_t::YEAR) || (type == type_t::MONTH))){
 		// Получаем смещение временной зоны объекта в миллисекундах
 		const int64_t shift = (static_cast <int64_t> (this->_dt.offset) * 1000);
 		// Выводим смещённый момент, найденный в зоне объекта, обратно в нулевую зону
-		return ::shiftStamp(this->offset(::shiftStamp(date, shift), value, type, offset), -shift);
+		return ::__awh_shift_stamp__(this->offset(::__awh_shift_stamp__(date, shift), value, type, offset), -shift);
 	}
 	// Выполняем смещение текущей даты на указанное количество единиц времени
 	return this->offset(date, value, type, offset);
@@ -6276,43 +6531,43 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			// Если переданное значение соответствует году
 			if(seconds >= year){
 				// Выполняем преобразование в количество лет
-				result = awh::fmk::noexp(::roundDuration(seconds / year), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / year), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'y');
 			// Если переданное значение соответствует месяцу
 			} else if((seconds >= month) && (seconds < year)) {
 				// Выполняем преобразование в количество месяцев
-				result = awh::fmk::noexp(::roundDuration(seconds / month), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / month), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'M');
 			// Если переданное значение соответствует недели
 			} else if((seconds >= week) && (seconds < month)) {
 				// Выполняем преобразование в количество недель
-				result = awh::fmk::noexp(::roundDuration(seconds / week), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / week), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'w');
 			// Если переданное значение соответствует дням
 			} else if((seconds >= day) && (seconds < week)) {
 				// Выполняем преобразование в количество дней
-				result = awh::fmk::noexp(::roundDuration(seconds / day), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / day), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'd');
 			// Если переданное значение соответствует часам
 			} else if((seconds >= hour) && (seconds < day)) {
 				// Выполняем преобразование в количество часов
-				result = awh::fmk::noexp(::roundDuration(seconds / hour), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / hour), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'h');
 			// Если переданное значение соответствует минут
 			} else if((seconds >= minute) && (seconds < hour)) {
 				// Выполняем преобразование в количество минут
-				result = awh::fmk::noexp(::roundDuration(seconds / minute), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds / minute), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'm');
 			// Если переданное значение соответствует секундам
 			} else {
 				// Выполняем преобразование в количество секунд
-				result = awh::fmk::noexp(::roundDuration(seconds), true);
+				result = fmk::noexp(::__awh_round_duration__(seconds), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
@@ -6329,13 +6584,13 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {duration}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {duration}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6359,7 +6614,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 		 */
 		try {
 			// Выполняем нативный разбор строки размерности времени
-			const matches_t match = ::parseSeconds(value.data(), value.size());
+			const matches_t match = ::__awh_parse_seconds__(value.data(), value.size());
 			// Если совпадение получено
 			if(!match.empty()){
 				// Обрабатываем полученные группы совпадения
@@ -6381,7 +6636,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									seconds = awh::fmk::atoi <double> (::fragment(value.data(), match[j]));
+									seconds = fmk::atoi <double> (::__awh_fragment__(value.data(), match[j]));
 								break;
 								// Если мы получили размерность числа
 								case 2: {
@@ -6432,13 +6687,13 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {value}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {value}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6473,13 +6728,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6524,13 +6779,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6561,7 +6816,7 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 	 * Штамп времени за пределом представимости приводится к последнему представимому:
 	 * разложение таких штампов давало несуществующие даты и неопределённое поведение
 	 */
-	const uint64_t date = ::clampDate(stamp);
+	const uint64_t date = ::__awh_clamp_date__(stamp);
 	// Переменная результата
 	uint16_t result = 0;
 	/**
@@ -6569,26 +6824,29 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 	 */
 	try {
 		/**
-		 * Оценка количества суток, добавленных к этому моменту високосными годами:
-		 * високосные сутки прибавляются раз в 1464 суток, и эта оценка вычитается
-		 * из даты, чтобы остаток делился на год постоянной длительности
+		 * @brief Оценка количества суток, добавленных к этому моменту високосными годами:
+		 *        високосные сутки прибавляются раз в 1464 суток, и эта оценка вычитается
+		 *        из даты, чтобы остаток делился на год постоянной длительности
 		 *
-		 * Оценка эта приблизительная, и уточняется она ниже перебором, но округление
-		 * вверх ведётся целочисленно: вещественное деление зависело от разрядности
-		 * типа long double целевой платформы, тогда как прибавление делителя без
-		 * единицы с последующим делением нацело даёт то же самое всюду
+		 * @details Оценка эта приблизительная, и уточняется она ниже перебором, но округление
+		 *          вверх ведётся целочисленно: вещественное деление зависело от разрядности
+		 *          типа long double целевой платформы, тогда как прибавление делителя без
+		 *          единицы с последующим делением нацело даёт то же самое всюду.
+		 *
 		 */
 		const uint64_t leapDays = (
 			((date + (static_cast <uint64_t> (126489600000) - 1)) / static_cast <uint64_t> (126489600000))
 			* static_cast <uint64_t> (86400000)
 		);
 		/**
-		 * Оценка округляется вверх и на первых сутках эпохи даёт целые сутки при
-		 * дате меньше суток. Вычитание без этой проверки уходило за ноль, а
-		 * беззнаковый оборот давал год 35588 вместо 1970 всюду от одной
-		 * миллисекунды до конца первых суток
+		 * @brief Выполняем извлечение значения года из даты
+		 *
+		 * @details Оценка округляется вверх и на первых сутках эпохи даёт целые сутки при
+		 *          дате меньше суток. Вычитание без этой проверки уходило за ноль, а
+		 *          беззнаковый оборот давал год 35588 вместо 1970 всюду от одной
+		 *          миллисекунды до конца первых суток.
+		 *
 		 */
-		// Выполняем извлечение значения года из даты
 		result = static_cast <uint16_t> (
 			(((date > leapDays) ? (date - leapDays) : 0) / static_cast <uint64_t> (31536000000))
 		);
@@ -6606,11 +6864,13 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 		// Если прошло больше года с начала года
 		if((date - begin) >= length){
 			/**
-			 * Начало года переносится на длительность года уточняемого, а не считается
-			 * заново: уточнение сдвигает год ровно на один, и его длительность здесь
-			 * уже вычислена
+			 * @brief Переносим начало года на начало следующего
+			 *
+			 * @details Начало года переносится на длительность года уточняемого, а не считается
+			 *          заново: уточнение сдвигает год ровно на один, и его длительность здесь
+			 *          уже вычислена.
+			 *
 			 */
-			// Переносим начало года на начало следующего
 			begin += length;
 			// Увеличиваем полученный результат
 			result++;
@@ -6624,13 +6884,13 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6674,13 +6934,13 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6715,13 +6975,13 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6737,13 +6997,15 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
  */
 bool awh::Chrono::dst(const storage_t storage) const noexcept {
 	/**
-	 * Признак местного хранилища берётся у самого объекта, а не считается заново по
-	 * его штампу времени: правило перехода задано местным временем зоны, а сборка
-	 * признака из штампа раскладывает его в нулевой зоне и потому судит по всемирному
-	 * часу. Запись 01:30 утра весеннего перехода под зоной zone_t::ET выдавала летнее
-	 * время при стандартном смещении -0500, поскольку всемирный её час - шестой
+	 * @brief Если запрошено местное хранилище
+	 *
+	 * @details Признак местного хранилища берётся у самого объекта, а не считается заново по
+	 *          его штампу времени: правило перехода задано местным временем зоны, а сборка
+	 *          признака из штампа раскладывает его в нулевой зоне и потому судит по всемирному
+	 *          часу. Запись 01:30 утра весеннего перехода под зоной zone_t::ET выдавала летнее
+	 *          время при стандартном смещении -0500, поскольку всемирный её час - шестой.
+	 *
 	 */
-	// Если запрошено местное хранилище
 	if(storage == storage_t::LOCAL)
 		// Выводим признак летнего времени, объектом хранимый
 		return this->_dt.dst;
@@ -6775,13 +7037,13 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {year}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {year}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6813,13 +7075,13 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6863,13 +7125,15 @@ void awh::Chrono::set(const T date, const unit_t unit) noexcept {
 	 */
 	else {
 		/**
-		 * Число приводится к единому несущему типу, а не передаётся своей шириной:
-		 * прежде приватный метод читал из буфера родную ширину поля, ничего не зная
-		 * о типе довода, и байты вещественного числа принимал за целое. Установка
-		 * значения типом float либо double давала не переданное значение, а мусор,
-		 * равно как и любой тип шире поля на машине с обратным порядком байт
+		 * @brief Выполняем приведение переданного числа к единому несущему типу
+		 *
+		 * @details Число приводится к единому несущему типу, а не передаётся своей шириной:
+		 *          прежде приватный метод читал из буфера родную ширину поля, ничего не зная
+		 *          о типе довода, и байты вещественного числа принимал за целое. Установка
+		 *          значения типом float либо double давала не переданное значение, а мусор,
+		 *          равно как и любой тип шире поля на машине с обратным порядком байт.
+		 *
 		 */
-		// Выполняем приведение переданного числа к единому несущему типу
 		const int64_t value = static_cast <int64_t> (date);
 		// Выполняем установку данных
 		this->set(&value, sizeof(value), unit, false);
@@ -6913,12 +7177,14 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 		 */
 		try {
 			/**
-			 * Согласование полей объекта заканчивается разрешением смещения зоны, и
-			 * единицы, что им заканчиваются, разрешать его повторно не нуждаются:
-			 * повторный вызов ответа не менял, а сводной зоне обходился вторым сбором
-			 * штампа времени и вторым определением летнего времени
+			 * @brief Признак того, что смещение временной зоны уже разрешено
+			 *
+			 * @details Согласование полей объекта заканчивается разрешением смещения зоны, и
+			 *          единицы, что им заканчиваются, разрешать его повторно не нуждаются:
+			 *          повторный вызов ответа не менял, а сводной зоне обходился вторым сбором
+			 *          штампа времени и вторым определением летнего времени.
+			 *
 			 */
-			// Признак того, что смещение временной зоны уже разрешено
 			bool resolved = false;
 			/**
 			 * Определяем элементы устанавливаемых данных
@@ -6933,9 +7199,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Если номер дня недели передан
 						if(!day->empty()){
 							// Если день передан в виде числа
-							if(awh::fmk::is(* day, awh::fmk::check_t::NUMBER)){
+							if(fmk::is(* day, fmk::check_t::NUMBER)){
 								// День для установки
-								const uint8_t num = awh::fmk::atoi <uint8_t> (string_view{day->c_str(), day->size()});
+								const uint8_t num = fmk::atoi <uint8_t> (string_view{day->c_str(), day->size()});
 								// Если номер дня недели передан
 								if((num > 0) && (num < 8))
 									// Устанавливаем номер дня недели
@@ -6949,7 +7215,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									// Получаем название дня
 									const auto & name = params.nameDays[i];
 									// Если мы нашли нужный нам день недели
-									if(awh::fmk::compare(* day, name.first) || awh::fmk::compare(* day, name.second)){
+									if(fmk::compare(* day, name.first) || fmk::compare(* day, name.second)){
 										// Выполняем установку номера дня недели
 										this->_dt.day = static_cast <uint8_t> (i + 1);
 										// Выходим из цикла
@@ -6969,17 +7235,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7013,7 +7280,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Переносим дату на указанный день недели, насыщая перенос пределами календаря
 							this->moveDate(this->_dt, ((delta < 0)
 								? ((static_cast <uint64_t> (-delta) > date) ? 0 : (date - static_cast <uint64_t> (-delta)))
-								: ::clampDate(date + static_cast <uint64_t> (delta))));
+								: ::__awh_clamp_date__(date + static_cast <uint64_t> (delta))));
 						}
 					}
 				} break;
@@ -7022,7 +7289,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Дата для установки
-						const uint8_t date = awh::fmk::atoi <uint8_t> (string_view{
+						const uint8_t date = fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7041,17 +7308,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7065,11 +7333,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						}
 					}
 					/**
-					 * Число, в месяце отсутствующее, приводится к его длине наравне со сменой
-					 * самого месяца: прежде 31-е число, выставленное в феврале, доживало до
-					 * сборки штампа времени и переносило дату на март
+					 * @brief Выполняем согласование полей объекта даты между собой
+					 *
+					 * @details Число, в месяце отсутствующее, приводится к его длине наравне со сменой
+					 *          самого месяца: прежде 31-е число, выставленное в феврале, доживало до
+					 *          сборки штампа времени и переносило дату на март.
+					 *
 					 */
-					// Выполняем согласование полей объекта даты между собой
 					this->syncDate(this->_dt);
 					// Отмечаем, что смещение временной зоны уже разрешено согласованием
 					resolved = true;
@@ -7079,7 +7349,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Год для установки
-						const uint16_t year = awh::fmk::atoi <uint16_t> (string_view{
+						const uint16_t year = fmk::atoi <uint16_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7100,17 +7370,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint16_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint16_t>::min()) <= value))
@@ -7118,11 +7389,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									year = static_cast <uint16_t> (value);
 							}
 							/**
-							 * Год приводится к промежутку представимости календаря: прежде
-							 * принимался любой ненулевой, и год до эпохи сбрасывал дату к её
-							 * началу целиком, теряя месяц и число месяца
+							 * @brief Если год передан
+							 *
+							 * @details Год приводится к промежутку представимости календаря: прежде
+							 *          принимался любой ненулевой, и год до эпохи сбрасывал дату к её
+							 *          началу целиком, теряя месяц и число месяца.
+							 *
 							 */
-							// Если год передан
 							if(year > 0)
 								// Устанавливаем год, приведя его к промежутку представимости
 								this->_dt.year = ((year < MIN_YEAR) ? MIN_YEAR : ((year > MAX_YEAR) ? MAX_YEAR : year));
@@ -7131,11 +7404,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						}
 					}
 					/**
-					 * Число месяца приводится к его настоящей длине по тем же основаниям,
-					 * что и при смене месяца: смена високосного года на обычный оставляла
-					 * в объекте 29 февраля, и дата переносилась на 1 марта
+					 * @brief Выполняем согласование полей объекта даты между собой
+					 *
+					 * @details Число месяца приводится к его настоящей длине по тем же основаниям,
+					 *          что и при смене месяца: смена високосного года на обычный оставляла
+					 *          в объекте 29 февраля, и дата переносилась на 1 марта.
+					 *
 					 */
-					// Выполняем согласование полей объекта даты между собой
 					this->syncDate(this->_dt);
 					// Отмечаем, что смещение временной зоны уже разрешено согласованием
 					resolved = true;
@@ -7145,7 +7420,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Час времени для установки
-						const uint8_t hour = awh::fmk::atoi <uint8_t> (string_view{
+						const uint8_t hour = fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7164,17 +7439,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7193,18 +7469,20 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество прошедших дней для установки
-						const uint16_t days = awh::fmk::atoi <uint16_t> (string_view{
+						const uint16_t days = fmk::atoi <uint16_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
 						/**
-						 * Предел берётся по високосному году, а не по году самого объекта:
-						 * номер дня, за длину обычного года выходящий, принимается и
-						 * приводится раскладкой к последним суткам года наравне с прочими
-						 * переполнениями полей. Отвергается лишь то, что за длину года не
-						 * выходит ни при каком годе
+						 * @brief Если количество прошедших дней от 1 января
+						 *
+						 * @details Предел берётся по високосному году, а не по году самого объекта:
+						 *          номер дня, за длину обычного года выходящий, принимается и
+						 *          приводится раскладкой к последним суткам года наравне с прочими
+						 *          переполнениями полей. Отвергается лишь то, что за длину года не
+						 *          выходит ни при каком годе.
+						 *
 						 */
-						// Если количество прошедших дней от 1 января
 						if(days < 366)
 							// Устанавливаем количество прошедших дней
 							this->_dt.days = days;
@@ -7219,17 +7497,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint16_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint16_t>::min()) <= value))
@@ -7237,30 +7516,36 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									days = static_cast <uint16_t> (value);
 							}
 							/**
-							 * Предел берётся по високосному году наравне с установкой текстом
+							 * @brief Если количество прошедших дней от 1 января
+							 *
+							 * @note Предел берётся по високосному году наравне с установкой текстом
+							 *
 							 */
-							// Если количество прошедших дней от 1 января
 							if(days < 366)
 								// Устанавливаем количество прошедших дней
 								this->_dt.days = days;
 						}
 					}
 					/**
-					 * Номер дня в году задаёт дату целиком, но сборка штампа времени
-					 * опирается на месяц и число месяца, поэтому номер раскладывается в них
-					 * сразу, ровно как это делает разбор переменной формата %j: прежде
-					 * установка писала одно лишь поле номера, дату не двигала вовсе, а само
-					 * поле перезаписывалось при следующем разложении штампа
+					 * @brief Раскладываем номер дня в году в месяц и число месяца
+					 *
+					 * @details Номер дня в году задаёт дату целиком, но сборка штампа времени
+					 *          опирается на месяц и число месяца, поэтому номер раскладывается в них
+					 *          сразу, ровно как это делает разбор переменной формата %j: прежде
+					 *          установка писала одно лишь поле номера, дату не двигала вовсе, а само
+					 *          поле перезаписывалось при следующем разложении штампа.
+					 *
 					 */
-					// Раскладываем номер дня в году в месяц и число месяца
-					::dateFromDays(this->_dt.days, this->leap(this->_dt.year), this->_dt.month, this->_dt.date);
+					::__awh_date_from_days__(this->_dt.days, this->leap(this->_dt.year), this->_dt.month, this->_dt.date);
 					/**
-					 * Согласование заодно приводит номер дня к длине года: обычный год несёт
-					 * 365 суток, и номер 365 в нём выходит за последние сутки, а разложение
-					 * его в дату упирается в 31 декабря. Прежде поле номера оставалось при
-					 * этом прежним и расходилось с самой датой
+					 * @brief Выполняем согласование полей объекта даты между собой
+					 *
+					 * @details Согласование заодно приводит номер дня к длине года: обычный год несёт
+					 *          365 суток, и номер 365 в нём выходит за последние сутки, а разложение
+					 *          его в дату упирается в 31 декабря. Прежде поле номера оставалось при
+					 *          этом прежним и расходилось с самой датой.
+					 *
 					 */
-					// Выполняем согласование полей объекта даты между собой
 					this->syncDate(this->_dt);
 					// Отмечаем, что смещение временной зоны уже разрешено согласованием
 					resolved = true;
@@ -7274,9 +7559,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Если месяц передан
 						if(!month->empty()){
 							// Если месяц передан в виде числа
-							if(awh::fmk::is(* month, awh::fmk::check_t::NUMBER)){
+							if(fmk::is(* month, fmk::check_t::NUMBER)){
 								// Месяц для установки
-								const uint8_t num = awh::fmk::atoi <uint8_t> (string_view{month->c_str(), month->length()});
+								const uint8_t num = fmk::atoi <uint8_t> (string_view{month->c_str(), month->length()});
 								// Если месяц передан
 								if((num > 0) && (num < 13))
 									// Устанавливаем месяц
@@ -7290,7 +7575,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									// Получаем название месяца
 									const auto & name = params.nameMonths[i];
 									// Если мы нашли нужный нам месяц
-									if(awh::fmk::compare(* month, name.first) || awh::fmk::compare(* month, name.second)){
+									if(fmk::compare(* month, name.first) || fmk::compare(* month, name.second)){
 										// Устанавливаем месяц
 										this->_dt.month = static_cast <uint8_t> (i + 1);
 										// Выходим из цикла
@@ -7310,17 +7595,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7334,12 +7620,14 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						}
 					}
 					/**
-					 * Число месяца приводится к его настоящей длине: смена месяца оставляла
-					 * в объекте число, в новом месяце отсутствующее, и сборка штампа
-					 * времени переносила дату вперёд - 31 января со сменой месяца на второй
-					 * давало 3 марта вместо последнего дня февраля
+					 * @brief Выполняем согласование полей объекта даты между собой
+					 *
+					 * @details Число месяца приводится к его настоящей длине: смена месяца оставляла
+					 *          в объекте число, в новом месяце отсутствующее, и сборка штампа
+					 *          времени переносила дату вперёд - 31 января со сменой месяца на второй
+					 *          давало 3 марта вместо последнего дня февраля.
+					 *
 					 */
-					// Выполняем согласование полей объекта даты между собой
 					this->syncDate(this->_dt);
 					// Отмечаем, что смещение временной зоны уже разрешено согласованием
 					resolved = true;
@@ -7349,7 +7637,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество недель для установки
-						const uint8_t weeks = awh::fmk::atoi <uint8_t> (string_view{
+						const uint8_t weeks = fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7368,17 +7656,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7412,26 +7701,27 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Переносим дату на указанную неделю, насыщая перенос пределами календаря
 							this->moveDate(this->_dt, ((delta < 0)
 								? ((static_cast <uint64_t> (-delta) > date) ? 0 : (date - static_cast <uint64_t> (-delta)))
-								: ::clampDate(date + static_cast <uint64_t> (delta))));
+								: ::__awh_clamp_date__(date + static_cast <uint64_t> (delta))));
 						}
 					}
 				} break;
 				// Если требуется установить количество смещение временной зоны в секундах относительно UTC
 				case static_cast <uint8_t> (unit_t::OFFSET): {
 					/**
-					 * Смена смещения перекладывает запись в новую зону, сохраняя сам момент
-					 * времени, ровно как это делает setTimeZone: прежде смещение писалось
-					 * прямо в поле, а гражданское время оставалось прежним, отчего
-					 * установка нулевого смещения поверх московского сдвигала момент на три
-					 * часа вперёд, тогда как setTimeZone(0) его сохранял
+					 * @brief Признак того, что смещение временной зоны принято
+					 *
+					 * @details Смена смещения перекладывает запись в новую зону, сохраняя сам момент
+					 *          времени, ровно как это делает setTimeZone: прежде смещение писалось
+					 *          прямо в поле, а гражданское время оставалось прежним, отчего
+					 *          установка нулевого смещения поверх московского сдвигала момент на три
+					 *          часа вперёд, тогда как setTimeZone(0) его сохранял.
+					 *
+					 * @details Отвергнутое значение записи не двигает вовсе: смещение задаёт зону
+					 *          целиком, и прежде запись, числом не являвшаяся либо в разрядность поля
+					 *          не умещавшаяся, читалась нулём и уводила объект в UTC молча - тогда как
+					 *          час, минуты и секунды отвергнутое значение попросту не принимают.
+					 *
 					 */
-					/**
-					 * Отвергнутое значение записи не двигает вовсе: смещение задаёт зону
-					 * целиком, и прежде запись, числом не являвшаяся либо в разрядность поля
-					 * не умещавшаяся, читалась нулём и уводила объект в UTC молча - тогда как
-					 * час, минуты и секунды отвергнутое значение попросту не принимают
-					 */
-					// Признак того, что смещение временной зоны принято
 					bool accepted = false;
 					// Смещение временной зоны в секундах относительно UTC
 					int32_t offset = 0;
@@ -7440,9 +7730,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Получаем текст, содержащий смещение временной зоны
 						const string * value = reinterpret_cast <const string *> (buffer);
 						// Если текст содержит число
-						if((accepted = awh::fmk::is(* value, awh::fmk::check_t::NUMBER)))
+						if((accepted = fmk::is(* value, fmk::check_t::NUMBER)))
 							// Получаем смещение временной зоны в секундах относительно UTC
-							offset = awh::fmk::atoi <int32_t> (string_view{value->c_str(), value->length()});
+							offset = fmk::atoi <int32_t> (string_view{value->c_str(), value->length()});
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
@@ -7452,17 +7742,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((accepted = ((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <int32_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <int32_t>::min()) <= value))))
@@ -7474,12 +7765,14 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если смещение временной зоны принято
 					if(accepted){
 						// Перекладываем объект даты в указанную временную зону, приведя смещение к земным пределам
-						this->shiftDate(this->_dt, ::clampZone(offset));
+						this->shiftDate(this->_dt, ::__awh_clamp_zone__(offset));
 						/**
-						 * Обозначение зоны согласуется с её смещением: нулевое смещение - это и
-						 * есть UTC, ненулевое, заданное числом, обозначения не несёт
+						 * @brief Устанавливаем идентификатор временной зоны
+						 *
+						 * @details Обозначение зоны согласуется с её смещением: нулевое смещение - это и
+						 *          есть UTC, ненулевое, заданное числом, обозначения не несёт.
+						 *
 						 */
-						// Устанавливаем идентификатор временной зоны
 						this->_dt.zone = ((this->_dt.offset == 0) ? zone_t::UTC : zone_t::NONE);
 					}
 				} break;
@@ -7488,7 +7781,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество минут для установки
-						const uint8_t minutes = awh::fmk::atoi <uint8_t> (string_view{
+						const uint8_t minutes = fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7507,17 +7800,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7536,7 +7830,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество секунд для установки
-						const uint8_t seconds = awh::fmk::atoi <uint8_t> (string_view{
+						const uint8_t seconds = fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7555,17 +7849,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint8_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint8_t>::min()) <= value))
@@ -7579,17 +7874,19 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						}
 					}
 					/**
-					 * Шестидесятая секунда принимается наравне с разбором записи и наравне с
-					 * ним переносится на следующую минуту: стандарт POSIX объявляет промежуток
-					 * секунд от 0 до 60, проверка записи её принимает, и отказ принять её одной
-					 * лишь установкой был расхождением между двумя частями договора
+					 * @brief Если установлена шестидесятая секунда
+					 *
+					 * @details Шестидесятая секунда принимается наравне с разбором записи и наравне с
+					 *          ним переносится на следующую минуту: стандарт POSIX объявляет промежуток
+					 *          секунд от 0 до 60, проверка записи её принимает, и отказ принять её одной
+					 *          лишь установкой был расхождением между двумя частями договора.
+					 *
 					 */
-					// Если установлена шестидесятая секунда
 					if(this->_dt.seconds == 60){
 						// Выполняем сброс количества секунд
 						this->_dt.seconds = 0;
 						// Переносим объект даты на следующую минуту
-						this->moveDate(this->_dt, ::clampDate(this->makeStamp(this->_dt) + 60000ULL));
+						this->moveDate(this->_dt, ::__awh_clamp_date__(this->makeStamp(this->_dt) + 60000ULL));
 					}
 				} break;
 				// Если требуется установить количество наносекунд
@@ -7597,7 +7894,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество наносекунд для установки
-						const uint64_t nanoseconds = awh::fmk::atoi <uint64_t> (string_view{
+						const uint64_t nanoseconds = fmk::atoi <uint64_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7625,17 +7922,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint64_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint64_t>::min()) <= value))
@@ -7663,7 +7961,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество микросекунд для установки
-						const uint64_t microseconds = awh::fmk::atoi <uint64_t> (string_view{
+						const uint64_t microseconds = fmk::atoi <uint64_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7691,17 +7989,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint64_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint64_t>::min()) <= value))
@@ -7727,15 +8026,17 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 				// Если требуется установить количество миллисекунд
 				case static_cast <uint8_t> (unit_t::MILLISECONDS): {
 					/**
-					 * Количество миллисекунд ограничивается промежутком от 0 до 999 наравне с
-					 * часом, минутами и секундами: доля секунды за её пределом долей уже не
-					 * является, проверка записи такие значения отвергает, а формирование
-					 * печатало их как есть и ширину поля ломало
+					 * @brief Если данные переданы в виде текста
+					 *
+					 * @details Количество миллисекунд ограничивается промежутком от 0 до 999 наравне с
+					 *          часом, минутами и секундами: доля секунды за её пределом долей уже не
+					 *          является, проверка записи такие значения отвергает, а формирование
+					 *          печатало их как есть и ширину поля ломало.
+					 *
 					 */
-					// Если данные переданы в виде текста
 					if(text){
 						// Количество миллисекунд для установки
-						const uint32_t milliseconds = awh::fmk::atoi <uint32_t> (string_view{
+						const uint32_t milliseconds = fmk::atoi <uint32_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7754,17 +8055,18 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 								// Значение единого несущего типа
 								const int64_t value = (* reinterpret_cast <const int64_t *> (buffer));
 								/**
-								 * Сличение положительных значений ведётся в беззнаковой области, а
-								 * отрицательных - в знаковой: наибольшее значение типа uint64_t не
-								 * представимо типом int64_t и при приведении давало минус единицу,
-								 * отчего отбрасывалось любое положительное значение
+								 * @brief Значение, не умещающееся в разрядность поля, отбрасывается
+								 *
+								 * @details Сличение положительных значений ведётся в беззнаковой области, а
+								 *          отрицательных - в знаковой: наибольшее значение типа uint64_t не
+								 *          представимо типом int64_t и при приведении давало минус единицу,
+								 *          отчего отбрасывалось любое положительное значение.
+								 *
+								 * @details Отброшенное значение поля объекта не меняет: переменная заведена
+								 *          от его нынешнего значения, а не от нуля, и прежде запись, в
+								 *          разрядность поля не умещавшаяся, обнуляла его молча.
+								 *
 								 */
-								/**
-								 * Отброшенное значение поля объекта не меняет: переменная заведена
-								 * от его нынешнего значения, а не от нуля, и прежде запись, в
-								 * разрядность поля не умещавшаяся, обнуляла его молча
-								 */
-								// Значение, не умещающееся в разрядность поля, отбрасывается
 								if((value >= 0) ?
 								   (static_cast <uint64_t> (value) <= static_cast <uint64_t> (numeric_limits <uint32_t>::max())) :
 								   (static_cast <int64_t> (numeric_limits <uint32_t>::min()) <= value))
@@ -7780,13 +8082,15 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 				} break;
 			}
 			/**
-			 * Смещение сводной зоны разрешается по дате объекта после установки любой
-			 * единицы, а не одних лишь календарных: час, минуты и день недели дату
-			 * двигают наравне с ними и через границу перехода уводят точно так же.
-			 * Установка смещения числом обозначение зоны сбрасывает и разрешению не
-			 * подлежит
+			 * @brief Если смещение временной зоны согласованием полей ещё не разрешено
+			 *
+			 * @details Смещение сводной зоны разрешается по дате объекта после установки любой
+			 *          единицы, а не одних лишь календарных: час, минуты и день недели дату
+			 *          двигают наравне с ними и через границу перехода уводят точно так же.
+			 *          Установка смещения числом обозначение зоны сбрасывает и разрешению не
+			 *          подлежит.
+			 *
 			 */
-			// Если смещение временной зоны согласованием полей ещё не разрешено
 			if(!resolved)
 				// Разрешаем смещение сводной временной зоны по новой дате объекта
 				this->resolveZone(this->_dt);
@@ -7799,13 +8103,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7827,12 +8131,14 @@ template <typename T>
  */
 T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
 	/**
-	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
-	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
-	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
-	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 * @brief Переменная результата
+	 *
+	 * @details Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 *          обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 *          это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 *          во время работы, а не при сборке, и до обнуления такие типы не доходили.
+	 *
 	 */
-	// Переменная результата
 	T result{};
 	/**
 	 * Если данные извлекаются объектом
@@ -7845,13 +8151,15 @@ T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
 	 */
 	else {
 		/**
-		 * Число извлекается единым несущим типом и приводится к запрошенному, а не
-		 * пишется приватным методом прямо в переменную результата: прежде метод
-		 * копировал родную ширину поля, ничего не зная о типе результата. Извлечение
-		 * типом float либо double давало не значение, а его байты, принятые за
-		 * вещественное число, а тип уже поля молча давал ноль вместо усечения
+		 * @brief Переменная единого несущего типа
+		 *
+		 * @details Число извлекается единым несущим типом и приводится к запрошенному, а не
+		 *          пишется приватным методом прямо в переменную результата: прежде метод
+		 *          копировал родную ширину поля, ничего не зная о типе результата. Извлечение
+		 *          типом float либо double давало не значение, а его байты, принятые за
+		 *          вещественное число, а тип уже поля молча давал ноль вместо усечения.
+		 *
 		 */
-		// Переменная единого несущего типа
 		int64_t value = 0;
 		// Выполняем извлечение данных
 		this->get(&value, sizeof(value), date, unit, false);
@@ -7898,12 +8206,14 @@ template <typename T>
  */
 T awh::Chrono::get(const unit_t unit) const noexcept {
 	/**
-	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
-	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
-	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
-	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 * @brief Переменная результата
+	 *
+	 * @details Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 *          обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 *          это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 *          во время работы, а не при сборке, и до обнуления такие типы не доходили.
+	 *
 	 */
-	// Переменная результата
 	T result{};
 	/**
 	 * Если данные извлекаются объектом
@@ -7916,10 +8226,12 @@ T awh::Chrono::get(const unit_t unit) const noexcept {
 	 */
 	else {
 		/**
-		 * Число извлекается единым несущим типом и приводится к запрошенному по тем
-		 * же основаниям, что и в перегрузке, принимающей штамп времени
+		 * @brief Переменная единого несущего типа
+		 *
+		 * @details Число извлекается единым несущим типом и приводится к запрошенному по тем
+		 *          же основаниям, что и в перегрузке, принимающей штамп времени.
+		 *
 		 */
-		// Переменная единого несущего типа
 		int64_t value = 0;
 		// Выполняем извлечение данных
 		this->get(&value, sizeof(value), unit, false, storage_t::GLOBAL);
@@ -7967,12 +8279,14 @@ template <typename T>
  */
 T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
 	/**
-	 * Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
-	 * обнуление писалось поверх объекта любого типа, и для типов вроде std::string
-	 * это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
-	 * во время работы, а не при сборке, и до обнуления такие типы не доходили
+	 * @brief Переменная результата
+	 *
+	 * @details Значение по умолчанию задаётся инициализацией, а не побайтовым обнулением:
+	 *          обнуление писалось поверх объекта любого типа, и для типов вроде std::string
+	 *          это неопределённое поведение. Спасало лишь то, что проверка типа выполнялась
+	 *          во время работы, а не при сборке, и до обнуления такие типы не доходили.
+	 *
 	 */
-	// Переменная результата
 	T result{};
 	/**
 	 * Если данные извлекаются объектом
@@ -7985,10 +8299,12 @@ T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
 	 */
 	else {
 		/**
-		 * Число извлекается единым несущим типом и приводится к запрошенному по тем
-		 * же основаниям, что и в перегрузке, принимающей штамп времени
+		 * @brief Переменная единого несущего типа
+		 *
+		 * @details Число извлекается единым несущим типом и приводится к запрошенному по тем
+		 *          же основаниям, что и в перегрузке, принимающей штамп времени.
+		 *
 		 */
-		// Переменная единого несущего типа
 		int64_t value = 0;
 		// Выполняем извлечение данных
 		this->get(&value, sizeof(value), unit, false, storage);
@@ -8053,7 +8369,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение текущего дня недели
-							(* result) = ::nameOfDay(dt.day).second;
+							(* result) = ::__awh_name_of_day__(dt.day).second;
 						// Выполняем копирование текущего дня недели
 						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.day);
 					}
@@ -8153,7 +8469,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 							// Получаем результирующий буфер для получения результата
 							string * result = reinterpret_cast <string *> (buffer);
 							// Выполняем получение названия месяца
-							(* result) = ::nameOfMonth(dt.month).second;
+							(* result) = ::__awh_name_of_month__(dt.month).second;
 						// Выполняем копирование текущего значения месяца
 						} else (* reinterpret_cast <int64_t *> (buffer)) = static_cast <int64_t> (dt.month);
 					}
@@ -8243,13 +8559,15 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 					// Если размер данных умещается в буфер
 					if(size >= sizeof(int64_t)){
 						/**
-						 * Штамп времени задан миллисекундами, и доли миллисекунды в нём нет:
-						 * прежде доля бралась остатком от самого штампа, отчего в наносекундах
-						 * выводились секунды с миллисекундами, а в микросекундах - миллисекунды.
-						 * Разрядность довода менять нельзя: остальные единицы читают тот же
-						 * штамп как миллисекунды, и доля миллисекунды у него всегда пуста
+						 * @brief Если данные переданы в виде текста
+						 *
+						 * @details Штамп времени задан миллисекундами, и доли миллисекунды в нём нет:
+						 *          прежде доля бралась остатком от самого штампа, отчего в наносекундах
+						 *          выводились секунды с миллисекундами, а в микросекундах - миллисекунды.
+						 *          Разрядность довода менять нельзя: остальные единицы читают тот же
+						 *          штамп как миллисекунды, и доля миллисекунды у него всегда пуста.
+						 *
 						 */
-						// Если данные переданы в виде текста
 						if(text)
 							// Выполняем получение пустого количества наносекунд
 							(* reinterpret_cast <string *> (buffer)) = "000000";
@@ -8262,9 +8580,11 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 					// Если размер данных умещается в буфер
 					if(size >= sizeof(int64_t)){
 						/**
-						 * Доли миллисекунды штамп времени не несёт наравне с наносекундами
+						 * @brief Если данные переданы в виде текста
+						 *
+						 * @note Доли миллисекунды штамп времени не несёт наравне с наносекундами
+						 *
 						 */
-						// Если данные переданы в виде текста
 						if(text)
 							// Выполняем получение пустого количества микросекунд
 							(* reinterpret_cast <string *> (buffer)) = "000";
@@ -8308,13 +8628,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, date, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, date, static_cast <uint16_t> (unit), text}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -8353,7 +8673,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение номера текущего дня недели
-								(* result) = ::nameOfDay(this->_dt.day).second;
+								(* result) = ::__awh_name_of_day__(this->_dt.day).second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8362,7 +8682,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего дня недели
 								this->get(&day, sizeof(day), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение номера текущего дня недели
-								(* result) = ::nameOfDay(static_cast <uint8_t> (day)).second;
+								(* result) = ::__awh_name_of_day__(static_cast <uint8_t> (day)).second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -8610,7 +8930,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 							// Если хранилище локальное
 							case static_cast <uint8_t> (storage_t::LOCAL):
 								// Выполняем получение названия месяца
-								(* result) = ::nameOfMonth(this->_dt.month).second;
+								(* result) = ::__awh_name_of_month__(this->_dt.month).second;
 							break;
 							// Если хранилище глобальное
 							case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8619,7 +8939,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 								// Выполняем извлечение текущего значения месяца
 								this->get(&month, sizeof(month), this->timestamp(type_t::MILLISECONDS), unit, false);
 								// Выполняем получение названия месяца
-								(* result) = ::nameOfMonth(static_cast <uint8_t> (month)).second;
+								(* result) = ::__awh_name_of_month__(static_cast <uint8_t> (month)).second;
 							} break;
 						}
 					// Если данные переданы в виде числа
@@ -9039,13 +9359,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -9058,21 +9378,22 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
  */
 void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	/**
-	 * Ненулевое смещение обозначения не несёт и потому его сбрасывает: прежде любая
-	 * зона выдавалась за UTC - смещение +10800 при обозначении UTC, отчего переменная
-	 * формата %Z печатала UTC для московского времени. Нулевое смещение - это и есть
-	 * UTC, и обозначается им: обозначение здесь единственное, чем нулевая зона,
-	 * заданная явно, отличается от незаданной, а от этого зависит, перекладывать ли
-	 * запись в зону окружения при формировании
+	 * @brief Приводим смещение временной зоны к земным пределам
+	 *
+	 * @details Ненулевое смещение обозначения не несёт и потому его сбрасывает: прежде любая
+	 *          зона выдавалась за UTC - смещение +10800 при обозначении UTC, отчего переменная
+	 *          формата %Z печатала UTC для московского времени. Нулевое смещение - это и есть
+	 *          UTC, и обозначается им: обозначение здесь единственное, чем нулевая зона,
+	 *          заданная явно, отличается от незаданной, а от этого зависит, перекладывать ли
+	 *          запись в зону окружения при формировании.
+	 *
+	 * @details Смещение приводится к земным пределам: зоны лежат в промежутке от UTC-12 до
+	 *          UTC+14, а прежде принималось любое значение разрядности и уводило момент на
+	 *          величину, соответствия на Земле не имеющую. Проверка записи такие смещения
+	 *          отвергает, и приём их установкой был расхождением между двумя частями договора.
+	 *
 	 */
-	/**
-	 * Смещение приводится к земным пределам: зоны лежат в промежутке от UTC-12 до
-	 * UTC+14, а прежде принималось любое значение разрядности и уводило момент на
-	 * величину, соответствия на Земле не имеющую. Проверка записи такие смещения
-	 * отвергает, и приём их установкой был расхождением между двумя частями договора
-	 */
-	// Приводим смещение временной зоны к земным пределам
-	const int32_t offset = ::clampZone(zone);
+	const int32_t offset = ::__awh_clamp_zone__(zone);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = ((offset == 0) ? zone_t::UTC : zone_t::NONE);
 	// Запоминаем временную зону, выставленную вызывающей стороной
@@ -9090,11 +9411,13 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
  */
 void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	/**
-	 * Смещение сводной зоны разрешается по моменту, объектом описываемому, а не по
-	 * текущему: перекладка момент времени сохраняет, и зимняя запись под сводной зоной
-	 * прежде получала летнее смещение просто оттого, что установка пришлась на лето
+	 * @brief Получаем момент времени, описываемый локальным объектом даты
+	 *
+	 * @details Смещение сводной зоны разрешается по моменту, объектом описываемому, а не по
+	 *          текущему: перекладка момент времени сохраняет, и зимняя запись под сводной зоной
+	 *          прежде получала летнее смещение просто оттого, что установка пришлась на лето.
+	 *
 	 */
-	// Получаем момент времени, описываемый локальным объектом даты
 	const uint64_t date = this->makeStamp(this->_dt);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
@@ -9117,16 +9440,20 @@ void awh::Chrono::setTimeZone(string_view zone) noexcept {
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = this->matchTimeZone(zone);
 	/**
-	 * От самого момента зависит смещение одних лишь сводных зон Северной Америки,
-	 * и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
-	 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
-	 * и хвост теряет
+	 * @brief Запоминаем временную зону, выставленную вызывающей стороной
+	 *
+	 * @details От самого момента зависит смещение одних лишь сводных зон Северной Америки,
+	 *          и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
+	 *          запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
+	 *          и хвост теряет.
+	 *
 	 */
-	// Запоминаем временную зону, выставленную вызывающей стороной
 	this->_zoneName = this->_dt.zone;
 	// Запоминаем смещение временной зоны, выставленной вызывающей стороной
-	this->_zoneOffset = (::composite(this->_dt.zone)
-		? this->getTimeZone(this->_dt.zone, date) : this->getTimeZone(zone));
+	this->_zoneOffset = (
+		::__awh_composite__(this->_dt.zone)
+		? this->getTimeZone(this->_dt.zone, date) : this->getTimeZone(zone)
+	);
 	// Перекладываем локальный объект даты в указанную временную зону
 	this->shiftDate(this->_dt, this->_zoneOffset);
 }
@@ -9147,7 +9474,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 		 */
 		try {
 			// Выполняем нативный разбор названия временной зоны (\w+)
-			const matches_t match = ::parseWord(zone.data(), zone.size());
+			const matches_t match = ::__awh_parse_word__(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
 				// Обрабатываем полученную группу совпадения
@@ -9347,7 +9674,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 						// Получаем извлечённое название временной зоны
 						string name(zone.data() + match[0].begin, static_cast <size_t> (match[0].end - match[0].begin));
 						// Выполняем поиск временной зоны в таблице соответствия
-						auto j = matches.find(::lowerZone(name.data(), name.length()));
+						auto j = matches.find(::__awh_lower_zone__(name.data(), name.length()));
 						// Если временная зона найдена в таблице соответствия
 						if(j != matches.end())
 							// Устанавливаем найденную временную зону
@@ -9364,13 +9691,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {zone}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 			// Переменная результата
 			result = zone_t::NONE;
@@ -9417,13 +9744,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9942,7 +10269,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 		 */
 		try {
 			// Выполняем нативный разбор временной зоны со смещением (формат %e)
-			const matches_t match = ::parseZoneFull(zone.data(), zone.size());
+			const matches_t match = ::__awh_parse_zone_full__(zone.data(), zone.size());
 			// Если совпадение получено
 			if(!match.empty()){
 				/**
@@ -9963,7 +10290,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Признак того, что смещение, указанное за названием зоны, следует наложить
 				bool apply = true;
 				// Выполняем поиск временной зоны в списке временных зон
-				auto i = this->_timeZones.find(::lowerZone(name.data(), name.length()));
+				auto i = this->_timeZones.find(::__awh_lower_zone__(name.data(), name.length()));
 				// Если временная зона найдена
 				if(i != this->_timeZones.end()){
 					// Устанавливаем значение временной зоны
@@ -9973,9 +10300,9 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Если временная зона не найдена и название временной зоны получено
 				} else if(!name.empty()) {
 					// Если название временной зоны является числом
-					if(awh::fmk::is(name, awh::fmk::check_t::NUMBER)){
+					if(fmk::is(name, fmk::check_t::NUMBER)){
 						// Получаем количество часов смещения, заданное самим названием зоны
-						const int64_t hours = awh::fmk::atoi <int64_t> (name);
+						const int64_t hours = fmk::atoi <int64_t> (name);
 						/**
 						 * Название зоны числом означает целое количество часов смещения, и
 						 * ограничивать его необходимо: произведение считалось в разрядности
@@ -10012,7 +10339,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				 */
 				if(apply && (match[3].end > match[3].begin)){
 					// Получаем разобранное смещение временной зоны
-					const int32_t value = ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+					const int32_t value = ::__awh_read_zone_offset__(zone.data(), match[3], match[4], match[5], match[6]);
 					/**
 					 * Обозначение зоны со смещением за промежутком земных поясов не
 					 * означает ничего: запись «-99999» давала смещение в сто часов
@@ -10038,13 +10365,13 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {zone}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 			// Переменная результата
 			result = this->_dt.offset;
@@ -10069,12 +10396,14 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		// Получаем стандартное время
 		const int32_t result = this->getTimeZone(std);
 		/**
-		 * Летнее время определяется по местному времени зоны, а не по всемирному:
-		 * переход происходит в 02:00 по её стандартному времени, и прежде признак
-		 * снимался с всемирных полей - для восточного времени США это давало ошибку
-		 * в пять часов
+		 * @brief Если время летнее
+		 *
+		 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+		 *          переход происходит в 02:00 по её стандартному времени, и прежде признак
+		 *          снимался с всемирных полей - для восточного времени США это давало ошибку
+		 *          в пять часов.
+		 *
 		 */
-		// Если время летнее
 		if(this->isDST(this->timestamp(type_t::MILLISECONDS), result))
 			// Получаем результат для летнего времени
 			return this->getTimeZone(sum);
@@ -10089,13 +10418,13 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (std), static_cast <uint16_t> (sum)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (std), static_cast <uint16_t> (sum)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -10127,10 +10456,12 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL):
 				/**
-				 * Смещение зоны окружения на текущий миг - частный случай смещения на
-				 * заданный миг: спрос у системы и его запоминание ведутся в одном месте
+				 * @brief Получаем смещение временной зоны окружения на текущий миг
+				 *
+				 * @details Смещение зоны окружения на текущий миг - частный случай смещения на
+				 *          заданный миг: спрос у системы и его запоминание ведутся в одном месте.
+				 *
 				 */
-				// Получаем смещение временной зоны окружения на текущий миг
 				result = this->environZone(std::time(nullptr));
 			break;
 		}
@@ -10143,13 +10474,13 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -10187,13 +10518,15 @@ int32_t awh::Chrono::wallZone(const dt_t & dt) const noexcept {
 	// Выполняем проверку годности запомненных смещений один раз на все спросы
 	::ambient::fresh();
 	/**
-	 * Смещения снимаются по разные стороны местного времени, дальше 14 часов от
-	 * него: миг, записью описываемый, отстоит от местного времени не дальше чем на
-	 * смещение зоны, и снятые смещения лежат по разные стороны всякого перехода,
-	 * пришедшегося на запись. Точки снятия округляются до часа - тогда соседние
-	 * записи одного часа делят их между собой и спрашивают систему однажды
+	 * @brief Получаем начало часа местного времени записи
+	 *
+	 * @details Смещения снимаются по разные стороны местного времени, дальше 14 часов от
+	 *          него: миг, записью описываемый, отстоит от местного времени не дальше чем на
+	 *          смещение зоны, и снятые смещения лежат по разные стороны всякого перехода,
+	 *          пришедшегося на запись. Точки снятия округляются до часа - тогда соседние
+	 *          записи одного часа делят их между собой и спрашивают систему однажды.
+	 *
 	 */
-	// Получаем начало часа местного времени записи
 	const time_t hour = (wall - (((wall % 3600) + 3600) % 3600));
 	// Получаем смещение зоны окружения до местного времени записи (за 24 часа)
 	const int32_t before = ::ambient::zone(hour - 86400);
@@ -10204,11 +10537,13 @@ int32_t awh::Chrono::wallZone(const dt_t & dt) const noexcept {
 		// Выводим смещение временной зоны окружения
 		return before;
 	/**
-	 * Большее смещение пробуется первым: в складке перехода годны оба, и большее
-	 * даёт первый из двух мигов - так же выбирает mktime при неизвестном признаке
-	 * летнего времени и Python при fold=0
+	 * @brief Получаем большее из смещений по обе стороны перехода
+	 *
+	 * @details Большее смещение пробуется первым: в складке перехода годны оба, и большее
+	 *          даёт первый из двух мигов - так же выбирает mktime при неизвестном признаке
+	 *          летнего времени и Python при fold=0.
+	 *
 	 */
-	// Получаем большее из смещений по обе стороны перехода
 	const int32_t first = ((before > after) ? before : after);
 	// Получаем меньшее из смещений по обе стороны перехода
 	const int32_t second = ((before > after) ? after : before);
@@ -10248,13 +10583,13 @@ void awh::Chrono::clearTimeZones() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -10271,17 +10606,18 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 	 */
 	try {
 		/**
-		 * Смещение приводится к земным пределам наравне с установкой смещения объекту:
-		 * реестр принимал любое значение разрядности, и зона «+99 часов» уводила момент
-		 * на четверо суток, а проверка записи такое смещение отвергала - установка зоны
-		 * выдавала запись, которую сам же модуль пригодной не считает
+		 * @brief Выполняем добавление временной зоны в список временных зон
+		 *
+		 * @details Смещение приводится к земным пределам наравне с установкой смещения объекту:
+		 *          реестр принимал любое значение разрядности, и зона «+99 часов» уводила момент
+		 *          на четверо суток, а проверка записи такое смещение отвергала - установка зоны
+		 *          выдавала запись, которую сам же модуль пригодной не считает.
+		 *
+		 * @note Повторное добавление зоны её переустанавливает: прежде добавление молча
+		 *       пропускалось, и поправить однажды заданную зону было нечем
+		 *
 		 */
-		/**
-		 * Повторное добавление зоны её переустанавливает: прежде добавление молча
-		 * пропускалось, и поправить однажды заданную зону было нечем
-		 */
-		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.insert_or_assign(::lowerZone(name.data(), name.length()), ::clampZone(offset));
+		this->_timeZones.insert_or_assign(::__awh_lower_zone__(name.data(), name.length()), ::__awh_clamp_zone__(offset));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -10291,13 +10627,13 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {name, offset}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {name, offset}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -10313,7 +10649,7 @@ void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) no
 	 */
 	for(auto & zone : zones)
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.insert_or_assign(::lowerZone(zone.first.data(), zone.first.length()), ::clampZone(zone.second));
+		this->_timeZones.insert_or_assign(::__awh_lower_zone__(zone.first.data(), zone.first.length()), ::__awh_clamp_zone__(zone.second));
 }
 /**
  * @brief Метод установки штампа времени в указанных единицах измерения
@@ -10332,13 +10668,15 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			// Текущий штамп времени
 			uint64_t stamp = 0;
 			/**
-			 * Доли миллисекунды сбрасываются заранее: штамп времени в единицах крупнее
-			 * микросекунды их не несёт, а разложение штампа поля долей не трогает, и
-			 * прежде от прошлой установки в объекте оставались чужие доли - после
-			 * наносекундного штампа миллисекундный читался обратно в наносекундах не
-			 * тем мгновением, каким был задан
+			 * @brief Сбрасываем количество микросекунд
+			 *
+			 * @details Доли миллисекунды сбрасываются заранее: штамп времени в единицах крупнее
+			 *          микросекунды их не несёт, а разложение штампа поля долей не трогает, и
+			 *          прежде от прошлой установки в объекте оставались чужие доли - после
+			 *          наносекундного штампа миллисекундный читался обратно в наносекундах не
+			 *          тем мгновением, каким был задан.
+			 *
 			 */
-			// Сбрасываем количество микросекунд
 			this->_dt.microseconds = 0;
 			// Сбрасываем количество наносекунд
 			this->_dt.nanoseconds = 0;
@@ -10349,37 +10687,37 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 				// Если единицы измерения штампа времени требуется установить в годах
 				case static_cast <uint8_t> (type_t::YEAR):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 31536000000ULL);
+					stamp = ::__awh_scale_stamp__(date, 31536000000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в месяцах
 				case static_cast <uint8_t> (type_t::MONTH):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 2629746000ULL);
+					stamp = ::__awh_scale_stamp__(date, 2629746000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в неделях
 				case static_cast <uint8_t> (type_t::WEEK):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 604800000ULL);
+					stamp = ::__awh_scale_stamp__(date, 604800000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в днях
 				case static_cast <uint8_t> (type_t::DAY):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 86400000ULL);
+					stamp = ::__awh_scale_stamp__(date, 86400000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в часах
 				case static_cast <uint8_t> (type_t::HOUR):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 3600000ULL);
+					stamp = ::__awh_scale_stamp__(date, 3600000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в минутах
 				case static_cast <uint8_t> (type_t::MINUTES):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 60000ULL);
+					stamp = ::__awh_scale_stamp__(date, 60000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в секундах
 				case static_cast <uint8_t> (type_t::SECONDS):
 					// Получаем текущий штамп времени
-					stamp = ::scaleStamp(date, 1000ULL);
+					stamp = ::__awh_scale_stamp__(date, 1000ULL);
 				break;
 				// Если единицы измерения штампа времени требуется установить в миллисекундах
 				case static_cast <uint8_t> (type_t::MILLISECONDS):
@@ -10430,13 +10768,13 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -10629,7 +10967,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = ::appendDate(::scaleDate(this->makeStamp(this->_dt), 1000), this->_dt.microseconds);
+						result = ::__awh_append_date__(::__awh_scale_date__(this->makeStamp(this->_dt), 1000), this->_dt.microseconds);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -10649,7 +10987,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 					// Если хранилище локальное
 					case static_cast <uint8_t> (storage_t::LOCAL):
 						// Получаем результат
-						result = ::appendDate(::scaleDate(this->makeStamp(this->_dt), 1000000), this->_dt.nanoseconds);
+						result = ::__awh_append_date__(::__awh_scale_date__(this->makeStamp(this->_dt), 1000000), this->_dt.nanoseconds);
 					break;
 					// Если хранилище глобальное
 					case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -10670,13 +11008,13 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -10726,10 +11064,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 		// Обозначение временной зоны, выставленной объекту до разбора
 		zone_t designation = zone_t::NONE;
 		/**
-		 * Смещение зоны окружения зависит от мига записи, и разрешается оно по местным
-		 * полям записи уже после того, как они достроены, а при откате года - заново
+		 * @brief Признак чтения записи во временной зоне окружения
+		 *
+		 * @details Смещение зоны окружения зависит от мига записи, и разрешается оно по местным
+		 *          полям записи уже после того, как они достроены, а при откате года - заново.
+		 *
 		 */
-		// Признак чтения записи во временной зоне окружения
 		bool ambient = false;
 		// Номер века, полученный из записи
 		uint16_t century = 0;
@@ -10763,30 +11103,34 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Запоминаем текущий штамп времени
 				current = result;
 				/**
-				 * Зона берётся из отдельных полей, а не из локального объекта даты:
-				 * разбор оставляет в объекте зону самой записи, и прежде следующий
-				 * разбор принимал её за выставленную методом setTimeZone - запись
-				 * «2003-10-11T22:14:15Z» уводила следующую за ней запись без зоны
-				 * на величину местного смещения
+				 * @brief Запоминаем смещение временной зоны, выставленной вызывающей стороной
+				 *
+				 * @details Зона берётся из отдельных полей, а не из локального объекта даты:
+				 *          разбор оставляет в объекте зону самой записи, и прежде следующий
+				 *          разбор принимал её за выставленную методом setTimeZone - запись
+				 *          «2003-10-11T22:14:15Z» уводила следующую за ней запись без зоны
+				 *          на величину местного смещения.
+				 *
 				 */
-				// Запоминаем смещение временной зоны, выставленной вызывающей стороной
 				zone = this->_zoneOffset;
 				// Запоминаем обозначение временной зоны, выставленной вызывающей стороной
 				designation = this->_zoneName;
-				/**
-				 * Обозначение зоны сбрасывается наравне со смещением: запись, несущая
-				 * смещение числом, обозначения не несёт, а прежде при объекте оставалось
-				 * обозначение, выставленное ему до разбора, и запись «+0000» под сводной
-				 * зоной формировалась обратно как «+0000 EST»
-				 */
-				// Выполняем сброс обозначения временной зоны
-				this->_dt.zone = zone_t::NONE;
 				// Выполняем сброс временной зоны
 				this->_dt.offset = 0;
 				// Выполняем сброс количества наносекунд
 				this->_dt.nanoseconds = 0;
 				// Выполняем сброс количества микросекунд
 				this->_dt.microseconds = 0;
+				/**
+				 * @brief Выполняем сброс обозначения временной зоны
+				 *
+				 * @details Обозначение зоны сбрасывается наравне со смещением: запись, несущая
+				 *          смещение числом, обозначения не несёт, а прежде при объекте оставалось
+				 *          обозначение, выставленное ему до разбора, и запись «+0000» под сводной
+				 *          зоной формировалась обратно как «+0000 EST».
+				 *
+				 */
+				this->_dt.zone = zone_t::NONE;
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -11411,14 +11755,16 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Если мы нашли уточнение записи смещения зоны в написании GNU (%:z)
 				case ':': {
 					/**
-					 * Приведение выполняется здесь, а не проверкой образца наперёд:
-					 * обозначение это редкое, а проверка каждого образца перед разбором
-					 * отнимала четверть скорости и на общем пути ничего не давала
+					 * @brief Если это уточнение переменной формата
+					 *
+					 * @details Приведение выполняется здесь, а не проверкой образца наперёд:
+					 *          обозначение это редкое, а проверка каждого образца перед разбором
+					 *          отнимала четверть скорости и на общем пути ничего не давала.
+					 *
 					 */
-					// Если это уточнение переменной формата
 					if(mode){
 						// Выполняем приведение обозначения %:z к переменной формата модуля
-						const string & normalized = ::colonZone(format);
+						const string & normalized = ::__awh_colon_zone__(format);
 						// Если приведение выполнялось
 						if(!normalized.empty())
 							// Выполняем разбор записи по приведённому образцу
@@ -11432,14 +11778,16 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			}
 		}
 		/**
-		 * Определяем самое мелкое из полей, заданных форматом: поля мельче него
-		 * задаются наименьшим своим значением, а не текущим, поля крупнее -
-		 * наоборот, текущим. Правило это несимметрично намеренно: устаревший
-		 * стандарт системного журнала RFC 3164 года не записывает, и запись без
-		 * года обязана попадать в текущий год, а не в 1970-й, тогда как запись
-		 * одной только даты обязана означать её начало, а не текущее время суток
+		 * @brief Уровень самого мелкого заданного поля, нулевой - не задано ни одного
+		 *
+		 * @details Определяем самое мелкое из полей, заданных форматом: поля мельче него
+		 *          задаются наименьшим своим значением, а не текущим, поля крупнее -
+		 *          наоборот, текущим. Правило это несимметрично намеренно: устаревший
+		 *          стандарт системного журнала RFC 3164 года не записывает, и запись без
+		 *          года обязана попадать в текущий год, а не в 1970-й, тогда как запись
+		 *          одной только даты обязана означать её начало, а не текущее время суток.
+		 *
 		 */
-		// Уровень самого мелкого заданного поля, нулевой - не задано ни одного
 		uint8_t level = 0;
 		// Если год задан форматом
 		if(flags[1]) level = 1;
@@ -11462,10 +11810,6 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			// Если хранилище локальное
 			case static_cast <uint8_t> (storage_t::LOCAL): {
 				/**
-				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
-				 * её разбора: в записи она может стоять перед часом
-				 */
-				/**
 				 * Век приводит год к полному счёту здесь, а не в момент его разбора: в
 				 * записи он может стоять перед двузначным обозначением года
 				 */
@@ -11475,6 +11819,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					this->_dt.leap = this->leap(this->_dt.year);
 				}
+				/**
+				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
+				 * её разбора: в записи она может стоять перед часом
+				 */
 				if(flags[9]){
 					// Час от полудня до полуночи записывается с меткой PM числом от 1 до 11
 					if((this->_dt.h12 == h12_t::PM) && (this->_dt.hour < 12))
@@ -11502,12 +11850,14 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Если временная зона объекту не выставлена
 					} else {
 						/**
-						 * Обозначение зоны сбрасывается, а не выставляется в UTC: зона берётся
-						 * из окружения и обозначения не несёт, а прежняя запись выдавала её за
-						 * UTC - смещение +10800 при обозначении UTC, отчего переменная формата
-						 * %Z печатала UTC для московского времени
+						 * @brief Сбрасываем идентификатор временной зоны
+						 *
+						 * @details Обозначение зоны сбрасывается, а не выставляется в UTC: зона берётся
+						 *          из окружения и обозначения не несёт, а прежняя запись выдавала её за
+						 *          UTC - смещение +10800 при обозначении UTC, отчего переменная формата
+						 *          %Z печатала UTC для московского времени.
+						 *
 						 */
-						// Сбрасываем идентификатор временной зоны
 						this->_dt.zone = zone_t::NONE;
 						// Запись читается во временной зоне окружения
 						ambient = true;
@@ -11518,14 +11868,16 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 						this->_dt.offset = 0;
 					}
 				/**
-				 * Нулевое смещение, полученное разбором записи, обозначается UTC:
-				 * обозначение здесь единственное, чем нулевая зона, записью заданная,
-				 * отличается от незаданной, а от этого зависит, перекладывать ли запись
-				 * в зону окружения при формировании. Прежде запись с явным смещением
-				 * +0000 под зоной окружения Europe/Moscow формировалась обратно как
-				 * +0300 со сдвигом времени на три часа
+				 * @brief Если запись несёт нулевое смещение без обозначения зоны
+				 *
+				 * @details Нулевое смещение, полученное разбором записи, обозначается UTC:
+				 *          обозначение здесь единственное, чем нулевая зона, записью заданная,
+				 *          отличается от незаданной, а от этого зависит, перекладывать ли запись
+				 *          в зону окружения при формировании. Прежде запись с явным смещением
+				 *          +0000 под зоной окружения Europe/Moscow формировалась обратно как
+				 *          +0300 со сдвигом времени на три часа.
+				 *
 				 */
-				// Если запись несёт нулевое смещение без обозначения зоны
 				} else if((this->_dt.offset == 0) && (this->_dt.zone == zone_t::NONE))
 					// Устанавливаем идентификатор временной зоны
 					this->_dt.zone = zone_t::UTC;
@@ -11544,7 +11896,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				 */
 				if(flags[8] && !flags[6] && !flags[7])
 					// Раскладываем номер дня в году на месяц и число месяца
-					::dateFromDays(this->_dt.days, this->leap(this->_dt.year), this->_dt.month, this->_dt.date);
+					::__awh_date_from_days__(this->_dt.days, this->leap(this->_dt.year), this->_dt.month, this->_dt.date);
 				// Если задан только год, месяц задаём первым в году
 				if(level == 1)
 					// Выполняем сброс месяца
@@ -11579,7 +11931,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					const bool days = (!flags[8] || (this->_dt.days < (this->leap(this->_dt.year) ? 366 : 365)));
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
-						(pos > -1) && days && ::validDate(
+						(pos > -1) && days && ::__awh_valid_date__(
 							this->_dt.year, this->_dt.month, this->_dt.date, this->_dt.hour,
 							this->_dt.minutes, this->_dt.seconds, this->_dt.milliseconds,
 							this->leap(this->_dt.year), offset, this->_dt.day, this->_leapSecond
@@ -11587,18 +11939,19 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					);
 				}
 				/**
-				 * Смещение сводной зоны разрешается по самой разобранной записи, а не по
-				 * текущему мгновению: обозначение её приходит либо переменной формата %Z,
-				 * либо от объекта, и в обоих случаях зимняя запись, разобранная летом,
-				 * получала летнее смещение - «-0400 EST»
+				 * @brief Если запись читается во временной зоне окружения
+				 *
+				 * @details Смещение сводной зоны разрешается по самой разобранной записи, а не по
+				 *          текущему мгновению: обозначение её приходит либо переменной формата %Z,
+				 *          либо от объекта, и в обоих случаях зимняя запись, разобранная летом,
+				 *          получала летнее смещение - «-0400 EST».
+				 *
+				 * @details Разрешение идёт до отката года, а не после: до него штамп времени собран
+				 *          по стандартному смещению зоны, и на летней записи он завышен на час.
+				 *          У самого порога допуска этот час давал ложный откат, а разрешение зоны
+				 *          год уже не возвращало.
+				 *
 				 */
-				/**
-				 * Разрешение идёт до отката года, а не после: до него штамп времени собран
-				 * по стандартному смещению зоны, и на летней записи он завышен на час.
-				 * У самого порога допуска этот час давал ложный откат, а разрешение зоны
-				 * год уже не возвращало
-				 */
-				// Если запись читается во временной зоне окружения
 				if(ambient)
 					// Разрешаем смещение зоны окружения по местным полям записи
 					this->_dt.offset = this->wallZone(this->_dt);
@@ -11620,11 +11973,13 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					this->_dt.leap = this->leap(this->_dt.year);
 					/**
-					 * Смена года дату меняет, и смещение сводной зоны разрешается по ней
-					 * заново: та же запись прошлого года могла прийтись на другую сторону
-					 * перехода
+					 * @brief Если запись читается во временной зоне окружения
+					 *
+					 * @details Смена года дату меняет, и смещение сводной зоны разрешается по ней
+					 *          заново: та же запись прошлого года могла прийтись на другую сторону
+					 *          перехода.
+					 *
 					 */
-					// Если запись читается во временной зоне окружения
 					if(ambient)
 						// Разрешаем смещение зоны окружения по новой дате
 						this->_dt.offset = this->wallZone(this->_dt);
@@ -11636,21 +11991,19 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					result = this->makeStamp(this->_dt);
 				}
 				/**
-				 * Поля объекта приводятся к разобранному штампу времени: запись способна
-				 * нести поля вне промежутка - нулевой либо тринадцатый месяц, девятый
-				 * день недели, - а объект обязан описывать ту же дату, что выдал разбор.
-				 * Прежде такие поля оставались в объекте сырыми, и формирование записи
-				 * читало названия месяцев и дней недели за границами своих таблиц
+				 * @brief Заполняем объект даты полями временной зоны записи
+				 *
+				 * @details Поля объекта приводятся к разобранному штампу времени: запись способна
+				 *          нести поля вне промежутка - нулевой либо тринадцатый месяц, девятый
+				 *          день недели, - а объект обязан описывать ту же дату, что выдал разбор.
+				 *          Прежде такие поля оставались в объекте сырыми, и формирование записи
+				 *          читало названия месяцев и дней недели за границами своих таблиц.
+				 *
 				 */
-				// Заполняем объект даты полями временной зоны записи
 				this->makeDate(result, offset, this->_dt);
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
-				/**
-				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
-				 * её разбора: в записи она может стоять перед часом
-				 */
 				/**
 				 * Век приводит год к полному счёту здесь, а не в момент его разбора: в
 				 * записи он может стоять перед двузначным обозначением года
@@ -11661,6 +12014,10 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					dt.leap = this->leap(dt.year);
 				}
+				/**
+				 * Метка времени суток приводит час к суточному счёту здесь, а не в момент
+				 * её разбора: в записи она может стоять перед часом
+				 */
 				if(flags[9]){
 					// Час от полудня до полуночи записывается с меткой PM числом от 1 до 11
 					if((dt.h12 == h12_t::PM) && (dt.hour < 12))
@@ -11674,10 +12031,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Если флаг смещения временной зоны не передан
 				if(!flags[0]){
 					/**
-					 * Обозначение зоны сбрасывается, а не выставляется в UTC, по тем же
-					 * основаниям, что и в местном хранилище
+					 * @brief Сбрасываем идентификатор временной зоны
+					 *
+					 * @details Обозначение зоны сбрасывается, а не выставляется в UTC, по тем же
+					 *          основаниям, что и в местном хранилище.
+					 *
 					 */
-					// Сбрасываем идентификатор временной зоны
 					dt.zone = zone_t::NONE;
 					// Запись читается во временной зоне окружения
 					ambient = true;
@@ -11687,10 +12046,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					 */
 					dt.offset = 0;
 				/**
-				 * Нулевое смещение, полученное разбором записи, обозначается UTC по тем
-				 * же основаниям, что и в местном хранилище
+				 * @brief Если запись несёт нулевое смещение без обозначения зоны
+				 *
+				 * @details Нулевое смещение, полученное разбором записи, обозначается UTC по тем
+				 *          же основаниям, что и в местном хранилище.
+				 *
 				 */
-				// Если запись несёт нулевое смещение без обозначения зоны
 				} else if((dt.offset == 0) && (dt.zone == zone_t::NONE))
 					// Устанавливаем идентификатор временной зоны
 					dt.zone = zone_t::UTC;
@@ -11707,7 +12068,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				 */
 				if(flags[8] && !flags[6] && !flags[7])
 					// Раскладываем номер дня в году на месяц и число месяца
-					::dateFromDays(dt.days, this->leap(dt.year), dt.month, dt.date);
+					::__awh_date_from_days__(dt.days, this->leap(dt.year), dt.month, dt.date);
 				// Если задан только год, месяц задаём первым в году
 				if(level == 1)
 					// Выполняем сброс месяца
@@ -11742,24 +12103,25 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					const bool days = (!flags[8] || (dt.days < (this->leap(dt.year) ? 366 : 365)));
 					// Запись пригодна, если разобрана каждая переменная формата и поля допустимы
 					(* valid) = (
-						(pos > -1) && days && ::validDate(
+						(pos > -1) && days && ::__awh_valid_date__(
 							dt.year, dt.month, dt.date, dt.hour,
 							dt.minutes, dt.seconds, dt.milliseconds, this->leap(dt.year), offset, dt.day, this->_leapSecond
 						)
 					);
 				}
 				/**
-				 * Смещение сводной зоны разрешается по самой разобранной записи наравне с
-				 * местным хранилищем: обозначение её приходит переменной формата %Z, и
-				 * зимняя запись, разобранная летом, получала летнее смещение
+				 * @brief Если запись читается во временной зоне окружения
+				 *
+				 * @details Смещение сводной зоны разрешается по самой разобранной записи наравне с
+				 *          местным хранилищем: обозначение её приходит переменной формата %Z, и
+				 *          зимняя запись, разобранная летом, получала летнее смещение.
+				 *
+				 * @details Разрешение идёт до отката года, а не после: до него штамп времени собран
+				 *          по стандартному смещению зоны, и на летней записи он завышен на час.
+				 *          У самого порога допуска этот час давал ложный откат, а разрешение зоны
+				 *          год уже не возвращало.
+				 *
 				 */
-				/**
-				 * Разрешение идёт до отката года, а не после: до него штамп времени собран
-				 * по стандартному смещению зоны, и на летней записи он завышен на час.
-				 * У самого порога допуска этот час давал ложный откат, а разрешение зоны
-				 * год уже не возвращало
-				 */
-				// Если запись читается во временной зоне окружения
 				if(ambient)
 					// Разрешаем смещение зоны окружения по местным полям записи
 					dt.offset = this->wallZone(dt);
@@ -11779,11 +12141,13 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					// Устанавливаем флаг високосного года
 					dt.leap = this->leap(dt.year);
 					/**
-					 * Смена года дату меняет, и смещение сводной зоны разрешается по ней
-					 * заново: та же запись прошлого года могла прийтись на другую сторону
-					 * перехода
+					 * @brief Если запись читается во временной зоне окружения
+					 *
+					 * @details Смена года дату меняет, и смещение сводной зоны разрешается по ней
+					 *          заново: та же запись прошлого года могла прийтись на другую сторону
+					 *          перехода.
+					 *
 					 */
-					// Если запись читается во временной зоне окружения
 					if(ambient)
 						// Разрешаем смещение зоны окружения по новой дате
 						dt.offset = this->wallZone(dt);
@@ -11840,7 +12204,7 @@ string awh::Chrono::format(const uint64_t date, const standard_t standard) const
 	 */
 	if((standard == standard_t::RFC1123) || (standard == standard_t::RFC850))
 		// Выполняем формирование записи в нулевой временной зоне
-		return this->format(date, static_cast <int32_t> (0), ::standardFormat(standard, 0));
+		return this->format(date, static_cast <int32_t> (0), ::__awh_standard_format__(standard, 0));
 	/**
 	 * Основная форма ISO 8601 разделителей не несёт, и смещение зоны записывается в
 	 * той же форме, что и сама дата: расширенное «+03:00» рядом с основной формой
@@ -11850,10 +12214,10 @@ string awh::Chrono::format(const uint64_t date, const standard_t standard) const
 		// Получаем смещение временной зоны окружения на саму записываемую дату
 		const int32_t offset = this->environZone(static_cast <time_t> (date / 1000));
 		// Выполняем формирование записи во временной зоне окружения
-		return this->format(date, offset, ::isoFormat(offset));
+		return this->format(date, offset, ::__awh_iso_format__(offset));
 	}
 	// Выполняем формирование записи во временной зоне окружения
-	return this->format(date, ::standardFormat(standard, 0));
+	return this->format(date, ::__awh_standard_format__(standard, 0));
 }
 /**
  * @brief Метод формирования записи даты по стандарту в указанной зоне
@@ -11871,13 +12235,13 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, const standa
 	 */
 	if((standard == standard_t::RFC1123) || (standard == standard_t::RFC850))
 		// Выполняем формирование записи в нулевой временной зоне
-		return this->format(date, static_cast <int32_t> (0), ::standardFormat(standard, 0));
+		return this->format(date, static_cast <int32_t> (0), ::__awh_standard_format__(standard, 0));
 	// Если запись формируется основной формой ISO 8601
 	if(standard == standard_t::ISO8601)
 		// Выполняем формирование записи со смещением зоны в той же форме, что и дата
-		return this->format(date, zone, ::isoFormat(zone));
+		return this->format(date, zone, ::__awh_iso_format__(zone));
 	// Выполняем формирование записи в указанной временной зоне
-	return this->format(date, zone, ::standardFormat(standard, 0));
+	return this->format(date, zone, ::__awh_standard_format__(standard, 0));
 }
 /**
  * @brief Метод разбора записи даты по стандарту
@@ -11916,13 +12280,13 @@ uint64_t awh::Chrono::parse(string_view date, const standard_t standard, bool & 
 	 */
 	for(uint8_t i = 0; i < 4; i++){
 		// Получаем очередной образец записи стандарта
-		const char * format = ::standardPattern(standard, i);
+		const char * format = ::__awh_standard_pattern__(standard, i);
 		// Если образцы записи кончились
 		if(format == nullptr)
 			// Выходим из перебора образцов
 			break;
 		// Если разделители образца в записи отсутствуют
-		if(!::matchLiterals(date, format, (standard == standard_t::RFC3339)))
+		if(!::__awh_match_literals__(date, format, (standard == standard_t::RFC3339)))
 			// Переходим к следующему образцу записи
 			continue;
 		// Выполняем разбор записи очередным образцом
@@ -11953,13 +12317,13 @@ bool awh::Chrono::validate(string_view date, const standard_t standard) noexcept
 	 */
 	for(uint8_t i = 0; i < 4; i++){
 		// Получаем очередной образец записи стандарта
-		const char * format = ::standardPattern(standard, i);
+		const char * format = ::__awh_standard_pattern__(standard, i);
 		// Если образцы записи кончились
 		if(format == nullptr)
 			// Выходим из перебора образцов
 			break;
 		// Если разделители образца в записи отсутствуют
-		if(!::matchLiterals(date, format, (standard == standard_t::RFC3339)))
+		if(!::__awh_match_literals__(date, format, (standard == standard_t::RFC3339)))
 			// Переходим к следующему образцу записи
 			continue;
 		// Признак пригодности разобранной записи
@@ -12013,7 +12377,7 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 	 */
 	try {
 		// Выполняем нативный разбор временной зоны со смещением (формат %e)
-		const matches_t match = ::parseZoneFull(zone.data(), zone.size());
+		const matches_t match = ::__awh_parse_zone_full__(zone.data(), zone.size());
 		// Если разобрать обозначение не удалось
 		if(match.empty())
 			// Обозначение непригодно
@@ -12027,7 +12391,7 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 		 */
 		if(offset){
 			// Получаем разобранное смещение временной зоны
-			const int32_t value = ::readZoneOffset(zone.data(), match[3], match[4], match[5], match[6]);
+			const int32_t value = ::__awh_read_zone_offset__(zone.data(), match[3], match[4], match[5], match[6]);
 			// Если смещение вышло за промежуток земных поясов
 			if((value < MIN_ZONE_OFFSET) || (value > MAX_ZONE_OFFSET))
 				// Обозначение непригодно
@@ -12040,11 +12404,11 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 		// Получаем название временной зоны
 		string name(zone.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
 		// Если название найдено в списке временных зон
-		if(this->_timeZones.find(::lowerZone(name.data(), name.length())) != this->_timeZones.end())
+		if(this->_timeZones.find(::__awh_lower_zone__(name.data(), name.length())) != this->_timeZones.end())
 			// Обозначение пригодно
 			return true;
 		// Если название временной зоны является числом
-		if(awh::fmk::is(name, awh::fmk::check_t::NUMBER))
+		if(fmk::is(name, fmk::check_t::NUMBER))
 			// Обозначение пригодно
 			return true;
 		// Обозначение пригодно, если название соответствует известной временной зоне
@@ -12074,7 +12438,7 @@ bool awh::Chrono::validateSeconds(string_view value) const noexcept {
 	 */
 	try {
 		// Выполняем нативный разбор обозначения размерности времени
-		const matches_t match = ::parseSeconds(value.data(), value.size());
+		const matches_t match = ::__awh_parse_seconds__(value.data(), value.size());
 		// Если разобрать обозначение не удалось
 		if(match.empty())
 			// Обозначение непригодно
@@ -12082,10 +12446,12 @@ bool awh::Chrono::validateSeconds(string_view value) const noexcept {
 		// Получаем разобранное число обозначения
 		const string number(value.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
 		/**
-		 * Число обязано состоять из разрядов и не более чем одной точки: запятую
-		 * разбор захватывает вместе с числом, но перевести её в число не может
+		 * @brief Количество разделителей дробной части в разобранном числе
+		 *
+		 * @details Число обязано состоять из разрядов и не более чем одной точки: запятую
+		 *          разбор захватывает вместе с числом, но перевести её в число не может.
+		 *
 		 */
-		// Количество разделителей дробной части в разобранном числе
 		uint8_t points = 0;
 		/**
 		 * Выполняем перебор всех символов разобранного числа, пропуская его знак
@@ -12135,7 +12501,7 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 * ведущего нуля у часов, - но она предназначена для чтения человеком, а
 			 * не для обмена, и разбор её принимает наравне с полной
 			 */
-			appendZoneOffset(result, zone, ':', true);
+			__awh_append_zone_offset__(result, zone, ':', true);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -12147,13 +12513,13 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {zone}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -12183,10 +12549,12 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Атлантическое Время)
 			case static_cast <uint8_t> (zone_t::AT): {
 				/**
-				 * Летнее время определяется по местному времени зоны, а не по всемирному:
-				 * переход происходит в 02:00 по её стандартному времени
+				 * @brief Если время летнее
+				 *
+				 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+				 *          переход происходит в 02:00 по её стандартному времени.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::ASTAL)))
 					// Формируем летнее время
 					return "ADT";
@@ -12196,10 +12564,12 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Северноамериканское Центральное Время)
 			case static_cast <uint8_t> (zone_t::CT): {
 				/**
-				 * Летнее время определяется по местному времени зоны, а не по всемирному:
-				 * переход происходит в 02:00 по её стандартному времени
+				 * @brief Если время летнее
+				 *
+				 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+				 *          переход происходит в 02:00 по её стандартному времени.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::CSTNA)))
 					// Формируем летнее время
 					return "CDT";
@@ -12209,10 +12579,12 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Северноамериканское Восточное Время)
 			case static_cast <uint8_t> (zone_t::ET): {
 				/**
-				 * Летнее время определяется по местному времени зоны, а не по всемирному:
-				 * переход происходит в 02:00 по её стандартному времени
+				 * @brief Если время летнее
+				 *
+				 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+				 *          переход происходит в 02:00 по её стандартному времени.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::EST)))
 					// Формируем летнее время
 					return "EDT";
@@ -12222,10 +12594,12 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Северноамериканское Горное Время)
 			case static_cast <uint8_t> (zone_t::MT): {
 				/**
-				 * Летнее время определяется по местному времени зоны, а не по всемирному:
-				 * переход происходит в 02:00 по её стандартному времени
+				 * @brief Если время летнее
+				 *
+				 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+				 *          переход происходит в 02:00 по её стандартному времени.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::MSTNA)))
 					// Формируем летнее время
 					return "MDT";
@@ -12235,10 +12609,12 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Северноамериканское Тихоокеанское Время)
 			case static_cast <uint8_t> (zone_t::PT): {
 				/**
-				 * Летнее время определяется по местному времени зоны, а не по всемирному:
-				 * переход происходит в 02:00 по её стандартному времени
+				 * @brief Если время летнее
+				 *
+				 * @details Летнее время определяется по местному времени зоны, а не по всемирному:
+				 *          переход происходит в 02:00 по её стандартному времени.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::PST)))
 					// Формируем летнее время
 					return "PDT";
@@ -12248,11 +12624,13 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 			// Если временная зона установлена как (Время В Ньюфаундленде)
 			case static_cast <uint8_t> (zone_t::NT): {
 				/**
-				 * Ньюфаундленд переходит на летнее время наравне с прочей Северной
-				 * Америкой, и сводная зона обозначает то стандартное время, то летнее:
-				 * прежде она всегда давала NST, никогда NDT
+				 * @brief Если время летнее
+				 *
+				 * @details Ньюфаундленд переходит на летнее время наравне с прочей Северной
+				 *          Америкой, и сводная зона обозначает то стандартное время, то летнее:
+				 *          прежде она всегда давала NST, никогда NDT.
+				 *
 				 */
-				// Если время летнее
 				if(this->isDST(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(zone_t::NST)))
 					// Формируем летнее время
 					return "NDT";
@@ -13021,13 +13399,13 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (zone)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (zone)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -13174,15 +13552,17 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (G)
 							case 'G': {
 								/**
-								 * Счёт недель по ISO 8601 ведётся от понедельника, а первой неделей
-								 * года считается та, на которую приходится первый его четверг.
-								 * Оттого последние дни декабря могут принадлежать первой неделе
-								 * следующего года, а первые дни января - последней неделе
-								 * предыдущего, и год недельного счёта с календарным не совпадает.
-								 * Прежде переменные %G и %g выдавались за %Y и %y, отчего
-								 * тридцатое декабря 2024 года записывалось годом 2024 вместо 2025
+								 * @brief Номер года недельного счёта
+								 *
+								 * @details Счёт недель по ISO 8601 ведётся от понедельника, а первой неделей
+								 *          года считается та, на которую приходится первый его четверг.
+								 *          Оттого последние дни декабря могут принадлежать первой неделе
+								 *          следующего года, а первые дни января - последней неделе
+								 *          предыдущего, и год недельного счёта с календарным не совпадает.
+								 *          Прежде переменные %G и %g выдавались за %Y и %y, отчего
+								 *          тридцатое декабря 2024 года записывалось годом 2024 вместо 2025.
+								 *
 								 */
-								// Номер года недельного счёта
 								uint16_t year = dt.year;
 								// Получаем номер недели, отсчитываемый от первого четверга года
 								int32_t week = ((static_cast <int32_t> (dt.days + 1) - static_cast <int32_t> (dt.day)) + 10) / 7;
@@ -13191,9 +13571,9 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 									// Переносим счёт на предыдущий год
 									year = static_cast <uint16_t> (dt.year - 1);
 									// Получаем последнюю неделю предыдущего года
-									week = static_cast <int32_t> (::weeksOfYear(year, this->leap(year)));
+									week = static_cast <int32_t> (::__awh_weeks_of_year__(year, this->leap(year)));
 								// Если неделя принадлежит следующему году
-								} else if(week > static_cast <int32_t> (::weeksOfYear(dt.year, dt.leap))) {
+								} else if(week > static_cast <int32_t> (::__awh_weeks_of_year__(dt.year, dt.leap))) {
 									// Переносим счёт на следующий год
 									year = static_cast <uint16_t> (dt.year + 1);
 									// Первая неделя следующего года
@@ -13219,12 +13599,14 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (C)
 							case 'C':
 								/**
-								 * Век записывается двумя разрядами по требованию POSIX: год
-								 * делится на сто с отбрасыванием остатка. Календарь модуля
-								 * охватывает годы с 1970 по 9999, поэтому век всегда
-								 * умещается в два разряда и ведущий ноль не требуется
+								 * @brief Выполняем формирование номера века
+								 *
+								 * @details Век записывается двумя разрядами по требованию POSIX: год
+								 *          делится на сто с отбрасыванием остатка. Календарь модуля
+								 *          охватывает годы с 1970 по 9999, поэтому век всегда
+								 *          умещается в два разряда и ведущий ноль не требуется.
+								 *
 								 */
-								// Выполняем формирование номера века
 								result.append(std::to_string(dt.year / 100));
 							break;
 							// Если мы нашли переменную (n)
@@ -13242,12 +13624,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (h)
 							case 'h':
 								// Выполняем формирование названия месяца
-								result.append(::nameOfMonth(dt.month).first);
+								result.append(::__awh_name_of_month__(dt.month).first);
 							break;
 							// Если мы нашли переменную (B)
 							case 'B':
 								// Выполняем формирование названия месяца
-								result.append(::nameOfMonth(dt.month).second);
+								result.append(::__awh_name_of_month__(dt.month).second);
 							break;
 							// Если мы нашли переменную (m)
 							case 'm': {
@@ -13289,12 +13671,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (a)
 							case 'a':
 								// Выполняем формирование названия дня недели
-								result.append(::nameOfDay(dt.day).first);
+								result.append(::__awh_name_of_day__(dt.day).first);
 							break;
 							// Если мы нашли переменную (A)
 							case 'A':
 								// Выполняем формирование названия дня недели
-								result.append(::nameOfDay(dt.day).second);
+								result.append(::__awh_name_of_day__(dt.day).second);
 							break;
 							// Если мы нашли переменную (u)
 							case 'u':
@@ -13311,14 +13693,16 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (U)
 							case 'U': {
 								/**
-								 * Номер недели в году отсчитывается от первого дня недели:
-								 * переменная %U считает неделю начинающейся с воскресенья,
-								 * переменная %W - с понедельника. Дни, предшествующие
-								 * первому такому дню года, относятся к нулевой неделе.
-								 * Величина эта отличается от количества недель, прошедших
-								 * с начала года, которое выдаёт извлечение unit_t::WEEKS
+								 * @brief Получаем номер дня недели, отсчитываемый от воскресенья
+								 *
+								 * @details Номер недели в году отсчитывается от первого дня недели:
+								 *          переменная %U считает неделю начинающейся с воскресенья,
+								 *          переменная %W - с понедельника. Дни, предшествующие
+								 *          первому такому дню года, относятся к нулевой неделе.
+								 *          Величина эта отличается от количества недель, прошедших
+								 *          с начала года, которое выдаёт извлечение unit_t::WEEKS.
+								 *
 								 */
-								// Получаем номер дня недели, отсчитываемый от воскресенья
 								const uint16_t day = (dt.day % 7);
 								// Получаем номер первого дня недели по проверяемой переменной
 								const uint16_t first = ((letter == 'U') ? day : ((day + 6) % 7));
@@ -13566,20 +13950,22 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							// Если мы нашли переменную (c)
 							case 'c': {
 								// Выполняем формирование названия дня недели
-								result.append(::nameOfDay(dt.day).first);
+								result.append(::__awh_name_of_day__(dt.day).first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								// Выполняем формирование названия месяца
-								result.append(::nameOfMonth(dt.month).first);
+								result.append(::__awh_name_of_month__(dt.month).first);
 								// Добавляем разделитель
 								result.append(1, ' ');
 								/**
-								 * Число месяца выравнивается пробелом, а не нулём: запись asctime
-								 * отводит числу два знака и однозначное дополняет пробелом, как это
-								 * делает переменная формата %e. Прежде запись выходила короче
-								 * эталонной - «Thu Jan 1» вместо «Thu Jan  1»
+								 * @brief Если число месяца однозначное
+								 *
+								 * @details Число месяца выравнивается пробелом, а не нулём: запись asctime
+								 *          отводит числу два знака и однозначное дополняет пробелом, как это
+								 *          делает переменная формата %e. Прежде запись выходила короче
+								 *          эталонной - «Thu Jan 1» вместо «Thu Jan  1».
+								 *
 								 */
-								// Если число месяца однозначное
 								if(dt.date < 10)
 									// Добавляем предстоящий пробел
 									result.append(1, ' ');
@@ -13627,7 +14013,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 								 * RFC 3339 и расширенная запись ISO 8601, ей же соответствует
 								 * переменная %:z библиотеки glibc
 								 */
-								appendZoneOffset(result, dt.offset, ':', false);
+								__awh_append_zone_offset__(result, dt.offset, ':', false);
 							break;
 							// Если мы нашли переменную (i)
 							case 'i': {
@@ -13642,7 +14028,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 									// Записываем обозначение нулевого смещения
 									result.append(1, 'Z');
 								// Записываем смещение в расширенной записи
-								else appendZoneOffset(result, dt.offset, ':', false);
+								else __awh_append_zone_offset__(result, dt.offset, ':', false);
 							} break;
 							// Если мы нашли переменную (z)
 							case 'z':
@@ -13651,7 +14037,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 								 * переменная %z стандарта POSIX, поле зоны RFC 5322, журнал
 								 * веб-сервера в общем формате и основная запись ISO 8601
 								 */
-								appendZoneOffset(result, dt.offset, '\0', false);
+								__awh_append_zone_offset__(result, dt.offset, '\0', false);
 							break;
 							// Если мы нашли переменную (Z)
 							case 'Z': {
@@ -13659,10 +14045,12 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 								if(dt.zone == zone_t::NONE)
 									// Выполняем формирование временной зоны
 									result.append(this->format(dt.offset));
-								// Возвращаем установленную временную зону
 								/**
-								 * Обозначение выводится по той же опоре, что и смещение: иначе
-								 * внутри часа перехода переменные %z и %Z расходятся между собой
+								 * @brief Возвращаем установленную временную зону
+								 *
+								 * @details Обозначение выводится по той же опоре, что и смещение: иначе
+								 *          внутри часа перехода переменные %z и %Z расходятся между собой.
+								 *
 								 */
 								else result.append(this->format(dt.zone, this->baseStamp(dt)));
 							} break;
@@ -13674,18 +14062,19 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 					// Сбрасываем режим соответствия переменной формата
 					mode = false;
 				} break;
-				// Если получен любой другой символ
 				// Если мы нашли уточнение записи смещения зоны в написании GNU (%:z)
 				case ':': {
 					/**
-					 * Приведение выполняется здесь, а не проверкой образца наперёд:
-					 * обозначение это редкое, а проверка каждого образца перед разбором
-					 * отнимала четверть скорости и на общем пути ничего не давала
+					 * @brief Если это уточнение переменной формата
+					 *
+					 * @details Приведение выполняется здесь, а не проверкой образца наперёд:
+					 *          обозначение это редкое, а проверка каждого образца перед разбором
+					 *          отнимала четверть скорости и на общем пути ничего не давала.
+					 *
 					 */
-					// Если это уточнение переменной формата
 					if(mode){
 						// Выполняем приведение обозначения %:z к переменной формата модуля
-						const string & normalized = ::colonZone(format);
+						const string & normalized = ::__awh_colon_zone__(format);
 						// Если приведение выполнялось
 						if(!normalized.empty())
 							// Выполняем формирование записи по приведённому образцу
@@ -13696,6 +14085,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 					// Добавляем полученный символ в результат
 					result.append(1, letter);
 				} break;
+				// Если получен любой другой символ
 				default: {
 					// Сбрасываем режим соответствия переменной формата
 					mode = false;
@@ -13717,21 +14107,25 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
  *
  */
 string awh::Chrono::format(const uint64_t date, string_view format) const noexcept {
-	// Если формат даты передан
 	/**
-	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
-	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
-	 * и отказ формировать по ней запись был здесь единственным исключением
+	 * @brief Если формат даты передан
+	 *
+	 * @details Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 *          действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 *          и отказ формировать по ней запись был здесь единственным исключением.
+	 *
 	 */
 	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
 		/**
-		 * Смещение зоны окружения берётся на саму записываемую дату, а не на текущий
-		 * миг: прежде январская запись, сформированная летом в зоне Europe/Berlin,
-		 * выходила с летним смещением «+0200» и уезжала на час
+		 * @brief Заполняем объект даты из штампа времени
+		 *
+		 * @details Смещение зоны окружения берётся на саму записываемую дату, а не на текущий
+		 *          миг: прежде январская запись, сформированная летом в зоне Europe/Berlin,
+		 *          выходила с летним смещением «+0200» и уезжала на час.
+		 *
 		 */
-		// Заполняем объект даты из штампа времени
 		this->makeDate(date, this->environZone(static_cast <time_t> (date / 1000)), dt);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
@@ -13749,11 +14143,13 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
  *
  */
 string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view format) const noexcept {
-	// Если формат даты передан
 	/**
-	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
-	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
-	 * и отказ формировать по ней запись был здесь единственным исключением
+	 * @brief Если формат даты передан
+	 *
+	 * @details Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 *          действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 *          и отказ формировать по ней запись был здесь единственным исключением.
+	 *
 	 */
 	if(!format.empty()){
 		// Создаем структуру времени
@@ -13776,11 +14172,13 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
  *
  */
 string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view format) const noexcept {
-	// Если формат даты передан
 	/**
-	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
-	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
-	 * и отказ формировать по ней запись был здесь единственным исключением
+	 * @brief Если формат даты передан
+	 *
+	 * @details Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 *          действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 *          и отказ формировать по ней запись был здесь единственным исключением.
+	 *
 	 */
 	if(!format.empty()){
 		// Создаем структуру времени
@@ -13807,11 +14205,13 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view f
  *
  */
 string awh::Chrono::format(const uint64_t date, string_view zone, string_view format) const noexcept {
-	// Если формат даты передан
 	/**
-	 * Нулевая дата - это полночь первого января 1970 года, дата не менее
-	 * действительная, чем любая другая: заполнение объекта даты её обрабатывает,
-	 * и отказ формировать по ней запись был здесь единственным исключением
+	 * @brief Если формат даты передан
+	 *
+	 * @details Нулевая дата - это полночь первого января 1970 года, дата не менее
+	 *          действительная, чем любая другая: заполнение объекта даты её обрабатывает,
+	 *          и отказ формировать по ней запись был здесь единственным исключением.
+	 *
 	 */
 	if(!format.empty()){
 		// Создаем структуру времени
@@ -13819,13 +14219,15 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
 		// Устанавливаем временную зону
 		dt.zone = this->matchTimeZone(zone);
 		/**
-		 * От самого момента зависит смещение одних лишь сводных зон Северной Америки,
-		 * и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
-		 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
-		 * и хвост теряет
+		 * @brief Заполняем объект даты из штампа времени в указанной временной зоне
+		 *
+		 * @details От самого момента зависит смещение одних лишь сводных зон Северной Америки,
+		 *          и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
+		 *          запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
+		 *          и хвост теряет.
+		 *
 		 */
-		// Заполняем объект даты из штампа времени в указанной временной зоне
-		this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
+		this->makeDate(date, (::__awh_composite__(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -13935,11 +14337,13 @@ string awh::Chrono::format(const zone_t zone, string_view format, const storage_
 				// Создаем структуру времени
 				dt_t dt = this->_dt;
 				/**
-				 * Смещение сводной зоны разрешается по моменту, объектом описываемому, а
-				 * не по текущему: перекладка момент времени сохраняет, и зимняя запись
-				 * прежде получала летнее смещение просто оттого, что дело шло летом
+				 * @brief Получаем момент времени, описываемый объектом даты
+				 *
+				 * @details Смещение сводной зоны разрешается по моменту, объектом описываемому, а
+				 *          не по текущему: перекладка момент времени сохраняет, и зимняя запись
+				 *          прежде получала летнее смещение просто оттого, что дело шло летом.
+				 *
 				 */
-				// Получаем момент времени, описываемый объектом даты
 				const uint64_t date = this->makeStamp(dt);
 				// Устанавливаем временную зону
 				dt.zone = zone;
@@ -13993,13 +14397,15 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				// Устанавливаем временную зону
 				dt.zone = this->matchTimeZone(zone);
 				/**
-				 * От самого момента зависит смещение одних лишь сводных зон Северной Америки,
-				 * и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
-				 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
-				 * и хвост теряет
+				 * @brief Заполняем объект даты из штампа времени в указанной временной зоне
+				 *
+				 * @details От самого момента зависит смещение одних лишь сводных зон Северной Америки,
+				 *          и по дате разрешаются только они: обозначение вида UTC-4 несёт числовую
+				 *          запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
+				 *          и хвост теряет.
+				 *
 				 */
-				// Заполняем объект даты из штампа времени в указанной временной зоне
-				this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
+				this->makeDate(date, (::__awh_composite__(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -14012,7 +14418,7 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				// Устанавливаем временную зону
 				dt.zone = this->matchTimeZone(zone);
 				// Заполняем объект даты из штампа времени в указанной временной зоне
-				this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
+				this->makeDate(date, (::__awh_composite__(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -14063,13 +14469,13 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, format1, format2, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {date, format1, format2, static_cast <uint16_t> (storage)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
