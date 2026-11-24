@@ -1463,6 +1463,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/unit/quic/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/httpproxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/compressor/block.cpp"
@@ -1484,6 +1485,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/basic.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/digest.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/bearer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/proxy/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http1/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/h2.cpp"
@@ -1893,6 +1895,15 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(SERVER_APP_SOCKS5_NAME server-socks5)
     # Указываем что нужно собрать приложение работы с SOCKS5 клиентом и сервером
     option(CMAKE_BUILD_SOCKS5_APP_SAMPLE "Build SOCKS5 app sample" ON)
+
+    # Устанавливаем имя приложения работы с HTTP-прокси клиентом
+    SET(CLIENT_APP_HTTPPROXY_NAME client-httpproxy)
+    # Устанавливаем имя приложения работы с HTTP-прокси клиентом для TLS к цели
+    SET(CLIENT_APP_HTTPPROXY-TLS_NAME client-httpproxy-tls)
+    # Устанавливаем имя приложения работы с HTTP-прокси клиентом для пересылки запросов
+    SET(CLIENT_APP_HTTPPROXY-FORWARD_NAME client-httpproxy-forward)
+    # Указываем что нужно собрать приложение работы с HTTP-прокси клиентом
+    option(CMAKE_BUILD_HTTPPROXY_APP_SAMPLE "Build HTTP proxy app sample" ON)
 
     # Устанавливаем имя приложения работы с юнитом файловой системы
     SET(UNIT_APP_FS_NAME unit-fs)
@@ -2541,6 +2552,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample SOCKS5: No\n")
     endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+    if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample HTTP proxy: Yes\n")
+        # Создаём приложение работы с HTTP-прокси клиентом
+        add_sample(${CLIENT_APP_HTTPPROXY_NAME} sample/client/httpproxy.cpp client)
+        # Создаём приложение работы с HTTP-прокси клиентом для TLS к цели
+        add_sample(${CLIENT_APP_HTTPPROXY-TLS_NAME} sample/client/httpproxy-tls.cpp client)
+        # Создаём приложение работы с HTTP-прокси клиентом для пересылки запросов
+        add_sample(${CLIENT_APP_HTTPPROXY-FORWARD_NAME} sample/client/httpproxy-forward.cpp client)
+    # Если не нужно собирать семплы для работы с HTTP-прокси
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample HTTP proxy: No\n")
+    endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -3673,6 +3700,30 @@ if (CMAKE_SHARED_BUILD_LIB)
                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+        if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для TLS к цели
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY-TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для пересылки запросов
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY-FORWARD_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
     
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -4952,6 +5003,33 @@ else (CMAKE_SHARED_BUILD_LIB)
                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+        if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для TLS к цели
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY-TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для пересылки запросов
+            target_link_libraries(
+                ${CLIENT_APP_HTTPPROXY-FORWARD_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -6323,6 +6401,30 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+            if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+                # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом
+                add_custom_command(TARGET "${CLIENT_APP_HTTPPROXY_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_HTTPPROXY_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_HTTPPROXY_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для TLS к цели
+                add_custom_command(TARGET "${CLIENT_APP_HTTPPROXY-TLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_HTTPPROXY-TLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_HTTPPROXY-TLS_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с юнитом HTTP-прокси клиентом для пересылки запросов
+                add_custom_command(TARGET "${CLIENT_APP_HTTPPROXY-FORWARD_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_HTTPPROXY-FORWARD_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_HTTPPROXY-FORWARD_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
                 # Выполняем сборку приложения работы с юнитом файловой системы
@@ -7014,6 +7116,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${SERVER_APP_SOCKS5_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_SOCKS5_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+            if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+                # Выполняем анализ приложения работы с юнитом HTTP-прокси клиентом
+                pvs_studio_add_target(TARGET ${CLIENT_APP_HTTPPROXY_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_HTTPPROXY_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с юнитом HTTP-прокси клиентом для TLS к цели
+                pvs_studio_add_target(TARGET ${CLIENT_APP_HTTPPROXY-TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_HTTPPROXY-TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с юнитом HTTP-прокси клиентом для пересылки запросов
+                pvs_studio_add_target(TARGET ${CLIENT_APP_HTTPPROXY-FORWARD_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_HTTPPROXY-FORWARD_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом файловой системы
@@ -7580,6 +7692,16 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с юнитом SOCKS5 сервером
         install(TARGETS ${SERVER_APP_SOCKS5_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с юнитом HTTP-прокси
+    if (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
+        # Устанавливаем приложение работы с юнитом HTTP-прокси клиентом
+        install(TARGETS ${CLIENT_APP_HTTPPROXY_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с юнитом HTTP-прокси клиентом для TLS к цели
+        install(TARGETS ${CLIENT_APP_HTTPPROXY-TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с юнитом HTTP-прокси клиентом для пересылки запросов
+        install(TARGETS ${CLIENT_APP_HTTPPROXY-FORWARD_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_HTTPPROXY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})

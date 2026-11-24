@@ -1136,11 +1136,15 @@ def check_file(path, lines, members, report, fixes=None):
             # не писан: конструктор либо оператор преобразования; operator перед именем - то же самое
             attr_head = bool(re.search(r"\b[A-Za-z_]\w*(?:__|_INLINE)\s+$", head))
             op_head = bool(re.search(r"\boperator\s*$", head))
+            # переопределения фикстуры Google Test SetUp/TearDown в каталоге tests:
+            # имена заданы фреймворком (виртуальные методы testing::Test) и переименованию
+            # не подлежат — заглавная буква здесь не право типов, а требование фреймворка
+            gtest_override = fname in ("SetUp", "TearDown") and re.search(r"(^|/)tests(/|$)", path.replace(os.sep, "/"))
             quals = fm.group(1).split("::")[:-1]
             # отступ глубже одного таба = метод класса, живущего в namespace: ему §4.2
             ns_indent = len(code) - len(code.lstrip("\t"))
             # всё имя в верхнем регистре = вызов макроса чужого API (STACK_OF, BOOL, HANDLE) либо константа
-            if call_kw or fname in STD_CALLS or ctor_head or attr_head or op_head or fname.isupper() or n in c_abi or code.lstrip().startswith("typedef"):
+            if call_kw or fname in STD_CALLS or ctor_head or attr_head or op_head or fname.isupper() or n in c_abi or gtest_override or code.lstrip().startswith("typedef"):
                 pass
             elif is_snake_name(fname) and "__awh" not in fm.group(1):
                 report(path, n, "ERROR", "§4.2", f"snake_case в имени функции/метода '{fname}' — требуется camelCase")

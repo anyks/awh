@@ -70,6 +70,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_HEADERS_TEST "Build unit HTTP headers test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля HTTP-авторизации
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_AUTH_TEST "Build unit HTTP auth test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля клиента HTTP-прокси
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROXY_TEST "Build unit HTTP proxy client test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST "Build unit HTTP parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля парсера HTTP/2
@@ -135,6 +137,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля HTTP-авторизации
             message(STATUS "Build tests HTTP auth submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_AUTH_TEST})
+
+        # Если нужно собрать тесты для подмодуля клиента HTTP-прокси
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROXY_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля клиента HTTP-прокси
+            message(STATUS "Build tests HTTP proxy client submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля клиента HTTP-прокси
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                http/proxy/proxy.cpp
+                http/proxy/static.cpp
+                http/proxy/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля клиента HTTP-прокси
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля клиента HTTP-прокси
+            message(STATUS "Build tests HTTP proxy client submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROXY_TEST})
 
         # Если нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST})

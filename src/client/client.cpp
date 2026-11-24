@@ -113,7 +113,10 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
+							log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {
+								static_cast <uint16_t> (index),
+								static_cast <uint16_t> (status)
+							}, log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -209,7 +212,10 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {
+									static_cast <uint16_t> (index),
+									static_cast <uint16_t> (status)
+								}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -3007,7 +3013,11 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("This client has already been initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, log::flag_t::WARNING);
+			log::debug("This client has already been initialized", __PRETTY_FUNCTION__, {
+				static_cast <uint16_t> (family),
+				static_cast <uint16_t> (type),
+				static_cast <uint16_t> (protocol)
+			}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3024,8 +3034,7 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
  *
  */
 awh::Client::Client() noexcept :
- _host{""}, _callback(), _unit(nullptr),
- _fin(false), _offset(0), _residue{""} {
+ _fin(false), _offset(0), _host{""}, _residue{""}, _unit(nullptr) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> ();
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -3079,8 +3088,7 @@ awh::Client::Client() noexcept :
  *
  */
 awh::Client::Client(unit::dns_t * dns) noexcept :
- _host{""}, _callback(), _unit(nullptr),
- _fin(false), _offset(0), _residue{""} {
+ _fin(false), _offset(0), _host{""}, _residue{""}, _unit(nullptr) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> ();
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -3166,8 +3174,7 @@ awh::Client::Client(unit::dns_t * dns) noexcept :
  *
  */
 awh::Client::Client(const tls::coder::id_t ctl) noexcept :
- _host{""}, _callback(), _unit(nullptr),
- _fin(false), _offset(0), _residue{""} {
+ _fin(false), _offset(0), _host{""}, _residue{""}, _unit(nullptr) {
 	/**
 	 * Устанавливаем идентификатор контекста безопасности и подписываемся
 	 * на события транспортного уровня: до запуска клиента менять их некому,
@@ -3237,8 +3244,7 @@ awh::Client::Client(const tls::coder::id_t ctl) noexcept :
  *
  */
 awh::Client::Client(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
- _host{""}, _callback(), _unit(nullptr),
- _fin(false), _offset(0), _residue{""} {
+ _fin(false), _offset(0), _host{""}, _residue{""}, _unit(nullptr) {
 	/**
 	 * Устанавливаем идентификатор контекста безопасности и подписываемся
 	 * на события транспортного уровня: до запуска клиента менять их некому,

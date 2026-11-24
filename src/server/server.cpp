@@ -149,7 +149,10 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
+							log::debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, {
+								static_cast <uint16_t> (index),
+								static_cast <uint16_t> (status)
+							}, log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -320,7 +323,10 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {
+									static_cast <uint16_t> (index),
+									static_cast <uint16_t> (status)
+								}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4128,11 +4134,13 @@ awh::Server::Server() noexcept :
 	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
 	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
-	 * собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
-	 * адресуемые по Connection ID), поэтому его колбэки подписываются отдельно
+	 * @brief Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
+	 *          адресуемые по Connection ID), поэтому его колбэки подписываются отдельно.
+	 *
 	 */
-	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
 	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как принятие соединения)
 	this->_unit->quic.on <void (const event::id_t)> ("open", &server_t::opened, this, _1);
@@ -4203,11 +4211,13 @@ awh::Server::Server(unit::dns_t * dns) noexcept :
 	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
 	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
-	 * собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
-	 * адресуемые по Connection ID), поэтому его колбэки подписываются отдельно
+	 * @brief Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
+	 *          адресуемые по Connection ID), поэтому его колбэки подписываются отдельно.
+	 *
 	 */
-	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
 	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как принятие соединения)
 	this->_unit->quic.on <void (const event::id_t)> ("open", &server_t::opened, this, _1);
@@ -4303,11 +4313,13 @@ awh::Server::Server(const tls::coder::id_t cts) noexcept :
 	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
 	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
-	 * собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
-	 * адресуемые по Connection ID), поэтому его колбэки подписываются отдельно
+	 * @brief Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
+	 *          адресуемые по Connection ID), поэтому его колбэки подписываются отдельно.
+	 *
 	 */
-	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
 	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как принятие соединения)
 	this->_unit->quic.on <void (const event::id_t)> ("open", &server_t::opened, this, _1);
@@ -4381,11 +4393,13 @@ awh::Server::Server(const tls::coder::id_t cts, unit::dns_t * dns) noexcept :
 	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
 	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
 	/**
-	 * Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
-	 * собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
-	 * адресуемые по Connection ID), поэтому его колбэки подписываются отдельно
+	 * @brief Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
+	 *
+	 * @details Функции обратного вызова выделенного юнита сервера QUIC: юнит QUIC работает
+	 *          собственной событийной моделью (сессии соединений поверх одного UDP-сокета,
+	 *          адресуемые по Connection ID), поэтому его колбэки подписываются отдельно.
+	 *
 	 */
-	// Устанавливаем функцию обратного вызова на событие изменения статуса выделенного юнита сервера QUIC
 	this->_unit->quic.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
 	// Устанавливаем функцию обратного вызова на событие установленного соединения QUIC (транслируется как принятие соединения)
 	this->_unit->quic.on <void (const event::id_t)> ("open", &server_t::opened, this, _1);

@@ -37,6 +37,7 @@
 #include <set>
 #include <algorithm>
 #include <numeric>
+#include <memory>
 #include <thread>
 
 /**
@@ -30847,12 +30848,12 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 }
 
 /**
- * Проверка молчания заведена лишь для систем POSIX
+ * Межпроцессная проверка передачи TCP-соединения на системах POSIX
  *
  * @note Работник здесь заводится через `fork`, которого у MS Windows нет вовсе, а
  *       переносчиком там годится не пара UDS, а именованный канал: описатель едет
- *       описанием устройства обмена через WSADuplicateSocket. Проверка для той
- *       системы обязана быть своей - как и соседняя передача выше по файлу
+ *       описанием устройства обмена через WSADuplicateSocket. Ниже для Windows
+ *       отдельно проверяются отправка после снимка и возврат остатка очереди
  *
  */
 #if !(defined(_WIN32) || defined(_WIN64))
@@ -31232,6 +31233,136 @@ TEST_F(IoFixture, IoSnapshotMuteTest){
  *
  */
 #if defined(_WIN32) || defined(_WIN64)
+
+/**
+ * @brief Проверка отправки и возврата остатка очереди после передачи сокета IOCP
+ *
+ * @details Именованный канал называет текущий процесс получателем дубликата.
+ *          Два события владеют разными описателями одного TCP-соединения.
+ *          Встречная сторона должна получить начало сообщения и метку нового
+ *          владельца, а подписчик исходного события — оставшийся хвост
+ *
+ */
+TEST_F(IoFixture, IoSnapshotMuteTest){
+	// Инициализируем сетевой движок
+	ASSERT_TRUE(awh::engine::io::initialize());
+	// Создаём события клиента и сервера на петлевом интерфейсе
+	const auto tcp = awh::engine::io::events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Создаём переносчик с подключённым встречным концом
+	const auto pipe = awh::engine::io::events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	// Создаём второго владельца для восстановления переданного сокета
+	const auto owner = awh::engine::io::event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Выбираем порт петлевого сервера
+	const uint16_t bind = port();
+	// Собираем данные встречной стороны до освобождения подписки
+	const auto received = std::make_shared <std::string> ();
+	// Сохраняем данные, возвращённые при уничтожении прежнего владельца
+	const auto returned = std::make_shared <std::string> ();
+	// Устанавливаем обработчик подключения встречной стороны
+	awh::engine::io::on(tcp[1], static_cast <awh::engine::callback::accept_t> ([received]([[maybe_unused]] const awh::event::id_t id, const awh::event::id_t peer) noexcept -> void {
+		// Собираем поток в порядке поступления
+		awh::engine::io::on(peer, [received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Дописываем очередную порцию
+			received->append(reinterpret_cast <const char *> (data), size);
+		});
+	}));
+	// Привязываем сервер к петлевому адресу
+	ASSERT_TRUE(awh::engine::address::set(tcp[1], awh::event::address_t::IPV4, "127.0.0.1"));
+	// Назначаем порт сервера
+	ASSERT_TRUE(awh::engine::source::port::set(tcp[1], bind));
+	// Заводим слушающий сокет
+	ASSERT_TRUE(awh::engine::io::commit(tcp[1]));
+	// Открываем очередь подключений
+	ASSERT_TRUE(awh::engine::io::listen(tcp[1], 8));
+	// Включаем приём подключений
+	ASSERT_TRUE(awh::engine::io::launch(tcp[1]));
+	/**
+	 * Описываем одно и то же подключение для обоих владельцев
+	 */
+	for(const auto id : {tcp[0], owner}){
+		// Устанавливаем неблокирующий обмен
+		ASSERT_TRUE(awh::engine::options::set(id, awh::event::options::NO_IO_BLOCK));
+		// Выбираем IPv4 для адреса источника
+		ASSERT_TRUE(awh::engine::address::set(id, awh::event::address_t::IPV4, "0.0.0.0"));
+		// Указываем адрес встречной стороны
+		ASSERT_TRUE(awh::engine::target::set(id, "127.0.0.1"));
+		// Указываем порт встречной стороны
+		ASSERT_TRUE(awh::engine::target::port::set(id, bind));
+	}
+	// Заводим исходный клиент
+	ASSERT_TRUE(awh::engine::io::commit(tcp[0]));
+	// Подключаемся к серверу
+	ASSERT_TRUE(awh::engine::io::connect(tcp[0]));
+	// Запускаем обработку клиента
+	ASSERT_TRUE(awh::engine::io::launch(tcp[0]));
+	// Ограничиваем ожидание подключения
+	const auto connected = (::GetTickCount64() + 5000);
+	/**
+	 * Дожидаемся перехода клиента в рабочее состояние
+	 */
+	while((awh::engine::io::status(tcp[0]) != awh::event::status_t::CONNECTED) && (::GetTickCount64() < connected))
+		// Обслуживаем установление соединения
+		awh::engine::io::poll(5);
+	// Убеждаемся, что клиент готов к отправке
+	ASSERT_EQ(awh::event::status_t::CONNECTED, awh::engine::io::status(tcp[0]));
+	// Ограничиваем отправку, чтобы часть принятого сообщения осталась в очереди
+	ASSERT_TRUE(awh::engine::io::bandwidth(tcp[0], awh::event::limiting_t::EGRESS, "1Mbps"));
+	// Формируем сообщение с различимыми байтами
+	std::string payload(32768, '\0');
+	/**
+	 * Заполняем поток образцом для побайтовой проверки обеих частей
+	 */
+	for(size_t i = 0; i < payload.size(); ++i)
+		// Сохраняем значение для текущей позиции
+		payload[i] = static_cast <char> (i % 251);
+	// Запоминаем вместимость пустой очереди
+	const size_t capacity = awh::engine::buffer::available(tcp[0]);
+	// Передаём клиенту сообщение целиком
+	ASSERT_EQ(payload.size(), awh::engine::io::send(tcp[0], payload.data(), payload.size()));
+	// Снимаем размер хвоста до следующего опроса
+	const size_t room = awh::engine::buffer::available(tcp[0]);
+	// Проверяем, что в очереди действительно остались данные
+	ASSERT_LT(room, capacity);
+	// Вычисляем размер занятой части первоначально пустой очереди
+	const size_t queued = (capacity - room);
+	// Проверяем, что и первая часть была отправлена
+	ASSERT_LT(queued, payload.size());
+	// Устанавливаем подписку на возврат неотправленного хвоста
+	awh::engine::io::on(tcp[0], static_cast <awh::engine::callback::spool_t> ([returned]([[maybe_unused]] const awh::event::id_t id, [[maybe_unused]] const awh::event::send_error_t code, const uint8_t * data, const size_t size) noexcept -> void {
+		// Складываем возвращённые байты в порядке вызовов
+		returned->append(reinterpret_cast <const char *> (data), size);
+	}));
+	// Снимаем соединение с непустой очередью
+	std::vector <uint8_t> snapshot;
+	// Передаём сокет владельцу встречного конца канала
+	ASSERT_TRUE(awh::engine::io::snapshot(tcp[0], pipe[0], snapshot));
+	// Проверяем отказ новой записи на прежнем событии
+	EXPECT_EQ(0U, awh::engine::io::send(tcp[0], "x", 1));
+	// Восстанавливаем сокет в отдельном событии
+	ASSERT_TRUE(awh::engine::io::restore(owner, snapshot.data(), snapshot.size()));
+	// Запускаем нового владельца
+	ASSERT_TRUE(awh::engine::io::launch(owner));
+	// Отмечаем начало данных нового владельца
+	ASSERT_EQ(1U, awh::engine::io::send(owner, "M", 1));
+	// Отделяем отправленное начало от очереди источника
+	const size_t prefix = (payload.size() - queued);
+	// Ограничиваем ожидание доставки метки
+	const auto until = (::GetTickCount64() + 5000);
+	/**
+	 * Обслуживаем оба события до получения начала сообщения и метки
+	 */
+	while((received->size() < (prefix + 1)) && (::GetTickCount64() < until))
+		// Даём прежнему владельцу те же обороты опроса, что и новому
+		awh::engine::io::poll(5);
+	// Проверяем точный поток встречной стороны
+	EXPECT_EQ(payload.substr(0, prefix) + "M", *received);
+	// До явного уничтожения хвост остаётся в исходной очереди
+	EXPECT_TRUE(returned->empty());
+	// Возвращаем остаток подписчику прежнего владельца
+	ASSERT_TRUE(awh::engine::io::destroy(tcp[0]));
+	// Сверяем весь хвост независимо от числа вызовов подписчика
+	EXPECT_EQ(payload.substr(prefix), *returned);
+}
 
 /**
  * @brief Проверка освобождения описателей канала обмена при уничтожении события

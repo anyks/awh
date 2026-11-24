@@ -4303,6 +4303,12 @@ namespace awh {
 				 * @note Снимок снимается лишь тогда, когда встречный конец события `dest`
 				 *       уже подключён: до подключения получателя нет, и называть некого
 				 *
+				 * @note Очередь отправки остаётся у исходного события. После успешного снимка
+				 *       оно прекращает отправку. Вызовы `send` на нём возвращают 0 до заведения
+				 *       нового описателя. Чтобы доставить все ранее принятые байты, дождитесь
+				 *       опустошения очереди до вызова `snapshot`. При уничтожении исходного
+				 *       события подписка `spool_t` возвращает его неотправленный остаток
+				 *
 				 * @param id       идентификатор передаваемого события
 				 * @param dest     идентификатор события, ведущего к процессу-получателю
 				 * @param snapshot буфер, куда складывается снятый снимок
@@ -4325,6 +4331,12 @@ namespace awh {
 				 *
 				 * @note The snapshot is taken only when the opposite end of the `dest` event
 				 *       is already connected: before the connection there is no recipient, and there is no one to name
+				 *
+				 * @note The send queue stays with the original event. After a successful snapshot
+				 *       the event stops sending. Calls to `send` on it return 0 until it acquires
+				 *       a new descriptor. To deliver all previously accepted bytes, wait for the
+				 *       queue to drain before calling `snapshot`. Destroying the original event
+				 *       returns any unsent bytes through its `spool_t` callback, if registered
 				 *
 				 * @param id       identifier of the transferred event
 				 * @param dest     identifier of the event leading to the recipient process
