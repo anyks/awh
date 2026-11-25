@@ -1463,7 +1463,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/unit/quic/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
-    "${CMAKE_SOURCE_DIR}/src/client/httpproxy.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/http/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/compressor/block.cpp"

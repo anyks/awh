@@ -24,7 +24,7 @@
  */
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
-#include <client/httpproxy.hpp>
+#include <client/http/proxy.hpp>
 
 /**
  * Используем пространство имён AWH

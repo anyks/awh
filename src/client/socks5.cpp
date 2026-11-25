@@ -193,7 +193,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid))){
 									// Если событие клиента не запущено, запускаем его
 									case static_cast <uint8_t> (event::status_t::NONE): {
-										// Если событие клиента не запущено, запускаем его
+										// Фиксация параметров клиента в сетевом движке выполнена удачно
 										if(this->_unit->client.commit(this->_id.eid)){
 											// Выполняем функцию обратного вызова
 											this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", this->_unit->client.family(this->_id.eid), this->_host, this->_unit->client.getTarget(this->_id.eid));
@@ -2255,24 +2255,21 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
  * @brief Конструктор
  *
  */
-awh::client::Socks5::Socks5() noexcept :
- client_t(), _socks5() {}
+awh::client::Socks5::Socks5() noexcept = default;
 /**
  * @brief Конструктор
  *
  * @param dns объект DNS-резолвера
  *
  */
-awh::client::Socks5::Socks5(unit::dns_t * dns) noexcept :
- client_t(dns), _socks5() {}
+awh::client::Socks5::Socks5(unit::dns_t * dns) noexcept : client_t(dns) {}
 /**
  * @brief Конструктор
  *
  * @param ctl идентификатор контекста безопасности
  *
  */
-awh::client::Socks5::Socks5(const tls::coder::id_t ctl) noexcept :
- client_t(ctl), _socks5() {}
+awh::client::Socks5::Socks5(const tls::coder::id_t ctl) noexcept : client_t(ctl) {}
 /**
  * @brief Конструктор
  *
@@ -2280,8 +2277,7 @@ awh::client::Socks5::Socks5(const tls::coder::id_t ctl) noexcept :
  * @param dns объект DNS-резолвера
  *
  */
-awh::client::Socks5::Socks5(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
- client_t(ctl, dns), _socks5() {}
+awh::client::Socks5::Socks5(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept : client_t(ctl, dns) {}
 /**
  * @brief Деструктор
  *
