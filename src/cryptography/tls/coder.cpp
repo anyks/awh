@@ -33,7 +33,6 @@
 #include <algorithm>
 #include <shared_mutex>
 #include <net/event.hpp>
-#include <sys/macro/global.hpp>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -44,13 +43,13 @@
 #include <hpke/hpke.hpp>
 #include <x509/x509.hpp>
 #include <x509/crl.hpp>
-#include <anyks/nts/client/client.hpp>
-#include <anyks/nts/server/server.hpp>
 #include <protect/protect.hpp>
 #include <extension/extension.hpp>
+#include <anyks/nts/client/client.hpp>
+#include <anyks/nts/server/server.hpp>
 
 /**
- * Для операционной системы MS Windows
+ * @brief Для операционной системы MS Windows
  *
  * @note Заголовки arpa/inet.h и netinet/in.h принадлежат POSIX и у MS Windows
  *       отсутствуют. Соответствующие им объявления, включая порядок байтов сети,
@@ -64,7 +63,7 @@
 	#include <sys/macro/win32.hpp>
 
 	/**
-	 * Системный заголовочный файл хранилища сертификатов
+	 * @brief Системный заголовочный файл хранилища сертификатов
 	 *
 	 * @note Подключается отдельно: выключатель WIN32_LEAN_AND_MEAN, каким пользуется
 	 *       sys/macro/win32.hpp, исключает подсистему шифрования из состава windows.h,
@@ -74,7 +73,7 @@
 	#include <wincrypt.h>
 
 	/**
-	 * Снимаем макросы, чьи имена заняты типами OpenSSL
+	 * @brief Снимаем макросы, чьи имена заняты типами OpenSSL
 	 *
 	 * @details Заголовок wincrypt.h заводит эти имена макросами-постоянными, например
 	 *          "#define X509_NAME ((LPCSTR) 7)", а у OpenSSL это типы. Препроцессор
@@ -115,7 +114,12 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/locker.hpp>
+#include <sys/macro/global.hpp>
 #include <net/net.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
 #include <cryptography/tls/coder.hpp>
 
 /**
@@ -169,6 +173,17 @@ namespace {
 	 *
 	 */
 	static map <pair <event::protocol_t, string>, ::tls::coder::id_t> __awh_ssl_splice_map__;
+};
+
+/**
+ * @brief Инкапсулируем статические локальные хранилища потоков в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
 
 	/**
 	 * @brief Объект работы с сетевыми адресами
@@ -389,7 +404,7 @@ namespace ssl {
 	 *
 	 * @details Прежде инициализацию выполнял конструктор объекта кодера,
 	 *          а объект упразднён: функция зовётся при заведении первого
-	 *          контекста TLS и выполняется единожды на процесс
+	 *          контекста TLS и выполняется единожды на процесс.
 	 *
 	 */
 	[[maybe_unused]] static __AWH_INLINE__ void init() noexcept {
@@ -398,29 +413,29 @@ namespace ssl {
 			// Активируем работу мьютекса блокировки глобального состояния TLS
 			::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 			/**
-			 * Для операционной системы не являющейся MS Windows
+			 * @brief Для операционной системы не являющейся MS Windows
 			 *
 			 * @note Сигнала SIGPIPE у MS Windows не существует: запись в закрытое соединение
 			 *       отвечает там кодом ошибки, а не сигналом, и гасить нечего
 			 *
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
-			// Гасим сигналы SIGPIPE
-			if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					log::debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log::print("Failed to ignore signal SIGPIPE", log::flag_t::CRITICAL);
-				#endif
-			}
+				// Гасим сигналы SIGPIPE
+				if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Failed to ignore signal SIGPIPE", log::flag_t::CRITICAL);
+					#endif
+				}
 			#endif
 		});
 	}
@@ -524,12 +539,12 @@ namespace {
 	 */
 	typedef class Member {
 		public:
-			// Уровень транспортной безопасности
-			layer_t layer;
-			// Объект состояния
-			uint8_t state;
 			// Идентификатор цифрового отпечатка браузера
 			uint8_t fid;
+			// Объект состояния
+			uint8_t state;
+			// Уровень транспортной безопасности
+			layer_t layer;
 			// Счётчик ссылок на событие
 			atomic_uint16_t refs;
 			// Тип узла события
@@ -548,18 +563,18 @@ namespace {
 			void erase(members_t & members) noexcept;
 		public:
 			/**
-			 * @brief Конструктор
-			 *
-			 */
-			explicit Member(const layer_t layer) noexcept :
-			 layer(layer), state(0), fid(0), refs(0),
-			 node(event::node_t::NONE),
-			 proto(event::protocol_t::NONE) {}
-			/**
 			 * @brief Деструктор
 			 *
 			 */
 			virtual ~Member() noexcept = default;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Member(const layer_t layer) noexcept :
+			 fid(0), state(0), layer(layer), refs(0),
+			 node(event::node_t::NONE),
+			 proto(event::protocol_t::NONE) {}
 	} member_t;
 	/**
 	 * @brief Метод удаления участника обмена защищёнными данными
@@ -581,58 +596,59 @@ namespace {
 	 *
 	 */
 	typedef struct Contex_Template_Security : public member_t {
-		// Наименьшее дозволенное издание протокола
-		uint16_t lowest;
-		// Наибольшее дозволенное издание протокола
-		uint16_t highest;
-		// Наборы шифрования от предпочтительного к запасному
-		vector <nts::protect::suite_t> suites;
-		// Кривые обмена ключами
-		vector <nts::extension::group_t> groups;
-		// Группы, по которым приветствием шлются доли ключа
-		vector <nts::extension::group_t> shares;
-		// Схемы подписи
-		vector <nts::extension::scheme_t> schemes;
-		// Алгоритмы сжатия цепочки сертификатов
-		vector <nts::context::codec_t> codecs;
-		// Подлинность своей стороны связи
-		nts::context::credential_t credential;
-		// Запас доверенных центров и списков отзыва
-		nts::trust::store_t store;
-		// ECHConfigList для клиентов
-		vector <uint8_t> ech;
-		// Объект хоста сервера
-		string host;
-		// Объект ALPN-протоколов
-		alpn_t alpn;
-		// Функции обратных вызовов
-		callback_t callback;
-		// Признак вставки значений GREASE
-		bool grease;
-		// Признак перемешивания расширений
-		bool permute;
 		// Признак выработки следующего протокола NPN
 		bool npn;
 		// Признак запроса меток времени сертификата
 		bool sct;
 		// Признак запроса состояния сертификата
 		bool ocsp;
-		// Настройки ALPS по прикладным протоколам
-		vector <pair <string, vector <uint8_t>>> alps;
+		// Признак вставки значений GREASE
+		bool grease;
+		// Признак перемешивания расширений
+		bool permute;
+		// Наименьшее дозволенное издание протокола
+		uint16_t lowest;
+		// Наибольшее дозволенное издание протокола
+		uint16_t highest;
+		// Объект ALPN-протоколов
+		alpn_t alpn;
+		// Объект хоста сервера
+		string host;
+		// Функции обратных вызовов
+		callback_t callback;
+		// Запас доверенных центров и списков отзыва
+		nts::trust::store_t store;
 		// Точка кода расширения ALPS
 		nts::extension::type_t alpsType;
-		// Кэш билетов возобновления сессии по ключу сервера
-		unordered_map <string, string> sessions;
+		// Подлинность своей стороны связи
+		nts::context::credential_t credential;
 		// Выданные сервером билеты возобновления с контекстом ранних данных их связей
 		deque <pair <string, string>> issued;
+		// Кэш билетов возобновления сессии по ключу сервера
+		unordered_map <string, string> sessions;
+		// ECHConfigList для клиентов
+		vector <uint8_t> ech;
+		// Наборы шифрования от предпочтительного к запасному
+		vector <nts::protect::suite_t> suites;
+		// Алгоритмы сжатия цепочки сертификатов
+		vector <nts::context::codec_t> codecs;
+		// Кривые обмена ключами
+		vector <nts::extension::group_t> groups;
+		// Группы, по которым приветствием шлются доли ключа
+		vector <nts::extension::group_t> shares;
+		// Схемы подписи шифрования
+		vector <nts::extension::scheme_t> schemes;
+		// Настройки ALPS по прикладным протоколам
+		vector <pair <string, vector <uint8_t>>> alps;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Contex_Template_Security() noexcept :
 		 member_t(layer_t::CTS),
+		 npn(false), sct(false), ocsp(false),
+		 grease(false), permute(false),
 		 lowest(0x0303), highest(0x0304), host{""},
-		 grease(false), permute(false), npn(false), sct(false), ocsp(false),
 		 alpsType(nts::extension::type_t::SETTINGS) {}
 		/**
 		 * @brief Деструктор
@@ -645,22 +661,22 @@ namespace {
 	 *
 	 */
 	typedef struct Content_Transfer_Layer : public member_t {
-		// Шаблон контекста безопасности, из которого заведена связь
-		cts_t * cts;
-		// Связь клиента протокола TLS
-		unique_ptr <nts::client::context_t> client;
-		// Связь сервера протокола TLS
-		unique_ptr <nts::server::context_t> server;
 		// Объект хоста сервера
 		host_t host;
 		// Объект ALPN-протоколов
 		alpn_t alpn;
-		// Объект обратных вызовов
-		callback_transfer_t callback;
+		// Шаблон контекста безопасности, из которого заведена связь
+		cts_t * cts;
 		// ECHConfigList (копия из CTS при создании CTL)
 		vector <uint8_t> ech;
 		// Буфер сборки TLS/DTLS record для apply()
 		vector <uint8_t> hello;
+		// Объект обратных вызовов
+		callback_transfer_t callback;
+		// Связь клиента протокола TLS
+		unique_ptr <nts::client::context_t> client;
+		// Связь сервера протокола TLS
+		unique_ptr <nts::server::context_t> server;
 		/**
 		 * @brief Конструктор
 		 *
@@ -698,7 +714,7 @@ namespace state {
 	 *          собеседника: метка возврата состояния привязывается к нему, и без адреса
 	 *          старт отвечает отказом настроек (раздел 5.1 RFC 9147). Адрес принятого
 	 *          соединения известен позже заведения записи, и связь ждёт его в работе
-	 *          установки собеседника
+	 *          установки собеседника.
 	 *
 	 */
 	static constexpr uint8_t START_PENDING = 0x04;
@@ -788,7 +804,7 @@ namespace {
 	 *
 	 * @details Покуда не зовётся: деструктор охранника сличает то же условие сам, и
 	 *          порог счётчика ссылок у него иной - нуль после снятия своей ссылки
-	 *          против единицы здесь. Пометка объявляет неупотребление намеренным
+	 *          против единицы здесь. Пометка объявляет неупотребление намеренным.
 	 *
 	 * @return результат проверки
 	 *
@@ -831,11 +847,13 @@ namespace {
 		// Уменьшаем счётчик ссылок участника обмена
 		this->_member->refs.fetch_sub(1, std::memory_order_release);
 		/**
-		 * Память возвращается по признаку снятия вызывающей стороной, а не по признаку
-		 * мусорного: мусорным участника метят и сами работы обмена на пути ошибки, а
-		 * опознавателем в этот миг ещё владеет вызывающая сторона
+		 * @brief Если счётчик ссылок участника обмена равен нулю и участник снят вызывающей стороной
+		 *
+		 * @details Память возвращается по признаку снятия вызывающей стороной, а не по признаку
+		 *          мусорного: мусорным участника метят и сами работы обмена на пути ошибки, а
+		 *          опознавателем в этот миг ещё владеет вызывающая сторона.
+		 *
 		 */
-		// Если счётчик ссылок участника обмена равен нулю и участник снят вызывающей стороной
 		if((this->_member->state & ::state::RELEASED_MODE) &&
 		   (this->_member->refs.load(std::memory_order_acquire) == 0))
 			// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -844,7 +862,7 @@ namespace {
 };
 
 /**
- * @brief Инкапсулируем статические объекты в пространство имён временных переменных
+ * @brief Инкапсулируем статические локальные хранилища потоков в пространство имён локальных переменных
  *
  */
 namespace local {
@@ -869,42 +887,6 @@ namespace local {
 	 *
 	 */
 	thread_local uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
-
-	/**
-	 * @brief Функция вычисления полного размера TLS/DTLS record layer
-	 *
-	 * @param buffer буфер с данными record layer
-	 * @param size   размер буфера в байтах
-	 * @return       полный размер record layer или 0, если данных недостаточно
-	 *
-	 */
-	static __AWH_INLINE__ size_t tlsRecordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
-		// Если буфер пустой или слишком короткий
-		if((buffer == nullptr) || (size < 3u))
-			// Возвращаем 0 — размер определить нельзя
-			return 0;
-		// Получаем версию протокола из заголовка record layer
-		const uint16_t version = static_cast <uint16_t> ((static_cast <uint16_t> (buffer[1]) << 8) | static_cast <uint16_t> (buffer[2]));
-		// Если это DTLS record layer
-		if((version == 0xFEFFu) || (version == 0xFEFDu)){
-			// Если данных недостаточно для DTLS record header
-			if(size < 13u)
-				// Возвращаем 0 — размер определить нельзя
-				return 0;
-			// Получаем длину payload DTLS record layer
-			const size_t payload = static_cast <size_t> ((static_cast <uint16_t> (buffer[11]) << 8) | static_cast <uint16_t> (buffer[12]));
-			// Возвращаем полный размер DTLS record layer
-			return (13u + payload);
-		}
-		// Если данных недостаточно для TLS record header
-		if(size < 5u)
-			// Возвращаем 0 — размер определить нельзя
-			return 0;
-		// Получаем длину payload TLS record layer
-		const size_t payload = static_cast <size_t> ((static_cast <uint16_t> (buffer[3]) << 8) | static_cast <uint16_t> (buffer[4]));
-		// Возвращаем полный размер TLS record layer
-		return (5u + payload);
-	}
 };
 
 /**
@@ -925,13 +907,24 @@ namespace ssl {
 	 */
 	namespace registry {
 		/**
-		 * @brief Закрепление участника в глобальном реестре TLS
+		 * @brief Структура закрепления участника в глобальном реестре TLS
 		 *
 		 */
-		class pin_t {
+		typedef class Pin {
 			private:
 				// Охранник участника обмена защищёнными данными
 				::local::guard_t _guard;
+			public:
+				/**
+				 * @brief Конструктор копирования
+				 *
+				 */
+				Pin(const Pin &) = delete;
+				/**
+				 * @brief Конструктор перемещения
+				 *
+				 */
+				Pin(Pin &&) noexcept = delete;
 			public:
 				/**
 				 * @brief Конструктор
@@ -939,31 +932,21 @@ namespace ssl {
 				 * @param member объект участника обмена защищёнными данными
 				 *
 				 */
-				explicit pin_t(::member_t * member) noexcept : _guard(member) {}
-				/**
-				 * @brief Конструктор копирования
-				 *
-				 */
-				pin_t(const pin_t &) = delete;
-				/**
-				 * @brief Конструктор перемещения
-				 *
-				 */
-				pin_t(pin_t &&) noexcept = delete;
-		};
+				explicit Pin(::member_t * member) noexcept : _guard(member) {}
+		} pin_t;
 
 		/**
 		 * @brief Функция закрепления участника в глобальном реестре TLS
-		 *
-		 * @param id      идентификатор контекста TLS
-		 * @param garbage признак допуска участника, помеченного мусорным
-		 * @return        объект закрепления или nullptr
 		 *
 		 * @details Помеченный мусорным участник закреплению обычно не подлежит: работать
 		 *          с ним более нечем. Исключение одно - снятие по требованию вызывающей
 		 *          стороны: пометить участника мусорным могли и сами работы обмена на
 		 *          пути ошибки, а память возвращается только снятием, и отказ в
-		 *          закреплении оставил бы её удержанной навсегда
+		 *          закреплении оставил бы её удержанной навсегда.
+		 *
+		 * @param id      идентификатор контекста TLS
+		 * @param garbage признак допуска участника, помеченного мусорным
+		 * @return        объект закрепления или nullptr
 		 *
 		 */
 		static __AWH_INLINE__ unique_ptr <pin_t> pin(const ::tls::coder::id_t id, const bool garbage = false) noexcept {
@@ -1003,7 +986,7 @@ namespace ssl {
 	 * @return        сформированное сообщение об ошибке
 	 *
 	 */
-	static string error(const ::tls::coder::id_t id, string_view message = "") noexcept {
+	static __AWH_INLINE__ string error(const ::tls::coder::id_t id, string_view message = "") noexcept {
 		// Переменная результата
 		string result = "";
 		/**
@@ -1038,7 +1021,7 @@ namespace ssl {
 						result.append(awh::fmk::format("code %u", static_cast <uint8_t> (code)));
 					}
 				// Если узел является сервером и связь заведена
-				} else if((member->node == event::node_t::SERVER) && (member->server != nullptr)){
+				} else if((member->node == event::node_t::SERVER) && (member->server != nullptr)) {
 					// Получаем отказ связи
 					const nts::context::error_t code = member->server->error();
 					// Если отказ получен
@@ -1064,7 +1047,7 @@ namespace ssl {
 	 * @return       результат выполнения выдачи
 	 *
 	 */
-	static bool emitOutput(::ctl_t * member, const ::tls::coder::id_t id) noexcept {
+	static __AWH_INLINE__ bool emitOutput(::ctl_t * member, const ::tls::coder::id_t id) noexcept {
 		// Если узел является клиентом и связь заведена
 		if((member->node == event::node_t::CLIENT) && (member->client != nullptr)){
 			/**
@@ -1119,7 +1102,7 @@ namespace ssl {
 	 * @return     список названий ALPN-протоколов
 	 *
 	 */
-	static vector <string> alpnNames(const ::alpn_t & alpn) noexcept {
+	static __AWH_INLINE__ vector <string> alpnNames(const ::alpn_t & alpn) noexcept {
 		// Переменная результата
 		vector <string> result;
 		// Смещение в буфере
@@ -1143,14 +1126,20 @@ namespace ssl {
 		return result;
 	}
 	/**
+	 * @brief Шаблон функции применения настроек шаблона к связи
+	 *
+	 * @tparam Client тип клиента
+	 * @tparam T      тип контекста связи
+	 */
+	template <bool Client, typename T>
+	/**
 	 * @brief Функция применения настроек шаблона к связи
 	 *
-	 * @param ctx    связь, к которой применяются настройки
+	 * @param ctx связь, к которой применяются настройки
 	 * @param cts объект шаблона контекста безопасности
 	 *
 	 */
-	template <bool Client, typename T>
-	static void applySettings(T & ctx, ::cts_t * cts) noexcept {
+	static __AWH_INLINE__ void applySettings(T & ctx, ::cts_t * cts) noexcept {
 		/**
 		 * Определяем тип протокола подключения
 		 */
@@ -1259,7 +1248,7 @@ namespace ssl {
 	 * @return        результат заведения связи
 	 *
 	 */
-	static bool establishFailed(::cts_t * cts, const ::tls::coder::id_t id, string_view message) noexcept {
+	static __AWH_INLINE__ bool establishFailed(::cts_t * cts, const ::tls::coder::id_t id, string_view message) noexcept {
 		// Если функция обратного вызова состояния установлена
 		if(cts->callback.state != nullptr)
 			// Вызываем функцию обратного вызова состояния
@@ -1296,7 +1285,7 @@ namespace ssl {
 	 * @return       результат заведения связи
 	 *
 	 */
-	static bool establish(::ctl_t * member, ::cts_t * cts, const ::tls::coder::id_t id) noexcept {
+	static __AWH_INLINE__ bool establish(::ctl_t * member, ::cts_t * cts, const ::tls::coder::id_t id) noexcept {
 		// Если узел является клиентом
 		if(cts->node == event::node_t::CLIENT){
 			// Создаём связь клиента TLS
@@ -1315,7 +1304,7 @@ namespace ssl {
 					// Выводим отказ заведения связи
 					return ::ssl::establishFailed(cts, id, "Could not establish TLS session");
 		// Если узел является сервером
-		} else if(cts->node == event::node_t::SERVER){
+		} else if(cts->node == event::node_t::SERVER) {
 			// Создаём связь сервера TLS
 			member->server = ::make_unique <nts::server::context_t> ();
 			// Применяем настройки шаблона к связи
@@ -1354,7 +1343,7 @@ namespace ssl {
 	 * @return       результат проверки
 	 *
 	 */
-	static bool established(const ::ctl_t * member) noexcept {
+	static __AWH_INLINE__ bool established(const ::ctl_t * member) noexcept {
 		// Если узел является клиентом
 		if(member->node == event::node_t::CLIENT)
 			// Возвращаем признак установленности связи клиента
@@ -1373,7 +1362,7 @@ namespace ssl {
 	 * @return       результат проверки (false - доверие цепочке не сложилось)
 	 *
 	 */
-	static bool verifyPeer(::ctl_t * member) noexcept {
+	static __AWH_INLINE__ bool verifyPeer(::ctl_t * member) noexcept {
 		// Если проверка сертификата собеседника не требуется
 		if((member->cts->state & state::CERTIFICATE_VERIFY) == 0)
 			// Выводим положительный результат
@@ -1402,7 +1391,7 @@ namespace ssl {
 	 * @return       отказ разбора принятых байтов
 	 *
 	 */
-	static nts::context::error_t pushInput(::ctl_t * member, const void * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ nts::context::error_t pushInput(::ctl_t * member, const void * buffer, const size_t size) noexcept {
 		// Если узел является клиентом
 		if(member->node == event::node_t::CLIENT)
 			// Подаём принятые байты связи клиента
@@ -1423,7 +1412,7 @@ namespace ssl {
 	 * @return       отказ отправки прикладных данных
 	 *
 	 */
-	static nts::context::error_t writeData(::ctl_t * member, const void * buffer, const size_t size) noexcept {
+	static __AWH_INLINE__ nts::context::error_t writeData(::ctl_t * member, const void * buffer, const size_t size) noexcept {
 		// Если узел является клиентом
 		if(member->node == event::node_t::CLIENT)
 			// Отправляем прикладные данные связи клиента
@@ -1443,7 +1432,7 @@ namespace ssl {
 	 * @return       отказ получения принятых прикладных данных
 	 *
 	 */
-	static nts::context::error_t readData(::ctl_t * member, vector <uint8_t> & result) noexcept {
+	static __AWH_INLINE__ nts::context::error_t readData(::ctl_t * member, vector <uint8_t> & result) noexcept {
 		// Если узел является клиентом
 		if(member->node == event::node_t::CLIENT)
 			// Получаем принятые данные связи клиента
@@ -1464,7 +1453,7 @@ namespace ssl {
 	 * @param message дополнительное сообщение об ошибке
 	 *
 	 */
-	static void fail(::ctl_t * member, const ::tls::coder::id_t id, const ::tls::coder::error_t error, string_view message) noexcept {
+	static __AWH_INLINE__ void fail(::ctl_t * member, const ::tls::coder::id_t id, const ::tls::coder::error_t error, string_view message) noexcept {
 		// Если функция обратного вызова состояния установлена
 		if(member->callback.state != nullptr)
 			// Вызываем функцию обратного вызова состояния
@@ -1505,30 +1494,88 @@ namespace ssl {
 	 * @return      код кривой обмена ключами A-NTS
 	 *
 	 */
-	static nts::extension::group_t groupCode(const ::tls::group_t group) noexcept {
+	static constexpr nts::extension::group_t groupCode(const ::tls::group_t group) noexcept {
 		/**
 		 * Определяем группу обмена ключами
 		 */
 		switch(static_cast <uint8_t> (group)){
-			case static_cast <uint8_t> (::tls::group_t::P_256): return nts::extension::group_t::SECP256R1;
-			case static_cast <uint8_t> (::tls::group_t::P_384): return nts::extension::group_t::SECP384R1;
-			case static_cast <uint8_t> (::tls::group_t::P_521): return nts::extension::group_t::SECP521R1;
-			case static_cast <uint8_t> (::tls::group_t::X448): return nts::extension::group_t::X448;
-			case static_cast <uint8_t> (::tls::group_t::X25519): return nts::extension::group_t::X25519;
-			case static_cast <uint8_t> (::tls::group_t::SECP256K1): return nts::extension::group_t::SECP256K1;
-			case static_cast <uint8_t> (::tls::group_t::FFDHE2048): return nts::extension::group_t::FFDHE2048;
-			case static_cast <uint8_t> (::tls::group_t::FFDHE3072): return nts::extension::group_t::FFDHE3072;
-			case static_cast <uint8_t> (::tls::group_t::FFDHE4096): return nts::extension::group_t::FFDHE4096;
-			case static_cast <uint8_t> (::tls::group_t::FFDHE6144): return nts::extension::group_t::FFDHE6144;
-			case static_cast <uint8_t> (::tls::group_t::FFDHE8192): return nts::extension::group_t::FFDHE8192;
-			case static_cast <uint8_t> (::tls::group_t::X25519_MLKEM768): return nts::extension::group_t::X25519MLKEM768;
-			case static_cast <uint8_t> (::tls::group_t::GC256A): return nts::extension::group_t::GC256A;
-			case static_cast <uint8_t> (::tls::group_t::GC256B): return nts::extension::group_t::GC256B;
-			case static_cast <uint8_t> (::tls::group_t::GC256C): return nts::extension::group_t::GC256C;
-			case static_cast <uint8_t> (::tls::group_t::GC256D): return nts::extension::group_t::GC256D;
-			case static_cast <uint8_t> (::tls::group_t::GC512A): return nts::extension::group_t::GC512A;
-			case static_cast <uint8_t> (::tls::group_t::GC512B): return nts::extension::group_t::GC512B;
-			case static_cast <uint8_t> (::tls::group_t::GC512C): return nts::extension::group_t::GC512C;
+			// Если группа обмена ключами — кривая Curve448
+			case static_cast <uint8_t> (::tls::group_t::X448):
+				// Возвращаем код группы X448
+				return nts::extension::group_t::X448;
+			// Если группа обмена ключами — кривая NIST P-256
+			case static_cast <uint8_t> (::tls::group_t::P_256):
+				// Возвращаем код кривой secp256r1
+				return nts::extension::group_t::SECP256R1;
+			// Если группа обмена ключами — кривая NIST P-384
+			case static_cast <uint8_t> (::tls::group_t::P_384):
+				// Возвращаем код кривой secp384r1
+				return nts::extension::group_t::SECP384R1;
+			// Если группа обмена ключами — кривая NIST P-521
+			case static_cast <uint8_t> (::tls::group_t::P_521):
+				// Возвращаем код кривой secp521r1
+				return nts::extension::group_t::SECP521R1;
+			// Если группа обмена ключами — кривая Curve25519
+			case static_cast <uint8_t> (::tls::group_t::X25519):
+				// Возвращаем код группы X25519
+				return nts::extension::group_t::X25519;
+			// Если группа обмена ключами — кривая ГОСТ на 256 бит, вариант A
+			case static_cast <uint8_t> (::tls::group_t::GC256A):
+				// Возвращаем код кривой ГОСТ GC256A
+				return nts::extension::group_t::GC256A;
+			// Если группа обмена ключами — кривая ГОСТ на 256 бит, вариант B
+			case static_cast <uint8_t> (::tls::group_t::GC256B):
+				// Возвращаем код кривой ГОСТ GC256B
+				return nts::extension::group_t::GC256B;
+			// Если группа обмена ключами — кривая ГОСТ на 256 бит, вариант C
+			case static_cast <uint8_t> (::tls::group_t::GC256C):
+				// Возвращаем код кривой ГОСТ GC256C
+				return nts::extension::group_t::GC256C;
+			// Если группа обмена ключами — кривая ГОСТ на 256 бит, вариант D
+			case static_cast <uint8_t> (::tls::group_t::GC256D):
+				// Возвращаем код кривой ГОСТ GC256D
+				return nts::extension::group_t::GC256D;
+			// Если группа обмена ключами — кривая ГОСТ на 512 бит, вариант A
+			case static_cast <uint8_t> (::tls::group_t::GC512A):
+				// Возвращаем код кривой ГОСТ GC512A
+				return nts::extension::group_t::GC512A;
+			// Если группа обмена ключами — кривая ГОСТ на 512 бит, вариант B
+			case static_cast <uint8_t> (::tls::group_t::GC512B):
+				// Возвращаем код кривой ГОСТ GC512B
+				return nts::extension::group_t::GC512B;
+			// Если группа обмена ключами — кривая ГОСТ на 512 бит, вариант C
+			case static_cast <uint8_t> (::tls::group_t::GC512C):
+				// Возвращаем код кривой ГОСТ GC512C
+				return nts::extension::group_t::GC512C;
+			// Если группа обмена ключами — кривая secp256k1
+			case static_cast <uint8_t> (::tls::group_t::SECP256K1):
+				// Возвращаем код кривой secp256k1
+				return nts::extension::group_t::SECP256K1;
+			// Если группа обмена ключами — конечное поле FFDHE на 2048 бит
+			case static_cast <uint8_t> (::tls::group_t::FFDHE2048):
+				// Возвращаем код группы ffdhe2048
+				return nts::extension::group_t::FFDHE2048;
+			// Если группа обмена ключами — конечное поле FFDHE на 3072 бит
+			case static_cast <uint8_t> (::tls::group_t::FFDHE3072):
+				// Возвращаем код группы ffdhe3072
+				return nts::extension::group_t::FFDHE3072;
+			// Если группа обмена ключами — конечное поле FFDHE на 4096 бит
+			case static_cast <uint8_t> (::tls::group_t::FFDHE4096):
+				// Возвращаем код группы ffdhe4096
+				return nts::extension::group_t::FFDHE4096;
+			// Если группа обмена ключами — конечное поле FFDHE на 6144 бит
+			case static_cast <uint8_t> (::tls::group_t::FFDHE6144):
+				// Возвращаем код группы ffdhe6144
+				return nts::extension::group_t::FFDHE6144;
+			// Если группа обмена ключами — конечное поле FFDHE на 8192 бит
+			case static_cast <uint8_t> (::tls::group_t::FFDHE8192):
+				// Возвращаем код группы ffdhe8192
+				return nts::extension::group_t::FFDHE8192;
+			// Если группа обмена ключами — гибридная X25519 с инкапсуляцией ML-KEM-768
+			case static_cast <uint8_t> (::tls::group_t::X25519_MLKEM768):
+				// Возвращаем код гибридной группы X25519MLKEM768
+				return nts::extension::group_t::X25519MLKEM768;
+			// В остальных случаях возвращаем признак отсутствия группы
 			default: return nts::extension::group_t::NONE;
 		}
 	}
@@ -1539,39 +1586,124 @@ namespace ssl {
 	 * @return       код набора шифрования A-NTS
 	 *
 	 */
-	static nts::protect::suite_t suiteCode(const ::tls::cipher_t cipher) noexcept {
+	static constexpr nts::protect::suite_t suiteCode(const ::tls::cipher_t cipher) noexcept {
 		/**
 		 * Определяем набор шифрования
 		 */
 		switch(static_cast <uint8_t> (cipher)){
-			case static_cast <uint8_t> (::tls::cipher_t::AES128_SHA): return nts::protect::suite_t::RSA_AES_128_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::AES256_SHA): return nts::protect::suite_t::RSA_AES_256_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::AES128_GCM_SHA256): return nts::protect::suite_t::RSA_AES_128_GCM_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::AES256_GCM_SHA384): return nts::protect::suite_t::RSA_AES_256_GCM_SHA384;
-			case static_cast <uint8_t> (::tls::cipher_t::PSK_AES128_CBC_SHA): return nts::protect::suite_t::PSK_AES_128_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::PSK_AES256_CBC_SHA): return nts::protect::suite_t::PSK_AES_256_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_SHA): return nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES256_SHA): return nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_SHA): return nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES256_SHA): return nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_SHA256): return nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA): return nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA): return nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_SHA256): return nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256): return nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384): return nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305): return nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305): return nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256): return nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384): return nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384;
-			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305): return nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::TLS_AES_256_GCM_SHA384): return nts::protect::suite_t::AES_256_GCM_SHA384;
-			case static_cast <uint8_t> (::tls::cipher_t::TLS_AES_128_GCM_SHA256): return nts::protect::suite_t::AES_128_GCM_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256): return nts::protect::suite_t::CHACHA20_POLY1305_SHA256;
-			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_L): return nts::protect::suite_t::KUZNYECHIK_MGM_L;
-			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_L): return nts::protect::suite_t::MAGMA_MGM_L;
-			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_S): return nts::protect::suite_t::KUZNYECHIK_MGM_S;
-			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_S): return nts::protect::suite_t::MAGMA_MGM_S;
+			// Если набор шифрования — RSA с AES-128-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::AES128_SHA):
+				// Возвращаем код набора TLS_RSA_WITH_AES_128_CBC_SHA
+				return nts::protect::suite_t::RSA_AES_128_CBC_SHA;
+			// Если набор шифрования — RSA с AES-256-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::AES256_SHA):
+				// Возвращаем код набора TLS_RSA_WITH_AES_256_CBC_SHA
+				return nts::protect::suite_t::RSA_AES_256_CBC_SHA;
+			// Если набор шифрования — RSA с AES-128-GCM и SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::AES128_GCM_SHA256):
+				// Возвращаем код набора TLS_RSA_WITH_AES_128_GCM_SHA256
+				return nts::protect::suite_t::RSA_AES_128_GCM_SHA256;
+			// Если набор шифрования — RSA с AES-256-GCM и SHA-384
+			case static_cast <uint8_t> (::tls::cipher_t::AES256_GCM_SHA384):
+				// Возвращаем код набора TLS_RSA_WITH_AES_256_GCM_SHA384
+				return nts::protect::suite_t::RSA_AES_256_GCM_SHA384;
+			// Если набор шифрования — PSK с AES-128-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::PSK_AES128_CBC_SHA):
+				// Возвращаем код набора TLS_PSK_WITH_AES_128_CBC_SHA
+				return nts::protect::suite_t::PSK_AES_128_CBC_SHA;
+			// Если набор шифрования — PSK с AES-256-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::PSK_AES256_CBC_SHA):
+				// Возвращаем код набора TLS_PSK_WITH_AES_256_CBC_SHA
+				return nts::protect::suite_t::PSK_AES_256_CBC_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_SHA):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+				return nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-256-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES256_SHA):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+				return nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA;
+			// Если набор шифрования TLS 1.3 — AES-256-GCM с SHA-384
+			case static_cast <uint8_t> (::tls::cipher_t::TLS_AES_256_GCM_SHA384):
+				// Возвращаем код набора TLS_AES_256_GCM_SHA384
+				return nts::protect::suite_t::AES_256_GCM_SHA384;
+			// Если набор шифрования TLS 1.3 — AES-128-GCM с SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::TLS_AES_128_GCM_SHA256):
+				// Возвращаем код набора TLS_AES_128_GCM_SHA256
+				return nts::protect::suite_t::AES_128_GCM_SHA256;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_SHA):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+				return nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA;
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES256_SHA):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+				return nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_SHA256):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+				return nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256;
+			// Если набор шифрования — ECDHE с PSK, AES-128-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA):
+				// Возвращаем код набора TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA
+				return nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA;
+			// Если набор шифрования — ECDHE с PSK, AES-256-CBC и SHA-1
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA):
+				// Возвращаем код набора TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA
+				return nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_SHA256):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+				return nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256;
+			// Если набор шифрования — ECDHE с RSA, AES-128-GCM и SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+				return nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256;
+			// Если набор шифрования — ECDHE с RSA, AES-256-GCM и SHA-384
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+				return nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384;
+			// Если набор шифрования — ECDHE с RSA и ChaCha20-Poly1305
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305):
+				// Возвращаем код набора TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+				return nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256;
+			// Если набор шифрования — «Магма» в режиме MGM варианта L
+			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_L):
+				// Возвращаем код набора TLS_GOSTR341112_256_WITH_MAGMA_MGM_L
+				return nts::protect::suite_t::MAGMA_MGM_L;
+			// Если набор шифрования — «Магма» в режиме MGM варианта S
+			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_S):
+				// Возвращаем код набора TLS_GOSTR341112_256_WITH_MAGMA_MGM_S
+				return nts::protect::suite_t::MAGMA_MGM_S;
+			// Если набор шифрования — ECDHE с PSK и ChaCha20-Poly1305
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305):
+				// Возвращаем код набора TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256
+				return nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256;
+			// Если набор шифрования TLS 1.3 — ChaCha20-Poly1305 с SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256):
+				// Возвращаем код набора TLS_CHACHA20_POLY1305_SHA256
+				return nts::protect::suite_t::CHACHA20_POLY1305_SHA256;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-GCM и SHA-256
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+				return nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256;
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-GCM и SHA-384
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+				return nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384;
+			// Если набор шифрования — ECDHE с ECDSA и ChaCha20-Poly1305
+			case static_cast <uint8_t> (::tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305):
+				// Возвращаем код набора TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+				return nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256;
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта L
+			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_L):
+				// Возвращаем код набора TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L
+				return nts::protect::suite_t::KUZNYECHIK_MGM_L;
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта S
+			case static_cast <uint8_t> (::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_S):
+				// Возвращаем код набора TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S
+				return nts::protect::suite_t::KUZNYECHIK_MGM_S;
+			// В остальных случаях возвращаем признак отсутствия набора
 			default: return nts::protect::suite_t::NONE;
 		}
 	}
@@ -1582,48 +1714,160 @@ namespace ssl {
 	 * @return      название набора шифрования
 	 *
 	 */
-	static const char * suiteName(const nts::protect::suite_t suite) noexcept {
+	static constexpr const char * suiteName(const nts::protect::suite_t suite) noexcept {
 		/**
 		 * Определяем набор шифрования
 		 */
 		switch(suite){
-			case nts::protect::suite_t::KUZNYECHIK_MGM_L: return "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L";
-			case nts::protect::suite_t::MAGMA_MGM_L: return "TLS_GOSTR341112_256_WITH_MAGMA_MGM_L";
-			case nts::protect::suite_t::KUZNYECHIK_MGM_S: return "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S";
-			case nts::protect::suite_t::MAGMA_MGM_S: return "TLS_GOSTR341112_256_WITH_MAGMA_MGM_S";
-			case nts::protect::suite_t::AES_128_GCM_SHA256: return "TLS_AES_128_GCM_SHA256";
-			case nts::protect::suite_t::AES_256_GCM_SHA384: return "TLS_AES_256_GCM_SHA384";
-			case nts::protect::suite_t::CHACHA20_POLY1305_SHA256: return "TLS_CHACHA20_POLY1305_SHA256";
-			case nts::protect::suite_t::SM4_GCM_SM3: return "TLS_SM4_GCM_SM3";
-			case nts::protect::suite_t::SM4_CCM_SM3: return "TLS_SM4_CCM_SM3";
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256: return "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256";
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384: return "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384";
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256: return "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256";
-			case nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384: return "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
-			case nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256: return "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256";
-			case nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256: return "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256";
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256: return "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256";
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256: return "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA: return "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA: return "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA: return "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA: return "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::DHE_RSA_AES_128_GCM_SHA256: return "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256";
-			case nts::protect::suite_t::DHE_RSA_AES_256_GCM_SHA384: return "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384";
-			case nts::protect::suite_t::DHE_RSA_CHACHA20_POLY1305_SHA256: return "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256";
-			case nts::protect::suite_t::DHE_RSA_AES_128_CBC_SHA: return "TLS_DHE_RSA_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::DHE_RSA_AES_256_CBC_SHA: return "TLS_DHE_RSA_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::RSA_AES_128_CBC_SHA: return "TLS_RSA_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::RSA_AES_256_CBC_SHA: return "TLS_RSA_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::RSA_AES_128_CBC_SHA256: return "TLS_RSA_WITH_AES_128_CBC_SHA256";
-			case nts::protect::suite_t::RSA_AES_256_CBC_SHA256: return "TLS_RSA_WITH_AES_256_CBC_SHA256";
-			case nts::protect::suite_t::RSA_AES_128_GCM_SHA256: return "TLS_RSA_WITH_AES_128_GCM_SHA256";
-			case nts::protect::suite_t::RSA_AES_256_GCM_SHA384: return "TLS_RSA_WITH_AES_256_GCM_SHA384";
-			case nts::protect::suite_t::PSK_AES_128_CBC_SHA: return "TLS_PSK_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::PSK_AES_256_CBC_SHA: return "TLS_PSK_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA: return "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA: return "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA";
-			case nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256: return "TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256";
+			// Если набор шифрования TLS 1.3 — SM4-GCM с SM3
+			case nts::protect::suite_t::SM4_GCM_SM3:
+				// Возвращаем название набора TLS_SM4_GCM_SM3
+				return "TLS_SM4_GCM_SM3";
+			// Если набор шифрования TLS 1.3 — SM4-CCM с SM3
+			case nts::protect::suite_t::SM4_CCM_SM3:
+				// Возвращаем название набора TLS_SM4_CCM_SM3
+				return "TLS_SM4_CCM_SM3";
+			// Если набор шифрования — «Магма» в режиме MGM варианта L
+			case nts::protect::suite_t::MAGMA_MGM_L:
+				// Возвращаем название набора TLS_GOSTR341112_256_WITH_MAGMA_MGM_L
+				return "TLS_GOSTR341112_256_WITH_MAGMA_MGM_L";
+			// Если набор шифрования — «Магма» в режиме MGM варианта S
+			case nts::protect::suite_t::MAGMA_MGM_S:
+				// Возвращаем название набора TLS_GOSTR341112_256_WITH_MAGMA_MGM_S
+				return "TLS_GOSTR341112_256_WITH_MAGMA_MGM_S";
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта L
+			case nts::protect::suite_t::KUZNYECHIK_MGM_L:
+				// Возвращаем название набора TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L
+				return "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L";
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта S
+			case nts::protect::suite_t::KUZNYECHIK_MGM_S:
+				// Возвращаем название набора TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S
+				return "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S";
+			// Если набор шифрования TLS 1.3 — AES-128-GCM с SHA-256
+			case nts::protect::suite_t::AES_128_GCM_SHA256:
+				// Возвращаем название набора TLS_AES_128_GCM_SHA256
+				return "TLS_AES_128_GCM_SHA256";
+			// Если набор шифрования TLS 1.3 — AES-256-GCM с SHA-384
+			case nts::protect::suite_t::AES_256_GCM_SHA384:
+				// Возвращаем название набора TLS_AES_256_GCM_SHA384
+				return "TLS_AES_256_GCM_SHA384";
+			// Если набор шифрования — RSA с AES-128-CBC и SHA-1
+			case nts::protect::suite_t::RSA_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_RSA_WITH_AES_128_CBC_SHA
+				return "TLS_RSA_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — RSA с AES-256-CBC и SHA-1
+			case nts::protect::suite_t::RSA_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_RSA_WITH_AES_256_CBC_SHA
+				return "TLS_RSA_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования — PSK с AES-128-CBC и SHA-1
+			case nts::protect::suite_t::PSK_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_PSK_WITH_AES_128_CBC_SHA
+				return "TLS_PSK_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — PSK с AES-256-CBC и SHA-1
+			case nts::protect::suite_t::PSK_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_PSK_WITH_AES_256_CBC_SHA
+				return "TLS_PSK_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования — RSA с AES-128-CBC и SHA-256
+			case nts::protect::suite_t::RSA_AES_128_CBC_SHA256:
+				// Возвращаем название набора TLS_RSA_WITH_AES_128_CBC_SHA256
+				return "TLS_RSA_WITH_AES_128_CBC_SHA256";
+			// Если набор шифрования — RSA с AES-256-CBC и SHA-256
+			case nts::protect::suite_t::RSA_AES_256_CBC_SHA256:
+				// Возвращаем название набора TLS_RSA_WITH_AES_256_CBC_SHA256
+				return "TLS_RSA_WITH_AES_256_CBC_SHA256";
+			// Если набор шифрования — RSA с AES-128-GCM и SHA-256
+			case nts::protect::suite_t::RSA_AES_128_GCM_SHA256:
+				// Возвращаем название набора TLS_RSA_WITH_AES_128_GCM_SHA256
+				return "TLS_RSA_WITH_AES_128_GCM_SHA256";
+			// Если набор шифрования — RSA с AES-256-GCM и SHA-384
+			case nts::protect::suite_t::RSA_AES_256_GCM_SHA384:
+				// Возвращаем название набора TLS_RSA_WITH_AES_256_GCM_SHA384
+				return "TLS_RSA_WITH_AES_256_GCM_SHA384";
+			// Если набор шифрования — DHE с RSA, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::DHE_RSA_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+				return "TLS_DHE_RSA_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — DHE с RSA, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::DHE_RSA_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+				return "TLS_DHE_RSA_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования TLS 1.3 — ChaCha20-Poly1305 с SHA-256
+			case nts::protect::suite_t::CHACHA20_POLY1305_SHA256:
+				// Возвращаем название набора TLS_CHACHA20_POLY1305_SHA256
+				return "TLS_CHACHA20_POLY1305_SHA256";
+			// Если набор шифрования — ECDHE с PSK, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA
+				return "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — ECDHE с PSK, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA
+				return "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+				return "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — ECDHE с RSA, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+				return "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования — DHE с RSA, AES-128-GCM и SHA-256
+			case nts::protect::suite_t::DHE_RSA_AES_128_GCM_SHA256:
+				// Возвращаем название набора TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+				return "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256";
+			// Если набор шифрования — DHE с RSA, AES-256-GCM и SHA-384
+			case nts::protect::suite_t::DHE_RSA_AES_256_GCM_SHA384:
+				// Возвращаем название набора TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+				return "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384";
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+				return "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA";
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+				return "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA";
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-256
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+				return "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
+			// Если набор шифрования — ECDHE с RSA, AES-128-GCM и SHA-256
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+				return "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256";
+			// Если набор шифрования — ECDHE с RSA, AES-256-GCM и SHA-384
+			case nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+				return "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-GCM и SHA-256
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+				return "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256";
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-GCM и SHA-384
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+				return "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384";
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-256
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+				return "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256";
+			// Если набор шифрования — DHE с RSA и ChaCha20-Poly1305
+			case nts::protect::suite_t::DHE_RSA_CHACHA20_POLY1305_SHA256:
+				// Возвращаем название набора TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+				return "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256";
+			// Если набор шифрования — ECDHE с RSA и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256:
+				// Возвращаем название набора TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+				return "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256";
+			// Если набор шифрования — ECDHE с PSK и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256:
+				// Возвращаем название набора TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256
+				return "TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256";
+			// Если набор шифрования — ECDHE с ECDSA и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256:
+				// Возвращаем название набора TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+				return "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256";
+			// В остальных случаях возвращаем пустую строку
 			default: return "";
 		}
 	}
@@ -1634,39 +1878,124 @@ namespace ssl {
 	 * @return      код набора шифрования AWH
 	 *
 	 */
-	static ::tls::cipher_t cipherCode(const nts::protect::suite_t suite) noexcept {
+	static constexpr ::tls::cipher_t cipherCode(const nts::protect::suite_t suite) noexcept {
 		/**
 		 * Определяем набор шифрования
 		 */
 		switch(suite){
-			case nts::protect::suite_t::RSA_AES_128_CBC_SHA: return ::tls::cipher_t::AES128_SHA;
-			case nts::protect::suite_t::RSA_AES_256_CBC_SHA: return ::tls::cipher_t::AES256_SHA;
-			case nts::protect::suite_t::RSA_AES_128_GCM_SHA256: return ::tls::cipher_t::AES128_GCM_SHA256;
-			case nts::protect::suite_t::RSA_AES_256_GCM_SHA384: return ::tls::cipher_t::AES256_GCM_SHA384;
-			case nts::protect::suite_t::PSK_AES_128_CBC_SHA: return ::tls::cipher_t::PSK_AES128_CBC_SHA;
-			case nts::protect::suite_t::PSK_AES_256_CBC_SHA: return ::tls::cipher_t::PSK_AES256_CBC_SHA;
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA: return ::tls::cipher_t::ECDHE_RSA_AES128_SHA;
-			case nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA: return ::tls::cipher_t::ECDHE_RSA_AES256_SHA;
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA: return ::tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA: return ::tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256: return ::tls::cipher_t::ECDHE_RSA_AES128_SHA256;
-			case nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA: return ::tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
-			case nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA: return ::tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256: return ::tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
-			case nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256: return ::tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
-			case nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384: return ::tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
-			case nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256: return ::tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
-			case nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256: return ::tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256: return ::tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
-			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384: return ::tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
-			case nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256: return ::tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
-			case nts::protect::suite_t::AES_256_GCM_SHA384: return ::tls::cipher_t::TLS_AES_256_GCM_SHA384;
-			case nts::protect::suite_t::AES_128_GCM_SHA256: return ::tls::cipher_t::TLS_AES_128_GCM_SHA256;
-			case nts::protect::suite_t::CHACHA20_POLY1305_SHA256: return ::tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256;
-			case nts::protect::suite_t::KUZNYECHIK_MGM_L: return ::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_L;
-			case nts::protect::suite_t::MAGMA_MGM_L: return ::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_L;
-			case nts::protect::suite_t::KUZNYECHIK_MGM_S: return ::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_S;
-			case nts::protect::suite_t::MAGMA_MGM_S: return ::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_S;
+			// Если набор шифрования — «Магма» в режиме MGM варианта S
+			case nts::protect::suite_t::MAGMA_MGM_S:
+				// Возвращаем код AWH GOSTR341112_256_MAGMA_MGM_S
+				return ::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_S;
+			// Если набор шифрования — «Магма» в режиме MGM варианта L
+			case nts::protect::suite_t::MAGMA_MGM_L:
+				// Возвращаем код AWH GOSTR341112_256_MAGMA_MGM_L
+				return ::tls::cipher_t::GOSTR341112_256_MAGMA_MGM_L;
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта L
+			case nts::protect::suite_t::KUZNYECHIK_MGM_L:
+				// Возвращаем код AWH GOSTR341112_256_KUZNYECHIK_MGM_L
+				return ::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_L;
+			// Если набор шифрования — «Кузнечик» в режиме MGM варианта S
+			case nts::protect::suite_t::KUZNYECHIK_MGM_S:
+				// Возвращаем код AWH GOSTR341112_256_KUZNYECHIK_MGM_S
+				return ::tls::cipher_t::GOSTR341112_256_KUZNYECHIK_MGM_S;
+			// Если набор шифрования TLS 1.3 — AES-256-GCM с SHA-384
+			case nts::protect::suite_t::AES_256_GCM_SHA384:
+				// Возвращаем код AWH TLS_AES_256_GCM_SHA384
+				return ::tls::cipher_t::TLS_AES_256_GCM_SHA384;
+			// Если набор шифрования TLS 1.3 — AES-128-GCM с SHA-256
+			case nts::protect::suite_t::AES_128_GCM_SHA256:
+				// Возвращаем код AWH TLS_AES_128_GCM_SHA256
+				return ::tls::cipher_t::TLS_AES_128_GCM_SHA256;
+			// Если набор шифрования — PSK с AES-128-CBC и SHA-1
+			case nts::protect::suite_t::PSK_AES_128_CBC_SHA:
+				// Возвращаем код AWH PSK_AES128_CBC_SHA
+				return ::tls::cipher_t::PSK_AES128_CBC_SHA;
+			// Если набор шифрования — PSK с AES-256-CBC и SHA-1
+			case nts::protect::suite_t::PSK_AES_256_CBC_SHA:
+				// Возвращаем код AWH PSK_AES256_CBC_SHA
+				return ::tls::cipher_t::PSK_AES256_CBC_SHA;
+			// Если набор шифрования — RSA с AES-128-CBC и SHA-1
+			case nts::protect::suite_t::RSA_AES_128_CBC_SHA:
+				// Возвращаем код AWH AES128_SHA
+				return ::tls::cipher_t::AES128_SHA;
+			// Если набор шифрования — RSA с AES-256-CBC и SHA-1
+			case nts::protect::suite_t::RSA_AES_256_CBC_SHA:
+				// Возвращаем код AWH AES256_SHA
+				return ::tls::cipher_t::AES256_SHA;
+			// Если набор шифрования — RSA с AES-128-GCM и SHA-256
+			case nts::protect::suite_t::RSA_AES_128_GCM_SHA256:
+				// Возвращаем код AWH AES128_GCM_SHA256
+				return ::tls::cipher_t::AES128_GCM_SHA256;
+			// Если набор шифрования — RSA с AES-256-GCM и SHA-384
+			case nts::protect::suite_t::RSA_AES_256_GCM_SHA384:
+				// Возвращаем код AWH AES256_GCM_SHA384
+				return ::tls::cipher_t::AES256_GCM_SHA384;
+			// Если набор шифрования TLS 1.3 — ChaCha20-Poly1305 с SHA-256
+			case nts::protect::suite_t::CHACHA20_POLY1305_SHA256:
+				// Возвращаем код AWH TLS_CHACHA20_POLY1305_SHA256
+				return ::tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256;
+			// Если набор шифрования — ECDHE с PSK, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_PSK_AES_128_CBC_SHA:
+				// Возвращаем код AWH ECDHE_PSK_AES128_CBC_SHA
+				return ::tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+			// Если набор шифрования — ECDHE с PSK, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_PSK_AES_256_CBC_SHA:
+				// Возвращаем код AWH ECDHE_PSK_AES256_CBC_SHA
+				return ::tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA:
+				// Возвращаем код AWH ECDHE_RSA_AES128_SHA
+				return ::tls::cipher_t::ECDHE_RSA_AES128_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_RSA_AES_256_CBC_SHA:
+				// Возвращаем код AWH ECDHE_RSA_AES256_SHA
+				return ::tls::cipher_t::ECDHE_RSA_AES256_SHA;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA:
+				// Возвращаем код AWH ECDHE_ECDSA_AES128_SHA
+				return ::tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-CBC и SHA-1
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_CBC_SHA:
+				// Возвращаем код AWH ECDHE_ECDSA_AES256_SHA
+				return ::tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
+			// Если набор шифрования — ECDHE с RSA, AES-128-GCM и SHA-256
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_GCM_SHA256:
+				// Возвращаем код AWH ECDHE_RSA_AES128_GCM_SHA256
+				return ::tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+			// Если набор шифрования — ECDHE с RSA, AES-256-GCM и SHA-384
+			case nts::protect::suite_t::ECDHE_RSA_AES_256_GCM_SHA384:
+				// Возвращаем код AWH ECDHE_RSA_AES256_GCM_SHA384
+				return ::tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+			// Если набор шифрования — ECDHE с RSA, AES-128-CBC и SHA-256
+			case nts::protect::suite_t::ECDHE_RSA_AES_128_CBC_SHA256:
+				// Возвращаем код AWH ECDHE_RSA_AES128_SHA256
+				return ::tls::cipher_t::ECDHE_RSA_AES128_SHA256;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-GCM и SHA-256
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_GCM_SHA256:
+				// Возвращаем код AWH ECDHE_ECDSA_AES128_GCM_SHA256
+				return ::tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+			// Если набор шифрования — ECDHE с ECDSA, AES-256-GCM и SHA-384
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_256_GCM_SHA384:
+				// Возвращаем код AWH ECDHE_ECDSA_AES256_GCM_SHA384
+				return ::tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+			// Если набор шифрования — ECDHE с ECDSA, AES-128-CBC и SHA-256
+			case nts::protect::suite_t::ECDHE_ECDSA_AES_128_CBC_SHA256:
+				// Возвращаем код AWH ECDHE_ECDSA_AES128_SHA256
+				return ::tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
+			// Если набор шифрования — ECDHE с RSA и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_RSA_CHACHA20_POLY1305_SHA256:
+				// Возвращаем код AWH ECDHE_RSA_CHACHA20_POLY1305
+				return ::tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+			// Если набор шифрования — ECDHE с PSK и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_PSK_CHACHA20_POLY1305_SHA256:
+				// Возвращаем код AWH ECDHE_PSK_CHACHA20_POLY1305
+				return ::tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+			// Если набор шифрования — ECDHE с ECDSA и ChaCha20-Poly1305
+			case nts::protect::suite_t::ECDHE_ECDSA_CHACHA20_POLY1305_SHA256:
+				// Возвращаем код AWH ECDHE_ECDSA_CHACHA20_POLY1305
+				return ::tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+			// В остальных случаях возвращаем признак неизвестного набора
 			default: return ::tls::cipher_t::UNKNOWN;
 		}
 	}
@@ -1677,32 +2006,96 @@ namespace ssl {
 	 * @return         код схемы подписи A-NTS
 	 *
 	 */
-	static nts::extension::scheme_t schemeCode(const ::tls::signature_t signature) noexcept {
+	static constexpr nts::extension::scheme_t schemeCode(const ::tls::signature_t signature) noexcept {
 		/**
 		 * Определяем схему подписи
 		 */
 		switch(static_cast <uint8_t> (signature)){
-			case static_cast <uint8_t> (::tls::signature_t::ED448): return nts::extension::scheme_t::ED448;
-			case static_cast <uint8_t> (::tls::signature_t::ED25519): return nts::extension::scheme_t::ED25519;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA256): return nts::extension::scheme_t::RSA_PKCS1_SHA256;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA384): return nts::extension::scheme_t::RSA_PKCS1_SHA384;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA512): return nts::extension::scheme_t::RSA_PKCS1_SHA512;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA256): return nts::extension::scheme_t::RSA_PSS_PSS_SHA256;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA384): return nts::extension::scheme_t::RSA_PSS_PSS_SHA384;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA512): return nts::extension::scheme_t::RSA_PSS_PSS_SHA512;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA256): return nts::extension::scheme_t::RSA_PSS_RSAE_SHA256;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA384): return nts::extension::scheme_t::RSA_PSS_RSAE_SHA384;
-			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA512): return nts::extension::scheme_t::RSA_PSS_RSAE_SHA512;
-			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP256R1_SHA256): return nts::extension::scheme_t::ECDSA_SECP256R1_SHA256;
-			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP384R1_SHA384): return nts::extension::scheme_t::ECDSA_SECP384R1_SHA384;
-			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP521R1_SHA512): return nts::extension::scheme_t::ECDSA_SECP521R1_SHA512;
-			case static_cast <uint8_t> (::tls::signature_t::S256A): return nts::extension::scheme_t::S256A;
-			case static_cast <uint8_t> (::tls::signature_t::S256B): return nts::extension::scheme_t::S256B;
-			case static_cast <uint8_t> (::tls::signature_t::S256C): return nts::extension::scheme_t::S256C;
-			case static_cast <uint8_t> (::tls::signature_t::S256D): return nts::extension::scheme_t::S256D;
-			case static_cast <uint8_t> (::tls::signature_t::S512A): return nts::extension::scheme_t::S512A;
-			case static_cast <uint8_t> (::tls::signature_t::S512B): return nts::extension::scheme_t::S512B;
-			case static_cast <uint8_t> (::tls::signature_t::S512C): return nts::extension::scheme_t::S512C;
+			// Если схема подписи — ГОСТ на 256 бит, вариант A
+			case static_cast <uint8_t> (::tls::signature_t::S256A):
+				// Возвращаем код схемы ГОСТ S256A
+				return nts::extension::scheme_t::S256A;
+			// Если схема подписи — ГОСТ на 256 бит, вариант B
+			case static_cast <uint8_t> (::tls::signature_t::S256B):
+				// Возвращаем код схемы ГОСТ S256B
+				return nts::extension::scheme_t::S256B;
+			// Если схема подписи — ГОСТ на 256 бит, вариант C
+			case static_cast <uint8_t> (::tls::signature_t::S256C):
+				// Возвращаем код схемы ГОСТ S256C
+				return nts::extension::scheme_t::S256C;
+			// Если схема подписи — ГОСТ на 256 бит, вариант D
+			case static_cast <uint8_t> (::tls::signature_t::S256D):
+				// Возвращаем код схемы ГОСТ S256D
+				return nts::extension::scheme_t::S256D;
+			// Если схема подписи — ГОСТ на 512 бит, вариант A
+			case static_cast <uint8_t> (::tls::signature_t::S512A):
+				// Возвращаем код схемы ГОСТ S512A
+				return nts::extension::scheme_t::S512A;
+			// Если схема подписи — ГОСТ на 512 бит, вариант B
+			case static_cast <uint8_t> (::tls::signature_t::S512B):
+				// Возвращаем код схемы ГОСТ S512B
+				return nts::extension::scheme_t::S512B;
+			// Если схема подписи — ГОСТ на 512 бит, вариант C
+			case static_cast <uint8_t> (::tls::signature_t::S512C):
+				// Возвращаем код схемы ГОСТ S512C
+				return nts::extension::scheme_t::S512C;
+			// Если схема подписи — EdDSA на кривой Ed448
+			case static_cast <uint8_t> (::tls::signature_t::ED448):
+				// Возвращаем код схемы ED448
+				return nts::extension::scheme_t::ED448;
+			// Если схема подписи — EdDSA на кривой Ed25519
+			case static_cast <uint8_t> (::tls::signature_t::ED25519):
+				// Возвращаем код схемы ED25519
+				return nts::extension::scheme_t::ED25519;
+			// Если схема подписи — RSA PKCS#1 v1.5 с SHA-256
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA256):
+				// Возвращаем код схемы RSA_PKCS1_SHA256
+				return nts::extension::scheme_t::RSA_PKCS1_SHA256;
+			// Если схема подписи — RSA PKCS#1 v1.5 с SHA-384
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA384):
+				// Возвращаем код схемы RSA_PKCS1_SHA384
+				return nts::extension::scheme_t::RSA_PKCS1_SHA384;
+			// Если схема подписи — RSA PKCS#1 v1.5 с SHA-512
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PKCS1_SHA512):
+				// Возвращаем код схемы RSA_PKCS1_SHA512
+				return nts::extension::scheme_t::RSA_PKCS1_SHA512;
+			// Если схема подписи — RSA-PSS с SHA-256 и ключом RSA-PSS
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA256):
+				// Возвращаем код схемы RSA_PSS_PSS_SHA256
+				return nts::extension::scheme_t::RSA_PSS_PSS_SHA256;
+			// Если схема подписи — RSA-PSS с SHA-384 и ключом RSA-PSS
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA384):
+				// Возвращаем код схемы RSA_PSS_PSS_SHA384
+				return nts::extension::scheme_t::RSA_PSS_PSS_SHA384;
+			// Если схема подписи — RSA-PSS с SHA-512 и ключом RSA-PSS
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_PSS_SHA512):
+				// Возвращаем код схемы RSA_PSS_PSS_SHA512
+				return nts::extension::scheme_t::RSA_PSS_PSS_SHA512;
+			// Если схема подписи — RSA-PSS с SHA-256 и ключом rsaEncryption
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA256):
+				// Возвращаем код схемы RSA_PSS_RSAE_SHA256
+				return nts::extension::scheme_t::RSA_PSS_RSAE_SHA256;
+			// Если схема подписи — RSA-PSS с SHA-384 и ключом rsaEncryption
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA384):
+				// Возвращаем код схемы RSA_PSS_RSAE_SHA384
+				return nts::extension::scheme_t::RSA_PSS_RSAE_SHA384;
+			// Если схема подписи — RSA-PSS с SHA-512 и ключом rsaEncryption
+			case static_cast <uint8_t> (::tls::signature_t::RSA_PSS_RSAE_SHA512):
+				// Возвращаем код схемы RSA_PSS_RSAE_SHA512
+				return nts::extension::scheme_t::RSA_PSS_RSAE_SHA512;
+			// Если схема подписи — ECDSA на кривой P-256 с SHA-256
+			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP256R1_SHA256):
+				// Возвращаем код схемы ECDSA_SECP256R1_SHA256
+				return nts::extension::scheme_t::ECDSA_SECP256R1_SHA256;
+			// Если схема подписи — ECDSA на кривой P-384 с SHA-384
+			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP384R1_SHA384):
+				// Возвращаем код схемы ECDSA_SECP384R1_SHA384
+				return nts::extension::scheme_t::ECDSA_SECP384R1_SHA384;
+			// Если схема подписи — ECDSA на кривой P-521 с SHA-512
+			case static_cast <uint8_t> (::tls::signature_t::ECDSA_SECP521R1_SHA512):
+				// Возвращаем код схемы ECDSA_SECP521R1_SHA512
+				return nts::extension::scheme_t::ECDSA_SECP521R1_SHA512;
+			// В остальных случаях возвращаем признак отсутствия схемы
 			default: return nts::extension::scheme_t::NONE;
 		}
 	}
@@ -1713,7 +2106,7 @@ namespace ssl {
 	 * @return       объект шаблона контекста безопасности либо nullptr
 	 *
 	 */
-	static ::cts_t * templateOf(const ::member_t * member) noexcept {
+	static __AWH_INLINE__ ::cts_t * templateOf(const ::member_t * member) noexcept {
 		// Если уровень является шаблонным контекстом безопасности
 		if(member->layer == layer_t::CTS)
 			// Возвращаем объект шаблона контекста безопасности
@@ -1733,7 +2126,7 @@ namespace ssl {
 	 * @return       результат чтения файла
 	 *
 	 */
-	static bool readFile(string_view path, vector <uint8_t> & result) noexcept {
+	static __AWH_INLINE__ bool readFile(string_view path, vector <uint8_t> & result) noexcept {
 		// Очищаем накопитель содержимого
 		result.clear();
 		// Файл для чтения
@@ -1791,7 +2184,7 @@ namespace compressor {
 	 * @return        признак успешности компрессии
 	 *
 	 */
-	static bool compressZlib(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool compressZlib(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Сжимаем данные
 		::__awh_compressor__.compress(source.data, source.size, awh::compressor::method_t::ZLIB, result);
 		// Возвращаем признак успешности компрессии
@@ -1806,7 +2199,7 @@ namespace compressor {
 	 * @return        признак успешности компрессии
 	 *
 	 */
-	static bool compressBrotli(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool compressBrotli(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Сжимаем данные
 		::__awh_compressor__.compress(source.data, source.size, awh::compressor::method_t::BROTLI, result);
 		// Возвращаем признак успешности компрессии
@@ -1821,7 +2214,7 @@ namespace compressor {
 	 * @return        признак успешности компрессии
 	 *
 	 */
-	static bool compressZstandard(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool compressZstandard(const nts::view_t & source, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Сжимаем данные
 		::__awh_compressor__.compress(source.data, source.size, awh::compressor::method_t::ZSTD, result);
 		// Возвращаем признак успешности компрессии
@@ -1837,7 +2230,7 @@ namespace compressor {
 	 * @return         признак успешности распаковки
 	 *
 	 */
-	static bool decompressZlib(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool decompressZlib(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Распаковываем данные
 		::__awh_compressor__.decompress(source.data, source.size, awh::compressor::method_t::ZLIB, result, expected);
 		// Возвращаем результат сверки длины распакованного тела
@@ -1853,7 +2246,7 @@ namespace compressor {
 	 * @return         признак успешности распаковки
 	 *
 	 */
-	static bool decompressBrotli(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool decompressBrotli(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Распаковываем данные
 		::__awh_compressor__.decompress(source.data, source.size, awh::compressor::method_t::BROTLI, result, expected);
 		// Возвращаем результат сверки длины распакованного тела
@@ -1869,15 +2262,13 @@ namespace compressor {
 	 * @return         признак успешности распаковки
 	 *
 	 */
-	static bool decompressZstandard(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
+	static __AWH_INLINE__ bool decompressZstandard(const nts::view_t & source, const size_t expected, vector <uint8_t> & result, [[maybe_unused]] void * context) noexcept {
 		// Распаковываем данные
 		::__awh_compressor__.decompress(source.data, source.size, awh::compressor::method_t::ZSTD, result, expected);
 		// Возвращаем результат сверки длины распакованного тела
 		return (result.size() == expected);
 	}
 };
-
-
 
 /**
  * @brief Конструктор
@@ -1975,7 +2366,7 @@ string awh::tls::coder::info(const id_t id) noexcept {
 					// Добавляем прикладной протокол в результат
 					result.append(awh::fmk::format("Protocol ALPN: %s\n", member->client->protocol().c_str()));
 				// Если узел является сервером и связь заведена
-				} else if((member->node == event::node_t::SERVER) && (member->server != nullptr)){
+				} else if((member->node == event::node_t::SERVER) && (member->server != nullptr)) {
 					// Издание протокола
 					const uint16_t version = member->server->version();
 					// Добавляем издание протокола в результат
@@ -2421,13 +2812,13 @@ string awh::tls::coder::certificateExtract(const id_t id) noexcept {
 /**
  * @brief Функция проверки валидности сертификата
  *
- * @param id идентификатор события
- * @return   результат проверки валидности сертификата
- *
  * @note Только для CTL. На CLIENT проверяет сертификат пира (сервера)
  *       по member->host.name (ожидаемое имя/SNI). На SERVER peer-сертификат —
  *       сертификат клиента, host.name — SNI клиента; вызывающий код должен
  *       понимать эту семантику (mTLS и т.п.).
+ *
+ * @param id идентификатор события
+ * @return   результат проверки валидности сертификата
  *
  */
 bool awh::tls::coder::validateCertificate(const id_t id) noexcept {
@@ -3212,11 +3603,11 @@ bool awh::tls::coder::peer(const id_t id, string_view ip, const uint16_t port) n
 /**
  * @brief Функция удаления контекста TLS
  *
- * @param id идентификатор транспортного уровня или шаблона контекста безопасности
- * @return   результат выполнения удаления
- *
  * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы функций
  *       с этим id недопустимы. Физическое удаление из реестра — при refs==0.
+ *
+ * @param id идентификатор транспортного уровня или шаблона контекста безопасности
+ * @return   результат выполнения удаления
  *
  */
 bool awh::tls::coder::destroy(const id_t id) noexcept {
@@ -3227,11 +3618,13 @@ bool awh::tls::coder::destroy(const id_t id) noexcept {
 	 */
 	try {
 		/**
-		 * Закрепление идёт с допуском помеченных мусорным: участника мог пометить
-		 * путь ошибки внутри самих работ обмена, и отказ в снятии оставил бы его
-		 * память удержанной до конца работы приложения
+		 * @brief Закрепляем участника в глобальном реестре TLS
+		 *
+		 * @details Закрепление идёт с допуском помеченных мусорным: участника мог пометить
+		 *          путь ошибки внутри самих работ обмена, и отказ в снятии оставил бы его
+		 *          память удержанной до конца работы приложения.
+		 *
 		 */
-		// Закрепляем участника в глобальном реестре TLS
 		const auto pin = ::ssl::registry::pin(id, true);
 		// Если идентификатор контекста TLS найден
 		if((result = (pin != nullptr))){
@@ -3255,20 +3648,24 @@ bool awh::tls::coder::destroy(const id_t id) noexcept {
 							::ssl::registry::spliceErase(member->proto, member->host);
 					}
 					/**
-					 * Извещение уходит один раз: путь ошибки внутри работ обмена уже
-					 * известил вызывающую сторону, пометив участника мусорным, и второе
-					 * извещение о том же событии выдало бы одно снятие за два
+					 * @brief Если функция обратного вызова состояния установлена, а участник ещё не помечен
+					 *
+					 * @details Извещение уходит один раз: путь ошибки внутри работ обмена уже
+					 *          известил вызывающую сторону, пометив участника мусорным, и второе
+					 *          извещение о том же событии выдало бы одно снятие за два.
+					 *
 					 */
-					// Если функция обратного вызова состояния установлена, а участник ещё не помечен
 					if(!garbage && (member->callback.state != nullptr))
 						// Вызываем функцию обратного вызова состояния
 						member->callback.state(id, state_t::DESTROYED);
 					/**
-					 * Признак снятия ставится вместе с признаком мусорного: память
-					 * возвращается охранником лишь по нему, и ставит его одно только
-					 * снятие по требованию вызывающей стороны
+					 * @brief Устанавливаем режим удаления участника обмена защищёнными данными
+					 *
+					 * @details Признак снятия ставится вместе с признаком мусорного: память
+					 *          возвращается охранником лишь по нему, и ставит его одно только
+					 *          снятие по требованию вызывающей стороны.
+					 *
 					 */
-					// Устанавливаем режим удаления участника обмена защищёнными данными
 					member->state |= (::state::GARBAGE_MODE | ::state::RELEASED_MODE);
 				} break;
 				// Если уровень является транспортной передачей данных
@@ -3276,20 +3673,24 @@ bool awh::tls::coder::destroy(const id_t id) noexcept {
 					// Извлекаем объект транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					/**
-					 * Извещение уходит один раз: путь ошибки внутри работ обмена уже
-					 * известил вызывающую сторону, пометив участника мусорным, и второе
-					 * извещение о том же событии выдало бы одно снятие за два
+					 * @brief Если функция обратного вызова состояния установлена, а участник ещё не помечен
+					 *
+					 * @details Извещение уходит один раз: путь ошибки внутри работ обмена уже
+					 *          известил вызывающую сторону, пометив участника мусорным, и второе
+					 *          извещение о том же событии выдало бы одно снятие за два.
+					 *
 					 */
-					// Если функция обратного вызова состояния установлена, а участник ещё не помечен
 					if(!garbage && (member->callback.state != nullptr))
 						// Вызываем функцию обратного вызова состояния
 						member->callback.state(id, state_t::DESTROYED);
 					/**
-					 * Признак снятия ставится вместе с признаком мусорного: память
-					 * возвращается охранником лишь по нему, и ставит его одно только
-					 * снятие по требованию вызывающей стороны
+					 * @brief Устанавливаем режим удаления участника обмена защищёнными данными
+					 *
+					 * @details Признак снятия ставится вместе с признаком мусорного: память
+					 *          возвращается охранником лишь по нему, и ставит его одно только
+					 *          снятие по требованию вызывающей стороны.
+					 *
 					 */
-					// Устанавливаем режим удаления участника обмена защищёнными данными
 					member->state |= (::state::GARBAGE_MODE | ::state::RELEASED_MODE);
 				} break;
 			}
@@ -3418,11 +3819,11 @@ bool awh::tls::coder::shutdown(const id_t id) noexcept {
 /**
  * @brief Функция выполнения TLS рукопожатия
  *
- * @param id идентификатор события
- * @return   результат выполнения рукопожатия
- *
  * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
  *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+ *
+ * @param id идентификатор события
+ * @return   результат выполнения рукопожатия
  *
  */
 bool awh::tls::coder::handshake(const id_t id) noexcept {
@@ -3496,10 +3897,14 @@ bool awh::tls::coder::handshake(const id_t id) noexcept {
 						member->state |= state::HANDSHAKE_MODE;
 						// Очищаем буфер сборки ClientHello
 						member->hello.clear();
-						// Название активного протокола связи
-						const string & proto = (member->node == event::node_t::CLIENT) ? member->client->protocol() : member->server->protocol();
 						// Индекс протокола
 						size_t index = 0;
+						// Название активного протокола связи
+						const string & proto = (
+							(member->node == event::node_t::CLIENT) ?
+							member->client->protocol() :
+							member->server->protocol()
+						);
 						/**
 						 * Перебираем список поддерживаемых ALPN-протоколов
 						 */
@@ -3699,7 +4104,7 @@ void * awh::tls::coder::quicContext(const id_t id) noexcept {
 					// Возвращаем связь во владение вызывающему коду
 					return reinterpret_cast <void *> (ctx.release());
 				// Если узел является сервером
-				} else if(cts->node == event::node_t::SERVER){
+				} else if(cts->node == event::node_t::SERVER) {
 					// Создаём связь сервера TLS
 					auto ctx = ::make_unique <nts::server::context_t> ();
 					// Применяем настройки шаблона к связи
@@ -4003,11 +4408,6 @@ awh::tls::coder::id_t awh::tls::coder::context(const event::node_t node, const e
 /**
  * @brief Функция получения сериализованного ECHConfigList для публикации в DNS
  *
- * @param id идентификатор события
- * @return   байты ECHConfigList для DNS HTTPS-записи (для сервера)
- *           или байты ECHConfigList полученные из DNS (для клиента).
- *           Возвращает пустой вектор если ECH не был настроен.
- *
  * @details Функция возвращает ECHConfigList, сохранённый в памяти после вызова
  *          setKeysECH(). Для сервера содержит публичные ECHConfig, которые
  *          нужно опубликовать через DNS HTTPS-запись (поле eckparam), чтобы
@@ -4030,6 +4430,11 @@ awh::tls::coder::id_t awh::tls::coder::context(const event::node_t node, const e
  *          // getKeysECH() возвращает те же байты, которые были сохранены.
  *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
  *          @endcode
+ *
+ * @param id идентификатор события
+ * @return   байты ECHConfigList для DNS HTTPS-записи (для сервера)
+ *           или байты ECHConfigList полученные из DNS (для клиента).
+ *           Возвращает пустой вектор если ECH не был настроен.
  *
  */
 vector <uint8_t> awh::tls::coder::getKeysECH(const id_t id) noexcept {
@@ -4079,10 +4484,6 @@ vector <uint8_t> awh::tls::coder::getKeysECH(const id_t id) noexcept {
 /**
  * @brief Функция установки ключей EncryptedClientHello (ECH)
  *
- * @param id   идентификатор события
- * @param keys ключи EncryptedClientHello (ECH)
- * @return     результат выполнения установки
- *
  * @details Поведение зависит от
  *          типа узла (CLIENT/SERVER) и уровня (CTS/CTL).
  *
@@ -4113,6 +4514,10 @@ vector <uint8_t> awh::tls::coder::getKeysECH(const id_t id) noexcept {
  *          // Получить ECHConfigList для DNS:
  *          vector <uint8_t> forDns = coder.getKeysECH(ctx);
  *          @endcode
+ *
+ * @param id   идентификатор события
+ * @param keys ключи EncryptedClientHello (ECH)
+ * @return     результат выполнения установки
  *
  */
 bool awh::tls::coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept {
@@ -4160,16 +4565,16 @@ bool awh::tls::coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) n
 /**
  * @brief Функция установки ключей EncryptedClientHello (ECH)
  *
- * @param id   идентификатор события
- * @param keys ключи EncryptedClientHello (ECH)
- * @param size размер ключей EncryptedClientHello (ECH)
- * @return     результат выполнения установки
- *
  * @details Перегрузка setKeysECH() для сырого указателя вместо vector.
  *          Поведение идентично первой перегрузке; см. ее документацию.
  *
  *          Для сервера если @p keys равен nullptr или @p size равен 0 —
  *          ключ генерируется автоматически.
+ *
+ * @param id   идентификатор события
+ * @param keys ключи EncryptedClientHello (ECH)
+ * @param size размер ключей EncryptedClientHello (ECH)
+ * @return     результат выполнения установки
  *
  */
 bool awh::tls::coder::setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept {
@@ -4185,13 +4590,13 @@ bool awh::tls::coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 /**
  * @brief Функция шифрования данных
  *
+ * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
+ *       Параллельные вызовы на один id должен сериализовать вызывающий код.
+ *
  * @param id     идентификатор события
  * @param buffer буфер данных для шифрования
  * @param size   размер буфера данных для шифрования
  * @return       результат выполнения шифрования
- *
- * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
- *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  *
  */
 bool awh::tls::coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
@@ -4573,11 +4978,11 @@ void awh::tls::coder::grease(const id_t id, const event::mode_t mode) noexcept {
 			// Если шаблон контекста безопасности получен
 			if(cts != nullptr){
 				// Если узел является клиентом
-				if(cts->node == event::node_t::CLIENT){
+				if(cts->node == event::node_t::CLIENT)
 					// Устанавливаем признак вставки значений GREASE
 					cts->grease = (mode == event::mode_t::ENABLED);
 				// Если узел является сервером
-				} else {
+				else {
 					// Если функция обратного вызова состояния установлена
 					if(cts->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -4647,11 +5052,11 @@ void awh::tls::coder::permuteExtensions(const id_t id, const event::mode_t mode)
 			// Если шаблон контекста безопасности получен
 			if(cts != nullptr){
 				// Если узел является клиентом
-				if(cts->node == event::node_t::CLIENT){
+				if(cts->node == event::node_t::CLIENT)
 					// Устанавливаем признак перемешивания расширений
 					cts->permute = (mode == event::mode_t::ENABLED);
 				// Если узел является сервером
-				} else {
+				else {
 					// Если функция обратного вызова состояния установлена
 					if(cts->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5558,6 +5963,34 @@ void awh::tls::coder::ca(const id_t id, string_view filename) noexcept {
 						for(auto & cert : certs)
 							// Добавляем сертификат в запас доверенных центров
 							cts->store.add(nts::view_t(cert.data(), cert.size()));
+					// Если файл сертификатов доверенного центра не прочитан
+					} else {
+						// Если функция обратного вызова состояния установлена
+						if(cts->callback.state != nullptr)
+							// Вызываем функцию обратного вызова состояния
+							cts->callback.state(id, state_t::FAILED);
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Failed to read CA file");
+						// Если функция обратного вызова ошибки установлена
+						if(cts->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							cts->callback.error(id, error_t::CA_FAILED, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("%s", log::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
 					}
 				}
 			}
@@ -5606,8 +6039,16 @@ void awh::tls::coder::ca(const id_t id, string_view dir, string_view file) noexc
 				if(cts != nullptr){
 					// Содержимое файла сертификатов доверенного центра
 					vector <uint8_t> content;
+					// Полный путь к файлу сертификатов доверенного центра
+					string path{dir};
+					// Если каталог указан и не оканчивается разделителем
+					if(!path.empty() && (path.back() != AWH_FS_SEPARATOR[0]))
+						// Добавляем разделитель каталога
+						path.append(AWH_FS_SEPARATOR);
+					// Добавляем имя файла к пути
+					path.append(file);
 					// Если файл сертификатов доверенного центра прочитан
-					if(::ssl::readFile(file, content)){
+					if(::ssl::readFile(path, content)){
 						// Цепочка сертификатов доверенного центра
 						vector <vector <uint8_t>> certs;
 						// Если цепочка сертификатов не декодирована
@@ -5647,6 +6088,34 @@ void awh::tls::coder::ca(const id_t id, string_view dir, string_view file) noexc
 						for(auto & cert : certs)
 							// Добавляем сертификат в запас доверенных центров
 							cts->store.add(nts::view_t(cert.data(), cert.size()));
+					// Если файл сертификатов доверенного центра не прочитан
+					} else {
+						// Если функция обратного вызова состояния установлена
+						if(cts->callback.state != nullptr)
+							// Вызываем функцию обратного вызова состояния
+							cts->callback.state(id, state_t::FAILED);
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "Failed to read CA file");
+						// Если функция обратного вызова ошибки установлена
+						if(cts->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							cts->callback.error(id, error_t::CA_FAILED, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("%s", log::flag_t::CRITICAL, error.c_str());
+							#endif
+						}
 					}
 				}
 			}

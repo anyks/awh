@@ -147,6 +147,7 @@ if (${GTest_FOUND})
                 http/proxy/proxy.cpp
                 http/proxy/static.cpp
                 http/proxy/parameterized.cpp
+                http/proxy/facade.cpp
             )
         # Если не нужно собрать тесты для подмодуля клиента HTTP-прокси
         else()
@@ -232,6 +233,7 @@ if (${GTest_FOUND})
                 socks5/socks5.cpp
                 socks5/static.cpp
                 socks5/parameterized.cpp
+                socks5/facade.cpp
             )
         # Если не нужно собрать тесты для подмодуля протокола SOCKS5
         else()

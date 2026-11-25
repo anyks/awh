@@ -55,6 +55,8 @@ class HttpProxyFixture : public testing::Test {
 			uint16_t code = 0;
 			// Собранные заголовки ответа прокси
 			std::vector <std::pair <std::string, std::string>> headers;
+			// Собранные трейлеры ответа прокси
+			std::vector <std::pair <std::string, std::string>> trailers;
 		} events_t;
 	public:
 		/**

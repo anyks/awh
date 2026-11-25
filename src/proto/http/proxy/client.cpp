@@ -86,6 +86,30 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Функция проверки заголовка по токенам Connection
+	 *
+	 * @details Заголовки, названные токенами заголовка Connection запроса
+	 *          пользователя, не пересылаются через прокси (RFC 9110 §7.6.1).
+	 *
+	 * @param name   имя заголовка
+	 * @param tokens токены заголовка Connection
+	 * @return       признак того, что заголовок не пересылается
+	 *
+	 */
+	static __AWH_INLINE__ bool __awh_nominated__(const string_view name, const vector <string_view> & tokens) noexcept {
+		/**
+		 * Перебираем токены заголовка Connection
+		 */
+		for(const auto & token : tokens){
+			// Если имя заголовка совпадает с токеном
+			if(::__awh_iequals__(name, token))
+				// Заголовок назван токеном и не пересылается
+				return true;
+		}
+		// Заголовок токенами не назван
+		return false;
+	}
+	/**
 	 * @brief Функция извлечения токена схемы авторизации из значения вызова
 	 *
 	 * @param value значение заголовка вызова авторизации
@@ -127,6 +151,56 @@ namespace {
 		// Заголовок пересылается
 		return false;
 	}
+	/**
+	 * @brief Функция сбора токенов заголовка Connection
+	 *
+	 * @details Токены разделяются запятыми, окружающие пробельные символы
+	 *          не значимы (RFC 9110 §5.6.1); собранные токены называют
+	 *          заголовки запроса, не пересылаемые через прокси (§7.6.1).
+	 *
+	 * @param value  значение заголовка Connection
+	 * @param tokens контейнер собранных токенов
+	 *
+	 */
+	static __AWH_INLINE__ void __awh_connection_tokens__(const string_view value, vector <string_view> & tokens) noexcept {
+		// Позиция начала очередного токена
+		size_t begin = 0;
+		/**
+		 * Разбираем список токенов, разделённых запятыми
+		 */
+		while(begin <= value.size()){
+			// Позиция разделителя после текущего токена
+			const size_t pos = value.find(',', begin);
+			// Позиция конца текущего токена
+			const size_t end = ((pos == string_view::npos) ? value.size() : pos);
+			// Позиция начала токена без ведущих пробельных символов
+			size_t first = begin;
+			// Позиция конца токена без хвостовых пробельных символов
+			size_t last = end;
+			/**
+			 * Пропускаем ведущие пробельные символы токена
+			 */
+			while((first < last) && ((value[first] == ' ') || (value[first] == '\t')))
+				// Сдвигаем начало токена
+				first++;
+			/**
+			 * Пропускаем хвостовые пробельные символы токена
+			 */
+			while((last > first) && ((value[last - 1] == ' ') || (value[last - 1] == '\t')))
+				// Сдвигаем конец токена
+				last--;
+			// Если токен не пуст
+			if(last > first)
+				// Сохраняем токен
+				tokens.push_back(value.substr(first, last - first));
+			// Если разделитель не найден
+			if(pos == string_view::npos)
+				// Завершаем разбор списка
+				break;
+			// Сдвигаем начало за разделитель
+			begin = pos + 1;
+		}
+	}
 };
 
 /**
@@ -142,7 +216,7 @@ awh::http::proxy::Client::Context::Context() noexcept :
  *
  */
 awh::http::proxy::Client::Forward_Request::Forward_Request() noexcept :
- sent(false), method(method_t::NONE),
+ sent(false), retries(0), method(method_t::NONE),
  uri{""}, body{""}, wire{""}, methodName{""} {}
 
 /**
@@ -233,8 +307,8 @@ bool awh::http::proxy::Client::enqueue(ctx_t & ctx) noexcept {
 	}
 	// Сохраняем цель запроса в absolute-form
 	request.uri = target;
-	// Собираем байты запроса (превентивная авторизация действует внутри)
-	if(!this->assemble(request, false)){
+	// Собираем байты запроса (учётные данные добавляются при превентивной авторизации или состоявшемся вызове)
+	if(!this->assemble(request, this->_challenged)){
 		// Устанавливаем состояние ошибки сборки запроса
 		ctx.state = state_t::BROKEN;
 		// Запрос не поставлен в очередь
@@ -294,6 +368,77 @@ bool awh::http::proxy::Client::connect(ctx_t & ctx) noexcept {
 	ctx.state = state_t::REQUEST;
 	// Запрос собран
 	return true;
+}
+/**
+ * @brief Метод обработки полностью разобранного ответа прокси
+ *
+ * @param ctx объект контекста для установки параметров сообщения
+ *
+ */
+void awh::http::proxy::Client::complete(ctx_t & ctx) noexcept {
+	// Если ответ промежуточный (1xx)
+	if((ctx.code >= 100) && (ctx.code < 200))
+		// Сбрасываем парсер для разбора финального ответа
+		this->_rx.reset();
+	// Если режим работы — туннель
+	else if(ctx.mode == mode_t::TUNNEL) {
+		// Если требуется авторизация на прокси
+		if(ctx.code == 407)
+			// Повторяем авторизацию по вызову прокси
+			this->reauthorize(ctx);
+		// Если ответ успешный (2xx)
+		else if((ctx.code >= 200) && (ctx.code < 300))
+			// Устанавливаем состояние установленного туннеля
+			ctx.state = state_t::HANDSHAKE;
+		// Прочие ответы означают ошибку установки туннеля
+		else ctx.state = state_t::BROKEN;
+	// Если режим работы — пересылка
+	} else {
+		// Если очередь запросов пуста — ответ без запроса
+		if(this->_queue.empty())
+			// Устанавливаем состояние ошибки обмена
+			ctx.state = state_t::BROKEN;
+		// Сопоставляем ответ голове очереди конвейера (FIFO)
+		else {
+			// Извлекаем запрос, которому соответствует ответ
+			forward_request_t request = ::move(this->_queue.front());
+			// Удаляем запрос из головы очереди
+			this->_queue.pop_front();
+			// Если требуется авторизация на прокси
+			if(ctx.code == 407){
+				// Если повторы запроса не исчерпаны и схема выбрана по вызову
+				if((request.retries < HTTP_PROXY_AUTH_RETRIES) && this->challenge(ctx)){
+					// Помечаем вызов авторизации прокси состоявшимся в соединении
+					this->_challenged = true;
+					// Увеличиваем счётчик повторов авторизации запроса
+					request.retries++;
+					// Пересобираем запрос с учётными данными
+					if(this->assemble(request, true)){
+						// Помечаем запрос неотправленным
+						request.sent = false;
+						// Ставим повторный запрос в хвост очереди
+						this->_queue.push_back(::move(request));
+						// Устанавливаем состояние ожидания ответа
+						ctx.state = state_t::REQUEST;
+					// Сборка повторного запроса не выполнена
+					} else ctx.state = state_t::BROKEN;
+				// Повторная авторизация невозможна
+				} else {
+					// Если функция обратного вызова установлена
+					if(this->_response)
+						// Выдаём голову ответа 407 вызывающей стороне
+						this->_response(ctx.code, ctx.headers);
+					// Устанавливаем состояние ошибки обмена
+					ctx.state = state_t::BROKEN;
+				}
+			// Финальный ответ доставлен (голова и тело выданы колбэками)
+			} else ctx.state = (this->_queue.empty() ? state_t::NONE : state_t::REQUEST);
+		}
+	}
+	// Если трейлеры ответа получены и функция обратного вызова установлена
+	if(!this->_suppress && !ctx.trailers.empty() && this->_trailer)
+		// Выдаём трейлеры ответа вызывающей стороне
+		this->_trailer(ctx.trailers);
 }
 /**
  * @brief Метод повторной авторизации по ответу 407
@@ -478,12 +623,23 @@ bool awh::http::proxy::Client::assemble(forward_request_t & request, const bool 
 	const string host = ((end == string::npos) ? request.uri.substr(begin) : request.uri.substr(begin, end - begin));
 	// Добавляем заголовок Host по authority цели запроса
 	headers.emplace("Host", host);
+	// Токены заголовков, названных заголовком Connection запроса пользователя
+	vector <string_view> nominated;
+	/**
+	 * Собираем токены заголовка Connection запроса пользователя
+	 */
+	for(const auto & field : request.fields){
+		// Если заголовок является заголовком Connection
+		if(::__awh_iequals__(field.first, "connection"))
+			// Собираем токены значения заголовка
+			::__awh_connection_tokens__(field.second, nominated);
+	}
 	/**
 	 * Копируем заголовки запроса пользователя, исключая не пересылаемые
 	 */
 	for(const auto & field : request.fields){
 		// Если заголовок не пересылается через прокси
-		if(::__awh_hop_by_hop__(field.first))
+		if(::__awh_hop_by_hop__(field.first) || ::__awh_nominated__(field.first, nominated))
 			// Переходим к следующему заголовку
 			continue;
 		// Добавляем заголовок запроса пользователя
@@ -517,11 +673,11 @@ bool awh::http::proxy::Client::assemble(forward_request_t & request, const bool 
 	// Готовим отправитель к сборке очередного запроса
 	this->_tx.resetSender();
 	// Если тело запроса пользователя отсутствует
-	if(request.body.empty()){
+	if(request.body.empty())
 		// Отправляем блок заголовков пересылаемого запроса (тела нет)
 		this->_tx.sendHeaders(headers, true);
 	// Если у запроса пользователя есть трейлеры
-	} else if(!request.trailers.empty()) {
+	else if(!request.trailers.empty()) {
 		// Отправляем блок заголовков пересылаемого запроса (тело кадрируется chunked)
 		this->_tx.sendHeaders(headers, false);
 		// Отправляем тело запроса без завершения сообщения
@@ -620,6 +776,10 @@ bool awh::http::proxy::Client::responseHeader(const uint32_t, const string_view 
 	if((this->_ctx != nullptr) && (part == parser_t::part_t::HEADERS))
 		// Сохраняем заголовок ответа прокси в контекст
 		this->_ctx->headers.emplace_back(string(name), string(value));
+	// Если активный контекст установлен и получены трейлеры сообщения
+	else if((this->_ctx != nullptr) && (part == parser_t::part_t::TRAILER))
+		// Сохраняем трейлер ответа прокси в контекст
+		this->_ctx->trailers.emplace_back(string(name), string(value));
 	// Продолжаем разбор
 	return true;
 }
@@ -697,6 +857,20 @@ void awh::http::proxy::Client::eof() noexcept {
 	this->_rx.eof();
 }
 /**
+ * @brief Метод уведомления о завершении потока данных от прокси с обработкой ответа
+ *
+ * @param ctx объект контекста для установки параметров сообщения
+ *
+ */
+void awh::http::proxy::Client::eof(ctx_t & ctx) noexcept {
+	// Уведомляем парсер ответов о закрытии соединения прокси
+	this->_rx.eof();
+	// Если ответ кадрируемый закрытием соединения дочитан полностью
+	if(this->_rx.status() == parser_t::status_t::COMPLETE)
+		// Обрабатываем полностью разобранный ответ прокси
+		this->complete(ctx);
+}
+/**
  * @brief Метод полной очистки для нового соединения
  *
  * @param ctx объект контекста для сброса параметров сообщения
@@ -709,6 +883,8 @@ void awh::http::proxy::Client::clear(ctx_t & ctx) noexcept {
 	this->_tx.clear();
 	// Восстанавливаем настройки парсеров и подписки на их события
 	this->setup();
+	// Сбрасываем флаг состоявшегося вызова авторизации прокси
+	this->_challenged = false;
 	// Сбрасываем состояние обмена и накопленные параметры
 	this->reset(ctx);
 }
@@ -747,6 +923,8 @@ void awh::http::proxy::Client::reset(ctx_t & ctx) noexcept {
 	this->_suppress = false;
 	// Очищаем заголовки ответа прокси
 	ctx.headers.clear();
+	// Очищаем трейлеры ответа прокси
+	ctx.trailers.clear();
 	// Устанавливаем неопределённое состояние обмена
 	ctx.state = state_t::NONE;
 }
@@ -775,10 +953,14 @@ void awh::http::proxy::Client::consume(const size_t size) noexcept {
 		for(auto & request : this->_queue){
 			// Если запрос ещё не отправлен прокси
 			if(!request.sent){
-				// Помечаем запрос отправленным
-				request.sent = true;
-				// Освобождаем байты запроса
-				request.wire.clear();
+				// Если отправлены все байты запроса
+				if(size >= request.wire.size()){
+					// Помечаем запрос отправленным
+					request.sent = true;
+					// Освобождаем байты запроса
+					request.wire.clear();
+				// Если отправлена только часть байтов запроса
+				} else request.wire.erase(0, size);
 				// Завершаем поиск
 				break;
 			}
@@ -926,6 +1108,8 @@ size_t awh::http::proxy::Client::parse(const void * buffer, const size_t size, c
 	if(this->_rx.status() == parser_t::status_t::NONE){
 		// Очищаем заголовки предыдущего ответа
 		ctx.headers.clear();
+		// Очищаем трейлеры предыдущего ответа
+		ctx.trailers.clear();
 		// Сбрасываем флаг подавления выдачи тела
 		this->_suppress = false;
 	}
@@ -947,65 +1131,10 @@ size_t awh::http::proxy::Client::parse(const void * buffer, const size_t size, c
 			ctx.state = state_t::BROKEN;
 		break;
 		// Если сообщение разобрано полностью
-		case static_cast <uint8_t> (parser_t::status_t::COMPLETE): {
-			// Если ответ промежуточный (1xx)
-			if((ctx.code >= 100) && (ctx.code < 200))
-				// Сбрасываем парсер для разбора финального ответа
-				this->_rx.reset();
-			// Если режим работы — туннель
-			else if(ctx.mode == mode_t::TUNNEL) {
-				// Если требуется авторизация на прокси
-				if(ctx.code == 407)
-					// Повторяем авторизацию по вызову прокси
-					this->reauthorize(ctx);
-				// Если ответ успешный (2xx)
-				else if((ctx.code >= 200) && (ctx.code < 300))
-					// Устанавливаем состояние установленного туннеля
-					ctx.state = state_t::HANDSHAKE;
-				// Прочие ответы означают ошибку установки туннеля
-				else ctx.state = state_t::BROKEN;
-			// Если режим работы — пересылка
-			} else {
-				// Если очередь запросов пуста — ответ без запроса
-				if(this->_queue.empty())
-					// Устанавливаем состояние ошибки обмена
-					ctx.state = state_t::BROKEN;
-				// Сопоставляем ответ голове очереди конвейера (FIFO)
-				else {
-					// Извлекаем запрос, которому соответствует ответ
-					forward_request_t request = ::move(this->_queue.front());
-					// Удаляем запрос из головы очереди
-					this->_queue.pop_front();
-					// Если требуется авторизация на прокси
-					if(ctx.code == 407){
-						// Если повторы не исчерпаны и схема выбрана по вызову
-						if((ctx.retries < HTTP_PROXY_AUTH_RETRIES) && this->challenge(ctx)){
-							// Увеличиваем счётчик повторов авторизации
-							ctx.retries++;
-							// Пересобираем запрос с учётными данными
-							if(this->assemble(request, true)){
-								// Помечаем запрос неотправленным
-								request.sent = false;
-								// Ставим повторный запрос в хвост очереди
-								this->_queue.push_back(::move(request));
-								// Устанавливаем состояние ожидания ответа
-								ctx.state = state_t::REQUEST;
-							// Сборка повторного запроса не выполнена
-							} else ctx.state = state_t::BROKEN;
-						// Повторная авторизация невозможна
-						} else {
-							// Если функция обратного вызова установлена
-							if(this->_response)
-								// Выдаём голову ответа 407 вызывающей стороне
-								this->_response(ctx.code, ctx.headers);
-							// Устанавливаем состояние ошибки обмена
-							ctx.state = state_t::BROKEN;
-						}
-					// Финальный ответ доставлен (голова и тело выданы колбэками)
-					} else ctx.state = (this->_queue.empty() ? state_t::NONE : state_t::REQUEST);
-				}
-			}
-		} break;
+		case static_cast <uint8_t> (parser_t::status_t::COMPLETE):
+			// Обрабатываем полностью разобранный ответ прокси
+			this->complete(ctx);
+		break;
 	}
 	// Сбрасываем активный контекст разбора
 	this->_ctx = nullptr;
@@ -1093,6 +1222,16 @@ bool awh::http::proxy::Client::forward(const void * buffer, const size_t size, c
 	return true;
 }
 /**
+ * @brief Метод установки функции обратного вызова готовности трейлеров ответа
+ *
+ * @param callback функция обратного вызова готовности трейлеров ответа прокси
+ *
+ */
+void awh::http::proxy::Client::on(trailer_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова готовности трейлеров ответа
+	this->_trailer = ::move(callback);
+}
+/**
  * @brief Метод установки функции обратного вызова готовности головы ответа
  *
  * @param callback функция обратного вызова готовности головы ответа прокси
@@ -1117,12 +1256,12 @@ void awh::http::proxy::Client::on(parser_http_t::data_callback_t callback) noexc
  *
  */
 awh::http::proxy::Client::Client() noexcept :
- _suppress(false), _preemptive(false),
- _method(method_t::NONE), _auth(auth_t::owner_t::CLIENT),
+ _suppress(false), _preemptive(false), _challenged(false),
+ _auth(auth_t::owner_t::CLIENT), _method(method_t::NONE),
  _rx(direct_t::RESPONSE), _tx(direct_t::REQUEST),
  _uri{""}, _body{""}, _token{""},
  _username{""}, _password{""}, _methodName{""},
- _ctx(nullptr), _response(nullptr), _data(nullptr) {
+ _ctx(nullptr), _trailer(nullptr), _response(nullptr), _data(nullptr) {
 	// Настраиваем парсеры и подписываемся на их события
 	this->setup();
 	// Устанавливаем режим работы через прокси для объекта авторизации

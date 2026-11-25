@@ -96,6 +96,9 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ HttpProxy : public client_t {
 			private:
+				// Признак повторного входа с уже расшифрованными данными обмена с прокси
+				bool _plain;
+			private:
 				// Идентификатор контекста безопасности TLS к целевому хосту
 				tls::coder::id_t _ctl;
 			private:

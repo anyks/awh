@@ -210,7 +210,7 @@ void awh::client::HttpProxy::status(const uint8_t index, const event::status_t s
  */
 void awh::client::HttpProxy::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Если подключение выполнено успешно
 		if(ok){
 			// Если объект транспортного уровня безопасности к прокси установлен
@@ -240,9 +240,19 @@ void awh::client::HttpProxy::connect(const event::id_t eid, const bool ok) noexc
 				}
 			// Если объект транспортного уровня безопасности к прокси не установлен
 			} else {
+				// Финализируем ответ предыдущего соединения, кадрируемый закрытием (407 без Content-Length)
+				this->_proxy.eof(this->_ctx);
+				// Включаем самостоятельное переподключение движка на этапе общения с прокси
+				this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, true);
+				// Задаём задержку переподключения после обрыва соединения прокси
+				this->_unit->client.setTimeout(this->_id.eid, event::action_t::RECONNECT, 100);
 				// Если режим работы — туннель
 				if(this->_ctx.mode == http::proxy::client_t::mode_t::TUNNEL)
-					// Отправляем запрос CONNECT к прокси-серверу
+					// Отправляем запрос CONNECT к прокси-серверу (с учётными данными после вызова 407)
+					this->sendRequest();
+				// Если режим работы — пересылка и очередь ждёт отправки (повторная авторизация)
+				else if(this->_ctx.state == http::proxy::client_t::state_t::REQUEST)
+					// Отправляем запросы конвейера (в т.ч. повторную авторизацию)
 					this->sendRequest();
 				// Если режим работы — пересылка, соединение готово к приёму запросов
 				else this->_callback.call <void (const bool)> ("connect", true);
@@ -260,7 +270,7 @@ void awh::client::HttpProxy::connect(const event::id_t eid, const bool ok) noexc
  */
 void awh::client::HttpProxy::write(const event::id_t, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false))
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working())))
 		// Вызываем функцию обратного вызова
 		this->_callback.call <void (const size_t)> ("write", size);
 }
@@ -273,7 +283,7 @@ void awh::client::HttpProxy::write(const event::id_t, const size_t size) noexcep
  */
 void awh::client::HttpProxy::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Вызываем функцию обратного вызова
 		this->_callback.call <void (const event::status_t)> ("state", status);
 		// Если статус клиента изменился на "уничтожен"
@@ -303,11 +313,35 @@ void awh::client::HttpProxy::state(const event::id_t eid, const event::status_t 
  */
 void awh::client::HttpProxy::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			// Если объект транспортного уровня безопасности к прокси установлен и данные ещё не расшифрованы
+			if((this->_id.ctl > 0) && !this->_plain){
+				// Если данные не расшифрованы
+				if(!tls::coder::decrypt(this->_id.ctl, buffer, size)){
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error_tls")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("TLS decryption data is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, log::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("TLS decryption data is failed", log::flag_t::WARNING);
+						#endif
+					}
+				}
+				// Выходим: расшифрованные данные вернутся повторным входом через processTLS
+				return;
+			}
 			// Если туннель установлен и активен
 			if(this->_ctx.state == http::proxy::client_t::state_t::COMPLETED)
 				// Выдаём данные туннеля прикладному обмену
@@ -357,6 +391,8 @@ void awh::client::HttpProxy::read(const event::id_t eid, const uint8_t * buffer,
 							} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, error);
 							// Вызываем функцию обратного вызова
 							this->_callback.call <void (const bool)> ("connect", false);
+							// Отключаем переподключение: обмен с прокси завершён ошибкой
+							this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, false);
 						} break;
 						// Если текущее состояние соответствует повторной авторизации
 						case static_cast <uint8_t> (http::proxy::client_t::state_t::AUTH):
@@ -405,6 +441,8 @@ void awh::client::HttpProxy::read(const event::id_t eid, const uint8_t * buffer,
 									domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.get())->domain;
 								// Устанавливаем состояние обмена как "завершённый"
 								this->_ctx.state = http::proxy::client_t::state_t::COMPLETED;
+								// Отключаем переподключение: туннель установлен, далее идёт прикладной обмен
+								this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, false);
 								// Вызываем функцию обратного вызова
 								this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", this->_unit->client.family(eid), domain, target);
 								// Вызываем функцию обратного вызова
@@ -462,6 +500,10 @@ void awh::client::HttpProxy::read(const event::id_t eid, const uint8_t * buffer,
 					if((this->_ctx.mode == http::proxy::client_t::mode_t::FORWARD) && (this->_ctx.state == http::proxy::client_t::state_t::REQUEST))
 						// Отправляем запросы конвейера (в т.ч. повторную авторизацию)
 						this->sendRequest();
+					// Если режим пересылки и финальный ответ доставлен — обмен с прокси завершён
+					if((this->_ctx.mode == http::proxy::client_t::mode_t::FORWARD) && (this->_ctx.state == http::proxy::client_t::state_t::NONE))
+						// Отключаем переподключение: очередь конвейера пуста
+						this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, false);
 					// В режиме туннеля разбирается один ответ, хвост уходит в туннель
 					if(this->_ctx.mode == http::proxy::client_t::mode_t::TUNNEL)
 						// Выходим из цикла разбора
@@ -549,7 +591,7 @@ void awh::client::HttpProxy::resolve(const unit::dns_t::id_t, const event::famil
  */
 void awh::client::HttpProxy::stateTLS(const tls::coder::id_t, const tls::coder::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Вызываем функцию обратного вызова
 		this->_callback.call <void (const tls::coder::state_t)> ("state_tls", state);
 		// Если состояние рукопожатия TLS к прокси успешно завершено
@@ -574,7 +616,7 @@ void awh::client::HttpProxy::stateTLS(const tls::coder::id_t, const tls::coder::
  */
 void awh::client::HttpProxy::processTLS(const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -589,10 +631,14 @@ void awh::client::HttpProxy::processTLS(const tls::coder::id_t, const tls::coder
 					this->residueTLS(buffer, size);
 				break;
 				// Если событие дешифрования данных TLS к прокси
-				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION):
+				case static_cast <uint8_t> (tls::coder::event_t::DECRYPTION): {
+					// Помечаем повторный вход с уже расшифрованными данными
+					this->_plain = true;
 					// Обрабатываем расшифрованные данные как данные обмена с прокси
 					this->read(this->_id.eid, buffer, size);
-				break;
+					// Снимаем пометку повторного входа
+					this->_plain = false;
+				} break;
 			}
 		/**
 		 * Если возникает ошибка
@@ -623,7 +669,7 @@ void awh::client::HttpProxy::processTLS(const tls::coder::id_t, const tls::coder
  */
 void awh::client::HttpProxy::stateTargetTLS(const tls::coder::id_t, const tls::coder::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Если состояние рукопожатия TLS к цели успешно завершено
 		if(state == tls::coder::state_t::HANDSHAKED)
 			// Вызываем функцию обратного вызова
@@ -640,7 +686,7 @@ void awh::client::HttpProxy::stateTargetTLS(const tls::coder::id_t, const tls::c
  */
 void awh::client::HttpProxy::errorTargetTLS(const tls::coder::id_t, const tls::coder::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Если функция обратного вызова не установлена
 		if(!this->_callback.is("error_tls")){
 			/**
@@ -671,7 +717,7 @@ void awh::client::HttpProxy::errorTargetTLS(const tls::coder::id_t, const tls::c
  */
 void awh::client::HttpProxy::processTargetTLS(const tls::coder::id_t, const tls::coder::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -929,17 +975,17 @@ bool awh::client::HttpProxy::pause() noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Если идентификатор клиента установлен
-			if(this->_id.eid > 0){
+			if(this->_id.eid > 0)
 				// Приостанавливаем событие клиента
 				result = this->_unit->client.pause(this->_id.eid);
 			// Если идентификатор клиента не установлен
-			} else {
+			else {
 				/**
 				 * Если включён режим отладки
 				 */
@@ -986,17 +1032,17 @@ bool awh::client::HttpProxy::resume() noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Если идентификатор клиента установлен
-			if(this->_id.eid > 0){
+			if(this->_id.eid > 0)
 				// Возобновляем работу события клиента
 				result = this->_unit->client.resume(this->_id.eid);
 			// Если идентификатор клиента не установлен
-			} else {
+			else {
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1061,7 +1107,7 @@ bool awh::client::HttpProxy::disconnect() noexcept {
  */
 bool awh::client::HttpProxy::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1100,7 +1146,7 @@ bool awh::client::HttpProxy::recv() noexcept {
  */
 size_t awh::client::HttpProxy::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
+	if(((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1181,11 +1227,11 @@ bool awh::client::HttpProxy::bandwidth(const event::limiting_t limiting, string_
 	 */
 	try {
 		// Если идентификатор клиента установлен
-		if(this->_id.eid > 0){
+		if(this->_id.eid > 0)
 			// Устанавливаем пропускную способность клиента
 			result = this->_unit->client.bandwidth(this->_id.eid, limiting, bandwidth);
 		// Если идентификатор клиента не установлен
-		} else {
+		else {
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1250,7 +1296,7 @@ bool awh::client::HttpProxy::membership(const event::mode_t, const net::addr_t *
  */
 bool awh::client::HttpProxy::targetTLS(const tls::coder::id_t ctl) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		// Если идентификатор контекста безопасности установлен
 		if(ctl > 0){
 			// Устанавливаем идентификатор контекста безопасности TLS к цели
@@ -1276,7 +1322,7 @@ bool awh::client::HttpProxy::targetTLS(const tls::coder::id_t ctl) noexcept {
  */
 void awh::client::HttpProxy::setToken(const string & token) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working())
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working())))
 		// Устанавливаем токен доступа для объекта клиента
 		this->_proxy.setToken(token);
 }
@@ -1289,7 +1335,7 @@ void awh::client::HttpProxy::setToken(const string & token) noexcept {
  */
 void awh::client::HttpProxy::setUser(const string & username, const string & password) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working())
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working())))
 		// Устанавливаем параметры авторизации для объекта клиента
 		this->_proxy.setUser(username, password);
 }
@@ -1301,7 +1347,7 @@ void awh::client::HttpProxy::setUser(const string & username, const string & pas
  */
 void awh::client::HttpProxy::preemptive(const bool mode) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working())
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working())))
 		// Устанавливаем режим превентивной авторизации для объекта клиента
 		this->_proxy.preemptive(mode);
 }
@@ -1313,7 +1359,7 @@ void awh::client::HttpProxy::preemptive(const bool mode) noexcept {
  */
 void awh::client::HttpProxy::mode(const http::proxy::client_t::mode_t mode) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working())
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working())))
 		// Устанавливаем режим работы через прокси
 		this->_ctx.mode = mode;
 }
@@ -1326,7 +1372,7 @@ void awh::client::HttpProxy::mode(const http::proxy::client_t::mode_t mode) noex
  */
 bool awh::client::HttpProxy::endpoint(const net::attr_t * attr) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1426,7 +1472,7 @@ bool awh::client::HttpProxy::endpoint(const net::attr_t * attr) noexcept {
  */
 bool awh::client::HttpProxy::endpoint(string_view addr, const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
+	if(!((this->_dns.client != nullptr && this->_dns.client->working()) || (this->_unit != nullptr && this->_unit->client.working()))){
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -1540,7 +1586,12 @@ awh::client::HttpProxy::HttpProxy(const tls::coder::id_t ctl) noexcept : HttpPro
  *
  */
 awh::client::HttpProxy::HttpProxy(const tls::coder::id_t ctl, unit::dns_t * dns) noexcept :
- client_t(ctl, dns), _ctl(0), _endpoint(nullptr) {
+ client_t(ctl, dns), _plain(false), _ctl(0), _endpoint(nullptr) {
+	// Подписываем кодек на выдачу трейлеров ответа прокси прикладному обмену
+	this->_proxy.on(http::proxy::client_t::trailer_callback_t([this](const vector <pair <string, string>> & trailers) noexcept {
+		// Вызываем функцию обратного вызова готовности трейлеров ответа
+		this->_callback.call <void (const vector <pair <string, string>> &)> ("trailer", trailers);
+	}));
 	// Подписываем кодек на выдачу тела ответа прокси прикладному обмену
 	this->_proxy.on(http::parser_http_t::data_callback_t([this](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Вызываем функцию обратного вызова чтения данных

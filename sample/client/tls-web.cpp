@@ -20,6 +20,11 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <cstdlib>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
@@ -42,7 +47,8 @@ using namespace placeholders;
  */
 class Executor {
 	private:
-		// Объект фреймворка
+		// Буфер накопления принятого ответа сервера
+		string response;
 	public:
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -64,13 +70,38 @@ class Executor {
 		 */
 		void read(const uint8_t * data, const size_t size, client_t * client) noexcept {
 			// Если данные получены
-			if(size > 0)
-				// Записываем данные в лог
-				log::print("%s", log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+			if(size > 0){
+				// Накапливаем принятые данные ответа сервера
+				this->response.append(reinterpret_cast <const char *> (data), size);
+				// Ищем границу между заголовками и телом ответа
+				const size_t pos = this->response.find("\r\n\r\n");
+				// Если заголовки ответа получены полностью
+				if(pos != string::npos){
+					// Выделяем блок заголовков ответа
+					const string head = this->response.substr(0, pos);
+					// Ищем заголовок длины тела ответа
+					const size_t lengthPos = head.find("Content-Length:");
+					// Если длина тела ответа известна
+					if(lengthPos != string::npos){
+						// Определяем ожидаемый размер всего ответа
+						const size_t expected = pos + 4 + static_cast <size_t> (::strtoul(head.c_str() + lengthPos + 15, nullptr, 10));
+						// Если ответ получен полностью
+						if(this->response.size() >= expected){
+							// Записываем полный ответ сервера в лог
+							log::print("%s", log::flag_t::INFO, this->response.c_str());
+							// Останавливаем событие клиента
+							client->stop();
+						}
+					// Если длина тела ответа не известна
+					} else {
+						// Записываем принятый ответ сервера в лог
+						log::print("%s", log::flag_t::INFO, this->response.c_str());
+						// Останавливаем событие клиента
+						client->stop();
+					}
+				}
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else log::print("No data received", log::flag_t::WARNING);
-			// Останавливаем событие клиента
-			client->stop();
+			} else log::print("No data received", log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий изменения статуса клиента

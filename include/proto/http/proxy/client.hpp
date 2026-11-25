@@ -183,6 +183,24 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Функция обратного вызова готовности трейлеров ответа прокси
+					 *
+					 * @details Вызывается по завершении разбора финального ответа прокси,
+					 *          если ответ содержит трейлеры: собранные трейлеры выдаются
+					 *          после тела ответа. Ответы без трейлеров вызова не порождают.
+					 *
+					 * \~english
+					 * @brief Callback function of the readiness of the trailers of an answer of the proxy
+					 *
+					 * @details Called on the completion of the parsing of the final answer of the proxy
+					 *          if the answer contains trailers: the collected trailers are issued
+					 *          after the body of the answer. The answers without trailers do not generate a call.
+					 *
+					 * \~
+					 */
+					using trailer_callback_t = function <void (const vector <pair <string, string>> &)>;
+					/**
+					 * \~russian
 					 * @brief Функция обратного вызова готовности головы ответа прокси
 					 *
 					 * @details Вызывается по завершении разбора заголовков финального
@@ -224,6 +242,8 @@ namespace awh {
 						unique_ptr <net::attr_t> host;
 						// Заголовки ответа прокси
 						vector <pair <string, string>> headers;
+						// Трейлеры ответа прокси
+						vector <pair <string, string>> trailers;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -256,6 +276,8 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Forward_Request {
 						// Флаг отправки запроса прокси-серверу
 						bool sent;
+						// Число выполненных повторов авторизации запроса
+						uint8_t retries;
 						// Метод запроса (для кадрирования тела ответа)
 						method_t method;
 						// Цель URI запроса в absolute-form
@@ -286,12 +308,14 @@ namespace awh {
 					bool _suppress;
 					// Флаг превентивной отправки учётных данных авторизации
 					bool _preemptive;
-				private:
-					// Метод пересылаемого запроса
-					method_t _method;
+					// Флаг состоявшегося вызова авторизации прокси в соединении
+					bool _challenged;
 				private:
 					// Объект авторизации в режиме прокси
 					auth_t _auth;
+					// Метод пересылаемого запроса
+					method_t _method;
+				private:
 					// Объект сетевых адресов для преобразования адресов
 					net_addr_t _addr;
 				private:
@@ -316,6 +340,8 @@ namespace awh {
 					// Активный контекст на время разбора ответа
 					ctx_t * _ctx;
 				private:
+					// Функция обратного вызова готовности трейлеров ответа прокси
+					trailer_callback_t _trailer;
 					// Функция обратного вызова готовности головы ответа прокси
 					response_callback_t _response;
 					// Функция обратного вызова обработки тела пересылаемого ответа
@@ -386,6 +412,30 @@ namespace awh {
 					 * \~
 					 */
 					bool connect(ctx_t & ctx) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод обработки полностью разобранного ответа прокси
+					 *
+					 * @details Выбирает итоговое состояние обмена по коду ответа:
+					 *          повторная авторизация по 407, установка туннеля по 2xx
+					 *          либо ошибка. Вызывается из разбора данных и из уведомления
+					 *          о закрытии соединения для ответов без Content-Length.
+					 *
+					 * @param ctx объект контекста для установки параметров сообщения
+					 *
+					 * \~english
+					 * @brief Method of the processing of the fully parsed answer of the proxy
+					 *
+					 * @details Chooses the final state of the exchange by the code of the answer:
+					 *          the repeated authorization on 407, the establishment of the tunnel on 2xx
+					 *          or an error. Called from the parsing of the data and from the notification
+					 *          about the closing of the connection for the answers without Content-Length.
+					 *
+					 * @param ctx object of the context for the setting of the parameters of the message
+					 *
+					 * \~
+					 */
+					void complete(ctx_t & ctx) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод повторной авторизации по ответу 407
@@ -637,6 +687,30 @@ namespace awh {
 					 * \~
 					 */
 					void eof() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод уведомления о завершении потока данных от прокси с обработкой ответа
+					 *
+					 * @details Дополнительно к уведомлению парсера обрабатывает полностью
+					 *          разобранный ответ: для ответов, тело которых кадрируется
+					 *          закрытием соединения, переводит контекст в итоговое состояние
+					 *          обмена (повторная авторизация по 407, туннель по 2xx либо ошибка).
+					 *
+					 * @param ctx объект контекста для установки параметров сообщения
+					 *
+					 * \~english
+					 * @brief Method of the notification about the completion of the stream of the data from the proxy with the processing of the answer
+					 *
+					 * @details In addition to the notification of the parser, processes the fully
+					 *          parsed answer: for the answers the body of which is framed by the closing
+					 *          of the connection, transfers the context into the final state
+					 *          of the exchange (the repeated authorization on 407, the tunnel on 2xx or an error).
+					 *
+					 * @param ctx object of the context for the setting of the parameters of the message
+					 *
+					 * \~
+					 */
+					void eof(ctx_t & ctx) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -854,6 +928,20 @@ namespace awh {
 					 */
 					bool forward(const void * buffer, const size_t size, ctx_t & ctx) noexcept;
 				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки функции обратного вызова готовности трейлеров ответа
+					 *
+					 * @param callback функция обратного вызова готовности трейлеров ответа прокси
+					 *
+					 * \~english
+					 * @brief Method of the setting of the callback function of the readiness of the trailers of an answer
+					 *
+					 * @param callback callback function of the readiness of the trailers of an answer of the proxy
+					 *
+					 * \~
+					 */
+					void on(trailer_callback_t callback) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки функции обратного вызова готовности головы ответа

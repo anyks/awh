@@ -66,14 +66,22 @@ awh::Client::Params::Params() noexcept :
  *
  */
 bool awh::Client::active() const noexcept {
-	// Если объект DNS-резолвера установлен - проверяем его рабочее состояние
-	if(this->_dns.client != nullptr)
-		// Выводим результат проверки рабочего состояния DNS-резолвера
-		return this->_dns.client->working();
 	// Если объект юнита клиента не создан
 	if(this->_unit == nullptr)
 		// Выводим отрицательный результат
 		return false;
+	// Определяем тип адреса целевого хоста
+	const net_addr_t::type_t hostType = this->_unit->addr.host(this->_host);
+	// IP-литерал и UDS не требуют резолвинга
+	const bool literal = (
+		(hostType == net_addr_t::type_t::IPV4) ||
+		(hostType == net_addr_t::type_t::IPV6) ||
+		(hostType == net_addr_t::type_t::FS)
+	);
+	// Если объект DNS-резолвера установлен и хост требует резолвинга
+	if(this->_dns.client != nullptr && !literal)
+		// Выводим результат проверки рабочего состояния DNS-резолвера
+		return this->_dns.client->working();
 	/**
 	 * Рабочее состояние проверяется на активном юните транспорта: для транспорта
 	 * QUIC работает выделенный юнит, для остальных транспортов - общий юнит клиента
@@ -787,11 +795,19 @@ void awh::Client::stop() noexcept {
 	if(this->active()){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
-			// Если объект DNS-резолвера установлен
-			if(this->_dns.client != nullptr)
+			// Определяем тип адреса целевого хоста
+			const net_addr_t::type_t hostType = this->_unit->addr.host(this->_host);
+			// IP-литерал и UDS не требуют резолвинга
+			const bool literal = (
+				(hostType == net_addr_t::type_t::IPV4) ||
+				(hostType == net_addr_t::type_t::IPV6) ||
+				(hostType == net_addr_t::type_t::FS)
+			);
+			// Если объект DNS-резолвера установлен и хост требует резолвинга
+			if(this->_dns.client != nullptr && !literal)
 				// Останавливаем событие DNS-резолвера
 				this->_dns.client->stop();
-			// Если объект DNS-резолвера не установлен
+			// Если резолвинг не требуется или DNS-резолвер не установлен
 			else {
 				// Если протокол активирован как QUIC
 				if(this->_params.protocol == event::protocol_t::QUIC)
@@ -827,11 +843,19 @@ void awh::Client::start() noexcept {
 	if(!this->active()){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
-			// Если объект DNS-резолвера установлен
-			if(this->_dns.client != nullptr)
+			// Определяем тип адреса целевого хоста
+			const net_addr_t::type_t hostType = this->_unit->addr.host(this->_host);
+			// IP-литерал и UDS не требуют резолвинга
+			const bool literal = (
+				(hostType == net_addr_t::type_t::IPV4) ||
+				(hostType == net_addr_t::type_t::IPV6) ||
+				(hostType == net_addr_t::type_t::FS)
+			);
+			// Если объект DNS-резолвера установлен и хост требует резолвинга
+			if(this->_dns.client != nullptr && !literal)
 				// Запускаем событие DNS-резолвера
 				this->_dns.client->start();
-			// Если объект DNS-резолвера не установлен
+			// Если резолвинг не требуется или DNS-резолвер не установлен
 			else {
 				// Если событие клиента не запущено, запускаем его
 				if(awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid) == event::status_t::NONE){
@@ -967,6 +991,7 @@ void awh::Client::destroy() noexcept {
 	if(this->active()){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
+			// Если протокол активирован как QUIC
 			if(this->_params.protocol == event::protocol_t::QUIC)
 				// Уничтожаем событие клиента на активном юните транспорта
 				this->_unit->quic.destroy(this->_id.eid);
@@ -1012,10 +1037,11 @@ bool awh::Client::connect() noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			/**
-			 * Копируем идентификатор события в переменную
+			 * @brief Копируем идентификатор события в переменную
 			 *
 			 * @note Поле принадлежит упакованной структуре, ссылку на него взять нельзя, а
 			 *       подключение принимает именно ссылку
+			 *
 			 */
 			const event::id_t eid = this->_id.eid;
 			// Выполняем подключение к удалённому серверу

@@ -72,6 +72,11 @@ void HttpProxyFixture::attach(awh::http::proxy::client_t & proxy, events_t & eve
 		// Сохраняем заголовки ответа прокси
 		events.headers = headers;
 	}));
+	// Подписываем сборщик событий на готовность трейлеров ответа прокси
+	proxy.on(awh::http::proxy::client_t::trailer_callback_t([&events](const std::vector <std::pair <std::string, std::string>> & trailers) noexcept {
+		// Сохраняем трейлеры ответа прокси
+		events.trailers = trailers;
+	}));
 }
 
 /**

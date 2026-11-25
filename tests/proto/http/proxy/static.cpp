@@ -529,6 +529,68 @@ TEST_F(HttpProxyFixture, ForwardChunkedBodyTest){
 }
 
 /**
+ * @brief Метод проверки вычистки заголовков, названных токенами Connection
+ *
+ */
+TEST_F(HttpProxyFixture, ForwardConnectionTokensTest){
+	// Создаём объект клиента HTTP-прокси
+	std::unique_ptr <proxy_t> proxy = this->make();
+	// Создаём контекст обмена в режиме пересылки
+	ctx_t ctx;
+	// Устанавливаем режим пересылки
+	ctx.mode = proxy_mode_t::FORWARD;
+	// Формируем запрос пользователя с заголовками, названными токенами Connection
+	const std::string user = "GET /path HTTP/1.1\r\nHost: example.com\r\nConnection: X-Custom , x-other\t, keep-alive\r\nX-Custom: secret\r\nX-Other: hidden\r\nX-Keep: visible\r\n\r\n";
+	// Передаём запрос пользователя на пересылку
+	ASSERT_TRUE(proxy->forward(user.data(), user.size(), ctx));
+	// Извлекаем сформированный запрос к прокси
+	const std::string wire = this->request(* proxy, ctx);
+	// Проверяем что названные токенами заголовки вырезаны, а остальные сохранены
+	ASSERT_EQ(wire, "GET http://example.com/path HTTP/1.1\r\nHost: example.com\r\nX-Keep: visible\r\n\r\n");
+}
+
+/**
+ * @brief Метод проверки сохранения хвоста запроса при частичном освобождении байтов
+ *
+ */
+TEST_F(HttpProxyFixture, ForwardPartialConsumeTest){
+	// Создаём объект клиента HTTP-прокси
+	std::unique_ptr <proxy_t> proxy = this->make();
+	// Создаём контекст обмена в режиме пересылки
+	ctx_t ctx;
+	// Устанавливаем режим пересылки
+	ctx.mode = proxy_mode_t::FORWARD;
+	// Формируем запрос пользователя
+	const std::string user = "GET /path HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	// Передаём запрос пользователя на пересылку
+	ASSERT_TRUE(proxy->forward(user.data(), user.size(), ctx));
+	// Буфер сформированного запроса
+	uint8_t * buffer = nullptr;
+	// Размер сформированного запроса
+	size_t size = 0;
+	// Извлекаем сформированный запрос к прокси
+	ASSERT_TRUE(proxy->buffer(&buffer, size, ctx));
+	// Копируем сформированный запрос в строку
+	const std::string wire(reinterpret_cast <const char *> (buffer), size);
+	// Освобождаем все байты запроса кроме последних трёх
+	proxy->consume(size - 3);
+	// Буфер остатка запроса
+	uint8_t * rest = nullptr;
+	// Размер остатка запроса
+	size_t restSize = 0;
+	// Извлекаем остаток запроса к прокси
+	ASSERT_TRUE(proxy->buffer(&rest, restSize, ctx));
+	// Проверяем что остаток равен трём последним байтам запроса
+	ASSERT_EQ(restSize, 3u);
+	// Проверяем побайтовое совпадение остатка с хвостом запроса
+	ASSERT_EQ(std::string(reinterpret_cast <const char *> (rest), restSize), wire.substr(size - 3));
+	// Освобождаем остаток байтов запроса
+	proxy->consume(restSize);
+	// Проверяем что неотправленных запросов больше нет
+	ASSERT_TRUE(this->request(* proxy, ctx).empty());
+}
+
+/**
  * @brief Метод проверки сохранения absolute-form цели запроса пользователя
  *
  */
@@ -680,6 +742,45 @@ TEST_F(HttpProxyFixture, ForwardResponseChunkedTest){
 	ASSERT_EQ(ctx.state, state_t::NONE);
 	// Проверяем что тело ответа декодировано и доставлено
 	ASSERT_EQ(events.body, "hello world");
+}
+
+/**
+ * @brief Метод проверки доставки трейлеров ответа в режиме пересылки
+ *
+ */
+TEST_F(HttpProxyFixture, ForwardResponseTrailersTest){
+	// Создаём объект клиента HTTP-прокси
+	std::unique_ptr <proxy_t> proxy = this->make();
+	// Создаём объект сборщика событий
+	events_t events;
+	// Подписываем сборщик событий на функции обратного вызова клиента
+	this->attach(* proxy, events);
+	// Создаём контекст обмена в режиме пересылки
+	ctx_t ctx;
+	// Устанавливаем режим пересылки
+	ctx.mode = proxy_mode_t::FORWARD;
+	// Формируем запрос пользователя
+	const std::string user = "GET /path HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	// Передаём запрос пользователя на пересылку
+	proxy->forward(user.data(), user.size(), ctx);
+	// Извлекаем сформированный запрос к прокси
+	this->request(* proxy, ctx);
+	// Формируем ответ прокси с телом chunked и трейлером
+	const std::string answer = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nTrailer: X-Checksum\r\n\r\n5\r\nhello\r\n0\r\nX-Checksum: abc123\r\n\r\n";
+	// Разбираем ответ прокси
+	proxy->parse(answer.data(), answer.size(), ctx);
+	// Проверяем что обмен завершён и очередь пуста
+	ASSERT_EQ(ctx.state, state_t::NONE);
+	// Проверяем что тело ответа декодировано и доставлено
+	ASSERT_EQ(events.body, "hello");
+	// Проверяем что трейлер ответа собран в контексте
+	ASSERT_EQ(ctx.trailers.size(), 1u);
+	// Проверяем что трейлер ответа доставлен вызывающей стороне
+	ASSERT_EQ(events.trailers.size(), 1u);
+	// Проверяем имя доставленного трейлера
+	ASSERT_EQ(events.trailers[0].first, "X-Checksum");
+	// Проверяем значение доставленного трейлера
+	ASSERT_EQ(events.trailers[0].second, "abc123");
 }
 
 /**
@@ -983,6 +1084,104 @@ TEST_F(HttpProxyFixture, ForwardPipelineAuthTest){
 	ASSERT_EQ(ctx.state, state_t::NONE);
 	// Проверяем что тела доставлены в порядке ответов прокси
 	ASSERT_EQ(events.body, "ba");
+}
+
+/**
+ * @brief Метод проверки повторной авторизации каждого запроса конвейера по ответу 407
+ *
+ */
+TEST_F(HttpProxyFixture, ForwardPipelineAuthBothTest){
+	// Создаём объект клиента HTTP-прокси
+	std::unique_ptr <proxy_t> proxy = this->make();
+	// Устанавливаем учётные данные пользователя
+	proxy->setUser("user", "pass");
+	// Создаём объект сборщика событий
+	events_t events;
+	// Подписываем сборщик событий на функции обратного вызова клиента
+	this->attach(* proxy, events);
+	// Создаём контекст обмена в режиме пересылки
+	ctx_t ctx;
+	// Устанавливаем режим пересылки
+	ctx.mode = proxy_mode_t::FORWARD;
+	// Формируем конвейер из двух запросов
+	const std::string user =
+		"GET /a HTTP/1.1\r\nHost: example.com\r\n\r\n"
+		"GET /b HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	// Передаём конвейер запросов на пересылку
+	proxy->forward(user.data(), user.size(), ctx);
+	// Извлекаем первый сформированный запрос к прокси
+	this->request(* proxy, ctx);
+	// Извлекаем второй сформированный запрос к прокси
+	this->request(* proxy, ctx);
+	// Формируем ответ 407 на первый запрос
+	const std::string answer407 = "HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"proxy\"\r\nContent-Length: 0\r\n\r\n";
+	// Разбираем ответ 407 на первый запрос
+	proxy->parse(answer407.data(), answer407.size(), ctx);
+	// Извлекаем повторный первый запрос с учётными данными (ушёл в хвост)
+	const std::string retryA = this->request(* proxy, ctx);
+	// Проверяем что повторный первый запрос содержит заголовок авторизации
+	ASSERT_NE(retryA.find("Proxy-Authorization: Basic dXNlcjpwYXNz\r\n"), std::string::npos);
+	// Разбираем ответ 407 на второй запрос
+	proxy->parse(answer407.data(), answer407.size(), ctx);
+	// Проверяем что обмен не сломан: второй запрос получил собственный повтор
+	ASSERT_EQ(ctx.state, state_t::REQUEST);
+	// Извлекаем повторный второй запрос с учётными данными
+	const std::string retryB = this->request(* proxy, ctx);
+	// Проверяем что повторный второй запрос содержит заголовок авторизации
+	ASSERT_NE(retryB.find("Proxy-Authorization: Basic dXNlcjpwYXNz\r\n"), std::string::npos);
+	// Проверяем что повторный второй запрос сохраняет цель второго запроса
+	ASSERT_NE(retryB.find("GET http://example.com/b HTTP/1.1\r\n"), std::string::npos);
+	// Формируем ответ на повторный первый запрос
+	const std::string answerA = "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\na";
+	// Разбираем ответ прокси на повторный первый запрос
+	proxy->parse(answerA.data(), answerA.size(), ctx);
+	// Формируем ответ на повторный второй запрос
+	const std::string answerB = "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nb";
+	// Разбираем ответ прокси на повторный второй запрос
+	proxy->parse(answerB.data(), answerB.size(), ctx);
+	// Проверяем что обмен завершён и очередь пуста
+	ASSERT_EQ(ctx.state, state_t::NONE);
+	// Проверяем что тела обоих повторных запросов доставлены в порядке FIFO
+	ASSERT_EQ(events.body, "ab");
+}
+
+/**
+ * @brief Метод проверки превентивных учётных данных после состоявшегося вызова авторизации
+ *
+ */
+TEST_F(HttpProxyFixture, ForwardAuthChallengedPreemptiveTest){
+	// Создаём объект клиента HTTP-прокси
+	std::unique_ptr <proxy_t> proxy = this->make();
+	// Устанавливаем учётные данные пользователя
+	proxy->setUser("user", "pass");
+	// Создаём контекст обмена в режиме пересылки
+	ctx_t ctx;
+	// Устанавливаем режим пересылки
+	ctx.mode = proxy_mode_t::FORWARD;
+	// Формируем первый запрос пользователя
+	const std::string user = "GET /a HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	// Передаём первый запрос пользователя на пересылку
+	proxy->forward(user.data(), user.size(), ctx);
+	// Извлекаем сформированный запрос к прокси
+	this->request(* proxy, ctx);
+	// Формируем ответ прокси с требованием авторизации
+	const std::string answer407 = "HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"proxy\"\r\nContent-Length: 0\r\n\r\n";
+	// Разбираем ответ прокси с требованием авторизации
+	proxy->parse(answer407.data(), answer407.size(), ctx);
+	// Извлекаем повторный запрос с учётными данными
+	this->request(* proxy, ctx);
+	// Формируем успешный ответ прокси на повторный запрос
+	const std::string success = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok";
+	// Разбираем успешный ответ прокси
+	proxy->parse(success.data(), success.size(), ctx);
+	// Формируем второй запрос пользователя в том же соединении
+	const std::string next = "GET /b HTTP/1.1\r\nHost: example.com\r\n\r\n";
+	// Передаём второй запрос пользователя на пересылку
+	ASSERT_TRUE(proxy->forward(next.data(), next.size(), ctx));
+	// Извлекаем сформированный второй запрос к прокси
+	const std::string wire = this->request(* proxy, ctx);
+	// Проверяем что второй запрос сразу несёт учётные данные без нового вызова
+	ASSERT_NE(wire.find("Proxy-Authorization: Basic dXNlcjpwYXNz\r\n"), std::string::npos);
 }
 
 /**
