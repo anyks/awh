@@ -1785,6 +1785,15 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 				const origin_t endpoint = origin_t().from(attr.get());
 				// Выполняем поиск идентификатора конечной точки в списке активных сессий
 				auto i = this->_sessions.find(endpoint);
+				// Если точное совпадение не найдено, ищем сессию с нулевым портом (DST.PORT=0 по RFC 1928 §6)
+				if(i == this->_sessions.end()){
+					// Обнуляем порт конечной точки для поиска сессии, принимающей любой порт адреса клиента
+					awh_cast <net::attr_net_t *> (attr.get())->port = 0;
+					// Создаём идентификатор конечной точки с нулевым портом
+					const origin_t wildcard = origin_t().from(attr.get());
+					// Ищем сессию с нулевым портом в списке активных сессий
+					i = this->_sessions.find(wildcard);
+				}
 				// Если идентификатор конечной точки найден в списке активных сессий
 				if(i != this->_sessions.end()){
 					// Запоминаем идентификатор пира для идентификатора события клиента
@@ -2665,10 +2674,10 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
 													} break;
 												}
-												// Если порт которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
+												// Если порт которому разрешено подключаться к SOCKS5-прокси-серверу не указан
 												if(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port == 0)
-													// Устанавливаем порт подключённого клиента для идентификатора события клиента
-													awh_cast <net::attr_net_t *> (attr.get())->port = this->_unit->server.getPort(eid);
+													// Оставляем порт нулевым: по RFC 1928 §6 принимаем датаграммы с любого порта адреса клиента
+													awh_cast <net::attr_net_t *> (attr.get())->port = 0;
 												// Устанавливаем полученный порт
 												else awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
 												// Создаём идентификатор конечной точки для идентификатора события клиента

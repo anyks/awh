@@ -103,6 +103,8 @@ namespace awh {
 					struct {
 						// Идентификатор события клиента
 						event::id_t eid = 0;
+						// Признак незаданного исходящего адреса UDP-клиента (все нули)
+						bool wildcard = false;
 						// Объект контекста заголовка UDP пакета
 						proto::socks5_t::udp_head_t ctx{};
 					} udp;

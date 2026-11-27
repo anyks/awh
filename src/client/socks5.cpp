@@ -503,6 +503,10 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										net::attr_net_t * host = awh_cast <net::attr_net_t *> (this->_ctx.host.get());
 										// Устанавливаем внутренний IP-адрес клиента
 										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV4, host->ip);
+										// Если исходящий адрес не задан, передаём прокси нулевой адрес: выбор адреса ядром не совпадает с адресом устройства по умолчанию (RFC 1928 §6)
+										if(this->_endpoint.udp.wildcard && (host->ip != nullptr))
+											// Обнуляем адрес инициатора, чтобы прокси принял адрес TCP-соединения управления
+											awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address = 0;
 										// Если адрес клиента установлен а порт не установлен
 										if((host->ip != nullptr) && (awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address > 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
@@ -523,6 +527,10 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										net::attr_net_t * host = awh_cast <net::attr_net_t *> (this->_ctx.host.get());
 										// Устанавливаем внутренний IP-адрес клиента
 										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV6, host->ip);
+										// Если исходящий адрес не задан, передаём прокси нулевой адрес: выбор адреса ядром не совпадает с адресом устройства по умолчанию (RFC 1928 §6)
+										if(this->_endpoint.udp.wildcard && (host->ip != nullptr))
+											// Обнуляем адрес инициатора, чтобы прокси принял адрес TCP-соединения управления
+											::memset(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 0, 16);
 										// Если адрес клиента установлен а порт не установлен
 										if((host->ip != nullptr) && (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
@@ -1779,6 +1787,8 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 						this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 						// Если клиент для работы с UDP протоколом инициализирован
 						if(this->_endpoint.udp.eid > 0){
+							// Запоминаем признак незаданного исходящего адреса: все нули означают выбор адреса ядром
+							this->_endpoint.udp.wildcard = (awh_cast <net::addr_net_ipv4_t *> (addr->ip.get())->address == 0);
 							// Устанавливаем опции события
 							if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
@@ -1832,6 +1842,8 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 						this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP);
 						// Если клиент для работы с UDP протоколом инициализирован
 						if(this->_endpoint.udp.eid > 0){
+							// Запоминаем признак незаданного исходящего адреса: все нули означают выбор адреса ядром
+							this->_endpoint.udp.wildcard = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr->ip.get())->address[0], ::__awh_zero_ipv6__, 16) == 0);
 							// Устанавливаем опции события
 							if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
@@ -1938,6 +1950,8 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 							this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 							// Если клиент для работы с UDP протоколом инициализирован
 							if(this->_endpoint.udp.eid > 0){
+								// Запоминаем признак незаданного исходящего адреса: все нули означают выбор адреса ядром
+								this->_endpoint.udp.wildcard = (awh_cast <net::addr_net_ipv4_t *> (this->_unit->addr.source().get())->address == 0);
 								// Устанавливаем опции события
 								if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 									// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
@@ -1989,6 +2003,8 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 							this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP);
 							// Если клиент для работы с UDP протоколом инициализирован
 							if(this->_endpoint.udp.eid > 0){
+								// Запоминаем признак незаданного исходящего адреса: все нули означают выбор адреса ядром
+								this->_endpoint.udp.wildcard = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (this->_unit->addr.source().get())->address[0], ::__awh_zero_ipv6__, 16) == 0);
 								// Устанавливаем опции события
 								if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 									// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу

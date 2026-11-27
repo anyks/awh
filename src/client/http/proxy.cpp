@@ -215,47 +215,67 @@ void awh::client::HttpProxy::connect(const event::id_t eid, const bool ok) noexc
 		if(ok){
 			// Если объект транспортного уровня безопасности к прокси установлен
 			if(this->_id.ctl > 0){
-				// Если рукопожатие TLS к прокси не выполнено
-				if(!tls::coder::handshake(this->_id.ctl)){
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error_tls")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Записываем ошибку в лог
-							log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {eid, ok}, log::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log::print("TLS handshake is failed", log::flag_t::WARNING);
-						#endif
+				// Финализируем ответ предыдущего соединения, кадрируемый закрытием (407 без Content-Length)
+				this->_proxy.eof(this->_ctx);
+				// Если обмен с прокси завершён ошибкой либо туннель уже установлен
+				if((this->_ctx.state == http::proxy::client_t::state_t::BROKEN) || (this->_ctx.state == http::proxy::client_t::state_t::COMPLETED))
+					// Отключаем переподключение: обмен завершён, новый запрос к прокси не собираем
+					this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, false);
+				// Обмен с прокси продолжается — допускаем переподключение и новое рукопожатие TLS
+				else {
+					// Включаем самостоятельное переподключение движка на этапе общения с прокси
+					this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, true);
+					// Задаём задержку переподключения после обрыва соединения прокси
+					this->_unit->client.setTimeout(this->_id.eid, event::action_t::RECONNECT, 100);
+					// Если сброс контекста TLS под новый сокет либо рукопожатие TLS к прокси не выполнены
+					if(!tls::coder::reset(this->_id.ctl) || !tls::coder::handshake(this->_id.ctl)){
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error_tls")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем ошибку в лог
+								log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {eid, ok}, log::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log::print("TLS handshake is failed", log::flag_t::WARNING);
+							#endif
+						}
+						// Уничтожаем событие клиента
+						this->_unit->client.destroy(eid);
+						// Вызываем функцию обратного вызова
+						this->_callback.call <void (const bool)> ("connect", false);
 					}
-					// Уничтожаем событие клиента
-					this->_unit->client.destroy(eid);
-					// Вызываем функцию обратного вызова
-					this->_callback.call <void (const bool)> ("connect", false);
 				}
 			// Если объект транспортного уровня безопасности к прокси не установлен
 			} else {
 				// Финализируем ответ предыдущего соединения, кадрируемый закрытием (407 без Content-Length)
 				this->_proxy.eof(this->_ctx);
-				// Включаем самостоятельное переподключение движка на этапе общения с прокси
-				this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, true);
-				// Задаём задержку переподключения после обрыва соединения прокси
-				this->_unit->client.setTimeout(this->_id.eid, event::action_t::RECONNECT, 100);
-				// Если режим работы — туннель
-				if(this->_ctx.mode == http::proxy::client_t::mode_t::TUNNEL)
-					// Отправляем запрос CONNECT к прокси-серверу (с учётными данными после вызова 407)
-					this->sendRequest();
-				// Если режим работы — пересылка и очередь ждёт отправки (повторная авторизация)
-				else if(this->_ctx.state == http::proxy::client_t::state_t::REQUEST)
-					// Отправляем запросы конвейера (в т.ч. повторную авторизацию)
-					this->sendRequest();
-				// Если режим работы — пересылка, соединение готово к приёму запросов
-				else this->_callback.call <void (const bool)> ("connect", true);
+				// Если обмен с прокси завершён ошибкой либо туннель уже установлен
+				if((this->_ctx.state == http::proxy::client_t::state_t::BROKEN) || (this->_ctx.state == http::proxy::client_t::state_t::COMPLETED))
+					// Отключаем переподключение: обмен завершён, новый запрос к прокси не собираем
+					this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, false);
+				// Обмен с прокси продолжается — допускаем переподключение и отправку запроса
+				else {
+					// Включаем самостоятельное переподключение движка на этапе общения с прокси
+					this->_unit->client.setOption(this->_id.eid, event::options::AUTO_RECONNECT, true);
+					// Задаём задержку переподключения после обрыва соединения прокси
+					this->_unit->client.setTimeout(this->_id.eid, event::action_t::RECONNECT, 100);
+					// Если режим работы — туннель
+					if(this->_ctx.mode == http::proxy::client_t::mode_t::TUNNEL)
+						// Отправляем запрос CONNECT к прокси-серверу (с учётными данными после вызова 407)
+						this->sendRequest();
+					// Если режим работы — пересылка и очередь ждёт отправки (повторная авторизация)
+					else if(this->_ctx.state == http::proxy::client_t::state_t::REQUEST)
+						// Отправляем запросы конвейера (в т.ч. повторную авторизацию)
+						this->sendRequest();
+					// Если режим работы — пересылка, соединение готово к приёму запросов
+					else this->_callback.call <void (const bool)> ("connect", true);
+				}
 			}
 		// Если подключение не выполнено, вызываем функцию обратного вызова
 		} else this->_callback.call <void (const bool)> ("connect", false);
@@ -599,6 +619,10 @@ void awh::client::HttpProxy::stateTLS(const tls::coder::id_t, const tls::coder::
 			// Если режим работы — туннель
 			if(this->_ctx.mode == http::proxy::client_t::mode_t::TUNNEL)
 				// Отправляем запрос CONNECT к прокси-серверу
+				this->sendRequest();
+			// Если режим работы — пересылка и очередь ждёт отправки (повторная авторизация)
+			else if(this->_ctx.state == http::proxy::client_t::state_t::REQUEST)
+				// Отправляем запросы конвейера (в т.ч. повторную авторизацию)
 				this->sendRequest();
 			// Если режим работы — пересылка, соединение готово к приёму запросов
 			else this->_callback.call <void (const bool)> ("connect", true);

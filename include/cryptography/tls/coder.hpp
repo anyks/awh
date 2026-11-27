@@ -892,6 +892,43 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool peer(const id_t id, string_view ip, const uint16_t port) noexcept;
 			/**
 			 * \~russian
+			 * @brief Функция сброса связи TLS для повторного рукопожатия
+			 *
+			 * @details Связь клиента или сервера заменяется новой, заведённой из того же
+			 *          шаблона контекста безопасности: настройки доверия, имени сервера,
+			 *          ALPN, наборов шифрования и учётных данных сохраняются, а ключи
+			 *          и счётчики последовательности начинаются заново. Опознаватель,
+			 *          обратные вызовы и хост остаются на месте; признак выполненного
+			 *          рукопожатия снимается, и handshake() проводит новое рукопожатие.
+			 *          close_notify не отправляется: сброс предназначен для работы после
+			 *          обрыва соединения. Сервер дейтаграммного транспорта, как и после
+			 *          transport(), ждёт установки адреса собеседника работой peer().
+			 *
+			 * @param id идентификатор транспортного уровня
+			 * @return   результат выполнения сброса
+			 *
+			 * \~english
+			 * @brief Function resetting the TLS connection for a repeated handshake
+			 *
+			 * @details The client or the server connection is replaced by a new one
+			 *          established from the same template security context: the settings
+			 *          of the trust, of the server name, of the ALPN, of the cipher suites
+			 *          and of the credential are preserved, while the keys and the sequence
+			 *          counters start anew. The identifier, the callbacks and the host stay
+			 *          in place; the sign of the performed handshake is cleared, and
+			 *          handshake() conducts a new handshake. close_notify is not sent:
+			 *          the reset is intended for the work after a connection breakdown.
+			 *          The server of the datagram transport, just as after transport(),
+			 *          waits for the setting of the address of the peer by the work peer().
+			 *
+			 * @param id identifier of the transport layer
+			 * @return   result of performing the reset
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool reset(const id_t id) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция удаления контекста TLS
 			 *
 			 * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы функций

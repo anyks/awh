@@ -575,7 +575,6 @@ RFC_KERNEL = re.compile(r"(?:^|/)(?:digest|cipher|curve|math|field|sign|agreemen
 # больших чисел и машинных ядер — dunder-вид __nts_{name}__ здесь законен наравне
 # с анонимными namespace (владелец, 18.11.2026): поверхность не публичная, единый
 # вид маркирует внутренние ядра по всему дереву.
-INTERNAL_KERNELS = re.compile(r"(?:^|/)internal/")
 
 
 HEADER_TAGS = ["file", "date", "license", "author", "telegram", "phone", "email", "site", "brief", "copyright"]
@@ -1152,17 +1151,18 @@ def check_file(path, lines, members, report, fixes=None):
             # типов (классов и структур); квалифицированный конструктор Class::Class исключён по quals
             elif fname[:1].isupper() and not (quals and quals[-1] == fname):
                 report(path, n, "ERROR", "§4.2", f"имя функции/метода '{fname}' с заглавной буквы — заглавная первая буква только у типов, функции в camelCase")
-            # §4.12: внутри анонимного namespace приватная форма __awh_/__nts_ обязательна
-            # (смотрим определения с телом), вне анонимных эта форма запрещена; метод —
-            # тело class/struct либо квалификатор Класс:: перед именем (§4.2)
-            elif n in anon_ns and n not in class_body and not quals and not re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
-                report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__nts_{{name}}__ (§4.10)")
+            # §4.12: внутри анонимного namespace приватная форма обязательна — бренд по проекту:
+            # __awh_ у AWH, __nts_ у A-NTS, __dan_ у Danube (смотрим определения с телом);
+            # вне анонимных эта форма запрещена; метод — тело class/struct либо
+            # квалификатор Класс:: перед именем (§4.2)
+            elif n in anon_ns and n not in class_body and not quals and not re.fullmatch(r"__(?:awh|nts|dan)_\w+__", fname) and re.search(r"\)\s*(?:noexcept\s*)?\{\s*$", code):
+                report(path, n, "ERROR", "§4.12", f"функция '{fname}' анонимного namespace — только вид __awh_{{name}}__/__nts_{{name}}__/__dan_{{name}}__ (§4.10)")
             # §4.10: {name} внутри обрамления — строчные слова через подчёркивание;
             # склеенный camelCase внутри бренда (__nts_gostAlgorithm__) запрещён
-            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and not re.fullmatch(r"__(?:awh|nts)_[a-z0-9_]+__", fname):
+            elif re.fullmatch(r"__(?:awh|nts|dan)_\w+__", fname) and not re.fullmatch(r"__(?:awh|nts|dan)_[a-z0-9_]+__", fname):
                 report(path, n, "ERROR", "§4.10", f"имя '{fname}' внутри обрамления — строчные слова через подчёркивание: __nts_gost_algorithm__, не __nts_gostAlgorithm__")
-            elif re.fullmatch(r"__(?:awh|nts)_\w+__", fname) and n not in anon_ns and not INTERNAL_KERNELS.search(path.replace(os.sep, "/")):
-                report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная, живёт только внутри анонимного namespace или внутреннего каталога src/internal")
+            elif re.fullmatch(r"__(?:awh|nts|dan)_\w+__", fname) and n not in anon_ns:
+                report(path, n, "ERROR", "§4.12", f"форма '{fname}' приватная и живёт только в анонимном namespace; в именованном — обычное имя camelCase")
         # вид callable в @brief (§7.2): ближайший doc--block над определением обязан называть род
         if fm and not directive_line:
             j = n - 2
@@ -1170,7 +1170,9 @@ def check_file(path, lines, members, report, fixes=None):
                 bm = re.match(r"\s*\*\s*@brief\s+(.*)$", lines[j])
                 if bm:
                     brief = bm.group(1).strip()
-                    if not re.match(r"^(?:Функция|Метод|Конструктор|Деструктор|Оператор|Function|Method|Constructor|Destructor|Operator)\b", brief):
+                    # точка входа называет род ролью: «Точка входа» вместо «Функция точки входа» (§7.2.1)
+                    entry = fm.group(1).split("::")[-1] == "main" and re.match(r"^(?:Точка входа|Entry point)\b", brief)
+                    if not entry and not re.match(r"^(?:Функция|Метод|Конструктор|Деструктор|Оператор|Function|Method|Constructor|Destructor|Operator)\b", brief):
                         report(path, j + 1, "ERROR", "§7.2", f"@brief без рода callable: '{brief[:50]}' — начинается с Функция/Метод/Конструктор/Деструктор")
                     break
                 if lines[j].strip().startswith("/**"):
@@ -1200,7 +1202,7 @@ def check_file(path, lines, members, report, fixes=None):
             report(path, n, "ERROR", "§4.3", f"snake_case '{name}' в объявлении — требуется camelCase")
         # m_/s_ префиксы
         if re.search(r"(?<![\w.>-])(m_[a-z]\w*|s_[a-z]\w*)\b", code):
-            report(path, n, "ERROR", "§4.4", "префиксы m_/s_ запрещены — члены с нижним подчёркиванием на конце")
+            report(path, n, "ERROR", "§4.4", "префиксы m_/s_ запрещены — члены класса именуются camelCase с ведущим подчёркиванием (_name)")
         # короткие имена 1-2 знака вне счётчиков цикла (§4.3): имя говорит о содержимом
         if not re.match(r"\s*for\s*\(", code) and n not in c_abi:
             for vm in re.finditer(r"(?:const\s+)?([A-Za-z_][\w:<>]*)(?:\s*[*&]\s*)?\s+([a-z]{1,2}[0-9]?)\s*(?==[^=]|;|,|\)|\()", code):

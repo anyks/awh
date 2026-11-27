@@ -3601,6 +3601,125 @@ bool awh::tls::coder::peer(const id_t id, string_view ip, const uint16_t port) n
 	return false;
 }
 /**
+ * @brief Функция сброса связи TLS для повторного рукопожатия
+ *
+ * @details Связь заменяется новой, заведённой из того же шаблона контекста
+ *          безопасности: настройки сохраняются, ключи и счётчики начинаются
+ *          заново, признак выполненного рукопожатия снимается. close_notify
+ *          не отправляется - сброс работает после обрыва соединения. Сервер
+ *          дейтаграммного транспорта, как и после transport(), ждёт установки
+ *          адреса собеседника работой peer().
+ *
+ * @param id идентификатор транспортного уровня
+ * @return   результат выполнения сброса
+ *
+ */
+bool awh::tls::coder::reset(const id_t id) noexcept {
+	// Переменная результата
+	bool result = false;
+	/**
+	 * Перехватываем ошибки
+	 */
+	try {
+		// Закрепляем участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS): {
+					// Извлекаем объект шаблона контекста безопасности
+					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Если функция обратного вызова состояния установлена
+					if(member->callback.state != nullptr)
+						// Вызываем функцию обратного вызова состояния
+						member->callback.state(id, state_t::FAILED);
+					// Получаем текст ошибки
+					const string error = "Invalid layer for reset operation";
+					// Если функция обратного вызова ошибки установлена
+					if(member->callback.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->callback.error(id, error_t::INVALID_LAYER, error);
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем ошибку в лог
+							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log::print("%s", log::flag_t::CRITICAL, error.c_str());
+						#endif
+					}
+				} break;
+				// Если уровень является транспортной передачей данных
+				case static_cast <uint8_t> (layer_t::CTL): {
+					// Извлекаем объект транспортного уровня передачи
+					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
+					// Если участник помечен мусорным
+					if(member->state & ::state::GARBAGE_MODE)
+						// Выходим из переключателя
+						break;
+					// Если шаблон контекста безопасности отсутствует
+					if(member->cts == nullptr)
+						// Выходим из переключателя
+						break;
+					// Если связь из настроек шаблона заведена
+					if(::ssl::establish(member, member->cts, id)){
+						// Снимаем признак выполненного рукопожатия
+						member->state &= ~state::HANDSHAKE_MODE;
+						// Очищаем буфер сборки ClientHello
+						member->hello.clear();
+						// Сбрасываем выбранный ALPN-протокол
+						member->alpn.id = 0;
+						// Если узел является клиентом и идентификатор цифрового отпечатка браузера установлен
+						if((member->node == event::node_t::CLIENT) && (member->fid != 0) && (::__awh_fgp__ != nullptr))
+							// Повторно активируем наложение цифрового отпечатка браузера на TLS-соединение
+							awh::tls::coder::browser(id, member->fid);
+						// Устанавливаем положительный результат
+						result = true;
+					// Если связь завести не удалось
+					} else {
+						// Отбрасываем негодную связь клиента: повторный сброс заведёт её заново
+						member->client.reset();
+						// Отбрасываем негодную связь сервера: повторный сброс заведёт её заново
+						member->server.reset();
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("%s", log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Функция удаления контекста TLS
  *
  * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы функций
