@@ -564,6 +564,16 @@
 	 * \~
 	 */
 	#define __AWH_INLINE__ __forceinline
+	/**
+	 * \~russian
+	 * Обозначение вызова, встраивание которого запрещено
+	 *
+	 * \~english
+	 * Designation of a call that is prohibited from being embedded
+	 *
+	 * \~
+	 */
+	#define __AWH_NO_INLINE__ __declspec(noinline)
 /**
  * \~russian
  * Если компилятор принадлежит к семейству GCC или Clang
@@ -584,6 +594,16 @@
 	 * \~
 	 */
 	#define __AWH_INLINE__ inline __attribute__((always_inline))
+	/**
+	 * \~russian
+	 * Обозначение вызова, встраивание которого запрещено
+	 *
+	 * \~english
+	 * Designation of a call that is prohibited from being embedded
+	 *
+	 * \~
+	 */
+	#define __AWH_NO_INLINE__ __attribute__((noinline))
 #endif
 
 /**

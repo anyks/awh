@@ -926,11 +926,55 @@ else (Dependence_FOUND)
 endif (Dependence_FOUND)
 
 # Подключаем A-NTS: криптография и TLS переехали с BoringSSL на собственную библиотеку.
-# Пакет ставит оснастка third_party (sh/third_party/000_a-nts.sh); цель anyks::nts несёт
-# заголовки include/anyks/nts, определение NTS_STATICLIB и потоки. Линкуем глобально:
-# зависимость сквозная - библиотека, семплы, тесты и бенчмарки берут её одной целью.
-list(APPEND CMAKE_PREFIX_PATH "${AWH_THIRD_PARTY}")
-find_package(nts 1.0 CONFIG REQUIRED)
+# Пакет ставит оснастка third_party (sh/third_party/000_a-nts.sh), но cmake-описание
+# пакета здесь негодно: его цель anyks::nts ссылается на отдельный архив libnts.a, а
+# слияние зависимостей растворило этот архив в libdependence.a - проверка наличия
+# файла валит настройку сборки. Цель заводим сами по контракту пакета: заголовки,
+# признак статической сборки, версионные макросы, потоки и bcrypt под Windows; код
+# NTS линкуется через DEPEND_LIBRARY. Линкуем глобально: зависимость сквозная -
+# библиотека, семплы, тесты и бенчмарки берут её одной целью.
+#
+# Издание берём из версионного файла пакета: он ставится вместе с заголовками,
+# переупаковку переживает и проверок наличия файлов не делает. Под Solaris и
+# illumos пакет живёт в 64-битном поддереве lib/amd64
+set(NTS_VERSION_FILE "${AWH_THIRD_PARTY}/lib/cmake/nts/ntsConfigVersion.cmake")
+if (NOT EXISTS "${NTS_VERSION_FILE}")
+    set(NTS_VERSION_FILE "${AWH_THIRD_PARTY}/lib/amd64/cmake/nts/ntsConfigVersion.cmake")
+endif (NOT EXISTS "${NTS_VERSION_FILE}")
+if (NOT EXISTS "${NTS_VERSION_FILE}")
+    message(FATAL_ERROR "A-NTS not found. Run ./build_third_party.sh first")
+endif (NOT EXISTS "${NTS_VERSION_FILE}")
+# Вынимаем строку издания, не исполняя файл: логика сравнения версий нам не нужна
+file(STRINGS "${NTS_VERSION_FILE}" NTS_VERSION_LINE REGEX "^set\\(PACKAGE_VERSION \"[0-9]+\\.[0-9]+\\.[0-9]+\"\\)")
+string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" NTS_VERSION "${NTS_VERSION_LINE}")
+if (NOT NTS_VERSION)
+    message(FATAL_ERROR "A-NTS version unreadable: ${NTS_VERSION_FILE}")
+endif (NOT NTS_VERSION)
+if (NTS_VERSION VERSION_LESS "1.0")
+    message(FATAL_ERROR "A-NTS >= 1.0 required, found ${NTS_VERSION}")
+endif (NTS_VERSION VERSION_LESS "1.0")
+# Сводное число издания: старший * 1000000 + младший * 1000 + заплатка
+string(REPLACE "." ";" NTS_VERSION_PARTS "${NTS_VERSION}")
+list(GET NTS_VERSION_PARTS 0 NTS_VERSION_MAJOR)
+list(GET NTS_VERSION_PARTS 1 NTS_VERSION_MINOR)
+list(GET NTS_VERSION_PARTS 2 NTS_VERSION_PATCH)
+math(EXPR NTS_VERSION_NUMBER "${NTS_VERSION_MAJOR} * 1000000 + ${NTS_VERSION_MINOR} * 1000 + ${NTS_VERSION_PATCH}")
+# Потоки: замок укрытого хранилища и обработчик разветвления
+find_package(Threads REQUIRED)
+# Архив цели - слитая библиотека зависимостей: код NTS живёт внутри неё, отдельного
+# libnts.a после переупаковки нет. Несём её в интерфейсе цели, как пакет нёс свой
+# архив: глобальная линковка даёт код NTS всякому потребителю одной целью
+add_library(anyks::nts INTERFACE IMPORTED)
+set_target_properties(anyks::nts PROPERTIES
+    INTERFACE_COMPILE_DEFINITIONS "NTS_STATICLIB;NTS_VERSION=\"${NTS_VERSION}\";NTS_VERSION_MAJOR=${NTS_VERSION_MAJOR};NTS_VERSION_MINOR=${NTS_VERSION_MINOR};NTS_VERSION_PATCH=${NTS_VERSION_PATCH};NTS_VERSION_NUMBER=${NTS_VERSION_NUMBER}"
+    INTERFACE_COMPILE_FEATURES "cxx_std_17"
+    INTERFACE_INCLUDE_DIRECTORIES "${AWH_THIRD_PARTY}/include/anyks/nts"
+    INTERFACE_LINK_LIBRARIES "${DEPEND_LIBRARY};Threads::Threads"
+)
+# Источник случайности Windows живёт в отдельной системной библиотеке
+if (WIN32)
+    set_property(TARGET anyks::nts APPEND PROPERTY INTERFACE_LINK_LIBRARIES "bcrypt")
+endif (WIN32)
 link_libraries(anyks::nts)
 
 # Если Doxygen найден
